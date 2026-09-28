@@ -16,6 +16,11 @@ import {
   cellHasValue,
   cellIsZero,
 } from "../../lib/gmd_lib/flowFilter";
+import {
+  BOM_ID_COLUMN,
+  BOM_ID_FILTER_VALUES,
+  getBomIdCategory,
+} from "../../lib/gmd_lib/bomCategory";
 import DebouncedSearchInput from "@/components/table/DebouncedSearchInput";
 import Pagination from "./Pagination";
 import { useAppDispatch } from "@/lib/hooks";
@@ -837,15 +842,6 @@ castingRateInputs,
     }
     return mergeOnlyTypes.includes(String(row[mergeTypeIdx] ?? "").trim());
   };
-  const getBomIdCategory = useCallback(
-    (id: string): string => {
-      const options = bomIdOptionsById?.[id];
-      if (!options || options.length === 0) return "Blanks";
-      if (options.length === 1) return "Single";
-      return "Dropdown";
-    },
-    [bomIdOptionsById],
-  );
   const mergeIdxSet = useMemo(
     () =>
       new Set(
@@ -1035,7 +1031,7 @@ castingRateInputs,
     globalSearch.trim() !== "" ||
     dateFrom !== "" ||
     dateTo !== "" ||
-    Object.values(dateRanges).some((r) => r.from || r.to);
+    Object.values(dateRanges).some((r) => r.from || r.to || r.blank);
 
   const showResetFilters = hasActiveFilters || !!externalFiltersActive;
 
@@ -1083,9 +1079,9 @@ castingRateInputs,
       for (const [colName, filterVal] of Object.entries(columnFilters)) {
         if (colName === opts.excludeHeader) continue;
         if (!filterVal || filterVal === "All") continue;
-        if (colName === "BOM ID" && bomIdCategoryFilter) {
+        if (colName === BOM_ID_COLUMN && bomIdCategoryFilter) {
           if (!opts.id) continue;
-          const cat = getBomIdCategory(opts.id);
+          const cat = getBomIdCategory(bomIdOptionsById?.[opts.id]);
           if (cat !== filterVal) return false;
           continue;
         }
@@ -1175,7 +1171,7 @@ castingRateInputs,
       dateFrom,
       dateTo,
       bomIdCategoryFilter,
-      getBomIdCategory,
+      bomIdOptionsById,
     ],
   );
 
@@ -2203,9 +2199,13 @@ castingRateInputs,
                             title="Filter by BOM ID availability"
                           >
                             <option value="All">All</option>
-                            <option value="Single">Single</option>
-                            <option value="Dropdown">Dropdown</option>
-                            <option value="Blanks">Blanks</option>
+                            {BOM_ID_FILTER_VALUES.filter(
+                              (v) => v !== "All",
+                            ).map((v) => (
+                              <option key={v} value={v}>
+                                {v}
+                              </option>
+                            ))}
                           </select>
                         </div>
                       ) : (

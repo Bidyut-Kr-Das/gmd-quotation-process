@@ -33,6 +33,11 @@ import {
   CONTRACT_REVIEW_COLUMN_GROUPS,
 } from "@/lib/gmd_lib/contract-review-columns";
 import {
+  BOM_ID_COLUMN,
+  getBomIdCategory,
+  type BomIdCategory,
+} from "@/lib/gmd_lib/bomCategory";
+import {
   FLOW_HAS_VALUE,
   FLOW_NO_VALUE,
   FLOW_ZERO,
@@ -344,6 +349,16 @@ function parseDateCR(str: string): Date | null {
   return null;
 }
 
+/**
+ * Contract Review's mirror of GMDUpdateTable's `rowPassesFilters`. Used to build the
+ * sidebar aggregates, the flow-graph node counts and the CONTRACT NO option metadata.
+ *
+ * `bomCategoryByRow` supplies the BOM ID column's category (Blanks / Single / Dropdown)
+ * per row. It is optional so the parameter stays backwards compatible; when supplied,
+ * the BOM ID filter is evaluated as a category instead of falling through to the generic
+ * text match below, which would reject every row (no BOM id contains "single"/"dropdown"/
+ * "blanks"). See `lib/gmd_lib/bomCategory.ts`.
+ */
 function matchesTableFilters(
   row: unknown[],
   headers: string[],
@@ -353,6 +368,7 @@ function matchesTableFilters(
   dateRanges?: Record<string, { from: string; to: string; blank?: boolean }>,
   excludeHeader?: string,
   ignoreColumns?: Set<string>,
+  bomCategoryByRow?: WeakMap<unknown[], BomIdCategory>,
 ): boolean {
   if (globalSearch.trim()) {
     const q = globalSearch.toLowerCase();
@@ -365,6 +381,13 @@ function matchesTableFilters(
     if (excludeHeader && colName === excludeHeader) continue;
     if (ignoreColumns?.has(colName)) continue;
     if (!filterVal || filterVal === "All") continue;
+    if (colName === BOM_ID_COLUMN && bomCategoryByRow) {
+      const cat = bomCategoryByRow.get(row);
+      // Rows with no known category (no id yet) pass through, mirroring
+      // GMDUpdateTable's `if (!opts.id) continue`.
+      if (cat !== undefined && cat !== filterVal) return false;
+      continue;
+    }
     const colIdx = headers.indexOf(colName);
     if (colIdx === -1) continue;
     const cellVal = String(row[colIdx] ?? "");
@@ -511,6 +534,23 @@ export default function ContractReviewPage() {
   const [diagramVerdictsById, setDiagramVerdictsById] = useState<
     Record<string, string>
   >({});
+  // The BOM ID column filter is a category filter (Blanks / Single / Dropdown)
+  // derived from the number of candidate BOM ids, not from the cell text. GMDUpdateTable
+  // applies that rule via its own category-aware branch; without a matching branch
+  // here, matchesTableFilters would fall through to a plain text match and reject every
+  // row. Keyed on the row object so no call site has to thread a row id through.
+  const bomCategoryByRow = useMemo(() => {
+    const map = new WeakMap<unknown[], BomIdCategory>();
+    const rows = data?.rows;
+    const ids = data?.ids;
+    if (rows && ids) {
+      rows.forEach((row, i) => {
+        const id = ids[i];
+        if (id) map.set(row, getBomIdCategory(bomIdOptionsById[id]));
+      });
+    }
+    return map;
+  }, [data, bomIdOptionsById]);
   const [actuatorOptions, setActuatorOptions] = useState<string[]>([]);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>(
     {},
@@ -1310,11 +1350,38 @@ export default function ContractReviewPage() {
 
   const allRows = data?.rows ?? [];
 
+  // Binds the per-row BOM ID category map into matchesTableFilters so the sidebar,
+  // graph and option-metadata call sites below stay call-compatible.
+  const matchesRowFilters = useCallback(
+    (
+      row: unknown[],
+      headers: string[],
+      columnFilters: Record<string, string>,
+      multiFilters: Record<string, string[]>,
+      globalSearch: string,
+      dateRanges?: Record<string, { from: string; to: string; blank?: boolean }>,
+      excludeHeader?: string,
+      ignoreColumns?: Set<string>,
+    ) =>
+      matchesTableFilters(
+        row,
+        headers,
+        columnFilters,
+        multiFilters,
+        globalSearch,
+        dateRanges,
+        excludeHeader,
+        ignoreColumns,
+        bomCategoryByRow,
+      ),
+    [bomCategoryByRow],
+  );
+
   const sidebarBaseRows = useMemo(
     () =>
       allRows.filter(
         (row) =>
-          matchesTableFilters(
+          matchesRowFilters(
             row,
             headers,
             columnFilters,
@@ -1331,6 +1398,7 @@ export default function ContractReviewPage() {
       globalSearch,
       dateRanges,
       activeRateTile,
+      matchesRowFilters,
     ],
   );
 
@@ -1436,7 +1504,7 @@ export default function ContractReviewPage() {
     const counts: Record<string, number> = { all: 0 };
     const baseForClearance = allRows.filter(
       (row) =>
-        matchesTableFilters(
+        matchesRowFilters(
           row,
           headers,
           columnFilters,
@@ -1489,6 +1557,7 @@ export default function ContractReviewPage() {
     inspectionFilter,
     balBillIdx,
     clearanceIdx,
+    matchesRowFilters,
   ]);
 
   const clearanceOptions = useMemo(() => {
@@ -1510,7 +1579,7 @@ export default function ContractReviewPage() {
     const counts: Record<string, number> = { all: 0 };
     const base = allRows.filter(
       (row) =>
-        matchesTableFilters(
+        matchesRowFilters(
           row,
           headers,
           columnFilters,
@@ -1563,6 +1632,7 @@ export default function ContractReviewPage() {
     inspectionFilter,
     balBillIdx,
     clearanceIdx,
+    matchesRowFilters,
   ]);
 
   const mcOptions = useMemo(() => {
@@ -1582,7 +1652,7 @@ export default function ContractReviewPage() {
     const counts: Record<string, number> = { all: 0 };
     const base = allRows.filter(
       (row) =>
-        matchesTableFilters(
+        matchesRowFilters(
           row,
           headers,
           columnFilters,
@@ -1635,6 +1705,7 @@ export default function ContractReviewPage() {
     mcFilter,
     balBillIdx,
     clearanceIdx,
+    matchesRowFilters,
   ]);
 
   const inspectionOptions = useMemo(() => {
@@ -1655,7 +1726,7 @@ export default function ContractReviewPage() {
     // options never collapse under their own/column selection.
     const base = allRows.filter(
       (row) =>
-        matchesTableFilters(
+        matchesRowFilters(
           row,
           headers,
           columnFilters,
@@ -1717,6 +1788,7 @@ export default function ContractReviewPage() {
     balBillIdx,
     clearanceIdx,
     effectiveBalBillIdx,
+    matchesRowFilters,
   ]);
 
   const sizeOptions = useMemo(
@@ -1758,7 +1830,7 @@ tileItems,
     // options never collapse under their own/column selection.
     const base = allRows.filter(
       (row) =>
-        matchesTableFilters(
+        matchesRowFilters(
           row,
           headers,
           columnFilters,
@@ -1811,6 +1883,7 @@ tileItems,
     inspectionFilter,
     balBillIdx,
     clearanceIdx,
+    matchesRowFilters,
   ]);
 
   const rateMcCont = useMemo(() => {
@@ -2228,7 +2301,7 @@ tileSize,
         let n = 0;
         for (const row of allRows) {
           if (
-            !matchesTableFilters(
+            !matchesRowFilters(
               row,
               headers,
               columnFilters,
@@ -2257,6 +2330,7 @@ tileSize,
     dateRanges,
     activeRateTile,
     graphPathColumns,
+    matchesRowFilters,
   ]);
 
   const handleGraphToggle = useCallback(
@@ -2309,7 +2383,7 @@ tileSize,
         let sum = 0;
         for (const row of allRows) {
           if (
-            !matchesTableFilters(
+            !matchesRowFilters(
               row,
               headers,
               columnFilters,
@@ -2342,6 +2416,7 @@ tileSize,
     dateRanges,
     activeRateTile,
     graphPathColumns,
+    matchesRowFilters,
   ]);
 
   const fmtLakhs = (n: number) => `${(n / 100000).toFixed(1)} lakhs`;
@@ -2358,7 +2433,7 @@ tileSize,
     > = {};
     for (const row of filteredData?.rows ?? []) {
       if (
-        !matchesTableFilters(
+        !matchesRowFilters(
           row,
           headers,
           columnFilters,
@@ -2388,6 +2463,7 @@ tileSize,
     globalSearch,
     dateRanges,
     activeRateTile,
+    matchesRowFilters,
   ]);
 
   const columnOptionMeta = useMemo(
