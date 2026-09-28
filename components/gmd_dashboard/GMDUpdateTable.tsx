@@ -221,7 +221,7 @@ function ItemImageCell({
         {images.length === 1 ? "Image" : `Images (${images.length})`}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden">
+        <DialogContent className="sm:max-w-140 p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
             <DialogTitle className="text-sm font-bold text-[#0a2540] flex items-center gap-2">
               <ImageIcon size={16} className="text-[#0a2540]/70" />
