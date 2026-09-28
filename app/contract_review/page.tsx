@@ -31,6 +31,7 @@ import {
   CONTRACT_REVIEW_HEADER_TO_DB_FIELD,
   CONTRACT_REVIEW_HEADERS,
   CONTRACT_REVIEW_COLUMN_GROUPS,
+  CONTRACT_REVIEW_COLUMN_WIDTHS,
 } from "@/lib/gmd_lib/contract-review-columns";
 import type { ContractReviewImage } from "@/lib/gmd_lib/contract-review-image-lookup";
 import {
@@ -3431,6 +3432,8 @@ tileSize,
                 }}
                 onCellUpdate={handleCellUpdate}
                 columnGroups={CONTRACT_REVIEW_COLUMN_GROUPS}
+                defaultColumnWidths={CONTRACT_REVIEW_COLUMN_WIDTHS}
+                wrapCells
                 attachmentColumn={UPLOAD_DIAGRAM_COLUMN}
                 attachmentAccept=".pdf,application/pdf"
                 onUploadAttachment={handleUploadDiagram}

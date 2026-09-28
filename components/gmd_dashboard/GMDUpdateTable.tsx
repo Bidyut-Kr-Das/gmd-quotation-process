@@ -210,15 +210,15 @@ function ItemImageCell({
           e.stopPropagation();
           setOpen(true);
         }}
-        title={images
+        aria-label={`View ${images.length} image${images.length === 1 ? "" : "s"} for ${code}`}
+        title={`${images.length} image${images.length === 1 ? "" : "s"}\n${images
           .map(
             (i) =>
               `${i.itemType ?? ""} / ${i.operationType ?? ""} / ${i.rmType ?? ""}`,
           )
-          .join("\n")}
+          .join("\n")}`}
       >
         <ImageIcon size={12} className="shrink-0" />
-        {images.length === 1 ? "Image" : `Images (${images.length})`}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-140 p-0 gap-0 overflow-hidden">
@@ -627,8 +627,23 @@ interface ResolvedCol {
   group?: ColumnGroup & { children: ColumnGroupChild[] };
 }
 
-const DEFAULT_GROUP_WIDTH = 320;
+const DEFAULT_GROUP_WIDTH = 300;
 const FROZEN_VISIBLE_COLUMNS = 2;
+
+/**
+ * Class string for a wrapped text cell that must not stretch its row: content
+ * wraps, the box is capped, and anything past the cap scrolls inside the cell.
+ *
+ * `cell-scrollable` (app/globals.css) keeps the scrollbar 4px wide — with ~60
+ * columns on screen a default-width scrollbar per overflowing cell would swamp
+ * the grid. `max-h-16` is 64px, which at text-xs/leading-normal (18px a line)
+ * shows 3 full lines before the cell starts scrolling; `max-h-12` only managed
+ * 2. Raise it further if you want a taller common row. Cells rendered as a
+ * widget (input, select, DatePicker, badge, button) never get this — they are
+ * single-line and have nothing to scroll.
+ */
+const WRAPPED_CELL_BOX =
+  "max-h-16 overflow-y-auto overflow-x-hidden cell-scrollable whitespace-normal leading-normal break-words";
 
 function MultiSelect({
   options,
@@ -828,6 +843,24 @@ interface GMDUpdateTableProps {
   verdictsById?: Record<string, string | null | undefined>;
   onSetVerdict?: (id: string, verdict: string | null) => Promise<void>;
   columnGroups?: ColumnGroup[];
+  /**
+   * Per-column default widths in px, keyed by header. Seeds columnWidths on
+   * mount only, so a manual drag-resize still wins for the rest of the session
+   * (and is still discarded on reload). Columns absent from the map fall
+   * through to the built-in defaults.
+   */
+  defaultColumnWidths?: Record<string, number>;
+  /**
+   * Word-wrap header captions and read-only cell values onto as many lines as
+   * they need, instead of ellipsising them, and top-align body cells so a tall
+   * wrapped cell lines up with its neighbours. Meant for dashboards whose
+   * columns are sized narrow enough that captions would otherwise clip.
+   *
+   * Does not affect cells rendered as a widget — `<input>`, `<select>`,
+   * DatePicker, badges and buttons are single-line by nature and still clip.
+   * Off by default so the other dashboards keep their current appearance.
+   */
+  wrapCells?: boolean;
   onDeleteRow?: (id: string) => Promise<void>;
   onMatchCosts?: () => void;
   blankOnlyEditableColumns?: string[];
@@ -881,6 +914,8 @@ castingRateInputs,
   verdictsById,
   onSetVerdict,
   columnGroups,
+  defaultColumnWidths,
+  wrapCells,
   onDeleteRow,
   onMatchCosts,
   blankOnlyEditableColumns,
@@ -1067,6 +1102,13 @@ castingRateInputs,
           widths[i] = gw;
           return;
         }
+        // Caller-supplied per-column defaults win over the built-in chain, so a
+        // dashboard can size each of its columns without touching this file.
+        const dw = defaultColumnWidths?.[h];
+        if (typeof dw === "number" && dw > 0) {
+          widths[i] = dw;
+          return;
+        }
         widths[i] =
           h === "ITEM NAME (proposed)-AUTO"
             ? 200
@@ -1075,7 +1117,7 @@ castingRateInputs,
               : h === "ORDER LIST"
                 ? 160
                 : h === "Upload Drawing"
-                  ? 200
+                  ? 100
                   : h === "CONTRACT NO"
                     ? 360
                     : 180;
@@ -1558,6 +1600,19 @@ castingRateInputs,
   };
 
   /**
+   * Class string for a text cell. `scrollable` is false inside a collapsed
+   * group, because the group column caps and scrolls itself as a whole —
+   * capping each child too would nest a scroller inside a scroller and clip the
+   * other children out of reach.
+   */
+  const textCellClass = (scrollable: boolean) =>
+    !wrapCells
+      ? "truncate block"
+      : scrollable
+        ? `block ${WRAPPED_CELL_BOX}`
+        : "block break-words";
+
+  /**
    * Renders the body of one column. Lifted verbatim out of the row loop so a
    * collapsed column group can render each of its children through the exact
    * same logic (DatePicker, select, attachment, status badge, links, ...).
@@ -1568,6 +1623,7 @@ castingRateInputs,
     row: unknown[],
     id: string,
     idx: number,
+    scrollable = true,
   ): React.ReactNode => {
     const { display, isCellEditable, isAttachmentColumn } = cellMeta(
       header,
@@ -1601,7 +1657,7 @@ castingRateInputs,
         );
       } else if (options.length === 1) {
         cellContent = (
-          <span className="truncate block" title={options[0]}>
+          <span className={textCellClass(scrollable)} title={options[0]}>
             {display || options[0] || "—"}
           </span>
         );
@@ -1829,7 +1885,11 @@ castingRateInputs,
           href={display}
           target="_blank"
           rel="noopener noreferrer"
-          className="truncate block underline text-blue-600 hover:text-blue-800"
+          className={
+            wrapCells
+              ? `block break-all ${scrollable ? WRAPPED_CELL_BOX : ""} underline text-blue-600 hover:text-blue-800`
+              : "truncate block underline text-blue-600 hover:text-blue-800"
+          }
           title={display}
         >
           {display}
@@ -1842,13 +1902,13 @@ castingRateInputs,
     ) {
       const linksContent = renderLinksCell(display);
       cellContent = linksContent ?? (
-        <span className="truncate block" title={display}>
+        <span className={textCellClass(scrollable)} title={display}>
           {display || "—"}
         </span>
       );
     } else {
       cellContent = (
-        <span className="truncate block" title={display}>
+        <span className={textCellClass(scrollable)} title={display}>
           {display || "—"}
         </span>
       );
@@ -2127,9 +2187,13 @@ castingRateInputs,
                         frozenLeft !== undefined ? { left: frozenLeft } : undefined
                       }
                     >
-                      <div className="flex items-center justify-between gap-1">
+                      <div
+                        className={`flex justify-between gap-1 ${wrapCells ? "items-start" : "items-center"}`}
+                      >
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="truncate">{group.label}</span>
+                          <span className={wrapCells ? "break-words" : "truncate"}>
+                            {group.label}
+                          </span>
                           {activeCount > 0 && (
                             <span className="inline-flex items-center justify-center h-4 px-1.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700">
                               {activeCount}
@@ -2253,10 +2317,12 @@ castingRateInputs,
                     }
                   >
                     <div
-                      className="flex items-center justify-between gap-1.5 cursor-pointer"
+                      className={`flex justify-between gap-1.5 cursor-pointer ${wrapCells ? "items-start" : "items-center"}`}
                       onClick={() => handleSort(idx)}
                     >
-                      <span className="truncate">{header}</span>
+                      <span className={wrapCells ? "break-words" : "truncate"}>
+                        {header}
+                      </span>
                       {isSorted && (
                         <span className="shrink-0 text-[10px] text-[#0a2540]">
                           {sortDirection === "asc" ? (
@@ -2480,7 +2546,13 @@ castingRateInputs,
                     );
 
                     const cellContent: React.ReactNode = group ? (
-                      <div className="flex flex-col gap-1">
+                      <div
+                        className={
+                          wrapCells
+                            ? `flex flex-col gap-1 min-w-0 ${WRAPPED_CELL_BOX}`
+                            : "flex flex-col gap-1"
+                        }
+                      >
                         {group.children.map((child) => {
                           const childIdx = headers.indexOf(child.header);
                           if (childIdx === -1) return null;
@@ -2488,7 +2560,12 @@ castingRateInputs,
                             <div
                               key={child.header}
                               title={child.header}
-                              className="flex items-center gap-1 min-w-0 rounded border border-[#e1e6eb] bg-white px-1.5 py-0.5 hover:border-[#c9d2da] transition-colors"
+                              className={`flex items-center gap-1 min-w-0 rounded border border-[#e1e6eb] bg-white px-1.5 py-0.5 hover:border-[#c9d2da] transition-colors${
+                                // The group container is a capped column flex box
+                                // once wrapCells is on; without this a child could be
+                                // squashed to fit the cap instead of scrolling.
+                                wrapCells ? " shrink-0" : ""
+                              }`}
                             >
                               <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-[#0a2540]/55">
                                 {child.label ?? child.header}
@@ -2500,6 +2577,7 @@ castingRateInputs,
                                   row,
                                   id,
                                   idx,
+                                  false,
                                 )}
                               </span>
                             </div>
@@ -2507,7 +2585,7 @@ castingRateInputs,
                         })}
                       </div>
                     ) : (
-                      renderCellContent(header, cellIdx, row, id, idx)
+                      renderCellContent(header, cellIdx, row, id, idx, true)
                     );
 
                     const frozenLeft = frozenOffsets[visIdx];
@@ -2517,6 +2595,8 @@ castingRateInputs,
                         key={cellIdx}
                         rowSpan={mergedSpan}
                         className={`${group ? "px-2" : "px-3"} py-2 text-xs border-b border-[#e1e6eb] border-r  last:border-r-0${
+                          wrapCells ? " align-top" : ""
+                        }${
                           frozenLeft !== undefined ? " sticky z-10 bg-white" : ""
                         }${
                           isCellEditable || isPnBlankDropdown || groupIsEditable
