@@ -170,8 +170,8 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
     label: "Contract / PO NO",
     width: 175,
     children: [
-      { header: "CONTRACT NO", label: "Contract NO" },
-      { header: "PO NO", label: "PO NO" },
+      { header: "CONTRACT NO", label: "Contract NO -" },
+      { header: "PO NO", label: "PO NO -" },
     ],
   },
   {
@@ -195,8 +195,8 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
     label: "Actuator / RM Code for Actuator",
     width: 185,
     children: [
-      { header: "Actuator", label: "Actuator" },
-      { header: "RM CODE FOR ACTUATOR", label: "RM Code for Actuator" },
+      { header: "Actuator", label: "Actuator -" },
+      { header: "RM CODE FOR ACTUATOR", label: "RM Code for Actuator -" },
     ],
   },
   {

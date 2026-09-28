@@ -21,6 +21,8 @@
     "ic:sync:apply": "tsx scripts/sync-ic-dump.ts --apply",
     "cr:backfill-enquiry": "tsx scripts/backfill-contract-review-enquiry-fields.ts",
     "cr:backfill-enquiry:apply": "tsx scripts/backfill-contract-review-enquiry-fields.ts --apply",
+    "cr:contract-dump": "tsx scripts/backfill-contract-review-contract-dump.ts",
+    "cr:contract-dump:apply": "tsx scripts/backfill-contract-review-contract-dump.ts --apply",
     "bom:cleanup-no-use": "tsx scripts/remove-no-use-bom-ids.ts",
     "bom:cleanup-no-use:apply": "tsx scripts/remove-no-use-bom-ids.ts --write",
     "cr:cleanup-invalid-boms": "tsx scripts/remove-invalid-contract-review-boms.ts",
