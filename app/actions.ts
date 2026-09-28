@@ -24,6 +24,8 @@ import {
   deleteFromS3,
   validateAttachment,
   buildAttachmentKey,
+  validateDiagram,
+  buildDiagramKey,
 } from "@/lib/s3";
 
 // Create a new enquiry with initial items and multiple attachments
@@ -2311,6 +2313,135 @@ export async function clearGMDUpdateAttachmentAction(id: string) {
     return {
       success: false,
       error: error.message || "Failed to clear attachment.",
+    };
+  }
+}
+
+const CONTRACT_REVIEW_DIAGRAM_VERDICTS = new Set(["CORRECT", "WRONG"]);
+
+export async function uploadContractReviewDiagramAction(
+  id: string,
+  file: File,
+) {
+  "use server";
+  try {
+    if (!id) {
+      return { success: false, error: "Missing contract review id." };
+    }
+    validateDiagram(file);
+    const existing = await prisma.contractReview.findUnique({
+      where: { id },
+      select: { contractNo: true, diagramUrl: true },
+    });
+    if (!existing) {
+      return { success: false, error: "Contract review row not found." };
+    }
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const key = buildDiagramKey(id, existing.contractNo, file.name);
+    const diagramUrl = await uploadToS3({
+      key,
+      body: bytes,
+      contentType: file.type,
+    });
+    if (existing.diagramUrl) {
+      try {
+        await deleteFromS3(existing.diagramUrl);
+      } catch (e) {
+        console.warn("[uploadContractReviewDiagram] S3 delete failed, continuing:", e);
+      }
+    }
+    // A freshly uploaded diagram has not been reviewed yet, so the verdict resets.
+    await prisma.contractReview.update({
+      where: { id },
+      data: { diagramUrl, diagramVerdict: null },
+    });
+    return { success: true, data: { id, diagramUrl, diagramVerdict: null } };
+  } catch (error: any) {
+    console.error("Error uploading contract review diagram:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to upload diagram.",
+    };
+  }
+}
+
+export async function clearContractReviewDiagramAction(id: string) {
+  "use server";
+  try {
+    if (!id) {
+      return { success: false, error: "Missing contract review id." };
+    }
+    const existing = await prisma.contractReview.findUnique({
+      where: { id },
+      select: { diagramUrl: true },
+    });
+    if (!existing) {
+      return { success: false, error: "Contract review row not found." };
+    }
+    if (existing.diagramUrl) {
+      try {
+        await deleteFromS3(existing.diagramUrl);
+      } catch (e) {
+        console.warn("[clearContractReviewDiagram] S3 delete failed, continuing:", e);
+      }
+    }
+    await prisma.contractReview.update({
+      where: { id },
+      data: { diagramUrl: null, diagramVerdict: null },
+    });
+    return {
+      success: true,
+      data: { id, diagramUrl: null, diagramVerdict: null },
+    };
+  } catch (error: any) {
+    console.error("Error clearing contract review diagram:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to clear diagram.",
+    };
+  }
+}
+
+export async function setContractReviewDiagramVerdictAction(
+  id: string,
+  verdict: string | null,
+) {
+  "use server";
+  try {
+    if (!id) {
+      return { success: false, error: "Missing contract review id." };
+    }
+    const next =
+      verdict === null || verdict === "" ? null : String(verdict).trim().toUpperCase();
+    if (next !== null && !CONTRACT_REVIEW_DIAGRAM_VERDICTS.has(next)) {
+      return {
+        success: false,
+        error: "Diagram verdict must be CORRECT or WRONG.",
+      };
+    }
+    const existing = await prisma.contractReview.findUnique({
+      where: { id },
+      select: { diagramUrl: true },
+    });
+    if (!existing) {
+      return { success: false, error: "Contract review row not found." };
+    }
+    if (!existing.diagramUrl) {
+      return {
+        success: false,
+        error: "Upload a diagram before marking it correct or wrong.",
+      };
+    }
+    await prisma.contractReview.update({
+      where: { id },
+      data: { diagramVerdict: next },
+    });
+    return { success: true, data: { id, diagramVerdict: next } };
+  } catch (error: any) {
+    console.error("Error setting contract review diagram verdict:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to save diagram verdict.",
     };
   }
 }

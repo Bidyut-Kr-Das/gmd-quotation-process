@@ -88,6 +88,11 @@ export async function GET() {
 
     const rows = items.map(dbContractReviewToRow);
 
+    const diagramVerdicts: Record<string, string> = {};
+    for (const item of items) {
+      if (item.diagramVerdict) diagramVerdicts[item.id] = item.diagramVerdict;
+    }
+
     return NextResponse.json({
       headers: CONTRACT_REVIEW_HEADERS,
       rows,
@@ -96,6 +101,7 @@ export async function GET() {
       syncedAt: lastSynced?.toISOString() ?? null,
       bomIdOptions,
       itemImages,
+      diagramVerdicts,
     });
   } catch (error) {
     return NextResponse.json(

@@ -50,7 +50,12 @@ const PRESERVE_UI_FIELDS = new Set([
 ]);
 
 // Derived / UI-managed fields: never written by sync (create or update).
-const SKIP_FIELDS = new Set(["itemType", "rmCodeForActuator"]);
+const SKIP_FIELDS = new Set([
+  "itemType",
+  "rmCodeForActuator",
+  "diagramUrl",
+  "diagramVerdict",
+]);
 
 export async function POST() {
   try {

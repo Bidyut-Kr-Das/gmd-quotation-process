@@ -101,3 +101,26 @@ export function validateAttachment(file: File | { type: string; size: number }):
     throw new Error("Attachment must be 10 MB or smaller.");
   }
 }
+
+export const ALLOWED_DIAGRAM_TYPES = new Set(["application/pdf"]);
+
+export function buildDiagramKey(
+  id: string,
+  contractNo: string | null,
+  fileName: string,
+): string {
+  const scope = (contractNo || id || "item").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const timestamp = Date.now();
+  const safeName = sanitizeAttachmentFileName(fileName);
+  return `contract-review/${scope}/${timestamp}-${safeName}`;
+}
+
+export function validateDiagram(file: File | { type: string; size: number }): void {
+  const type = file.type || "";
+  if (!ALLOWED_DIAGRAM_TYPES.has(type)) {
+    throw new Error("Only PDF files are allowed for Upload Diagram.");
+  }
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    throw new Error("Diagram must be 10 MB or smaller.");
+  }
+}

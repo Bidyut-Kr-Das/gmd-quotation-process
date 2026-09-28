@@ -353,6 +353,8 @@ model ContractReview {
   costfromQuotation                String?
   vaPercentfromcost                String?
   productionOrderNumber            String?
+  diagramUrl                       String?
+  diagramVerdict                   String?
 
   poNo      String? //sync from sheetid = 1sf-uCfCSAUovNAWJSiSyojTPFvUSzmp23keF0ymkjIE
   orderList String[] @default([]) //sync from sheetid = 1sf-uCfCSAUovNAWJSiSyojTPFvUSzmp23keF0ymkjIE

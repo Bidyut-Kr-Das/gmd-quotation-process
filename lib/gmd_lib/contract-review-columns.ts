@@ -8,6 +8,7 @@ export const CONTRACT_REVIEW_HEADERS = [
   "ITEM_NAME",
   "PARTY ITEM NAME",
   "RATE",
+  "VALUE",
   "VA % FROM COST",
   "COST FROM QUOTATION",
   "CV",
@@ -32,7 +33,6 @@ export const CONTRACT_REVIEW_HEADERS = [
   "BAL DI VAL",
   "DI VAL",
   "Item",
-  "VALUE",
   "SIZE",
   "PN RATING",
   "CLEARANCE STATUS",
@@ -65,7 +65,71 @@ export const CONTRACT_REVIEW_HEADERS = [
   "DI DATE",
   "ORDER LIST",
   "PROD ORDER NO",
+  "Upload Diagram",
 ] as const;
+
+/**
+ * Columns collapsed into a single parent column in the UI, mirroring the
+ * grouped columns on the Quotation Process page.
+ *
+ * A group always renders at the position of its first *visible* child in
+ * CONTRACT_REVIEW_HEADERS, so visual order follows the header array, not the
+ * order groups are listed here. Declared in visual order for readability:
+ *   Contract/PO (idx 0) -> Item Names (idx 6) -> Item/Size/PN (idx 33) ->
+ *   Actuator (idx 36) -> LC/RTGS/Bank (idx 39)
+ *
+ * These are purely a display concern: the headers array, the row serializer and
+ * the header->DB field map are all untouched, so every *IDX constant and all
+ * inline edits keep working.
+ */
+export const CONTRACT_REVIEW_COLUMN_GROUPS = [
+  {
+    label: "Contract / PO",
+    width: 300,
+    children: [
+      { header: "CONTRACT NO", label: "Contract" },
+      { header: "PO NO", label: "PO" },
+    ],
+  },
+  {
+    label: "Item Names/Party Item Names",
+    width: 300,
+    children: [
+      { header: "ITEM_NAME", label: "Item" },
+      { header: "PARTY ITEM NAME", label: "Party" },
+    ],
+  },
+  {
+    label: "Item / Size / PN",
+    width: 340,
+    children: [
+      { header: "Item", label: "Item" },
+      { header: "SIZE", label: "Size" },
+      { header: "PN RATING", label: "PN" },
+    ],
+  },
+  {
+    label: "Actuator / RM Code",
+    width: 260,
+    children: [
+      { header: "Actuator", label: "Actuator" },
+      { header: "RM CODE FOR ACTUATOR", label: "RM Code" },
+    ],
+  },
+  {
+    label: "LC / RTGS / Bank",
+    width: 300,
+    children: [
+      { header: "LC/RTGS REF NO", label: "Ref No" },
+      { header: "LC DATE/RTGS DATE", label: "LC Date" },
+      {
+        header: "LAST DATE OF SHIPMENT/DATE OF LC",
+        label: "Ship Date",
+      },
+      { header: "Issuing bank name", label: "Bank" },
+    ],
+  },
+];
 
 export const CONTRACTS_SHEET_COLUMNS = [
   "CONTRACT NO",
@@ -322,6 +386,7 @@ export function dbContractReviewToRow(item: {
   costfromQuotation: string | null;
   vaPercentfromcost: string | null;
   productionOrderNumber: string | null;
+  diagramUrl: string | null;
 }): unknown[] {
   return [
     item.contractNo,
@@ -329,6 +394,7 @@ export function dbContractReviewToRow(item: {
     item.partyNameDump,
     item.itemCode, item.mcNo, item.poNo,
     item.itemName, item.partyItemName, item.rate,
+    item.value,
     item.vaPercentfromcost,
     item.costfromQuotation,
     item.cv, item.vaPercent,
@@ -341,7 +407,7 @@ export function dbContractReviewToRow(item: {
     item.balDiQty, item.balMcVal, item.balProdOrdVal,
     item.balToProdOrdEntVal, item.balBillAgContVal, item.balBillAgMcVal,
     item.balDiVal, item.diVal,
-    item.item, item.value, item.size, item.pnRating,
+    item.item, item.size, item.pnRating,
     item.clearanceStatus, item.actuator,
     item.rmCodeForActuator, item.rmCodeForGb, item.paymentTerms,
     item.lcRtgsRefNo, item.lcDateRtgsDate, item.lastDateOfShipmentDateOfLc,
@@ -364,6 +430,7 @@ export function dbContractReviewToRow(item: {
     (item.diDate ?? []).join(", "),
     (item.orderList ?? []).join(", "),
     item.productionOrderNumber,
+    item.diagramUrl,
   ];
 }
 
@@ -428,4 +495,5 @@ export const CONTRACT_REVIEW_HEADER_TO_DB_FIELD: Record<string, string> = {
   "Remarks": "remarks",
   "ORDER LIST": "orderList",
   "PROD ORDER NO": "productionOrderNumber",
+  "Upload Diagram": "diagramUrl",
 };

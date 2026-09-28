@@ -56,6 +56,12 @@ export default async function Navbar() {
           >
             GEM BID & RA
           </Link>
+          <Link
+            href="https://gmd-tender-dashboard.vercel.app/tenders" target="_blank"
+            className="inline-flex h-9 items-center gap-1.5 bg-[#0353e9] px-4 text-sm font-semibold text-white hover:bg-[#034ad0] dark:bg-blue-700 dark:hover:bg-blue-800 rounded-md"
+          >
+            Tenders
+          </Link>
           <ActiveNavLink href="/data-sources">
             Data Sources
           </ActiveNavLink>
