@@ -118,6 +118,24 @@ export const DATA_SOURCES: DataSource[] = [
     ],
   },
   {
+    page: "Contract Review",
+    route: "/contract_review",
+    dashboardName: "Contract Review Dashboard (gap-fill seed)",
+    sheetName: "BOM MAST ERP",
+    purpose:
+      "One-time gap-fill seed for ContractReview. Fills only fields that are blank in the DB; never overwrites. Not re-run after apply.",
+    sheetId: "1W3IUErIV2RXz2ZDS2ZLiVbvroOQlxDgk7JpThDxO544",
+    tabs: [
+      {
+        name: "CONTRACT DUMP",
+        gid: "1279116711",
+        headerRow: 1,
+        note: "one-time seed; 28/32 columns map (CONTRACT DATE -> dateOfContract alias)",
+        file: "scripts/backfill-contract-review-contract-dump.ts",
+      },
+    ],
+  },
+  {
     page: "Indent Checking",
     route: "/indent_listing",
     dashboardName: "Indent Checking Dashboard",
