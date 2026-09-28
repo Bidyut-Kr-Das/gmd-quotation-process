@@ -100,7 +100,7 @@ function OrderListCell({ display, poNo }: { display: string; poNo?: string }) {
         {links.length === 1 ? "View File" : `View Files (${links.length})`}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden">
+        <DialogContent className="sm:max-w-130 p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
             <DialogTitle className="text-sm font-bold text-[#0a2540] flex items-center gap-2">
               <FileText size={16} className="text-[#0a2540]/70" />
@@ -273,7 +273,7 @@ function AttachmentCell({
         </button>
       )}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[720px] p-0 gap-0 overflow-hidden">
+        <DialogContent className="sm:max-w-180 p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
             <DialogTitle className="text-sm font-bold text-[#0a2540] flex items-center gap-2">
               <FileText size={16} className="text-[#0a2540]/70" />
@@ -447,6 +447,30 @@ function cellEq(rowA: unknown[], rowB: unknown[], colIdx: number): boolean {
   return String(rowA[colIdx] ?? "") === String(rowB[colIdx] ?? "");
 }
 
+export interface ColumnGroupChild {
+  header: string;
+  /** Short caption shown next to the field inside the collapsed cell. */
+  label?: string;
+}
+
+export interface ColumnGroup {
+  /** Parent header caption. */
+  label: string;
+  /** Rendered width of the single collapsed column. */
+  width?: number;
+  children: ColumnGroupChild[];
+}
+
+/** A rendered column: either a standalone header, or a collapsed group. */
+interface ResolvedCol {
+  header: string;
+  idx: number;
+  group?: ColumnGroup & { children: ColumnGroupChild[] };
+}
+
+const DEFAULT_GROUP_WIDTH = 320;
+const FROZEN_VISIBLE_COLUMNS = 2;
+
 function MultiSelect({
   options,
   selected,
@@ -488,7 +512,7 @@ function MultiSelect({
       {open && (
         <div
           className={`absolute top-full left-0 z-50 mt-1 bg-white border border-[#e1e6eb] rounded shadow-lg ${
-            optionMeta ? "min-w-64 max-w-[26rem]" : "w-48"
+            optionMeta ? "min-w-64 max-w-104" : "w-48"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
@@ -644,6 +668,7 @@ interface GMDUpdateTableProps {
   verdictColumn?: string;
   verdictsById?: Record<string, string | null | undefined>;
   onSetVerdict?: (id: string, verdict: string | null) => Promise<void>;
+  columnGroups?: ColumnGroup[];
   onDeleteRow?: (id: string) => Promise<void>;
   onMatchCosts?: () => void;
   blankOnlyEditableColumns?: string[];
@@ -694,6 +719,7 @@ castingRateInputs,
   verdictColumn,
   verdictsById,
   onSetVerdict,
+  columnGroups,
   onDeleteRow,
   onMatchCosts,
   blankOnlyEditableColumns,
@@ -830,18 +856,63 @@ castingRateInputs,
     [mergeColumns, headers],
   );
   const isGrouped = groupByIdx >= 0 && mergeIdxSet.size > 0;
-  const visibleCols = useMemo(
-    () =>
-      headers
-        .map((header, idx) => ({ header, idx }))
-        .filter(({ header }) => !hiddenSet.has(header)),
-    [headers, hiddenSet],
-  );
+  // Maps every group child to its owning group so a group can be collapsed onto
+  // its first *visible* child. Children in hiddenColumns are skipped, so a group
+  // whose leading child is hidden still renders on its next visible child.
+  const groupByChild = useMemo(() => {
+    const map = new Map<string, { group: ColumnGroup; isFirst: boolean }>();
+    if (!columnGroups) return map;
+    for (const group of columnGroups) {
+      const visibleChildren = group.children.filter(
+        (c) => headers.includes(c.header) && !hiddenSet.has(c.header),
+      );
+      visibleChildren.forEach((child, i) => {
+        if (map.has(child.header)) return;
+        map.set(child.header, { group, isFirst: i === 0 });
+      });
+    }
+    return map;
+  }, [columnGroups, headers, hiddenSet]);
+  const visibleCols: ResolvedCol[] = useMemo(() => {
+    const out: ResolvedCol[] = [];
+    headers.forEach((header, idx) => {
+      if (hiddenSet.has(header)) return;
+      const info = groupByChild.get(header);
+      if (!info) {
+        out.push({ header, idx });
+        return;
+      }
+      // Non-first children are absorbed into the group's single column.
+      if (!info.isFirst) return;
+      const children = info.group.children.filter(
+        (c) => headers.includes(c.header) && !hiddenSet.has(c.header),
+      );
+      if (children.length === 0) {
+        out.push({ header, idx });
+        return;
+      }
+      out.push({ header, idx, group: { ...info.group, children } });
+    });
+    return out;
+  }, [headers, hiddenSet, groupByChild]);
   const dispatch = useAppDispatch();
   const [columnWidths, setColumnWidths] = useState<Record<number, number>>(
     () => {
+      // A collapsed group seeds the width of the column it renders on, so a
+      // later drag-resize behaves exactly like a standalone column.
+      const groupWidthByHeader = new Map<string, number>();
+      for (const g of columnGroups ?? []) {
+        if (!g.width) continue;
+        const anchor = g.children.find((c) => !hiddenSet.has(c.header));
+        if (anchor) groupWidthByHeader.set(anchor.header, g.width);
+      }
       const widths: Record<number, number> = {};
       headers.forEach((h, i) => {
+        const gw = groupWidthByHeader.get(h);
+        if (gw) {
+          widths[i] = gw;
+          return;
+        }
         widths[i] =
           h === "ITEM NAME (proposed)-AUTO"
             ? 200
@@ -849,13 +920,33 @@ castingRateInputs,
               ? 300
               : h === "ORDER LIST"
                 ? 160
+                : h === "Upload Diagram"
+                  ? 200
                   : h === "CONTRACT NO"
-                  ? 360
-                  : 180;
+                    ? 360
+                    : 180;
       });
       return widths;
     },
   );
+  const getColWidth = useCallback(
+    (col: ResolvedCol) =>
+      columnWidths[col.idx] ?? col.group?.width ?? DEFAULT_GROUP_WIDTH,
+    [columnWidths],
+  );
+  // Left offsets for the frozen leading columns, derived from the *visible*
+  // column order and real rendered widths so a collapsed group (wider than any
+  // single child) cannot desync the header from the body.
+  const frozenOffsets = useMemo(() => {
+    const offsets: (number | undefined)[] = [];
+    let acc = 0;
+    const count = Math.min(FROZEN_VISIBLE_COLUMNS, visibleCols.length);
+    for (let i = 0; i < count; i++) {
+      offsets.push(acc);
+      acc += getColWidth(visibleCols[i]);
+    }
+    return offsets;
+  }, [visibleCols, getColWidth]);
   const resizingRef = useRef<{
     index: number;
     startX: number;
@@ -1284,6 +1375,326 @@ castingRateInputs,
     }
   };
 
+  /**
+   * Per-cell render metadata, derived purely from the column name + cell value.
+   * Shared by the standalone <td> path and the collapsed-group <td> path so both
+   * agree on editability and highlighting.
+   */
+  const cellMeta = (header: string, cellIdx: number, row: unknown[]) => {
+    const value = row[cellIdx];
+    const display = value != null ? String(value) : "";
+    const isBlankCell = String(display ?? "").trim() === "";
+    const isBlankOnlyColumn = !!blankOnlyEditableColumns?.includes(header);
+    const baseEditable =
+      !editableColumns ||
+      editableColumns.includes(header) ||
+      isBlankOnlyColumn;
+    const isCellEditable =
+      !!editable &&
+      baseEditable &&
+      (!isBlankOnlyColumn || isBlankCell) &&
+      (!dropdownRowCondition || dropdownRowCondition(header, row));
+    const isAttachmentColumn =
+      !!attachmentColumn && header === attachmentColumn && !!onUploadAttachment;
+    const isPnBlankDropdown =
+      header === "PN RATING" &&
+      !String(display).trim() &&
+      (fixedDropdownOptions?.[header]?.length ?? 0) > 0;
+    return { display, isCellEditable, isAttachmentColumn, isPnBlankDropdown };
+  };
+
+  /**
+   * Renders the body of one column. Lifted verbatim out of the row loop so a
+   * collapsed column group can render each of its children through the exact
+   * same logic (DatePicker, select, attachment, status badge, links, ...).
+   */
+  const renderCellContent = (
+    header: string,
+    cellIdx: number,
+    row: unknown[],
+    id: string,
+    idx: number,
+  ): React.ReactNode => {
+    const { display, isCellEditable, isAttachmentColumn } = cellMeta(
+      header,
+      cellIdx,
+      row,
+    );
+    let cellContent: React.ReactNode;
+    if (isAttachmentColumn) {
+      const isVerdictColumn = verdictColumn === header && onSetVerdict != null;
+      cellContent = (
+        <AttachmentCell
+          url={display}
+          accept={attachmentAccept}
+          onUpload={(file) => onUploadAttachment?.(id, file)}
+          onClear={() => onClearAttachment?.(id)}
+          verdict={isVerdictColumn ? verdictsById?.[id] : undefined}
+          onSetVerdict={
+            isVerdictColumn
+              ? (verdict) => onSetVerdict(id, verdict)
+              : undefined
+          }
+        />
+      );
+    } else if (header === "BOM ID" && onSelectBomId) {
+      const options = bomIdOptionsById?.[id] ?? [];
+      if (options.length === 0) {
+        cellContent = (
+          <span className="truncate block italic text-gray-400">
+            No BOM exists
+          </span>
+        );
+      } else if (options.length === 1) {
+        cellContent = (
+          <span className="truncate block" title={options[0]}>
+            {display || options[0] || "—"}
+          </span>
+        );
+      } else {
+        cellContent = (
+          <select
+            value={display}
+            onChange={(e) => onSelectBomId?.(id, e.target.value || null)}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full text-xs bg-transparent border-none outline-none cursor-pointer"
+            title={options.join(", ")}
+          >
+            <option value="">-- select --</option>
+            {options.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
+        );
+      }
+    } else if (header === "RM AVAIL") {
+      if (display === "SA") {
+        cellContent = (
+          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-bold">
+            SA
+          </span>
+        );
+      } else if (display === "Not available") {
+        cellContent = (
+          <span className="inline-flex items-center px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold">
+            Not available
+          </span>
+        );
+      } else {
+        cellContent = <span className="truncate block text-gray-400">—</span>;
+      }
+    } else if (header === "NO USE" || header === "USE/NO USE") {
+      if (display === "USE") {
+        cellContent = (
+          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-bold">
+            USE
+          </span>
+        );
+      } else if (display === "NO USE") {
+        cellContent = (
+          <span className="inline-flex items-center px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold">
+            NO USE
+          </span>
+        );
+      } else {
+        cellContent = <span className="truncate block text-gray-400">—</span>;
+      }
+    } else if (isCellEditable) {
+      if (header === "USD cost") {
+        cellContent = (
+          <input
+            key={display + "-" + idx + "-" + cellIdx}
+            type="text"
+            defaultValue={display}
+            placeholder="$"
+            onBlur={(e) => {
+              if (e.target.value !== display) {
+                handleUsdCostUpdate(idx, e.target.value);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            }}
+            className="w-full text-xs bg-transparent border-none outline-none font-mono-md"
+          />
+        );
+      } else if (header === "cost") {
+        if (lockedCostIds?.has(id)) {
+          cellContent = (
+            <span
+              className="truncate block font-mono-md text-foreground"
+              title={display}
+            >
+              {display || "—"}
+            </span>
+          );
+        } else {
+          cellContent = (
+            <input
+              key={display + "-" + idx + "-" + cellIdx}
+              type="text"
+              defaultValue={display}
+              onBlur={(e) => {
+                if (e.target.value !== display) {
+                  handleCellUpdate(idx, cellIdx, e.target.value);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              }}
+              className="w-full text-xs bg-transparent border-none outline-none"
+            />
+          );
+        }
+      } else if (header === "MAJOR MARKING") {
+        const isYes = display === "true";
+        const isNo = display === "false";
+        cellContent = (
+          <div className="flex items-center justify-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCellUpdate(idx, cellIdx, isYes ? "" : "true");
+              }}
+              className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer transition-all ${
+                isYes
+                  ? "bg-emerald-500 text-white "
+                  : "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
+              }`}
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCellUpdate(idx, cellIdx, isNo ? "" : "false");
+              }}
+              className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer transition-all ${
+                isNo
+                  ? "bg-rose-500 text-white "
+                  : "bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800 dark:hover:bg-rose-950/50"
+              }`}
+            >
+              No
+            </button>
+          </div>
+        );
+      } else if (isDateHeader(header)) {
+        cellContent = (
+          <DatePicker
+            key={display + "-" + idx + "-" + cellIdx}
+            value={display}
+            onChange={(next) => {
+              if (next !== display) {
+                handleCellUpdate(idx, cellIdx, next);
+              }
+            }}
+          />
+        );
+      } else if (
+        STATUS_COLUMNS.has(header) ||
+        categoryOptions?.[header] ||
+        fixedDropdownOptions?.[header]
+      ) {
+        const options = (
+          fixedDropdownOptions?.[header] ||
+          categoryOptions?.[header] ||
+          columnUniqueVals[header] ||
+          []
+        ).filter(Boolean) as string[];
+        const showCurrent = display.trim() !== "" && !options.includes(display);
+        cellContent = (
+          <select
+            key={display + "-" + idx + "-" + cellIdx}
+            defaultValue={display}
+            onChange={(e) => handleCellUpdate(idx, cellIdx, e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full text-xs bg-transparent border-none outline-none cursor-pointer"
+          >
+            <option value="">-</option>
+            {showCurrent && <option value={display}>{display}</option>}
+            {options.map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+        );
+      } else {
+        cellContent = (
+          <input
+            key={display + "-" + idx + "-" + cellIdx}
+            type="text"
+            defaultValue={display}
+            onBlur={(e) => {
+              if (e.target.value !== display) {
+                handleCellUpdate(idx, cellIdx, e.target.value);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            }}
+            className="w-full text-xs bg-transparent border-none outline-none"
+          />
+        );
+      }
+    } else if (STATUS_COLUMNS.has(header)) {
+      cellContent = <GMDUpdateStatusBadge value={display || null} />;
+    } else if (NUMERIC_COLUMNS.has(header)) {
+      cellContent = (
+        <span className="font-mono-md text-right text-foreground">
+          {display || "—"}
+        </span>
+      );
+    } else if (header === "ORDER LIST") {
+      if (!display) {
+        cellContent = (
+          <span className="truncate block text-gray-400">—</span>
+        );
+      } else {
+        const poIdx = headers.indexOf("PARTY Order No.");
+        const poAltIdx = headers.indexOf("PO NO");
+        const poVal = String(row[poIdx !== -1 ? poIdx : poAltIdx] ?? "");
+        cellContent = <OrderListCell display={display} poNo={poVal} />;
+      }
+    } else if (display && isUrl(display)) {
+      // Single URL case (non-ORDER LIST columns)
+      cellContent = (
+        <a
+          href={display}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="truncate block underline text-blue-600 hover:text-blue-800"
+          title={display}
+        >
+          {display}
+        </a>
+      );
+    } else if (
+      display &&
+      display.includes(",") &&
+      display.split(",").some((p) => isUrl(p.trim()))
+    ) {
+      const linksContent = renderLinksCell(display);
+      cellContent = linksContent ?? (
+        <span className="truncate block" title={display}>
+          {display || "—"}
+        </span>
+      );
+    } else {
+      cellContent = (
+        <span className="truncate block" title={display}>
+          {display || "—"}
+        </span>
+      );
+    }
+    return cellContent;
+  };
+
   if (visibleCols.length === 0) {
     return (
       <div className="flex items-center justify-center py-20 text-xs text-muted-foreground">
@@ -1507,21 +1918,167 @@ castingRateInputs,
           }}
         >
           <colgroup>
-            {visibleCols.map(({ idx }) => (
-              <col key={idx} style={{ width: `${columnWidths[idx]}px` }} />
+            {visibleCols.map((col) => (
+              <col key={col.idx} style={{ width: `${getColWidth(col)}px` }} />
             ))}
             {onDeleteRow && <col style={{ width: "84px" }} />}
           </colgroup>
           <thead className="sticky top-0 z-20">
             <tr className="bg-[#f4f6f8]">
-              {visibleCols.map(({ header, idx }) => {
+              {visibleCols.map((col, visIdx) => {
+                const { header, idx, group } = col;
                 const isSorted = sortColumn === idx;
                 const uniqueVals = cascadedFilterOptions[header] ?? [];
+                const frozenLeft = frozenOffsets[visIdx];
+
+                if (group) {
+                  const groupChildren = group.children.map((c) => c.header);
+                  const activeCount = groupChildren.filter(
+                    (h) =>
+                      (multiFilters[h]?.length ?? 0) > 0 ||
+                      !!columnFilters[h] ||
+                      !!dateRanges[h]?.from ||
+                      !!dateRanges[h]?.to ||
+                      !!dateRanges[h]?.blank,
+                  ).length;
+                  const groupIsEditable =
+                    editable &&
+                    groupChildren.some(
+                      (h) =>
+                        editableColumns?.includes(h) ||
+                        blankOnlyEditableColumns?.includes(h),
+                    );
+                  const clearGroup = () => {
+                    groupChildren.forEach((h) => {
+                      handleMultiFilter(h, []);
+                      handleColumnFilter(h, "");
+                      if (isDateFilterHeader(h)) setDateRange(h, "", "");
+                      setDateBlank(h, false);
+                    });
+                  };
+                  return (
+                    <th
+                      key={idx}
+                      className={`relative bg-[#f4f6f8] text-[#0a2540] text-xs font-bold uppercase tracking-wider px-2.5 py-2 text-left border-b-2 border-[#e1e6eb] border-r last:border-r-0 select-none align-top${
+                        frozenLeft !== undefined ? " sticky z-20" : ""
+                      }${groupIsEditable ? " bg-amber-50/50" : ""}`}
+                      style={
+                        frozenLeft !== undefined ? { left: frozenLeft } : undefined
+                      }
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{group.label}</span>
+                          {activeCount > 0 && (
+                            <span className="inline-flex items-center justify-center h-4 px-1.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700">
+                              {activeCount}
+                            </span>
+                          )}
+                        </div>
+                        {activeCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={clearGroup}
+                            className="inline-flex items-center gap-0.5 text-[9px] font-medium text-[#0a2540]/60 hover:text-red-500 transition-colors"
+                            title={`Clear ${group.label} filters`}
+                          >
+                            <X size={10} />
+                            <span>Clear</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1 mt-1.5">
+                        {group.children.map((child) => {
+                          const ch = child.header;
+                          const childActive =
+                            (multiFilters[ch]?.length ?? 0) > 0 ||
+                            !!columnFilters[ch] ||
+                            !!dateRanges[ch]?.from ||
+                            !!dateRanges[ch]?.to ||
+                            !!dateRanges[ch]?.blank;
+                          return (
+                            <div key={ch} className="min-w-0 flex flex-col gap-1">
+                              {isDateFilterHeader(ch) ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="date"
+                                    value={dateRanges[ch]?.from ?? (dateFrom || "")}
+                                    onChange={(e) =>
+                                      setDateRange(
+                                        ch,
+                                        e.target.value,
+                                        dateRanges[ch]?.to ?? (dateTo || ""),
+                                      )
+                                    }
+                                    className="flex-1 min-w-0 text-[10px] border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-1 py-0.5 outline-none"
+                                  />
+                                  <input
+                                    type="date"
+                                    value={dateRanges[ch]?.to ?? (dateTo || "")}
+                                    onChange={(e) =>
+                                      setDateRange(
+                                        ch,
+                                        dateRanges[ch]?.from ?? (dateFrom || ""),
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="flex-1 min-w-0 text-[10px] border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-1 py-0.5 outline-none"
+                                  />
+                                </div>
+                              ) : (
+                                <MultiSelect
+                                  options={cascadedFilterOptions[ch] ?? []}
+                                  selected={multiFilters[ch] ?? []}
+                                  onChange={(vals) => handleMultiFilter(ch, vals)}
+                                  optionMeta={columnOptionMeta?.[ch]}
+                                />
+                              )}
+                              <div className="flex items-center gap-1">
+                                <DebouncedSearchInput
+                                  value={columnFilters[ch] ?? ""}
+                                  onCommit={(val) => handleColumnFilter(ch, val)}
+                                  placeholder={`Search ${ch}...`}
+                                />
+                                {childActive && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleColumnFilter(ch, "");
+                                      handleMultiFilter(ch, []);
+                                      if (isDateFilterHeader(ch))
+                                        setDateRange(ch, "", "");
+                                      setDateBlank(ch, false);
+                                    }}
+                                    className="shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-[#e1e6eb] text-[#0a2540]/50 hover:text-[#0a2540] transition-colors"
+                                    title={`Clear ${ch} filter`}
+                                  >
+                                    <X size={10} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div
+                        onMouseDown={(e) => handleResizeStart(idx, e)}
+                        className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize z-20 group"
+                        style={{ marginRight: "-3px" }}
+                      >
+                        <div className="absolute top-0 -left-1 w-3.5 h-full" />
+                        <div className="absolute right-0.5 top-0 w-0.5 h-full bg-transparent group-hover:bg-[#0070f3] group-active:bg-[#0070f3] transition-colors" />
+                      </div>
+                    </th>
+                  );
+                }
+
                 return (
                   <th
                     key={idx}
                     className={`relative bg-[#f4f6f8] text-[#0a2540] text-xs font-bold uppercase tracking-wider px-3 py-2 text-left border-b-2 border-[#e1e6eb] border-r  last:border-r-0 select-none align-top${
-                      idx < 2 ? " sticky z-20" : ""
+                      frozenLeft !== undefined ? " sticky z-20" : ""
                     }${
                       editable &&
                       (!editableColumns ||
@@ -1531,11 +2088,7 @@ castingRateInputs,
                         : ""
                     }`}
                     style={
-                      idx === 1
-                        ? { left: columnWidths[0] }
-                        : idx === 0
-                          ? { left: 0 }
-                          : undefined
+                      frozenLeft !== undefined ? { left: frozenLeft } : undefined
                     }
                   >
                     <div
@@ -1732,9 +2285,8 @@ castingRateInputs,
                   }`}
                   onClick={() => onSelect(idx)}
                 >
-                  {visibleCols.map(({ header, idx: cellIdx }) => {
-                    const value = row[cellIdx];
-                    const display = value != null ? String(value) : "";
+                  {visibleCols.map((col, visIdx) => {
+                    const { header, idx: cellIdx, group } = col;
 
                     const mergedKey = `${idx}:${cellIdx}`;
                     const isMergedCell =
@@ -1746,329 +2298,68 @@ castingRateInputs,
                       ? (mergedSpans.get(mergedKey) ?? undefined)
                       : undefined;
 
-                    let cellContent: React.ReactNode;
-                    const isBlankCell = String(display ?? "").trim() === "";
-                    const isBlankOnlyColumn = !!blankOnlyEditableColumns?.includes(header);
-                    const baseEditable =
-                      !editableColumns ||
-                      editableColumns.includes(header) ||
-                      isBlankOnlyColumn;
-                    const isCellEditable =
-                      !!editable &&
-                      baseEditable &&
-                      (!isBlankOnlyColumn || isBlankCell) &&
-                      (!dropdownRowCondition ||
-                        dropdownRowCondition(header, row));
-                    const isAttachmentColumn =
-                      attachmentColumn &&
-                      header === attachmentColumn &&
-                      onUploadAttachment;
-                    const isPnBlankDropdown =
-                      header === "PN RATING" && !String(display).trim() && (fixedDropdownOptions?.[header]?.length ?? 0) > 0;
-                    if (isAttachmentColumn) {
-                      const isVerdictColumn =
-                        verdictColumn === header && onSetVerdict != null;
-                      cellContent = (
-                        <AttachmentCell
-                          url={display}
-                          accept={attachmentAccept}
-                          onUpload={(file) => onUploadAttachment(id, file)}
-                          onClear={() => onClearAttachment?.(id)}
-                          verdict={isVerdictColumn ? verdictsById?.[id] : undefined}
-                          onSetVerdict={
-                            isVerdictColumn
-                              ? (verdict) => onSetVerdict(id, verdict)
-                              : undefined
-                          }
-                        />
-                      );
-                    } else if (header === "BOM ID" && onSelectBomId) {
-                      const options = bomIdOptionsById?.[id] ?? [];
-                      if (options.length === 0) {
-                        cellContent = (
-                          <span className="truncate block italic text-gray-400">
-                            No BOM exists
-                          </span>
-                        );
-                      } else if (options.length === 1) {
-                        cellContent = (
-                          <span
-                            className="truncate block"
-                            title={options[0]}
-                          >
-                            {display || options[0] || "—"}
-                          </span>
-                        );
-                      } else {
-                        cellContent = (
-                          <select
-                            value={display}
-                            onChange={(e) =>
-                              onSelectBomId?.(id, e.target.value || null)
-                            }
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-full text-xs bg-transparent border-none outline-none cursor-pointer"
-                            title={options.join(", ")}
-                          >
-                            <option value="">-- select --</option>
-                            {options.map((b) => (
-                              <option key={b} value={b}>
-                                {b}
-                              </option>
-                            ))}
-                          </select>
-                        );
-                      }
-                    } else if (header === "RM AVAIL") {
-                        if (display === "SA") {
-                          cellContent = (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-bold">
-                              SA
-                            </span>
+                    const groupIsEditable = group
+                      ? group.children.some((c) => {
+                          const { isCellEditable: cEditable } = cellMeta(
+                            c.header,
+                            headers.indexOf(c.header),
+                            row,
                           );
-                        } else if (display === "Not available") {
-                          cellContent = (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold">
-                              Not available
-                            </span>
-                          );
-                        } else {
-                          cellContent = (
-                            <span className="truncate block text-gray-400">
-                              —
-                            </span>
-                          );
-                        }
-                      } else if (header === "NO USE" || header === "USE/NO USE") {
-                        if (display === "USE") {
-                          cellContent = (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-bold">
-                              USE
-                            </span>
-                          );
-                        } else if (display === "NO USE") {
-                          cellContent = (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold">
-                              NO USE
-                            </span>
-                          );
-                        } else {
-                          cellContent = (
-                            <span className="truncate block text-gray-400">
-                              —
-                            </span>
-                          );
-                        }
-                      } else if (isCellEditable) {
-                      if (header === "USD cost") {
-                        cellContent = (
-                          <input
-                            key={display + "-" + idx + "-" + cellIdx}
-                            type="text"
-                            defaultValue={display}
-                            placeholder="$"
-                            onBlur={(e) => {
-                              if (e.target.value !== display) {
-                                handleUsdCostUpdate(idx, e.target.value);
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter")
-                                (e.target as HTMLInputElement).blur();
-                            }}
-                            className="w-full text-xs bg-transparent border-none outline-none font-mono-md"
-                          />
-                        );
-                      } else if (header === "cost") {
-                        if (lockedCostIds?.has(id)) {
-                          cellContent = (
-                            <span
-                              className="truncate block font-mono-md text-foreground"
-                              title={display}
+                          return cEditable;
+                        })
+                      : false;
+                    const { isCellEditable, isPnBlankDropdown } = cellMeta(
+                      header,
+                      cellIdx,
+                      row,
+                    );
+
+                    const cellContent: React.ReactNode = group ? (
+                      <div className="flex flex-col gap-1">
+                        {group.children.map((child) => {
+                          const childIdx = headers.indexOf(child.header);
+                          if (childIdx === -1) return null;
+                          return (
+                            <div
+                              key={child.header}
+                              title={child.header}
+                              className="flex items-center gap-1 min-w-0 rounded border border-[#e1e6eb] bg-white px-1.5 py-0.5 hover:border-[#c9d2da] transition-colors"
                             >
-                              {display || "—"}
-                            </span>
+                              <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-[#0a2540]/55">
+                                {child.label ?? child.header}
+                              </span>
+                              <span className="flex-1 min-w-0 text-xs text-[#0a2540]">
+                                {renderCellContent(
+                                  child.header,
+                                  childIdx,
+                                  row,
+                                  id,
+                                  idx,
+                                )}
+                              </span>
+                            </div>
                           );
-                        } else {
-                          cellContent = (
-                            <input
-                              key={display + "-" + idx + "-" + cellIdx}
-                              type="text"
-                              defaultValue={display}
-                              onBlur={(e) => {
-                                if (e.target.value !== display) {
-                                  handleCellUpdate(idx, cellIdx, e.target.value);
-                                }
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter")
-                                  (e.target as HTMLInputElement).blur();
-                              }}
-                              className="w-full text-xs bg-transparent border-none outline-none"
-                            />
-                          );
-                        }
-                      } else if (header === "MAJOR MARKING") {
-                        const isYes = display === "true";
-                        const isNo = display === "false";
-                        cellContent = (
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCellUpdate(idx, cellIdx, isYes ? "" : "true");
-                              }}
-                              className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer transition-all ${
-                                isYes
-                                  ? "bg-emerald-500 text-white "
-                                  : "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
-                              }`}
-                            >
-                              Yes
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCellUpdate(idx, cellIdx, isNo ? "" : "false");
-                              }}
-                              className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer transition-all ${
-                                isNo
-                                  ? "bg-rose-500 text-white "
-                                  : "bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800 dark:hover:bg-rose-950/50"
-                              }`}
-                            >
-                              No
-                            </button>
-                          </div>
-                        );
-                      } else if (isDateHeader(header)) {
-                        cellContent = (
-                          <DatePicker
-                            key={display + "-" + idx + "-" + cellIdx}
-                            value={display}
-                            onChange={(next) => {
-                              if (next !== display) {
-                                handleCellUpdate(idx, cellIdx, next);
-                              }
-                            }}
-                          />
-                        );
-                      } else if (
-                        STATUS_COLUMNS.has(header) ||
-                        // header === "Actuator"||
-                        categoryOptions?.[header] ||
-                        fixedDropdownOptions?.[header]
-                      ) {
-                        const options = (
-                          fixedDropdownOptions?.[header] ||
-                          categoryOptions?.[header] ||
-                          columnUniqueVals[header] ||
-                          []
-                        ).filter(Boolean) as string[];
-                        const showCurrent =
-                          display.trim() !== "" && !options.includes(display);
-                        cellContent = (
-                          <select
-                            key={display + "-" + idx + "-" + cellIdx}
-                            defaultValue={display}
-                            onChange={(e) =>
-                              handleCellUpdate(idx, cellIdx, e.target.value)
-                            }
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-full text-xs bg-transparent border-none outline-none cursor-pointer"
-                          >
-                            <option value="">-</option>
-                            {showCurrent && (
-                              <option value={display}>{display}</option>
-                            )}
-                            {options.map((v) => (
-                              <option key={v} value={v}>
-                                {v}
-                              </option>
-                            ))}
-                          </select>
-                        );
-                      } else {
-                        cellContent = (
-                          <input
-                            key={display + "-" + idx + "-" + cellIdx}
-                            type="text"
-                            defaultValue={display}
-                            onBlur={(e) => {
-                              if (e.target.value !== display) {
-                                handleCellUpdate(idx, cellIdx, e.target.value);
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter")
-                                (e.target as HTMLInputElement).blur();
-                            }}
-                            className="w-full text-xs bg-transparent border-none outline-none"
-                          />
-                        );
-                      }
-                    } else if (STATUS_COLUMNS.has(header)) {
-                      cellContent = (
-                        <GMDUpdateStatusBadge value={display || null} />
-                      );
-                    } else if (NUMERIC_COLUMNS.has(header)) {
-                      cellContent = (
-                        <span className="font-mono-md text-right text-foreground">
-                          {display || "—"}
-                        </span>
-                      );
-                    } else if (header === "ORDER LIST") {
-                      if (!display) {
-                        cellContent = <span className="truncate block text-gray-400">—</span>;
-                      } else {
-                        const poIdx = headers.indexOf("PARTY Order No.");
-                        const poAltIdx = headers.indexOf("PO NO");
-                        const poVal = String(row[poIdx !== -1 ? poIdx : poAltIdx] ?? "");
-                        cellContent = <OrderListCell display={display} poNo={poVal} />;
-                      }
-                    } else if (display && isUrl(display)) {
-                      // Single URL case (non-ORDER LIST columns)
-                      cellContent = (
-                        <a
-                          href={display}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="truncate block underline text-blue-600 hover:text-blue-800"
-                          title={display}
-                        >
-                          {display}
-                        </a>
-                      );
-                    } else if (display && display.includes(",") && display.split(",").some((p) => isUrl(p.trim()))) {
-                      const linksContent = renderLinksCell(display);
-                      cellContent = linksContent ?? (
-                        <span className="truncate block" title={display}>
-                          {display || "—"}
-                        </span>
-                      );
-                    } else {
-                      cellContent = (
-                        <span className="truncate block" title={display}>
-                          {display || "—"}
-                        </span>
-                      );
-                    }
+                        })}
+                      </div>
+                    ) : (
+                      renderCellContent(header, cellIdx, row, id, idx)
+                    );
+
+                    const frozenLeft = frozenOffsets[visIdx];
 
                     return (
                       <td
                         key={cellIdx}
                         rowSpan={mergedSpan}
-                        className={`px-3 py-2 text-xs border-b border-[#e1e6eb] border-r  last:border-r-0${
-                          cellIdx < 2 ? " sticky z-10 bg-white" : ""
-                        }${isCellEditable || isPnBlankDropdown ? " bg-amber-50" : ""}`}
+                        className={`${group ? "px-2" : "px-3"} py-2 text-xs border-b border-[#e1e6eb] border-r  last:border-r-0${
+                          frozenLeft !== undefined ? " sticky z-10 bg-white" : ""
+                        }${
+                          isCellEditable || isPnBlankDropdown || groupIsEditable
+                            ? " bg-amber-50"
+                            : ""
+                        }`}
                         style={
-                          cellIdx === 1
-                            ? { left: columnWidths[0] }
-                            : cellIdx === 0
-                              ? { left: 0 }
-                              : undefined
+                          frozenLeft !== undefined ? { left: frozenLeft } : undefined
                         }
                       >
                         {cellContent}
@@ -2105,7 +2396,7 @@ castingRateInputs,
       />
       {onDeleteRow && (
         <Dialog open={!!confirmDeleteId} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>
-          <DialogContent className="sm:max-w-[420px] p-0 gap-0 overflow-hidden">
+          <DialogContent className="sm:max-w-105 p-0 gap-0 overflow-hidden">
             <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
               <DialogTitle className="text-sm font-bold text-[#0a2540] flex items-center gap-2">
                 <Trash2 size={16} className="text-rose-600" />

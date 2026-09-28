@@ -30,6 +30,7 @@ import {
 import {
   CONTRACT_REVIEW_HEADER_TO_DB_FIELD,
   CONTRACT_REVIEW_HEADERS,
+  CONTRACT_REVIEW_COLUMN_GROUPS,
 } from "@/lib/gmd_lib/contract-review-columns";
 import {
   FLOW_HAS_VALUE,
@@ -3346,6 +3347,7 @@ tileSize,
                   ],
                 }}
                 onCellUpdate={handleCellUpdate}
+                columnGroups={CONTRACT_REVIEW_COLUMN_GROUPS}
                 attachmentColumn={UPLOAD_DIAGRAM_COLUMN}
                 attachmentAccept=".pdf,application/pdf"
                 onUploadAttachment={handleUploadDiagram}
@@ -3372,6 +3374,13 @@ tileSize,
                   setBalBillFilter("all");
                   setStatusFilter("all");
                   setActivePath([]);
+                  // Grouped columns render their filters inside the collapsed
+                  // parent header, so every child must be cleared here too.
+                  for (const group of CONTRACT_REVIEW_COLUMN_GROUPS) {
+                    for (const child of group.children) {
+                      filterActions.onMultiFilter(child.header, []);
+                    }
+                  }
                   filterActions.onMultiFilter("CLEARANCE STATUS", []);
                   filterActions.onMultiFilter("STATUS", []);
                   filterActions.onMultiFilter("PN RATING", []);

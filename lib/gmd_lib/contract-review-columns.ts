@@ -68,6 +68,69 @@ export const CONTRACT_REVIEW_HEADERS = [
   "Upload Diagram",
 ] as const;
 
+/**
+ * Columns collapsed into a single parent column in the UI, mirroring the
+ * grouped columns on the Quotation Process page.
+ *
+ * A group always renders at the position of its first *visible* child in
+ * CONTRACT_REVIEW_HEADERS, so visual order follows the header array, not the
+ * order groups are listed here. Declared in visual order for readability:
+ *   Contract/PO (idx 0) -> Item Names (idx 6) -> Item/Size/PN (idx 33) ->
+ *   Actuator (idx 36) -> LC/RTGS/Bank (idx 39)
+ *
+ * These are purely a display concern: the headers array, the row serializer and
+ * the header->DB field map are all untouched, so every *IDX constant and all
+ * inline edits keep working.
+ */
+export const CONTRACT_REVIEW_COLUMN_GROUPS = [
+  {
+    label: "Contract / PO",
+    width: 300,
+    children: [
+      { header: "CONTRACT NO", label: "Contract" },
+      { header: "PO NO", label: "PO" },
+    ],
+  },
+  {
+    label: "Item Names/Party Item Names",
+    width: 300,
+    children: [
+      { header: "ITEM_NAME", label: "Item" },
+      { header: "PARTY ITEM NAME", label: "Party" },
+    ],
+  },
+  {
+    label: "Item / Size / PN",
+    width: 340,
+    children: [
+      { header: "Item", label: "Item" },
+      { header: "SIZE", label: "Size" },
+      { header: "PN RATING", label: "PN" },
+    ],
+  },
+  {
+    label: "Actuator / RM Code",
+    width: 260,
+    children: [
+      { header: "Actuator", label: "Actuator" },
+      { header: "RM CODE FOR ACTUATOR", label: "RM Code" },
+    ],
+  },
+  {
+    label: "LC / RTGS / Bank",
+    width: 300,
+    children: [
+      { header: "LC/RTGS REF NO", label: "Ref No" },
+      { header: "LC DATE/RTGS DATE", label: "LC Date" },
+      {
+        header: "LAST DATE OF SHIPMENT/DATE OF LC",
+        label: "Ship Date",
+      },
+      { header: "Issuing bank name", label: "Bank" },
+    ],
+  },
+];
+
 export const CONTRACTS_SHEET_COLUMNS = [
   "CONTRACT NO",
   "ITEM_CODE",
