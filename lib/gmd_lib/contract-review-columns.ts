@@ -69,6 +69,89 @@ export const CONTRACT_REVIEW_HEADERS = [
 ] as const;
 
 /**
+ * Default rendered width, in px, for each column on the Contract Review
+ * dashboard. Sizes are driven by the widest of the two things a cell can hold:
+ * the truncated header caption, or the value.
+ *
+ * Only the standalone columns need an entry here — the 5 collapsed groups are
+ * sized by `width` on CONTRACT_REVIEW_COLUMN_GROUPS below, which takes
+ * precedence. Any header missing from this map (or renamed on the sheet, which
+ * makes the API's header string stop matching) falls back to the generic
+ * default in GMDUpdateTable.
+ *
+ * Keyed by header so widths survive column reordering, and typed against the
+ * header union so a typo is a compile error rather than a silent fallback.
+ */
+export const CONTRACT_REVIEW_COLUMN_WIDTHS: Partial<
+  Record<(typeof CONTRACT_REVIEW_HEADERS)[number], number>
+> = {
+  // Dates.
+  "DATE OF CONTRACT": 150,
+  "DI DATE": 150,
+
+  // Short codes / identifiers.
+  "MC NO": 110,
+  "ic qty": 100,
+  "ITEM_CODE": 130,
+  "JOB Code": 120,
+  "BOM ID": 130,
+  "RM CODE FOR GB": 130,
+  "PROD ORDER NO": 150,
+  "OFFER NUMBER": 140,
+  "INSPECTION NUMBER": 150,
+
+  // Plain numeric values: the value is short, the caption is not.
+  "CV": 100,
+  "VA %": 80,
+  RATE: 90,
+  "ORDER QTY": 100,
+  "FREE STOCK": 110,
+  "FINAL REQ": 110,
+  "MC QTY": 110,
+  "DI QTY": 110,
+  "DI VAL": 110,
+  "RM AVAIL": 110,
+  "BAL DI VAL": 120,
+  "BAL MC VAL": 120,
+  VALUE: 95,
+  "Balance mc": 120,
+  "PROD ORD QTY": 120,
+  "BILLED QTY": 120,
+  "BAL DI QTY": 120,
+  "STATE": 110,
+  "UTILITY": 110,
+  "ITEM TYPE": 120,
+  "VA % FROM COST": 100,
+  "COST FROM QUOTATION": 150,
+  // Caption-driven: these columns are wide purely because the header is.
+  "BAL BILL AG CONT": 100,
+  "BAL BILL AG MC": 140,
+  "BAL PROD ORD VAL": 145,
+  "BALANCE TO PROD ORD": 150,
+  "BALANCE TO PROD ENT": 150,
+  "BAL BILL AG MC VAL": 155,
+  "BAL BILL AG CONT VAL": 160,
+  "BAL TO PROD ORD ENT VAL": 165,
+
+  // Status / medium free text.
+  STATUS: 140,
+  Inspection: 140,
+  "CLEARANCE STATUS": 130,
+  "OFFER PENDING/DONE": 150,
+  "MC Received/Pending": 160,
+  "ORDER LIST": 160,
+  "PAYMENT TERMS": 180,
+  "PROJECT REFERENCE": 200,
+  "Upload Drawing": 100,
+  Remarks: 220,
+
+  // Long free text.
+  "PARTY NAME": 240,
+  "ERP PARTY NAME FROM GMD SUPPLY HISTORY": 280,
+  "bom formula trial": 300,
+};
+
+/**
  * Columns collapsed into a single parent column in the UI, mirroring the
  * grouped columns on the Quotation Process page.
  *
@@ -85,7 +168,7 @@ export const CONTRACT_REVIEW_HEADERS = [
 export const CONTRACT_REVIEW_COLUMN_GROUPS = [
   {
     label: "Contract / PO NO",
-    width: 240,
+    width: 175,
     children: [
       { header: "CONTRACT NO", label: "Contract NO -" },
       { header: "PO NO", label: "PO NO -" },
@@ -93,7 +176,7 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
   },
   {
     label: "Item Names/Party Item Names",
-    width: 300,
+    width: 200,
     children: [
       { header: "ITEM_NAME", label: "Item Name -" },
       { header: "PARTY ITEM NAME", label: "Party Item Name -" },
@@ -101,7 +184,7 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
   },
   {
     label: "Item / Size / PN RATING",
-    width: 340,
+    width: 185,
     children: [
       { header: "Item", label: "Item -" },
       { header: "SIZE", label: "Size -" },
@@ -110,7 +193,7 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
   },
   {
     label: "Actuator / RM Code for Actuator",
-    width: 260,
+    width: 185,
     children: [
       { header: "Actuator", label: "Actuator -" },
       { header: "RM CODE FOR ACTUATOR", label: "RM Code for Actuator -" },
