@@ -22,6 +22,7 @@ import {
   BOM_ID_FILTER_VALUES,
   getBomIdCategory,
 } from "../../lib/gmd_lib/bomCategory";
+import { parseGmdDate } from "../../lib/gmd_lib/dateParse";
 import DebouncedSearchInput from "@/components/table/DebouncedSearchInput";
 import Pagination from "./Pagination";
 import { useAppDispatch } from "@/lib/hooks";
@@ -534,30 +535,11 @@ function AttachmentCell({
   );
 }
 
+// Date parsing lives in lib/gmd_lib/dateParse.ts so this table, the Contract Review
+// page and the DatePicker cannot drift apart. See that file for why a bare numeric
+// string must never be treated as a date.
 function parseDate(str: string): Date | null {
-  if (!str || typeof str !== "string") return null;
-  const s = str.trim();
-  // Primary: DD-Mmm-YY / DD-Mmm-YYYY e.g. 12-Jan-24, 05-Feb-2023 (supply sheet format)
-  const m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
-  if (m) {
-    const months: Record<string, number> = {
-      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
-    };
-    const mon = months[m[2].toLowerCase()];
-    if (mon !== undefined) {
-      const day = parseInt(m[1], 10);
-      let year = parseInt(m[3], 10);
-      if (year < 100) year += 2000;
-      if (!isNaN(day) && day >= 1 && day <= 31 && !isNaN(year)) {
-        return new Date(year, mon, day);
-      }
-    }
-  }
-  // Fallback: ISO / locale strings (e.g. 2024-01-12)
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) return d;
-  return null;
+  return parseGmdDate(str);
 }
 
 const EMPTY_DATE_RANGES: Record<
