@@ -7,7 +7,7 @@ import { resolveItemCategory } from "@/lib/itemCategoryResolver";
 import { extractSizeFromItemName } from "@/lib/sizeExtractor";
 import { roundUp } from "@/lib/rounding";
 import { validateVaPercent, getDefaultVaPercent } from "@/lib/vaValidation";
-import { lookupAndSetItemCode, recomputeItemCodeForValues, fetchBomIdSet } from "@/lib/gmdItemCodeLookup";
+import { lookupAndSetItemCode, lookupAndSetItemCodeWithReason, recomputeItemCodeForValues, fetchBomIdSet } from "@/lib/gmdItemCodeLookup";
 import { fetchBomRows, buildRmCostMap, DIRECT_M2M, getBomEntry, getCachedBomRows } from "@/lib/gmdBomCostLookup";
 import { update2to1CostForItems, buildRawMaterialsCostMap } from "@/lib/gmd2to1CostLookup";
 import { getDistinctBomIds, getBomRmAvailBatch, resolveContractReviewBomIdsFromActuator, computeContractReviewRmAvail, getNoUseBomIdSet, normalizeActuatorPart } from "@/lib/verifyBomLookup";
@@ -1545,11 +1545,17 @@ export async function selectBomIdAction(itemId: string, bomId: string | null) {
   }
 }
 
+export type ItemCodeFetchFailure = {
+  itemId: string;
+  itemName: string;
+  reason: string;
+};
+
 // Fetch/refresh ERP item codes for multiple enquiry items (triggered via UI button)
 export async function fetchErpItemCodesAction(itemIds: string[]) {
   const updatedItems: ReturnType<typeof serializeItem>[] = [];
+  const failures: ItemCodeFetchFailure[] = [];
   let fetched = 0;
-  let lastError: string | null = null;
   // Pre-warm BOM & BOM ID cache so gate checks don't fetch per item
   try {
     await Promise.all([getCachedBomRows(), fetchBomIdSet()]);
@@ -1557,7 +1563,7 @@ export async function fetchErpItemCodesAction(itemIds: string[]) {
 
   for (const itemId of itemIds) {
     try {
-      const code = await lookupAndSetItemCode(itemId, { bomGate: true });
+      const { code, reason } = await lookupAndSetItemCodeWithReason(itemId, { bomGate: true });
       let item = await prisma.enquiryItem.findUnique({
         where: { id: itemId },
       });
@@ -1565,31 +1571,52 @@ export async function fetchErpItemCodesAction(itemIds: string[]) {
         // Populate availableBomIds from VerifyBom for every code (even if productCost not null)
         if (item.erpItemCode) {
           try { await syncAvailableBomIds(itemId, item.erpItemCode); item = await prisma.enquiryItem.findUnique({ where: { id: itemId } }) as any; } catch {}
-        }
-        // Only count as fetched if item now has a code (gate passed)
-        if (item!.erpItemCode) fetched++;
-        // If we just fetched a new code and productCost is null, auto-fill cost (do not clear existing) - respects multi-BOM defer
-        if (code && item!.productCost === null) {
-          await maybeUpdateProductCostFromNewCode(itemId, item!.erpItemCode, item!.productCost);
-          const refreshed = await prisma.enquiryItem.findUnique({ where: { id: itemId } });
-          if (refreshed) {
-            updatedItems.push(serializeItem(refreshed));
-            continue;
+          // Only count as fetched if item now has a code (gate passed)
+          fetched++;
+          // If we just fetched a new code and productCost is null, auto-fill cost (do not clear existing) - respects multi-BOM defer
+          if (code && item!.productCost === null) {
+            await maybeUpdateProductCostFromNewCode(itemId, item!.erpItemCode, item!.productCost);
+            const refreshed = await prisma.enquiryItem.findUnique({ where: { id: itemId } });
+            if (refreshed) {
+              updatedItems.push(serializeItem(refreshed));
+              continue;
+            }
           }
+          updatedItems.push(serializeItem(item!));
+        } else {
+          failures.push({
+            itemId: item.id,
+            itemName: item.itemName,
+            reason: reason || "No matching code in master sheet.",
+          });
         }
-        updatedItems.push(serializeItem(item!));
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to fetch ERP item code.";
-      lastError = message;
       console.error(`Error fetching ERP item code for item ${itemId}:`, error);
+      failures.push({
+        itemId,
+        itemName: `Item ${itemId}`,
+        reason: message,
+      });
     }
   }
 
   if (fetched === 0) {
-    return { success: false, error: lastError || "No item codes fetched." };
+    let detailedError: string;
+    if (failures.length === 1) {
+      detailedError = failures[0].reason;
+    } else {
+      const bulletList = failures
+        .slice(0, 5)
+        .map((f) => `• ${f.itemName.slice(0, 35)}: ${f.reason}`)
+        .join("\n");
+      const extra = failures.length > 5 ? `\n...and ${failures.length - 5} more item(s)` : "";
+      detailedError = `${failures.length} item(s) could not be matched:\n${bulletList}${extra}`;
+    }
+    return { success: false, error: detailedError, data: { items: updatedItems, fetched: 0, failures } };
   }
-  return { success: true, data: { items: updatedItems, fetched } };
+  return { success: true, data: { items: updatedItems, fetched, failures } };
 }
 
 // Fill blank productCost from raw material (BOM DIRECT M2M) costs, triggered via UI button

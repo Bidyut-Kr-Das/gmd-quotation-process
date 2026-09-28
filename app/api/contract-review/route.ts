@@ -10,6 +10,8 @@ import {
   recomputeVerifyBomValues,
   computeContractReviewRmAvail,
 } from "@/lib/verifyBomLookup";
+import { getContractReviewImagesByItemCode } from "@/lib/gmd_lib/contract-review-image-lookup";
+import { normalizeContractKey } from "@/lib/gmd_lib/contract-review-enquiry-backfill";
 
 export async function GET() {
   try {
@@ -61,6 +63,29 @@ export async function GET() {
       bomIdOptions[item.id] = bomMap.get(item.itemCode) ?? [];
     }
 
+    // Images are keyed by itemType/operationType/rmType, not by item code, so
+    // they resolve through EnquiryItem.erpItemCode. Keyed here by the raw
+    // itemCode so the client can look up with the cell value as-is.
+    const imagesByNormalizedCode =
+      await getContractReviewImagesByItemCode(codes);
+    const itemImages: Record<
+      string,
+      {
+        imageKey: string;
+        url: string | null;
+        driveFileId: string | null;
+        itemType: string | null;
+        operationType: string | null;
+        rmType: string | null;
+      }[]
+    > = {};
+    for (const item of items) {
+      const matches =
+        imagesByNormalizedCode.get(normalizeContractKey(item.itemCode)) ?? [];
+      if (matches.length === 0) continue;
+      itemImages[item.itemCode] = matches;
+    }
+
     const rows = items.map(dbContractReviewToRow);
 
     const diagramVerdicts: Record<string, string> = {};
@@ -75,6 +100,7 @@ export async function GET() {
       totalRows: rows.length,
       syncedAt: lastSynced?.toISOString() ?? null,
       bomIdOptions,
+      itemImages,
       diagramVerdicts,
     });
   } catch (error) {

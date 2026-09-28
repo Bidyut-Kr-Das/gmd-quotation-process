@@ -329,6 +329,169 @@ export async function lookupAndSetItemCode(
 }
 
 /**
+ * Explains why an item code could not be derived from the 5 fields.
+ */
+export async function getDetailedItemCodeFailureReason(item: {
+  itemType: string | null;
+  moc: string | null;
+  size: string | null;
+  pnRating: string | null;
+  operationType: string | null;
+}): Promise<string> {
+  const missing: string[] = [];
+  if (!item.itemType || !item.itemType.trim()) missing.push("Type");
+  if (!item.moc || !item.moc.trim()) missing.push("MOC");
+  if (!item.size || !item.size.trim() || item.size.toLowerCase().includes("not detectable") || item.size.toLowerCase().includes("cant detect")) {
+    missing.push("Size");
+  }
+  if (!item.pnRating || !item.pnRating.trim()) missing.push("PN");
+  if (!item.operationType || !item.operationType.trim()) missing.push("Op Type");
+
+  if (missing.length > 0) {
+    return `Missing field(s): ${missing.join(", ")}`;
+  }
+
+  await ensureFreshData();
+
+  const itemType = item.itemType!.trim();
+  const moc = item.moc!.trim();
+  const size = item.size!.trim();
+  const pnRating = item.pnRating!.trim();
+  const operationType = item.operationType!.trim();
+
+  // Query GmdItemCode for rows matching itemType, moc, size
+  const sameTypeMocSize = await prisma.gmdItemCode.findMany({
+    where: {
+      itemType: { equals: itemType, mode: "insensitive" },
+      moc: { equals: moc, mode: "insensitive" },
+      size: { equals: size, mode: "insensitive" },
+    },
+    select: {
+      operation: true,
+      pnGmd: true,
+    },
+  });
+
+  if (sameTypeMocSize.length > 0) {
+    const opMatches = sameTypeMocSize.filter(
+      (r) => r.operation.trim().toUpperCase() === operationType.toUpperCase()
+    );
+    const pnMatches = sameTypeMocSize.filter(
+      (r) => r.pnGmd.trim().toUpperCase() === pnRating.toUpperCase()
+    );
+
+    const parts: string[] = [];
+    if (opMatches.length > 0) {
+      const pns = [...new Set(opMatches.map((r) => r.pnGmd.trim()))].filter(Boolean);
+      parts.push(`for Op "${operationType}", master only has PN: ${pns.join(", ") || "none"}`);
+    }
+    if (pnMatches.length > 0) {
+      const ops = [...new Set(pnMatches.map((r) => r.operation.trim()))].filter(Boolean);
+      parts.push(`for PN "${pnRating}", master only has Op: ${ops.join(", ") || "none"}`);
+    }
+
+    if (parts.length > 0) {
+      return `No match for [${itemType} / ${moc} / ${size} / ${pnRating} / ${operationType}]. In master sheet: ${parts.join("; ")}.`;
+    }
+
+    const availableCombos = [
+      ...new Set(sameTypeMocSize.map((r) => `${r.operation} (${r.pnGmd})`)),
+    ].slice(0, 5);
+    return `No match for [${itemType} / ${moc} / ${size} / ${pnRating} / ${operationType}]. Available in master for ${size}mm: ${availableCombos.join(", ")}.`;
+  }
+
+  // Check if itemType + size exists for other MOCs
+  const sameTypeSize = await prisma.gmdItemCode.findMany({
+    where: {
+      itemType: { equals: itemType, mode: "insensitive" },
+      size: { equals: size, mode: "insensitive" },
+    },
+    select: { moc: true },
+    take: 10,
+  });
+
+  if (sameTypeSize.length > 0) {
+    const existingMocs = [...new Set(sameTypeSize.map((r) => r.moc.trim()))].filter(Boolean);
+    return `No master match for MOC "${moc}" with ${itemType} size ${size}mm. Master only has MOC: ${existingMocs.join(", ")}.`;
+  }
+
+  // Check if itemType exists at all
+  const sameType = await prisma.gmdItemCode.findFirst({
+    where: { itemType: { equals: itemType, mode: "insensitive" } },
+    select: { id: true },
+  });
+
+  if (sameType) {
+    return `No master code found for ${itemType} size ${size}mm in GMD Item Creation Form.`;
+  }
+
+  return `Item type "${itemType}" not found in GMD Item Creation Form.`;
+}
+
+/**
+ * Lookup and persist item code, returning code and detailed reason on failure.
+ */
+export async function lookupAndSetItemCodeWithReason(
+  itemId: string,
+  opts?: { bomGate?: boolean; force?: boolean }
+): Promise<{ code: string | null; reason?: string }> {
+  const bomGate = opts?.bomGate ?? true;
+  const force = opts?.force ?? false;
+  const item = await prisma.enquiryItem.findUnique({
+    where: { id: itemId },
+    select: {
+      id: true,
+      itemName: true,
+      itemType: true,
+      moc: true,
+      size: true,
+      pnRating: true,
+      operationType: true,
+      erpItemCode: true,
+    },
+  });
+  if (!item) return { code: null, reason: "Item not found in database." };
+  if (item.erpItemCode && !force) return { code: item.erpItemCode };
+
+  if (!item.itemType || !item.moc || !item.size || !item.pnRating || !item.operationType) {
+    const reason = await getDetailedItemCodeFailureReason(item);
+    return { code: null, reason };
+  }
+
+  const code = bomGate
+    ? await lookupItemCodeGated({
+        itemType: item.itemType,
+        moc: item.moc,
+        operationType: item.operationType,
+        size: item.size,
+        pnRating: item.pnRating,
+      })
+    : await lookupItemCode({
+        itemType: item.itemType,
+        moc: item.moc,
+        operationType: item.operationType,
+        size: item.size,
+        pnRating: item.pnRating,
+      });
+
+  if (code) {
+    await prisma.enquiryItem.update({
+      where: { id: itemId },
+      data: { erpItemCode: code },
+    });
+    return { code };
+  } else if (force && item.erpItemCode && bomGate) {
+    await prisma.enquiryItem.update({
+      where: { id: itemId },
+      data: { erpItemCode: null },
+    });
+  }
+
+  const reason = await getDetailedItemCodeFailureReason(item);
+  return { code: null, reason };
+}
+
+/**
  * Recompute item code from given field values (after an edit) with BOM gate.
  * Returns { oldCode, newCode, changed }
  */

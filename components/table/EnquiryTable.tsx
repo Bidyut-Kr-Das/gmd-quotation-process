@@ -1945,10 +1945,37 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
     const toastId = toast.loading(`Fetching ERP item codes for ${missingCodeItems.length} items...`)
     try {
       const result = await dispatch(fetchItemCodes(missingCodeItems.map((i) => i.id))).unwrap()
-      toast.success(`Item codes fetched for ${result.fetched} item(s).`, { id: toastId })
+      if (result?.failures && result.failures.length > 0) {
+        toast.warning(
+          <div className="text-xs">
+            <div className="font-semibold">
+              Item codes fetched for {result.fetched} item(s), but {result.failures.length} not found:
+            </div>
+            <div className="mt-1 space-y-1 text-[11px] leading-relaxed opacity-90 max-h-48 overflow-y-auto whitespace-pre-line">
+              {result.failures.map((f: any, idx: number) => (
+                <div key={idx}>
+                  <span className="font-medium text-amber-700 dark:text-amber-400">• {f.itemName.slice(0, 35)}:</span>{" "}
+                  <span>{f.reason}</span>
+                </div>
+              ))}
+            </div>
+          </div>,
+          { id: toastId, duration: 12000 }
+        )
+      } else {
+        toast.success(`Item codes fetched for ${result.fetched} item(s).`, { id: toastId })
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to fetch item codes."
-      toast.error(message, { id: toastId })
+      toast.error(
+        <div className="text-xs">
+          <div className="font-semibold">Item codes not found</div>
+          <div className="mt-1 text-[11px] leading-relaxed opacity-90 whitespace-pre-line">
+            {message}
+          </div>
+        </div>,
+        { id: toastId, duration: 14000 }
+      )
     } finally {
       setFetchCodesStatus("idle")
     }
