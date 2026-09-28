@@ -17,6 +17,11 @@ import {
   cellHasValue,
   cellIsZero,
 } from "../../lib/gmd_lib/flowFilter";
+import {
+  BOM_ID_COLUMN,
+  BOM_ID_FILTER_VALUES,
+  getBomIdCategory,
+} from "../../lib/gmd_lib/bomCategory";
 import DebouncedSearchInput from "@/components/table/DebouncedSearchInput";
 import Pagination from "./Pagination";
 import { useAppDispatch } from "@/lib/hooks";
@@ -216,7 +221,7 @@ function ItemImageCell({
         {images.length === 1 ? "Image" : `Images (${images.length})`}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden">
+        <DialogContent className="sm:max-w-140 p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
             <DialogTitle className="text-sm font-bold text-[#0a2540] flex items-center gap-2">
               <ImageIcon size={16} className="text-[#0a2540]/70" />
@@ -995,15 +1000,6 @@ castingRateInputs,
     }
     return mergeOnlyTypes.includes(String(row[mergeTypeIdx] ?? "").trim());
   };
-  const getBomIdCategory = useCallback(
-    (id: string): string => {
-      const options = bomIdOptionsById?.[id];
-      if (!options || options.length === 0) return "Blanks";
-      if (options.length === 1) return "Single";
-      return "Dropdown";
-    },
-    [bomIdOptionsById],
-  );
   const mergeIdxSet = useMemo(
     () =>
       new Set(
@@ -1193,7 +1189,7 @@ castingRateInputs,
     globalSearch.trim() !== "" ||
     dateFrom !== "" ||
     dateTo !== "" ||
-    Object.values(dateRanges).some((r) => r.from || r.to);
+    Object.values(dateRanges).some((r) => r.from || r.to || r.blank);
 
   const showResetFilters = hasActiveFilters || !!externalFiltersActive;
 
@@ -1241,9 +1237,9 @@ castingRateInputs,
       for (const [colName, filterVal] of Object.entries(columnFilters)) {
         if (colName === opts.excludeHeader) continue;
         if (!filterVal || filterVal === "All") continue;
-        if (colName === "BOM ID" && bomIdCategoryFilter) {
+        if (colName === BOM_ID_COLUMN && bomIdCategoryFilter) {
           if (!opts.id) continue;
-          const cat = getBomIdCategory(opts.id);
+          const cat = getBomIdCategory(bomIdOptionsById?.[opts.id]);
           if (cat !== filterVal) return false;
           continue;
         }
@@ -1333,7 +1329,7 @@ castingRateInputs,
       dateFrom,
       dateTo,
       bomIdCategoryFilter,
-      getBomIdCategory,
+      bomIdOptionsById,
     ],
   );
 
@@ -2368,9 +2364,13 @@ castingRateInputs,
                             title="Filter by BOM ID availability"
                           >
                             <option value="All">All</option>
-                            <option value="Single">Single</option>
-                            <option value="Dropdown">Dropdown</option>
-                            <option value="Blanks">Blanks</option>
+                            {BOM_ID_FILTER_VALUES.filter(
+                              (v) => v !== "All",
+                            ).map((v) => (
+                              <option key={v} value={v}>
+                                {v}
+                              </option>
+                            ))}
                           </select>
                         </div>
                       ) : (

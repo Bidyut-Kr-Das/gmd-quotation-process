@@ -84,49 +84,49 @@ export const CONTRACT_REVIEW_HEADERS = [
  */
 export const CONTRACT_REVIEW_COLUMN_GROUPS = [
   {
-    label: "Contract / PO",
-    width: 300,
+    label: "Contract / PO NO",
+    width: 240,
     children: [
-      { header: "CONTRACT NO", label: "Contract" },
-      { header: "PO NO", label: "PO" },
+      { header: "CONTRACT NO", label: "Contract NO" },
+      { header: "PO NO", label: "PO NO" },
     ],
   },
   {
     label: "Item Names/Party Item Names",
     width: 300,
     children: [
-      { header: "ITEM_NAME", label: "Item" },
-      { header: "PARTY ITEM NAME", label: "Party" },
+      { header: "ITEM_NAME", label: "Item Name -" },
+      { header: "PARTY ITEM NAME", label: "Party Item Name -" },
     ],
   },
   {
-    label: "Item / Size / PN",
+    label: "Item / Size / PN RATING",
     width: 340,
     children: [
-      { header: "Item", label: "Item" },
-      { header: "SIZE", label: "Size" },
-      { header: "PN RATING", label: "PN" },
+      { header: "Item", label: "Item -" },
+      { header: "SIZE", label: "Size -" },
+      { header: "PN RATING", label: "PN Rating -" },
     ],
   },
   {
-    label: "Actuator / RM Code",
+    label: "Actuator / RM Code for Actuator",
     width: 260,
     children: [
       { header: "Actuator", label: "Actuator" },
-      { header: "RM CODE FOR ACTUATOR", label: "RM Code" },
+      { header: "RM CODE FOR ACTUATOR", label: "RM Code for Actuator" },
     ],
   },
   {
-    label: "LC / RTGS / Bank",
-    width: 300,
+    label: "LC / RTGS / Issuing bank name",
+    width: 420,
     children: [
-      { header: "LC/RTGS REF NO", label: "Ref No" },
-      { header: "LC DATE/RTGS DATE", label: "LC Date" },
+      { header: "LC/RTGS REF NO", label: " LC/RTGSRef No -" },
+      { header: "LC DATE/RTGS DATE", label: "LC Date -" },
       {
         header: "LAST DATE OF SHIPMENT/DATE OF LC",
-        label: "Ship Date",
+        label: "Ship Date Of LC -",
       },
-      { header: "Issuing bank name", label: "Bank" },
+      { header: "Issuing bank name", label: "Issuing Bank Name -" },
     ],
   },
 ];
