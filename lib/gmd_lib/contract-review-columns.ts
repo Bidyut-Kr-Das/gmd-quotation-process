@@ -65,7 +65,7 @@ export const CONTRACT_REVIEW_HEADERS = [
   "DI DATE",
   "ORDER LIST",
   "PROD ORDER NO",
-  "Upload Diagram",
+  "Upload Drawing",
 ] as const;
 
 /**
@@ -495,5 +495,5 @@ export const CONTRACT_REVIEW_HEADER_TO_DB_FIELD: Record<string, string> = {
   "Remarks": "remarks",
   "ORDER LIST": "orderList",
   "PROD ORDER NO": "productionOrderNumber",
-  "Upload Diagram": "diagramUrl",
+  "Upload Drawing": "diagramUrl",
 };
