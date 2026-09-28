@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { ChevronUp, ChevronDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2 } from "lucide-react";
+import { ChevronUp, ChevronDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon } from "lucide-react";
 import GMDUpdateStatusBadge from "./GMDUpdateStatusBadge";
+import type { ContractReviewImage } from "@/lib/gmd_lib/contract-review-image-lookup";
 import {
   STATUS_COLUMNS,
   NUMERIC_COLUMNS,
@@ -165,6 +166,159 @@ function OrderListCell({ display, poNo }: { display: string; poNo?: string }) {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function ItemImageCell({
+  images,
+  code,
+}: {
+  images: ContractReviewImage[];
+  code: string;
+}) {
+  const [open, setOpen] = useState(false);
+  if (images.length === 0) {
+    return (
+      <span className="truncate block" title={code}>
+        {code || "—"}
+      </span>
+    );
+  }
+  const handleCopy = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied");
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+  return (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <span className="truncate" title={code}>
+        {code}
+      </span>
+      <Button
+        variant="outline"
+        size="xs"
+        className="h-6 shrink-0 px-1.5 font-semibold border-[#0a2540]/15 bg-white hover:bg-[#f4f6f8] text-[#0a2540]"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
+        title={images
+          .map(
+            (i) =>
+              `${i.itemType ?? ""} / ${i.operationType ?? ""} / ${i.rmType ?? ""}`,
+          )
+          .join("\n")}
+      >
+        <ImageIcon size={12} className="shrink-0" />
+        {images.length === 1 ? "Image" : `Images (${images.length})`}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
+            <DialogTitle className="text-sm font-bold text-[#0a2540] flex items-center gap-2">
+              <ImageIcon size={16} className="text-[#0a2540]/70" />
+              Images — {code}
+              <span className="ml-1 text-xs font-semibold text-[#0a2540]/60">
+                ({images.length})
+              </span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Item images linked to this item code from Quotation Process
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto divide-y divide-[#e1e6eb]">
+            {images.map((image, idx) => {
+              const href =
+                image.url ??
+                (image.driveFileId
+                  ? `https://drive.google.com/file/d/${image.driveFileId}/view`
+                  : null);
+              const combo = [
+                image.itemType,
+                image.operationType,
+                image.rmType,
+              ]
+                .map((p) => (p ?? "").trim())
+                .filter(Boolean)
+                .join(" / ");
+              return (
+                <div
+                  key={`${image.imageKey}-${idx}`}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-[#f8f9fa] transition-colors"
+                >
+                  <div className="shrink-0 w-10 h-10 rounded border border-[#e1e6eb] bg-[#eef2f7] overflow-hidden flex items-center justify-center">
+                    {image.driveFileId ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`https://drive.google.com/thumbnail?id=${image.driveFileId}&sz=w400`}
+                        alt={combo || "item image"}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <ImageIcon size={14} className="text-[#0a2540]/50" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="text-xs font-semibold text-[#0a2540] truncate"
+                      title={combo}
+                    >
+                      {combo || "Unlabelled image"}
+                    </div>
+                    <div
+                      className="text-[10px] text-[#0a2540]/50 truncate"
+                      title={image.imageKey}
+                    >
+                      {image.imageKey}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {href ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="h-7 px-2 gap-1 text-[11px]"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopy(href);
+                          }}
+                          title="Copy link"
+                        >
+                          <Copy size={12} /> Copy
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="xs"
+                          className="h-7 px-2.5 gap-1 text-[11px]"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(href, "_blank", "noopener,noreferrer");
+                          }}
+                          title="Open in Drive"
+                        >
+                          <ExternalLink size={12} /> Open
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-[11px] italic text-muted-foreground">
+                        No link
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
@@ -575,6 +729,8 @@ interface GMDUpdateTableProps {
   onMatchCosts?: () => void;
   blankOnlyEditableColumns?: string[];
   dropdownRowCondition?: (header: string, row: unknown[]) => boolean;
+  imageButtonColumn?: string;
+  itemImagesByCode?: Record<string, ContractReviewImage[]>;
 }
 
 export default function GMDUpdateTable({
@@ -624,6 +780,8 @@ castingRateInputs,
   filterState,
   filterActions,
   columnOptionMeta,
+  imageButtonColumn,
+  itemImagesByCode,
 }: GMDUpdateTableProps) {
   const isControlled = !!filterState;
 
@@ -1942,6 +2100,13 @@ castingRateInputs,
                         const poVal = String(row[poIdx !== -1 ? poIdx : poAltIdx] ?? "");
                         cellContent = <OrderListCell display={display} poNo={poVal} />;
                       }
+                    } else if (imageButtonColumn && header === imageButtonColumn) {
+                      cellContent = (
+                        <ItemImageCell
+                          code={display}
+                          images={itemImagesByCode?.[display] ?? []}
+                        />
+                      );
                     } else if (display && isUrl(display)) {
                       // Single URL case (non-ORDER LIST columns)
                       cellContent = (

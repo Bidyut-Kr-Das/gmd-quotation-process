@@ -28,6 +28,7 @@ import {
   CONTRACT_REVIEW_HEADER_TO_DB_FIELD,
   CONTRACT_REVIEW_HEADERS,
 } from "@/lib/gmd_lib/contract-review-columns";
+import type { ContractReviewImage } from "@/lib/gmd_lib/contract-review-image-lookup";
 import {
   FLOW_HAS_VALUE,
   FLOW_NO_VALUE,
@@ -66,6 +67,7 @@ interface ContractReviewData {
   totalRows: number;
   syncedAt: string | null;
   bomIdOptions?: Record<string, string[]>;
+  itemImages?: Record<string, ContractReviewImage[]>;
 }
 
 type BalBillFilter = "all" | "yes" | "no";
@@ -118,6 +120,7 @@ const VA_PCT_FROM_COST_IDX = CONTRACT_REVIEW_HEADERS.indexOf("VA % FROM COST");
 const COST_FROM_QUOTATION_IDX =
   CONTRACT_REVIEW_HEADERS.indexOf("COST FROM QUOTATION");
 const CONTRACT_NO_IDX = CONTRACT_REVIEW_HEADERS.indexOf("CONTRACT NO");
+const ITEM_CODE_IDX = CONTRACT_REVIEW_HEADERS.indexOf("ITEM_CODE");
 const STATE_IDX = CONTRACT_REVIEW_HEADERS.indexOf("STATE");
 const UTILITY_IDX = CONTRACT_REVIEW_HEADERS.indexOf("UTILITY");
 const PROJECT_REFERENCE_IDX = CONTRACT_REVIEW_HEADERS.indexOf("PROJECT REFERENCE");
@@ -500,6 +503,9 @@ export default function ContractReviewPage() {
   const [bomIdOptionsById, setBomIdOptionsById] = useState<
     Record<string, string[]>
   >({});
+  const [itemImagesByCode, setItemImagesByCode] = useState<
+    Record<string, ContractReviewImage[]>
+  >({});
   const [actuatorOptions, setActuatorOptions] = useState<string[]>([]);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>(
     {},
@@ -598,6 +604,7 @@ export default function ContractReviewPage() {
       const json = await res.json();
       setData(json);
       if (json.bomIdOptions) setBomIdOptionsById(json.bomIdOptions);
+      setItemImagesByCode(json.itemImages ?? {});
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -3238,6 +3245,8 @@ tileSize,
                 filterState={filterState}
                 filterActions={filterActions}
                 columnOptionMeta={columnOptionMeta}
+                imageButtonColumn={CONTRACT_REVIEW_HEADERS[ITEM_CODE_IDX]}
+                itemImagesByCode={itemImagesByCode}
                 bomIdOptionsById={bomIdOptionsById}
                 onSelectBomId={handleSelectBomId}
                 bomIdCategoryFilter
