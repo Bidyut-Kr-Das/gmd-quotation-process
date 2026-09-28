@@ -118,9 +118,9 @@ export function buildDiagramKey(
 export function validateDiagram(file: File | { type: string; size: number }): void {
   const type = file.type || "";
   if (!ALLOWED_DIAGRAM_TYPES.has(type)) {
-    throw new Error("Only PDF files are allowed for Upload Diagram.");
+    throw new Error("Only PDF files are allowed for Upload Drawing.");
   }
   if (file.size > MAX_ATTACHMENT_SIZE) {
-    throw new Error("Diagram must be 10 MB or smaller.");
+    throw new Error("Drawing must be 10 MB or smaller.");
   }
 }

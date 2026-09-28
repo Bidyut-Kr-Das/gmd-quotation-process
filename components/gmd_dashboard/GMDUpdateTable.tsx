@@ -487,12 +487,12 @@ function AttachmentCell({
             type="button"
             title={
               verdictDisabled
-                ? "Upload a diagram first"
+                ? "Upload a drawing first"
                 : verdict === "CORRECT"
                   ? "Marked correct - click to clear"
-                  : "Mark diagram as correct"
+                  : "Mark drawing as correct"
             }
-            aria-label="Mark diagram as correct"
+            aria-label="Mark drawing as correct"
             aria-pressed={!verdictDisabled && verdict === "CORRECT"}
             disabled={verdictDisabled}
             onClick={(e) => {
@@ -507,12 +507,12 @@ function AttachmentCell({
             type="button"
             title={
               verdictDisabled
-                ? "Upload a diagram first"
+                ? "Upload a drawing first"
                 : verdict === "WRONG"
                   ? "Marked wrong - click to clear"
-                  : "Mark diagram as wrong"
+                  : "Mark drawing as wrong"
             }
-            aria-label="Mark diagram as wrong"
+            aria-label="Mark drawing as wrong"
             aria-pressed={!verdictDisabled && verdict === "WRONG"}
             disabled={verdictDisabled}
             onClick={(e) => {
@@ -1078,7 +1078,7 @@ castingRateInputs,
               ? 300
               : h === "ORDER LIST"
                 ? 160
-                : h === "Upload Diagram"
+                : h === "Upload Drawing"
                   ? 200
                   : h === "CONTRACT NO"
                     ? 360
@@ -1819,6 +1819,13 @@ castingRateInputs,
         const poVal = String(row[poIdx !== -1 ? poIdx : poAltIdx] ?? "");
         cellContent = <OrderListCell display={display} poNo={poVal} />;
       }
+    } else if (imageButtonColumn && header === imageButtonColumn) {
+      cellContent = (
+        <ItemImageCell
+          code={display}
+          images={itemImagesByCode?.[display] ?? []}
+        />
+      );
     } else if (display && isUrl(display)) {
       // Single URL case (non-ORDER LIST columns)
       cellContent = (

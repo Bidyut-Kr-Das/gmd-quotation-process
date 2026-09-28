@@ -134,7 +134,7 @@ const MC_IDX = CONTRACT_REVIEW_HEADERS.indexOf("MC Received/Pending");
 const OFFER_NUMBER_IDX = CONTRACT_REVIEW_HEADERS.indexOf("OFFER NUMBER");
 const OFFER_PENDING_DONE_IDX =
   CONTRACT_REVIEW_HEADERS.indexOf("OFFER PENDING/DONE");
-const UPLOAD_DIAGRAM_COLUMN = "Upload Diagram";
+const UPLOAD_DIAGRAM_COLUMN = "Upload Drawing";
 const UPLOAD_DIAGRAM_IDX =
   CONTRACT_REVIEW_HEADERS.indexOf(UPLOAD_DIAGRAM_COLUMN);
 
@@ -877,11 +877,11 @@ export default function ContractReviewPage() {
 
   const handleUploadDiagram = useCallback(
     async (id: string, file: File) => {
-      const toastId = toast.loading("Uploading diagram...");
+      const toastId = toast.loading("Uploading drawing...");
       try {
         const res = await uploadContractReviewDiagramAction(id, file);
         if (!res?.success) {
-          toast.error(res?.error || "Failed to upload diagram.", { id: toastId });
+          toast.error(res?.error || "Failed to upload drawing.", { id: toastId });
           return;
         }
         if (UPLOAD_DIAGRAM_IDX !== -1) {
@@ -904,9 +904,9 @@ export default function ContractReviewPage() {
           delete next[id];
           return next;
         });
-        toast.success("Diagram uploaded", { id: toastId });
+        toast.success("Drawing uploaded", { id: toastId });
       } catch (err: any) {
-        toast.error(err?.message || "Failed to upload diagram.", { id: toastId });
+        toast.error(err?.message || "Failed to upload drawing.", { id: toastId });
       }
     },
     [],

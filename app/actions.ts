@@ -2360,7 +2360,7 @@ export async function uploadContractReviewDiagramAction(
     console.error("Error uploading contract review diagram:", error);
     return {
       success: false,
-      error: error.message || "Failed to upload diagram.",
+      error: error.message || "Failed to upload drawing.",
     };
   }
 }
@@ -2397,7 +2397,7 @@ export async function clearContractReviewDiagramAction(id: string) {
     console.error("Error clearing contract review diagram:", error);
     return {
       success: false,
-      error: error.message || "Failed to clear diagram.",
+      error: error.message || "Failed to clear drawing.",
     };
   }
 }
@@ -2429,7 +2429,7 @@ export async function setContractReviewDiagramVerdictAction(
     if (!existing.diagramUrl) {
       return {
         success: false,
-        error: "Upload a diagram before marking it correct or wrong.",
+        error: "Upload a drawing before marking it correct or wrong.",
       };
     }
     await prisma.contractReview.update({
