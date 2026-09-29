@@ -1145,7 +1145,7 @@ export default function Home() {
         id="raw-material-horizontal"
         defaultLayout={horizontalLayout}
         onLayoutChanged={onHorizontalLayoutChanged}
-        className="h-full min-h-[100vh]"
+        className="h-full min-h-screen"
       >
         <ResizablePanel
           id="stock-value"
