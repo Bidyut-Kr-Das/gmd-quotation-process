@@ -3780,7 +3780,9 @@ export async function updateContractReviewFieldAction(
 export async function recomputeIndentListingVersionsAction() {
   "use server";
   try {
-    const { planIndentRecompute } = await import("@/lib/itemVersionResolver");
+    const { planIndentRecompute, parseItem } = await import(
+      "@/lib/itemVersionResolver"
+    );
     const rows = await prisma.indentListing.findMany({
       select: {
         id: true,
@@ -3800,72 +3802,213 @@ export async function recomputeIndentListingVersionsAction() {
       },
     });
 
-    const { updates, deletes } = planIndentRecompute(rows);
-    const syncedAt = new Date();
+    // A recompute collapses `item` down to the base item ("SLV", "BFV", ...),
+    // which is what makes the merge work — but it also destroys the variant
+    // suffixes the V1..V4 split was derived from. Once that has happened the
+    // split cannot be rebuilt, so re-running the recompute on an already
+    // collapsed table would funnel every balance into V1 and wipe the
+    // categories. Detect that state and skip the destructive pass: the
+    // intended cycle is Sync from Contract Review (which restores the full
+    // item names) and only then Recompute.
+    const hasUnexplodedVariants = rows.some(
+      (r) => parseItem(r.item).hasVersionExtras,
+    );
 
-    // Only write rows where the derived values actually differ from what is
-    // currently stored — never rewrite already-correct rows.
-    const currentById = new Map(rows.map((r) => [r.id, r]));
-    const realUpdates = updates.filter((u) => {
-      const cur = currentById.get(u.id);
-      if (!cur) return true;
+    let updated = 0;
+    let deleted = 0;
+    let recomputeSkipped = false;
+
+    if (hasUnexplodedVariants) {
+      const { updates, deletes } = planIndentRecompute(rows);
+      const syncedAt = new Date();
+
+      // Only write rows where the derived values actually differ from what is
+      // currently stored — never rewrite already-correct rows.
+      const currentById = new Map(rows.map((r) => [r.id, r]));
+      const realUpdates = updates.filter((u) => {
+        const cur = currentById.get(u.id);
+        if (!cur) return true;
+        return (
+          String(cur.item ?? "") !== u.item ||
+          String(cur.pnRating ?? "") !== u.pnRating ||
+          Number(cur.totalBalBillAgCont ?? 0) !== u.totalBalBillAgCont ||
+          String(cur.v1 ?? "") !== u.v1 ||
+          String(cur.v2 ?? "") !== u.v2 ||
+          String(cur.v3 ?? "") !== u.v3 ||
+          String(cur.v4 ?? "") !== u.v4 ||
+          String(cur.v1Category ?? "") !== u.v1Category ||
+          String(cur.v2Category ?? "") !== u.v2Category ||
+          String(cur.v3Category ?? "") !== u.v3Category ||
+          String(cur.v4Category ?? "") !== u.v4Category
+        );
+      });
+
+      if (realUpdates.length > 0 || deletes.length > 0) {
+        await prisma.$transaction([
+          ...realUpdates.map((u) =>
+            prisma.indentListing.update({
+              where: { id: u.id },
+              data: {
+                item: u.item,
+                pnRating: u.pnRating,
+                totalBalBillAgCont: u.totalBalBillAgCont,
+                v1: u.v1,
+                v2: u.v2,
+                v3: u.v3,
+                v4: u.v4,
+                v1Category: u.v1Category,
+                v2Category: u.v2Category,
+                v3Category: u.v3Category,
+                v4Category: u.v4Category,
+                syncedAt,
+              },
+            }),
+          ),
+          ...deletes.map((id) => prisma.indentListing.delete({ where: { id } })),
+        ]);
+      }
+
+      updated = realUpdates.length;
+      deleted = deletes.length;
+      console.log(
+        `[indent-listing-recompute] rows=${rows.length} planned=${updates.length} realUpdates=${realUpdates.length} deletes=${deletes.length}`,
+      );
+    } else {
+      recomputeSkipped = true;
+      console.log(
+        `[indent-listing-recompute] skipped: no row still carries a variant suffix, so the table is already collapsed. Re-sync from Contract Review before recomputing.`,
+      );
+    }
+
+    // Reload so the RM code pass sees the state actually on disk rather than a
+    // mix of pre- and post-recompute values. The variant categories are read too
+    // because they carry the body material ("Rising CS" = cast/carbon steel),
+    // which the collapsed `item` no longer records.
+    const freshRows = await prisma.indentListing.findMany({
+      select: {
+        id: true,
+        item: true,
+        size: true,
+        pnRating: true,
+        v1: true,
+        v2: true,
+        v3: true,
+        v4: true,
+        v1Category: true,
+        v2Category: true,
+        v3Category: true,
+        v4Category: true,
+      },
+    });
+
+    const { planIndentRmCodes, RM_CODE_ITEM_CATEGORY, RM_CODE_VALVE_TYPE } =
+      await import("@/lib/indentRmCodeResolver");
+
+    const [rmCodeSourceRows, rawMaterials] = await Promise.all([
+      prisma.indentListing.findMany({
+        select: {
+          id: true,
+          item: true,
+          size: true,
+          pnRating: true,
+          v1: true,
+          v2: true,
+          v3: true,
+          v4: true,
+          v1Category: true,
+          v2Category: true,
+          v3Category: true,
+          v4Category: true,
+          rmCodeV1: true,
+          rmCodeV2: true,
+          rmCodeV3: true,
+          rmCodeV4: true,
+        },
+      }),
+      // Only live raw materials: CLOSED history rows share the same L-values
+      // and would match nearly every indent row.
+      prisma.gMDUpdateItem.findMany({
+        where: {
+          l8ItemCategory: {
+            contains: RM_CODE_ITEM_CATEGORY,
+            mode: "insensitive",
+          },
+          l2ValveType: { equals: RM_CODE_VALVE_TYPE, mode: "insensitive" },
+          newItemStatus: null,
+        },
+        select: {
+          erpItemCode: true,
+          l2ValveType: true,
+          l3Dia: true,
+          l4Component: true,
+          l5Material: true,
+          l6Std: true,
+          l7Dimension: true,
+          l8ItemCategory: true,
+        },
+      }),
+    ]);
+
+    const rmCodePlan = planIndentRmCodes(rmCodeSourceRows, rawMaterials);
+    const rmCodeCurrentById = new Map(rmCodeSourceRows.map((r) => [r.id, r]));
+    const rmCodeUpdates = rmCodePlan.updates.filter((u) => {
+      const cur = rmCodeCurrentById.get(u.id);
+      if (!cur) return false;
       return (
-        String(cur.item ?? "") !== u.item ||
-        String(cur.pnRating ?? "") !== u.pnRating ||
-        Number(cur.totalBalBillAgCont ?? 0) !== u.totalBalBillAgCont ||
-        String(cur.v1 ?? "") !== u.v1 ||
-        String(cur.v2 ?? "") !== u.v2 ||
-        String(cur.v3 ?? "") !== u.v3 ||
-        String(cur.v4 ?? "") !== u.v4 ||
-        String(cur.v1Category ?? "") !== u.v1Category ||
-        String(cur.v2Category ?? "") !== u.v2Category ||
-        String(cur.v3Category ?? "") !== u.v3Category ||
-        String(cur.v4Category ?? "") !== u.v4Category
+        String(cur.rmCodeV1 ?? "") !== u.rmCodeV1 ||
+        String(cur.rmCodeV2 ?? "") !== u.rmCodeV2 ||
+        String(cur.rmCodeV3 ?? "") !== u.rmCodeV3 ||
+        String(cur.rmCodeV4 ?? "") !== u.rmCodeV4
       );
     });
 
-    if (realUpdates.length > 0 || deletes.length > 0) {
-      await prisma.$transaction([
-        ...realUpdates.map((u) =>
+    // syncedAt is deliberately left alone here: it tracks the Contract Review
+    // sync, and an RM code pass is not a Contract Review sync.
+    if (rmCodeUpdates.length > 0) {
+      await prisma.$transaction(
+        rmCodeUpdates.map((u) =>
           prisma.indentListing.update({
             where: { id: u.id },
             data: {
-              item: u.item,
-              pnRating: u.pnRating,
-              totalBalBillAgCont: u.totalBalBillAgCont,
-              v1: u.v1,
-              v2: u.v2,
-              v3: u.v3,
-              v4: u.v4,
-              v1Category: u.v1Category,
-              v2Category: u.v2Category,
-              v3Category: u.v3Category,
-              v4Category: u.v4Category,
-              syncedAt,
+              rmCodeV1: u.rmCodeV1,
+              rmCodeV2: u.rmCodeV2,
+              rmCodeV3: u.rmCodeV3,
+              rmCodeV4: u.rmCodeV4,
             },
           }),
         ),
-        ...deletes.map((id) => prisma.indentListing.delete({ where: { id } })),
-      ]);
+      );
     }
 
     console.log(
-      `[indent-listing-recompute] rows=${rows.length} planned=${updates.length} realUpdates=${realUpdates.length} deletes=${deletes.length}`,
+      `[indent-listing-rmcode] rawMaterials=${rawMaterials.length} rows=${rmCodePlan.updates.length} written=${rmCodeUpdates.length} resolved=${rmCodePlan.resolved} ambiguous=${rmCodePlan.ambiguous} unmatched=${rmCodePlan.unmatched}`,
     );
 
-    const reason =
-      updates.length === 0
-        ? "No indent rows matched any base item (SLV, TPAV+SLV, SLV METAL, BFV, DPCV, CF, DV, GV, NRV, PRV, TPAV)."
-        : realUpdates.length === 0 && deletes.length === 0
-          ? "All indent rows already have the correct base item and V1-V4 values."
-          : undefined;
+    const rmCodeSummary =
+      rmCodePlan.updates.length === 0
+        ? "No SLV / SLV METAL indent rows to link."
+        : `${rmCodePlan.resolved} linked, ${rmCodePlan.ambiguous} with multiple RM codes, ${rmCodePlan.unmatched} with no RM code.`;
+
+    const reason = recomputeSkipped
+      ? `V1-V4 recompute skipped: every row is already collapsed to its base item, so the variant split can no longer be rebuilt. Sync from Contract Review first. ${rmCodeSummary}`
+      : updated === 0 && deleted === 0
+        ? `All indent rows already have the correct base item and V1-V4 values. ${rmCodeSummary}`
+        : undefined;
 
     return {
       success: true,
       data: {
-        updated: realUpdates.length,
-        deleted: deletes.length,
+        updated,
+        deleted,
         total: rows.length,
+        recomputeSkipped,
+        rmCode: {
+          rows: rmCodePlan.updates.length,
+          written: rmCodeUpdates.length,
+          resolved: rmCodePlan.resolved,
+          ambiguous: rmCodePlan.ambiguous,
+          unmatched: rmCodePlan.unmatched,
+        },
         reason,
       },
     };
