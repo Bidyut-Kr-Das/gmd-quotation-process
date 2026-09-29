@@ -24,6 +24,11 @@ export const VERIFY_BOM_HEADERS = [
   "CONSUMPTION-1",
   "CONSUMPTION 2",
   "CONSUMPTION 3",
+  // Appended last on purpose. GMDUpdateTable seeds column widths from the RAW
+  // header index, so inserting a column mid-array would shift every later
+  // column's width and drag-resize bookkeeping. This one is always hidden and
+  // only feeds the C chip inside the ITEM CODE cell.
+  "C BATCH",
 ] as const;
 
 function normalizeHeader(h: string): string {
@@ -82,6 +87,7 @@ export function dbVerifyBomToRow(item: {
   bomIdType: string | null;
   bomItemQty: string | null;
   noUse: string | null;
+  cBatch: string | null;
   availableStock: string | null;
   cost: string | null;
   bomItemQtyCost: string | null;
@@ -128,12 +134,14 @@ export function dbVerifyBomToRow(item: {
     item.consumption1,
     item.consumption2,
     item.consumption3,
+    item.cBatch,
   ];
 }
 
 export const VERIFY_BOM_HEADER_TO_DB_FIELD: Record<string, string> = {
   "BOM ID": "bomId",
   "ITEM CODE": "itemCode",
+  "C BATCH": "cBatch",
   "RM ITEM CODE": "rmItemCode",
   "BOM ID TYPE": "bomIdType",
   "BOM ITEM QTY": "bomItemQty",

@@ -372,6 +372,7 @@ model VerifyBom {
   bomIdType            String?
   bomItemQty           String?
   noUse                String?
+  cBatch               String?
   availableStock       String?
   itemName             String?
   itemScheduleName     String?

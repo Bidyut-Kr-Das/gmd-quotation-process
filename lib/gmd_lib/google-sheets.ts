@@ -1,4 +1,4 @@
-import { google } from "googleapis";
+import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "../googleAuth";
 import { CANONICAL_COLUMNS } from "./sheet-columns";
 
@@ -38,7 +38,7 @@ function getAuth() {
 }
 
 function getClient() {
-  return google.sheets({ version: "v4", auth: getAuth() });
+  return googleSheets({ version: "v4", auth: getAuth() });
 }
 
 export async function fetchSheetMetadata(): Promise<{
@@ -186,17 +186,19 @@ export async function fetchStockPhysicalSheet(): Promise<Record<string, string>>
 
   const headerKey = (h: string) => normalizeHeader(h).replace(/\.+$/, "");
   const erpIdx = headers.findIndex((h) => headerKey(h) === "ERP CODE");
-  const stockIdx = headers.findIndex((h) => headerKey(h) === "AVAILABLE QTY");
+  const stockIdx = headers.findIndex(
+    (h) => headerKey(h) === "SUM OF PHYSICAL STOCK",
+  );
   if (erpIdx === -1 || stockIdx === -1) {
     throw new Error(
       `"stock-phys" sheet is missing required column(s): ` +
-        `${erpIdx === -1 ? "ERP CODE " : ""}${stockIdx === -1 ? "AVAILABLE QTY" : ""}`.trim(),
+        `${erpIdx === -1 ? "ERP CODE " : ""}${stockIdx === -1 ? "SUM OF PHYSICAL STOCK" : ""}`.trim(),
     );
   }
 
   const result: Record<string, string> = {};
   for (const row of dataRows) {
-    const erp = String(row[erpIdx] ?? "").trim();
+    const erp = String(row[erpIdx] ?? "").trim().toUpperCase();
     const stock = String(row[stockIdx] ?? "").trim();
     if (erp) result[erp] = stock;
   }

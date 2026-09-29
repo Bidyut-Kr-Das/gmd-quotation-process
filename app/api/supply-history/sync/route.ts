@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { google } from "googleapis";
+import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "@/lib/googleAuth";
 import {
   SUPPLY_HISTORY_HEADERS,
@@ -55,7 +55,7 @@ export async function POST() {
   try {
     console.log(`[supply-sync] Starting sync MASTER=${SHEET_NAME} spreadsheet=${SPREADSHEET_ID}`);
     const auth = getAuth();
-    const sheets = google.sheets({ version: "v4", auth });
+    const sheets = googleSheets({ version: "v4", auth });
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,

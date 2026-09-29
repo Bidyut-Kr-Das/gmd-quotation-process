@@ -72,9 +72,9 @@ export async function POST() {
     const syncedAt = new Date();
 
     const mergedRows = data.rows.map((row) => {
-      const erpCode = String(row[ERP_CODE_IDX] ?? "").trim();
-      const stockVal = stockMap[erpCode];
-      if (stockVal) {
+      const erpCode = String(row[ERP_CODE_IDX] ?? "").trim().toUpperCase();
+      const stockVal = erpCode ? stockMap[erpCode] : undefined;
+      if (stockVal !== undefined && stockVal.trim() !== "") {
         const newRow = [...row];
         newRow[AVAILABLE_STOCK_IDX] = stockVal;
         return newRow;

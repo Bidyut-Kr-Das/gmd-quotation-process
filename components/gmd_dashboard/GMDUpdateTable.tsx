@@ -755,6 +755,22 @@ interface GMDUpdateTableProps {
   editableColumns?: string[];
   hiddenFilters?: string[];
   hiddenColumns?: string[];
+  /**
+   * Renders a small chip inside another column's cell, driven by the value of
+   * a *hidden* column on the same row. Lets a flag travel in the row payload
+   * (so it can still be stored, filtered and synced) without occupying a
+   * visible column of its own.
+   *
+   * The driving column may be listed in `hiddenColumns` — that only removes it
+   * from the rendered columns, the value is still read from the row.
+   */
+  cellBadges?: {
+    onColumn: string;
+    fromColumn: string;
+    value: string;
+    label: string;
+    title?: string;
+  }[];
   groupByColumn?: string;
   mergeColumns?: string[];
   mergeTypeColumn?: string;
@@ -862,6 +878,7 @@ export default function GMDUpdateTable({
   editableColumns,
   hiddenFilters,
   hiddenColumns,
+  cellBadges,
   groupByColumn,
   mergeColumns,
   mergeTypeColumn,
@@ -1888,6 +1905,27 @@ castingRateInputs,
           {display || "—"}
         </span>
       );
+    } else if (
+      cellBadges?.some(
+        (b) =>
+          b.onColumn === header &&
+          String(row[headers.indexOf(b.fromColumn)] ?? "").trim() === b.value,
+      )
+    ) {
+      const badge = cellBadges.find((b) => b.onColumn === header)!;
+      cellContent = (
+        <span className="flex items-center gap-1.5 min-w-0">
+          <span className="truncate" title={display}>
+            {display || "—"}
+          </span>
+          <span
+            title={badge.title}
+            className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold"
+          >
+            {badge.label}
+          </span>
+        </span>
+      );
     } else {
       cellContent = (
         <span className={textCellClass(scrollable)} title={display}>
@@ -2173,7 +2211,7 @@ castingRateInputs,
                         className={`flex justify-between gap-1 ${wrapCells ? "items-start" : "items-center"}`}
                       >
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className={wrapCells ? "break-words" : "truncate"}>
+                          <span className={wrapCells ? "wrap-break-word" : "truncate"}>
                             {group.label}
                           </span>
                           {activeCount > 0 && (
@@ -2302,7 +2340,7 @@ castingRateInputs,
                       className={`flex justify-between gap-1.5 cursor-pointer ${wrapCells ? "items-start" : "items-center"}`}
                       onClick={() => handleSort(idx)}
                     >
-                      <span className={wrapCells ? "break-words" : "truncate"}>
+                      <span className={wrapCells ? "wrap-break-word" : "truncate"}>
                         {header}
                       </span>
                       {isSorted && (
