@@ -164,6 +164,9 @@ export const CONTRACT_REVIEW_COLUMN_WIDTHS: Partial<
  * These are purely a display concern: the headers array, the row serializer and
  * the header->DB field map are all untouched, so every *IDX constant and all
  * inline edits keep working.
+ *
+ * Each child normally renders as a captioned, bordered box inside the collapsed
+ * cell; a child flagged `plain` renders as a bare wrapped line instead.
  */
 export const CONTRACT_REVIEW_COLUMN_GROUPS = [
   {
@@ -177,10 +180,9 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
   {
     label: "Item Names/Party Item Names",
     width: 200,
-    children: [
-      { header: "ITEM_NAME", label: "Item Name -" },
-      { header: "PARTY ITEM NAME", label: "Party Item Name -" },
-    ],
+    // The parent caption already names both fields, so these two render as
+    // bare stacked lines instead of captioned boxes (see ColumnGroupChild.plain).
+    children: [{ header: "ITEM_NAME", plain: true }, { header: "PARTY ITEM NAME", plain: true }],
   },
   {
     label: "Item / Size / PN RATING",
@@ -194,10 +196,10 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
   {
     label: "Actuator / RM Code for Actuator",
     width: 185,
-    children: [
-      { header: "Actuator", label: "Actuator -" },
-      { header: "RM CODE FOR ACTUATOR", label: "RM Code for Actuator -" },
-    ],
+    // Same as the Item Names group: the parent caption already names both
+    // fields, so these render as bare stacked lines. The Actuator child is an
+    // editable dropdown, which the plain line renders as-is.
+    children: [{ header: "Actuator", plain: true }, { header: "RM CODE FOR ACTUATOR", plain: true }],
   },
   {
     label: "LC / RTGS / Issuing bank name",
