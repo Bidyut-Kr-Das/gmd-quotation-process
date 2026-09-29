@@ -57,9 +57,13 @@ export default function IndentListingPage() {
       const result = await res.json();
       const merged = Number(result.merged ?? 0);
       const normalized = Number(result.canonicalized ?? 0);
+      const pruned = Number(result.pruned ?? 0);
+      const skippedNonLive = Number(result.skippedNonLive ?? 0);
       const details = [
         merged > 0 ? `${merged} merged` : null,
         normalized - merged > 0 ? `${normalized - merged} PN normalized` : null,
+        pruned > 0 ? `${pruned} non-live removed` : null,
+        skippedNonLive > 0 ? `${skippedNonLive} non-live rows skipped` : null,
       ]
         .filter(Boolean)
         .join(", ");
@@ -81,14 +85,18 @@ export default function IndentListingPage() {
   const handleRecompute = useCallback(async () => {
     setSyncing(true);
     setError(null);
-    const toastId = toast.loading("Recomputing V1-V4 from Item...");
+    const toastId = toast.loading("Recomputing V1-V4 and RM codes from Item...");
     try {
       const res = await recomputeIndentListingVersionsAction();
       if (!res?.success) {
         throw new Error(res?.error ?? "Recompute failed");
       }
+      const rm = res.data?.rmCode;
+      const rmCodeDetail = rm
+        ? ` | RM codes: ${rm.resolved} linked, ${rm.ambiguous} multi, ${rm.unmatched} unmatched`
+        : "";
       toast.success(
-        `Recomputed: ${res.data?.updated ?? 0} updated, ${res.data?.deleted ?? 0} merged/deleted`,
+        `Recomputed: ${res.data?.updated ?? 0} updated, ${res.data?.deleted ?? 0} merged/deleted${rmCodeDetail}`,
         { id: toastId },
       );
       await fetchData();

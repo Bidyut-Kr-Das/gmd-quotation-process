@@ -17,34 +17,40 @@ interface ColumnDef {
   dataIdx: number;
   numeric: boolean;
   categoryIdx?: number;
+  rmCodeIdx?: number;
 }
 
 // Display columns. `dataIdx` maps the display index to the raw row index
-// (rows carry 13 fields: item, size, pnRating, mcReceivedPending, total, v1..v4,
-// then v1Category..v4Category; the MC RECEIVED/PENDING field is skipped in the
-// UI). V1..V4 hold the BAL BILL AG CONT for each variant of the item, derived on
-// recompute, and the matching category is shown beside the value and used by the
-// column filter.
+// (rows carry 17 fields: item, size, pnRating, mcReceivedPending, total, v1..v4,
+// then v1Category..v4Category, then rmCodeV1..rmCodeV4; the MC RECEIVED/PENDING
+// field is skipped in the UI). V1..V4 hold the BAL BILL AG CONT for each variant
+// of the item, derived on recompute, and the matching category is shown beside
+// the value and used by the column filter. The RM code resolved from the raw
+// material master for that same variant is shown underneath both.
 const COLUMNS: ColumnDef[] = [
   { label: "ITEM NAME", key: "item", dataIdx: 0, numeric: false },
   { label: "SIZE", key: "size", dataIdx: 1, numeric: false },
   { label: "PN RATING", key: "pnRating", dataIdx: 2, numeric: false },
-  { label: "Total Bal bill ag cont", key: "total", dataIdx: 4, numeric: true },
-  { label: "V1", key: "v1", dataIdx: 5, numeric: true, categoryIdx: 9 },
-  { label: "V2", key: "v2", dataIdx: 6, numeric: true, categoryIdx: 10 },
-  { label: "V3", key: "v3", dataIdx: 7, numeric: true, categoryIdx: 11 },
-  { label: "V4", key: "v4", dataIdx: 8, numeric: true, categoryIdx: 12 },
+  { label: "Total Ag Cont", key: "total", dataIdx: 4, numeric: true },
+  { label: "V1", key: "v1", dataIdx: 5, numeric: true, categoryIdx: 9, rmCodeIdx: 13 },
+  { label: "V2", key: "v2", dataIdx: 6, numeric: true, categoryIdx: 10, rmCodeIdx: 14 },
+  { label: "V3", key: "v3", dataIdx: 7, numeric: true, categoryIdx: 11, rmCodeIdx: 15 },
+  { label: "V4", key: "v4", dataIdx: 8, numeric: true, categoryIdx: 12, rmCodeIdx: 16 },
 ];
 
+// Widths are sized to the content: `item` holds the base item after recompute
+// so its longest value is 11 chars ("AIR CUSHION"), and the total is a number
+// capped at ~4 digits. V1..V4 stay wider because they stack the balance, the
+// category line and a comma-joined RM code.
 const DEFAULT_COLUMN_WIDTHS: Record<number, number> = {
-  0: 280,
+  0: 140,
   1: 110,
   2: 130,
-  3: 150,
-  4: 110,
-  5: 110,
-  6: 110,
-  7: 110,
+  3: 110,
+  4: 150,
+  5: 150,
+  6: 150,
+  7: 150,
 };
 
 function cellText(row: unknown[], dataIdx: number): string {
@@ -221,18 +227,37 @@ export default function IndentListingTable({
 
   const hasActiveFilters = Object.values(filters).some((v) => v.length > 0);
 
+  // V1..V4 stack three lines: the balance, the variant category it came from,
+  // and the RM code resolved from the raw material master for that variant.
   const renderCell = (row: unknown[], col: ColumnDef) => {
     const value = String(row[col.dataIdx] ?? "").trim();
+    const category =
+      col.categoryIdx === undefined
+        ? ""
+        : String(row[col.categoryIdx] ?? "").trim();
+    const rmCode =
+      col.rmCodeIdx === undefined
+        ? ""
+        : String(row[col.rmCodeIdx] ?? "").trim();
+
     if (value === "") return "—";
-    if (col.categoryIdx === undefined) return value;
-    const category = String(row[col.categoryIdx] ?? "").trim();
-    if (category === "") return value;
+    if (category === "" && rmCode === "") return value;
+
     return (
-      <span className="inline-flex items-baseline justify-end gap-1">
-        <span>{value}</span>
-        <span className="text-[10px] font-medium text-muted-foreground">
-          -({category})
+      <span className="flex flex-col items-end gap-0.5">
+        <span className="inline-flex items-baseline justify-end gap-1">
+          <span>{value}</span>
+          {category !== "" && (
+            <span className="text-[10px] font-medium text-muted-foreground">
+              -({category})
+            </span>
+          )}
         </span>
+        {rmCode !== "" && (
+          <span className="text-[10px] font-mono font-medium text-[#0f62fe] dark:text-blue-400">
+            {rmCode}
+          </span>
+        )}
       </span>
     );
   };
@@ -341,7 +366,9 @@ export default function IndentListingTable({
                     {COLUMNS.map((col, idx) => (
                       <td
                         key={col.key}
-                        className={`py-2.5 px-4 text-xs border-r border-b border-border last:border-r-0 truncate ${
+                        className={`py-2.5 px-4 text-xs border-r border-b border-border last:border-r-0 ${
+                          col.rmCodeIdx === undefined ? "truncate" : ""
+                        } ${
                           col.numeric
                             ? "font-bold text-foreground text-right tabular-nums"
                             : "text-muted-foreground"

@@ -39,6 +39,11 @@ export interface ItemVersionResult {
 /**
  * Human-readable category for a variant, derived from the detected suffixes.
  * Plain base items are labelled "Base".
+ *
+ * A "CS" suffix is kept on purpose: it records the body material
+ * ("SLV RISING-CS" = cast/carbon steel rising sluice valve) and is the only
+ * place that fact survives, because a completed recompute collapses `item` down
+ * to the base item and discards the variant suffixes themselves.
  */
 function variantLabel(flags: VariantFlags): string {
   const parts: string[] = [];

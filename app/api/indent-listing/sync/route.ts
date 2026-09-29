@@ -1,21 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { pnRatingBucket } from "@/lib/pnRatingMatcher";
 import { planIndentListingDedupe } from "@/lib/indentListingDedupe";
-
-function normalizeKey(value: unknown): string {
-  return String(value ?? "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .toUpperCase();
-}
-
-function parseNum(value: unknown): number {
-  let s = String(value ?? "").trim();
-  if (!s) return NaN;
-  s = s.replace(/^["']+|["']+$/g, "").replace(/,/g, "");
-  return parseFloat(s);
-}
+import {
+  indentGroupKey,
+  planLiveIndentGroups,
+  planStaleIndentDeletes,
+} from "@/lib/indentListingLiveFilter";
 
 export async function POST() {
   try {
@@ -26,52 +16,21 @@ export async function POST() {
         pnRating: true,
         mcReceivedPending: true,
         balBillAgCont: true,
+        status: true,
       },
     });
     console.log(
       `[indent-listing-sync] Source ContractReview rows: ${source.length}`,
     );
 
-    const groups = new Map<
-      string,
-      {
-        item: string | null;
-        size: string | null;
-        pnRating: string | null;
-        mcReceivedPending: string;
-        sum: number;
-      }
-    >();
-    for (const row of source) {
-      const status = String(row.mcReceivedPending ?? "").trim();
-      const statusUpper = status.toUpperCase();
-      if (statusUpper !== "RECEIVED" && statusUpper !== "PENDING") continue;
-
-      const item = row.item?.trim() || null;
-      const size = row.size?.trim() || null;
-      const pnRating = pnRatingBucket(row.pnRating) || null;
-
-      const key = [
-        normalizeKey(item),
-        normalizeKey(size),
-        normalizeKey(pnRating),
-        statusUpper,
-      ].join("||");
-
-      const existing = groups.get(key);
-      const value = parseNum(row.balBillAgCont);
-      if (existing) {
-        if (!isNaN(value)) existing.sum += value;
-      } else {
-        groups.set(key, {
-          item,
-          size,
-          pnRating,
-          mcReceivedPending: status,
-          sum: isNaN(value) ? 0 : value,
-        });
-      }
-    }
+    // Live data only: MC Received/Pending rows whose STATUS is blank. Any
+    // contract with a populated status (CLOSED, COMPLETED, HOLD, ...) is not
+    // live and must not feed the indent listing.
+    const { groups, included, skippedNonLive, skippedNotIndentable } =
+      planLiveIndentGroups(source);
+    console.log(
+      `[indent-listing-sync] Live rows: ${included} | skipped non-live STATUS: ${skippedNonLive} | skipped non RECEIVED/PENDING: ${skippedNotIndentable}`,
+    );
 
     let existingRows = await prisma.indentListing.findMany();
     const syncedAt = new Date();
@@ -110,16 +69,24 @@ export async function POST() {
     }
 
     const existingByKey = new Map(
-      existingRows.map((r) => [
-        [
-          normalizeKey(r.item),
-          normalizeKey(r.size),
-          normalizeKey(pnRatingBucket(r.pnRating) || null),
-          normalizeKey(r.mcReceivedPending),
-        ].join("||"),
-        r,
-      ]),
+      existingRows.map((r) => [indentGroupKey(r), r]),
     );
+
+    // Prune rows whose Contract Review source is no longer live (closed /
+    // completed since the last sync) so the dashboard never shows stale
+    // non-live data. Pruned keys are by definition absent from `groups`, so the
+    // upsert loop below can never match them; deletes run before the upserts
+    // so the [item, size, pnRating, mcReceivedPending] unique constraint never
+    // trips.
+    const staleIds = planStaleIndentDeletes(existingRows, groups.keys());
+    if (staleIds.length > 0) {
+      await prisma.$transaction(
+        staleIds.map((id) => prisma.indentListing.delete({ where: { id } })),
+      );
+      console.log(
+        `[indent-listing-sync] Pruned non-live indent rows:\n  ${staleIds.join("\n  ")}`,
+      );
+    }
 
     let created = 0;
     let updated = 0;
@@ -185,7 +152,7 @@ export async function POST() {
     }
 
     console.log(
-      `[indent-listing-sync] Groups: ${groups.size} | created=${created} updated=${updated} unchanged=${unchanged} deduped=${dedupeDeletes.length} canonicalized=${dedupeUpdates.length}`,
+      `[indent-listing-sync] Groups: ${groups.size} | created=${created} updated=${updated} unchanged=${unchanged} pruned=${staleIds.length} deduped=${dedupeDeletes.length} canonicalized=${dedupeUpdates.length}`,
     );
     if (createdKeys.length > 0) {
       console.log(`[indent-listing-sync] Created keys:\n  ${createdKeys.join("\n  ")}`);
@@ -200,7 +167,7 @@ export async function POST() {
 
     const reason =
       groups.size === 0
-        ? "No Contract Review rows with RECEIVED/PENDING status to sync."
+        ? "No live Contract Review rows (blank STATUS with RECEIVED/PENDING) to sync."
         : created === 0 && updated === 0
           ? `All ${unchanged} existing indent rows are already up to date (no total changes).`
           : undefined;
@@ -209,6 +176,8 @@ export async function POST() {
       created,
       updated,
       unchanged,
+      pruned: staleIds.length,
+      skippedNonLive,
       merged: dedupeDeletes.length,
       canonicalized: dedupeUpdates.length,
       total: groups.size,

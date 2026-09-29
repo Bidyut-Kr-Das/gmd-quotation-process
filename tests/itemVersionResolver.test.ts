@@ -63,7 +63,25 @@ test('variant labels cover DI/CS/Wafer and combine multiple suffixes', () => {
   assert.equal(parseItem('BFV-DI').label, 'DI')
   assert.equal(parseItem('DPCV-CS').label, 'CS')
   assert.equal(parseItem('BFV-WAFER').label, 'Wafer')
+  // A CS suffix is the body material and must survive: it is the only record
+  // that the valve is cast/carbon steel, since a completed recompute collapses
+  // `item` to the base item and throws the variant suffixes away.
   assert.equal(parseItem('SLV RISING-CS').label, 'Rising CS')
+  assert.equal(parseItem('SLV RISING-CS').slot, 3)
+  assert.equal(parseItem('SLV RISING-CS').baseItem, 'SLV')
+  assert.equal(parseItem('DPCV-RISING-CS').label, 'Rising CS')
+})
+
+test('a collapsed table carries no variant suffix, so hasVersionExtras is false', () => {
+  // This is the guard the recompute action relies on to avoid re-collapsing an
+  // already-computed table and funnelling every balance into V1.
+  for (const item of ['SLV', 'SLV METAL', 'TPAV+SLV', 'BFV', 'DPCV', 'NRV', 'PRV']) {
+    assert.equal(parseItem(item).hasVersionExtras, false, item)
+  }
+  // Before the collapse the suffixes are present, so a recompute is meaningful.
+  for (const item of ['SLV-9523', 'SLV RISING', 'SLV RISING-9523']) {
+    assert.equal(parseItem(item).hasVersionExtras, true, item)
+  }
 })
 
 test('TPAV+SLV and SLV METAL follow the same SLV-family slot mapping', () => {
