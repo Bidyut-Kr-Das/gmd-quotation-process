@@ -1050,8 +1050,8 @@ export default function Home() {
       matchesSidebarNew(row, "all", majorFilter, headers, "indian"),
     );
     for (const row of baseForIndian) {
-      const stockStr = String(row[11] ?? "").trim();
-      const costStr = String(row[15] ?? "").trim();
+      const stockStr = String(row[12] ?? "").trim();
+      const costStr = String(row[16] ?? "").trim();
       if (stockStr === "" || costStr === "") continue;
       const stock = parseFloat(stockStr.replace(/,/g, ""));
       const cost = parseFloat(costStr.replace(/,/g, ""));
@@ -1077,8 +1077,8 @@ export default function Home() {
       matchesSidebarNew(row, indianImported, "all", headers, "major"),
     );
     for (const row of baseForMajor) {
-      const stockStr = String(row[11] ?? "").trim();
-      const costStr = String(row[15] ?? "").trim();
+      const stockStr = String(row[12] ?? "").trim();
+      const costStr = String(row[16] ?? "").trim();
       if (stockStr === "" || costStr === "") continue;
       const stock = parseFloat(stockStr.replace(/,/g, ""));
       const cost = parseFloat(costStr.replace(/,/g, ""));

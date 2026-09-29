@@ -5,6 +5,7 @@ import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { parseGmdDate } from "@/lib/gmd_lib/dateParse"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -20,28 +21,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-const MONTHS: Record<string, number> = {
-  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
-}
-
+// Delegates to the shared parser so this editor, GMDUpdateTable and the Contract
+// Review page agree. The shared version also rejects bare numeric strings, which
+// would otherwise be read by V8 as a YEAR (e.g. "45913" -> year 45913) and shown
+// here as a bogus far-future date. Unparseable values render as the placeholder.
 function parseDisplayDate(str: string): Date | undefined {
-  if (!str) return undefined;
-  const s = str.trim();
-  const m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
-  if (m) {
-    const mon = MONTHS[m[2].toLowerCase()];
-    if (mon !== undefined) {
-      let year = parseInt(m[3], 10);
-      if (year < 100) year += 2000;
-      const day = parseInt(m[1], 10);
-      const d = new Date(year, mon, day);
-      if (!isNaN(d.getTime()) && day >= 1 && day <= 31) return d;
-    }
-  }
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) return d;
-  return undefined;
+  return parseGmdDate(str) ?? undefined;
 }
 
 interface DatePickerProps {

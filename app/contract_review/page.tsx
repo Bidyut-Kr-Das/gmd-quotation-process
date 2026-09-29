@@ -39,6 +39,7 @@ import {
   getBomIdCategory,
   type BomIdCategory,
 } from "@/lib/gmd_lib/bomCategory";
+import { parseGmdDate } from "@/lib/gmd_lib/dateParse";
 import {
   FLOW_HAS_VALUE,
   FLOW_NO_VALUE,
@@ -319,38 +320,11 @@ function matchesSidebar(
   return true;
 }
 
+// Date parsing lives in lib/gmd_lib/dateParse.ts, shared with GMDUpdateTable and the
+// DatePicker, so the three copies cannot drift. See that file for why a bare numeric
+// string must never be treated as a date.
 function parseDateCR(str: string): Date | null {
-  if (!str || typeof str !== "string") return null;
-  const s = str.trim();
-  const m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
-  if (m) {
-    const months: Record<string, number> = {
-      jan: 0,
-      feb: 1,
-      mar: 2,
-      apr: 3,
-      may: 4,
-      jun: 5,
-      jul: 6,
-      aug: 7,
-      sep: 8,
-      oct: 9,
-      nov: 10,
-      dec: 11,
-    };
-    const mon = months[m[2].toLowerCase()];
-    if (mon !== undefined) {
-      const day = parseInt(m[1], 10);
-      let year = parseInt(m[3], 10);
-      if (year < 100) year += 2000;
-      if (!isNaN(day) && day >= 1 && day <= 31 && !isNaN(year)) {
-        return new Date(year, mon, day);
-      }
-    }
-  }
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) return d;
-  return null;
+  return parseGmdDate(str);
 }
 
 /**
