@@ -4689,6 +4689,213 @@ export async function syncBomMastItemNamesAction() {
   }
 }
 
+const C_BATCH_VALUE = "C";
+const C_BATCH_CHUNK = 1000;
+
+type CBatchTableResult = {
+  table: string;
+  fields: string;
+  distinctCodes: number;
+  matchedCodes: number;
+  rowsToUpdate: number;
+  alreadyMarked: number;
+};
+
+/**
+ * Marks cBatch="C" on every row whose item code carries ITEM_STATUS = "C" in the
+ * ITEM MASTER ERP tab (gid 253020709).
+ *
+ * SET-ONLY BY DESIGN: nothing is ever cleared. A code that flips C -> U in the
+ * sheet, or disappears from it, keeps the mark it already has, so re-running is
+ * idempotent and a mis-click cannot destroy data.
+ *
+ * VerifyBom is deliberately NOT written: /bom's cBatch comes from the BOM MAST
+ * ERP TO_DATE flow, which is a different signal and is left alone.
+ *
+ * Prisma's per-model delegates have incompatible generic signatures, so the four
+ * targets are handled with explicit calls rather than a table of delegates. The
+ * pure matching logic is shared.
+ */
+export async function syncCBatchAction(dryRun = false) {
+  "use server";
+  try {
+    const { readItemMasterErp } = await import("@/lib/gmd_lib/bomMastErp");
+    const { tabTitle, statusByCode } = await readItemMasterErp();
+
+    const cCodes = new Set<string>();
+    for (const [code, status] of statusByCode) {
+      if (status === C_BATCH_VALUE) cCodes.add(code);
+    }
+
+    // Collect the codes a table actually holds, then keep only the C ones.
+    const matchedFor = (values: (string | null)[]) => {
+      const present = new Set<string>();
+      for (const v of values) {
+        const k = String(v ?? "").trim().toUpperCase();
+        if (k) present.add(k);
+      }
+      return { present, matched: [...present].filter((c) => cCodes.has(c)) };
+    };
+
+    const perTable: CBatchTableResult[] = [];
+    const push = (r: Omit<CBatchTableResult, "alreadyMarked">, total: number) =>
+      perTable.push({ ...r, alreadyMarked: Math.max(0, total - r.rowsToUpdate) });
+
+    // ---- GMDUpdateItem.erpItemCode ----
+    {
+      const rows = await prisma.gMDUpdateItem.findMany({
+        select: { erpItemCode: true, cBatch: true },
+      });
+      const { present, matched } = matchedFor(rows.map((r) => r.erpItemCode));
+      const total = rows.filter(
+        (r) => r.erpItemCode && matched.includes(String(r.erpItemCode).trim().toUpperCase()),
+      ).length;
+      const pending = rows.filter(
+        (r) =>
+          r.erpItemCode &&
+          !r.cBatch &&
+          matched.includes(String(r.erpItemCode).trim().toUpperCase()),
+      ).length;
+      if (!dryRun && pending > 0) {
+        for (let i = 0; i < matched.length; i += C_BATCH_CHUNK) {
+          await prisma.gMDUpdateItem.updateMany({
+            where: { erpItemCode: { in: matched.slice(i, i + C_BATCH_CHUNK) } },
+            data: { cBatch: C_BATCH_VALUE },
+          });
+        }
+      }
+      push(
+        {
+          table: "GMDUpdateItem",
+          fields: "erpItemCode",
+          distinctCodes: present.size,
+          matchedCodes: matched.length,
+          rowsToUpdate: pending,
+        },
+        total,
+      );
+    }
+
+    // ---- ContractReview.itemCode ----
+    {
+      const rows = await prisma.contractReview.findMany({
+        select: { itemCode: true, cBatch: true },
+      });
+      const { present, matched } = matchedFor(rows.map((r) => r.itemCode));
+      const set = new Set(matched);
+      const total = rows.filter(
+        (r) => r.itemCode && set.has(String(r.itemCode).trim().toUpperCase()),
+      ).length;
+      const pending = rows.filter(
+        (r) => r.itemCode && !r.cBatch && set.has(String(r.itemCode).trim().toUpperCase()),
+      ).length;
+      if (!dryRun && pending > 0) {
+        for (let i = 0; i < matched.length; i += C_BATCH_CHUNK) {
+          await prisma.contractReview.updateMany({
+            where: { itemCode: { in: matched.slice(i, i + C_BATCH_CHUNK) } },
+            data: { cBatch: C_BATCH_VALUE },
+          });
+        }
+      }
+      push(
+        {
+          table: "ContractReview",
+          fields: "itemCode",
+          distinctCodes: present.size,
+          matchedCodes: matched.length,
+          rowsToUpdate: pending,
+        },
+        total,
+      );
+    }
+
+    // ---- SupplyHistoryItem.erpItemCode ----
+    {
+      const rows = await prisma.supplyHistoryItem.findMany({
+        select: { erpItemCode: true, cBatch: true },
+      });
+      const { present, matched } = matchedFor(rows.map((r) => r.erpItemCode));
+      const set = new Set(matched);
+      const total = rows.filter(
+        (r) => r.erpItemCode && set.has(String(r.erpItemCode).trim().toUpperCase()),
+      ).length;
+      const pending = rows.filter(
+        (r) => r.erpItemCode && !r.cBatch && set.has(String(r.erpItemCode).trim().toUpperCase()),
+      ).length;
+      if (!dryRun && pending > 0) {
+        for (let i = 0; i < matched.length; i += C_BATCH_CHUNK) {
+          await prisma.supplyHistoryItem.updateMany({
+            where: { erpItemCode: { in: matched.slice(i, i + C_BATCH_CHUNK) } },
+            data: { cBatch: C_BATCH_VALUE },
+          });
+        }
+      }
+      push(
+        {
+          table: "SupplyHistoryItem",
+          fields: "erpItemCode",
+          distinctCodes: present.size,
+          matchedCodes: matched.length,
+          rowsToUpdate: pending,
+        },
+        total,
+      );
+    }
+
+    // ---- EnquiryItem: erpItemCode OR rmItemCode marks the row ----
+    {
+      const rows = await prisma.enquiryItem.findMany({
+        select: { erpItemCode: true, rmItemCode: true, cBatch: true },
+      });
+      const { present, matched } = matchedFor([
+        ...rows.map((r) => r.erpItemCode),
+        ...rows.map((r) => r.rmItemCode),
+      ]);
+      const set = new Set(matched);
+      const isC = (r: { erpItemCode: string | null; rmItemCode: string | null }) =>
+        (r.erpItemCode && set.has(String(r.erpItemCode).trim().toUpperCase())) ||
+        (r.rmItemCode && set.has(String(r.rmItemCode).trim().toUpperCase()));
+      const total = rows.filter(isC).length;
+      const pending = rows.filter((r) => !r.cBatch && isC(r)).length;
+      if (!dryRun && pending > 0) {
+        for (let i = 0; i < matched.length; i += C_BATCH_CHUNK) {
+          const slice = matched.slice(i, i + C_BATCH_CHUNK);
+          await prisma.enquiryItem.updateMany({
+            where: {
+              OR: [{ erpItemCode: { in: slice } }, { rmItemCode: { in: slice } }],
+            },
+            data: { cBatch: C_BATCH_VALUE },
+          });
+        }
+      }
+      push(
+        {
+          table: "EnquiryItem",
+          fields: "erpItemCode + rmItemCode",
+          distinctCodes: present.size,
+          matchedCodes: matched.length,
+          rowsToUpdate: pending,
+        },
+        total,
+      );
+    }
+
+    return {
+      success: true,
+      dryRun,
+      tabTitle,
+      sheetCodes: statusByCode.size,
+      cCodes: cCodes.size,
+      perTable,
+    };
+  } catch (error: any) {
+    console.error("Error syncing cBatch from ITEM MASTER ERP:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to sync cBatch from the sheet.",
+    };
+  }
+}
 export async function syncContractReviewRmAvailAction() {
   "use server";
   try {

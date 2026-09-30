@@ -138,28 +138,33 @@ export function readItemMasterErp(): Promise<{
   tabTitle: string;
   /** keyed by trim().toUpperCase() ITEM_CODE -> ITEM_NAME */
   nameByCode: Map<string, string>;
+  /** keyed by trim().toUpperCase() ITEM_CODE -> ITEM_STATUS ("C" or "U") */
+  statusByCode: Map<string, string>;
   duplicateCodes: number;
 }> {
   return readSheetTabByGid(BOM_MAST_ERP_SPREADSHEET_ID, ITEM_MASTER_ERP_GID).then(
     ({ tabTitle, headers, rows }) => {
-      const [codeIdx, nameIdx] = requireColumns(
+      const [codeIdx, nameIdx, statusIdx] = requireColumns(
         headers,
-        ["ITEM_CODE", "ITEM_NAME"],
+        ["ITEM_CODE", "ITEM_NAME", "ITEM_STATUS"],
         tabTitle,
       );
       const nameByCode = new Map<string, string>();
+      const statusByCode = new Map<string, string>();
       let duplicateCodes = 0;
       for (const row of rows) {
         const itemCode = cell(row, codeIdx).toUpperCase();
+        if (!itemCode) continue;
         const itemName = cell(row, nameIdx);
-        if (!itemCode || !itemName) continue;
+        const status = cell(row, statusIdx).toUpperCase();
         if (nameByCode.has(itemCode)) {
           duplicateCodes++;
           continue; // first row wins, deterministically
         }
-        nameByCode.set(itemCode, itemName);
+        if (itemName) nameByCode.set(itemCode, itemName);
+        if (status) statusByCode.set(itemCode, status);
       }
-      return { tabTitle, nameByCode, duplicateCodes };
+      return { tabTitle, nameByCode, statusByCode, duplicateCodes };
     },
   );
 }
