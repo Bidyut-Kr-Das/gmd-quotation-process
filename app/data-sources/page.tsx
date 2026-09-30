@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import CBatchSyncButton from "@/components/dashboard/CBatchSyncButton";
 import {
   Table,
   TableHeader,
@@ -109,8 +110,9 @@ export default function DataSourcesPage() {
       {" "}
       <main className="flex min-h-0 flex-1 w-full flex-col overflow-hidden px-4 py-4">
         <Card className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 py-4">
-          <CardHeader className="shrink-0 rounded-t-xl bg-[#0a2540] px-5 py-4 text-white">
+          <CardHeader className="flex-row items-center justify-between gap-4 shrink-0 rounded-t-xl bg-[#0a2540] px-5 py-4 text-white">
             <CardTitle className="text-white text-lg">Data Sources</CardTitle>
+            <CBatchSyncButton />
 
             {/* <CardDescription className="mt-1 max-w-4xl text-sm leading-5 text-blue-100/80">
               Google Sheets, inner tabs/GIDs  used by each

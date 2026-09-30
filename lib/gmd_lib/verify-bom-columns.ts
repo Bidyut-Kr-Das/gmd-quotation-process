@@ -1,3 +1,6 @@
+export const C_BATCH_HEADER = "C BATCH";
+export const C_BATCH_VALUE = "C";
+
 export const VERIFY_BOM_HEADERS = [
   "BOM ID",
   "ITEM CODE",
@@ -24,7 +27,30 @@ export const VERIFY_BOM_HEADERS = [
   "CONSUMPTION-1",
   "CONSUMPTION 2",
   "CONSUMPTION 3",
+  // Appended last on purpose. GMDUpdateTable seeds column widths from the RAW
+  // header index, so inserting a column mid-array would shift every later
+  // column's width and drag-resize bookkeeping. This one is always hidden and
+  // only feeds the C chip inside the ITEM CODE cell.
+  C_BATCH_HEADER,
 ] as const;
+
+/**
+ * cBatch is a hidden data carrier: the column is always listed in a table's
+ * `hiddenColumns` and the batch is surfaced as a chip inside the item-code cell
+ * instead. Every page with an item-code column wires this up the same way, so
+ * the badge definition lives here rather than being copy-pasted per page.
+ */
+export function cBatchBadges(onColumn: string) {
+  return [
+    {
+      onColumn,
+      fromColumn: C_BATCH_HEADER,
+      value: C_BATCH_VALUE,
+      label: C_BATCH_VALUE,
+      title: "BOM MAST ERP - TO_DATE present",
+    },
+  ];
+}
 
 function normalizeHeader(h: string): string {
   return h.trim().toUpperCase().replace(/[\s_]+/g, " ").trim();
@@ -82,6 +108,7 @@ export function dbVerifyBomToRow(item: {
   bomIdType: string | null;
   bomItemQty: string | null;
   noUse: string | null;
+  cBatch: string | null;
   availableStock: string | null;
   cost: string | null;
   bomItemQtyCost: string | null;
@@ -128,12 +155,14 @@ export function dbVerifyBomToRow(item: {
     item.consumption1,
     item.consumption2,
     item.consumption3,
+    item.cBatch,
   ];
 }
 
 export const VERIFY_BOM_HEADER_TO_DB_FIELD: Record<string, string> = {
   "BOM ID": "bomId",
   "ITEM CODE": "itemCode",
+  "C BATCH": "cBatch",
   "RM ITEM CODE": "rmItemCode",
   "BOM ID TYPE": "bomIdType",
   "BOM ITEM QTY": "bomItemQty",

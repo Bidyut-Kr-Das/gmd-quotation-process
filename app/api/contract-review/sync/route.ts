@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { google } from "googleapis";
+import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "@/lib/googleAuth";
 import {
   buildContractsColumnMap,
@@ -59,6 +59,7 @@ const SKIP_FIELDS = new Set([
   "rmCodeForActuator",
   "diagramUrl",
   "diagramVerdict",
+  "cBatch",
 ]);
 
 export async function POST() {
@@ -70,7 +71,7 @@ export async function POST() {
     }
 
     const auth = getAuth();
-    const sheets = google.sheets({ version: "v4", auth });
+    const sheets = googleSheets({ version: "v4", auth });
 
     const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
     const tabs =

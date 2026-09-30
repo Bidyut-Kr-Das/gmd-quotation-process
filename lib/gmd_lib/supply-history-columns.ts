@@ -1,3 +1,5 @@
+import { C_BATCH_HEADER } from "./verify-bom-columns";
+
 export const SUPPLY_HISTORY_HEADERS = [
   "item name",
   "INVOICE NO",
@@ -42,6 +44,10 @@ export const SUPPLY_HISTORY_HEADERS = [
   "MOC",
   "Size",
   "ORDER LIST",
+  // Hidden data carrier. Never rendered: listed in the route's DISPLAY_HEADERS
+  // and the page's hiddenColumns, and only used to drive the "C" chip inside the
+  // ERP ITEM CODE cell.
+  C_BATCH_HEADER,
 ] as const;
 
 function normalizeHeader(h: string): string {
@@ -177,6 +183,7 @@ export function dbItemToRow(item: {
   derivedItemType: string | null;
   derivedMoc: string | null;
   derivedSize: string | null;
+  cBatch: string | null;
 }): unknown[] {
   return [
     item.itemName, item.invoiceNo, item.financialYear,
@@ -195,5 +202,6 @@ export function dbItemToRow(item: {
     item.partyMailAddress,
     item.derivedItemType, item.derivedMoc, item.derivedSize,
     item.orderList,
+    item.cBatch,
   ];
 }

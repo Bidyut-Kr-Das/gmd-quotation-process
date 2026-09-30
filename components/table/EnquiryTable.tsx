@@ -23,6 +23,7 @@ import { validateVaPercent } from "@/lib/vaValidation";
 import { parseAndValidateContractNumbers } from "@/lib/contractValidation";
 import { makeImageKey } from "@/lib/imageKey";
 import { RM_TYPE_OPTIONS } from "@/lib/gmd_lib/sheet-columns";
+import { C_BATCH_VALUE } from "@/lib/gmd_lib/verify-bom-columns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -4981,11 +4982,21 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                         />
                         </td>
 
-                        {/* Item Code (read-only) */}
+                        {/* Item Code (read-only) + C batch chip */}
                         <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
-                          <span className="block text-[10px] text-muted-foreground p-1 font-mono truncate" title={item.erpItemCode || ""}>
-                            {item.erpItemCode || "-"}
-                          </span>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="block text-[10px] text-muted-foreground p-1 font-mono truncate" title={item.erpItemCode || ""}>
+                              {item.erpItemCode || "-"}
+                            </span>
+                            {item.cBatch === C_BATCH_VALUE && (
+                              <span
+                                title="BOM MAST ERP - TO_DATE present"
+                                className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold"
+                              >
+                                {C_BATCH_VALUE}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* BOM ID (dropdown when multiple, else read-only) */}

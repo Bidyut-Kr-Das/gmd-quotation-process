@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { google } from "googleapis";
+import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "../lib/googleAuth";
 
 const SPREADSHEET_ID = "1sf-uCfCSAUovNAWJSiSyojTPFvUSzmp23keF0ymkjIE";
@@ -7,7 +7,7 @@ const TAB_TITLE = "CONTRACTS copy";
 
 async function main() {
   const auth = getOAuthClient();
-  const sheets = google.sheets({ version: "v4", auth });
+  const sheets = googleSheets({ version: "v4", auth });
 
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
   const titles = (meta.data.sheets ?? [])

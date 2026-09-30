@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Database, Loader2 } from "lucide-react";
+import { Database, Loader2, Tags } from "lucide-react";
 import { RefreshCw } from "lucide-react";
 import GMDUpdateHeader from "../../components/gmd_dashboard/GMDUpdateHeader";
 import GMDUpdateTable from "../../components/gmd_dashboard/GMDUpdateTable";
@@ -11,10 +11,57 @@ import { toast } from "sonner";
 import {
   updateVerifyBomFieldBatchAction,
   syncNullVerifyBomStockAction,
+  syncBomMastItemNamesAction,
+  checkBomMastSyncAction,
   deriveVerifyBomItemNameBatchAction,
   recomputeVerifyBomBomQtyCostBatchAction,
 } from "@/app/actions";
-import { VERIFY_BOM_HEADER_TO_DB_FIELD } from "@/lib/gmd_lib/verify-bom-columns";
+import { VERIFY_BOM_HEADER_TO_DB_FIELD, cBatchBadges } from "@/lib/gmd_lib/verify-bom-columns";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+type ItemNamePlan = {
+  phase1: {
+    tabTitle: string;
+    sheetRows: number;
+    skippedNoKey: number;
+    withToDate: number;
+    withoutToDate: number;
+    willMark: number;
+    willAddBatch: number;
+    alreadyCorrect: number;
+    willCreate: number;
+    staleNoUse: number;
+    untouchedBlank: number;
+    use: number;
+    samples: {
+      willAddBatch: string[];
+      willCreate: string[];
+      staleNoUse: string[];
+      staleBatch: string[];
+    };
+  };
+  phase2: {
+    tabTitle: string;
+    sheetCodes: number;
+    duplicateCodes: number;
+    scanned: number;
+    itemNameChanged: number;
+    rmItemNameChanged: number;
+    unchanged: number;
+    unmatched: number;
+    samples: string[];
+  };
+};
+
+const ITEM_CODE_BADGES = cBatchBadges("ITEM CODE");
 
 const TABLE2_EDITABLE_COLUMNS = [
   "BOM ID TYPE",
@@ -49,6 +96,9 @@ export default function BomPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncingMeta, setSyncingMeta] = useState(false);
   const [syncingStock, setSyncingStock] = useState(false);
+  const [syncingItemName, setSyncingItemName] = useState(false);
+  const [confirmItemName, setConfirmItemName] = useState(false);
+  const [itemNamePlan, setItemNamePlan] = useState<ItemNamePlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [selectedNoIndex, setSelectedNoIndex] = useState<number | null>(null);
@@ -80,22 +130,90 @@ export default function BomPage() {
         toast.error(res?.error || "Failed to sync available stock", { id: toastId });
         return;
       }
-      if (res.updatedCount === 0) {
+      const {
+        updatedCount = 0,
+        totalNullCount = 0,
+        matchedByRmCode = 0,
+        matchedByItemCode = 0,
+        unmatched = 0,
+        unmatchedSamples = [] as string[],
+      } = res;
+
+      if (unmatchedSamples.length > 0) {
+        console.warn(
+          `[Sync Missing Stock] ${unmatched} row(s) had no SUM OF PHYSICAL STOCK entry (first ${unmatchedSamples.length}):\n` +
+            unmatchedSamples.map((s) => `  ${s}`).join("\n"),
+        );
+      }
+
+      if (updatedCount === 0) {
         toast.info(
-          `Checked ${res.totalNullCount} null items: no matching stock found in Google Sheets.`,
+          `Checked ${totalNullCount} null items: no matching stock found in stock-phys.`,
           { id: toastId },
         );
       } else {
         toast.success(
-          `Successfully populated available stock for ${res.updatedCount} items!`,
+          `Populated ${updatedCount} item(s) — rmItemCode: ${matchedByRmCode}, itemCode: ${matchedByItemCode}, still unmatched: ${unmatched}`,
           { id: toastId },
         );
-        await fetchData();
       }
+      await fetchData();
     } catch (err: any) {
       toast.error(err?.message || "Failed to sync available stock", { id: toastId });
     } finally {
       setSyncingStock(false);
+    }
+  }, [fetchData]);
+
+  const handleCheckItemNames = useCallback(async () => {
+    setSyncingItemName(true);
+    const toastId = toast.loading("Checking BOM MAST ERP + ITEM MASTER ERP...");
+    try {
+      const res = await checkBomMastSyncAction();
+      if (!res || !res.success || !res.plan) {
+        toast.error(res?.error || "Failed to check sheets", { id: toastId });
+        return;
+      }
+      setItemNamePlan(res.plan);
+      setConfirmItemName(true);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to check sheets", { id: toastId });
+    } finally {
+      setSyncingItemName(false);
+      toast.dismiss(toastId);
+    }
+  }, []);
+
+  const handleSyncItemNames = useCallback(async () => {
+    setConfirmItemName(false);
+    setSyncingItemName(true);
+    const toastId = toast.loading(
+      "Marking TO_DATE rows NO USE + C, then applying ITEM MASTER ERP names...",
+    );
+    try {
+      const res = await syncBomMastItemNamesAction();
+      if (!res || !res.success || !res.applied) {
+        toast.error(res?.error || "Failed to sync item names", { id: toastId });
+        return;
+      }
+      const a = res.applied;
+      if (a.unmatchedSamples.length) {
+        console.warn(
+          `[ItemName (C)] ${a.unmatchedSamples.length} code(s) not found in ITEM MASTER ERP:\n` +
+            a.unmatchedSamples.map((c) => `  ${c}`).join("\n"),
+        );
+      }
+      toast.success(
+        `BOM MAST: ${a.marked} row(s) set NO USE + C, ${a.created} created. ` +
+          `ITEM MASTER: ${a.itemNameChanged} item name(s) + ${a.rmItemNameChanged} RM item name(s) updated.`,
+        { id: toastId },
+      );
+      setItemNamePlan(null);
+      await fetchData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to sync item names", { id: toastId });
+    } finally {
+      setSyncingItemName(false);
     }
   }, [fetchData]);
 
@@ -388,6 +506,21 @@ export default function BomPage() {
               )}
               {syncingStock ? "Syncing Stock..." : "Sync Missing Stock"}
             </button>
+
+            <button
+              type="button"
+              onClick={handleCheckItemNames}
+              disabled={syncingItemName || loading}
+              className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/30 rounded px-3 py-1.5 text-[11px] font-semibold text-amber-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              title="Mark TO_DATE rows from BOM MAST ERP as NO USE + batch C, then fill item names from ITEM MASTER ERP"
+            >
+              {syncingItemName ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Tags size={12} />
+              )}
+              {syncingItemName ? "Syncing..." : "ItemName (C)"}
+            </button>
             </>
           }
         />
@@ -410,7 +543,8 @@ export default function BomPage() {
             editableColumns={["BOM ID TYPE"]}
             fixedDropdownOptions={{ "BOM ID TYPE": ["2:1", "3:1", "DIRECT M2M", "CREATE BOM"] }}
             onCellUpdate={handleCellUpdate}
-            hiddenColumns={["ITEM SCHEDULE NAME"]}
+            hiddenColumns={["ITEM SCHEDULE NAME", "C BATCH"]}
+            cellBadges={ITEM_CODE_BADGES}
           />
           <GMDUpdateTable
             headers={headers}
@@ -427,9 +561,137 @@ export default function BomPage() {
             editableColumns={TABLE2_EDITABLE_COLUMNS}
             fixedDropdownOptions={{ "BOM ID TYPE": ["2:1", "3:1", "DIRECT M2M", "CREATE BOM"] }}
             onCellUpdate={handleCellUpdate}
-            hiddenColumns={["ITEM SCHEDULE NAME"]}
+            hiddenColumns={["ITEM SCHEDULE NAME", "C BATCH"]}
+            cellBadges={ITEM_CODE_BADGES}
           />
         </div>
+
+        <Dialog open={confirmItemName} onOpenChange={setConfirmItemName}>
+          <DialogContent className="sm:max-w-130 max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Run ItemName (C) sync?</DialogTitle>
+              <DialogDescription>
+                Reviewing every row before anything is written.
+              </DialogDescription>
+            </DialogHeader>
+
+            {itemNamePlan && (
+              <div className="grid gap-3 text-xs">
+                <div className="grid gap-1.5">
+                  <div className="font-semibold">
+                    Phase 1 — {itemNamePlan.phase1.tabTitle}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {itemNamePlan.phase1.sheetRows} sheet row(s),{" "}
+                    {itemNamePlan.phase1.withToDate} with a TO_DATE,{" "}
+                    {itemNamePlan.phase1.withoutToDate} without.
+                  </div>
+                  <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 border border-border rounded px-2.5 py-2">
+                    <dt>Will be marked NO USE + C</dt>
+                    <dd className="text-right font-mono">
+                      {itemNamePlan.phase1.willMark}
+                    </dd>
+                    <dt>Already NO USE, will gain C</dt>
+                    <dd className="text-right font-mono text-rose-600 font-semibold">
+                      {itemNamePlan.phase1.willAddBatch}
+                    </dd>
+                    <dt>Already NO USE + C</dt>
+                    <dd className="text-right font-mono">
+                      {itemNamePlan.phase1.alreadyCorrect}
+                    </dd>
+                    <dt>New rows to create</dt>
+                    <dd className="text-right font-mono">
+                      {itemNamePlan.phase1.willCreate}
+                    </dd>
+                    <dt className="text-muted-foreground">
+                      NO USE but no TO_DATE (left unchanged)
+                    </dt>
+                    <dd className="text-right font-mono text-muted-foreground">
+                      {itemNamePlan.phase1.staleNoUse}
+                    </dd>
+                    <dt className="text-muted-foreground">Unchanged (blank)</dt>
+                    <dd className="text-right font-mono text-muted-foreground">
+                      {itemNamePlan.phase1.untouchedBlank}
+                    </dd>
+                    <dt className="text-muted-foreground">Unchanged (USE)</dt>
+                    <dd className="text-right font-mono text-muted-foreground">
+                      {itemNamePlan.phase1.use}
+                    </dd>
+                    {itemNamePlan.phase1.samples.staleBatch.length > 0 && (
+                      <>
+                        <dt className="text-amber-600">
+                          C without NO USE (invariant break)
+                        </dt>
+                        <dd className="text-right font-mono text-amber-600 font-semibold">
+                          {itemNamePlan.phase1.samples.staleBatch.length}
+                        </dd>
+                      </>
+                    )}
+                  </dl>
+                </div>
+
+                <div className="grid gap-1.5">
+                  <div className="font-semibold">
+                    Phase 2 — {itemNamePlan.phase2.tabTitle}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {itemNamePlan.phase2.sheetCodes.toLocaleString("en-IN")} code(s)
+                    in sheet, {itemNamePlan.phase2.scanned.toLocaleString("en-IN")}{" "}
+                    row(s) scanned.
+                  </div>
+                  <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 border border-border rounded px-2.5 py-2">
+                    <dt>itemName will change</dt>
+                    <dd className="text-right font-mono">
+                      {itemNamePlan.phase2.itemNameChanged}
+                    </dd>
+                    <dt>rmItemName will change</dt>
+                    <dd className="text-right font-mono">
+                      {itemNamePlan.phase2.rmItemNameChanged}
+                    </dd>
+                    <dt className="text-muted-foreground">
+                      Already identical
+                    </dt>
+                    <dd className="text-right font-mono text-muted-foreground">
+                      {itemNamePlan.phase2.unchanged}
+                    </dd>
+                    <dt className="text-muted-foreground">Code not in sheet</dt>
+                    <dd className="text-right font-mono text-muted-foreground">
+                      {itemNamePlan.phase2.unmatched}
+                    </dd>
+                  </dl>
+                </div>
+
+                <p className="text-[11px] text-amber-600 font-semibold">
+                  The NO USE mark is one-way — nothing in this app can set it back
+                  to USE.
+                </p>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmItemName(false)}
+                disabled={syncingItemName}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSyncItemNames}
+                disabled={syncingItemName}
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+              >
+                {syncingItemName ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Running...
+                  </>
+                ) : (
+                  "Run Sync"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </main>
   );

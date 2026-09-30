@@ -1,8 +1,8 @@
-import { google } from "googleapis";
+import { OAuth2Client, type Credentials } from "google-auth-library";
 import fs from "fs";
 import path from "path";
 
-let oauth2ClientInstance: InstanceType<typeof google.auth.OAuth2> | null = null;
+let oauth2ClientInstance: InstanceType<typeof OAuth2Client> | null = null;
 
 /**
  * Initializes and returns the singleton OAuth2 client.
@@ -34,7 +34,7 @@ export function getOAuthClient() {
   const { client_id, client_secret, redirect_uris } = clientInfo;
   const redirectUri = redirect_uris && redirect_uris[0] ? redirect_uris[0] : "http://localhost";
 
-  const oauth2Client = new google.auth.OAuth2(
+  const oauth2Client = new OAuth2Client(
     client_id,
     client_secret,
     redirectUri
@@ -47,7 +47,7 @@ export function getOAuthClient() {
     scope: tokenData.scopes ? tokenData.scopes.join(" ") : undefined,
   });
 
-  oauth2Client.on("tokens", (tokens) => {
+  oauth2Client.on("tokens", (tokens: Credentials) => {
     try {
       const currentTokenData = JSON.parse(fs.readFileSync(tokenPath, "utf8"));
       const updatedTokenData = {

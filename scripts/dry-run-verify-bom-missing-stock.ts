@@ -53,8 +53,8 @@ export async function computeMissingVerifyBomStock(): Promise<{
     const currentStock = (row.availableStock ?? "").trim();
     if (currentStock !== "") continue;
 
-    const rmCode = (row.rmItemCode ?? "").trim();
-    const itemCode = (row.itemCode ?? "").trim();
+    const rmCode = (row.rmItemCode ?? "").trim().toUpperCase();
+    const itemCode = (row.itemCode ?? "").trim().toUpperCase();
 
     let foundStock: string | null = null;
     let matchedCode = "";
@@ -70,7 +70,8 @@ export async function computeMissingVerifyBomStock(): Promise<{
       matchedCode = itemCode;
     }
 
-    if (foundStock !== null && foundStock !== "") {
+    // A sheet value of "0" is a real count; only blank/missing counts as no match.
+    if (foundStock !== null && foundStock.trim() !== "") {
       matches.push({
         id: row.id,
         bomId: row.bomId,

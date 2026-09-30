@@ -8,6 +8,19 @@ export type VerifyBomCandidate = {
   bomItemQty: string | null;
 };
 
+/**
+ * A stored value counts as present only when it is non-null and not blank.
+ *
+ * Both the recompute (which writes VerifyBom) and GET /api/bom (which renders
+ * the grid) resolve itemName / rmItemName with this, so the value that is
+ * persisted and the value that is displayed can never disagree. A blank must
+ * lose to a derived value, otherwise an empty cell would freeze a good name.
+ */
+export function present(v: string | null | undefined): string | undefined {
+  if (v === null || v === undefined) return undefined;
+  return v.trim() ? v : undefined;
+}
+
 // Simple TTL cache for distinct bomIds per itemCode
 let cache: Map<string, string[]> = new Map();
 let cacheAt = 0;
@@ -268,11 +281,11 @@ export async function recomputeVerifyBomValues(): Promise<{
     const bId = (r.bomId ?? "").trim().toUpperCase();
     const costVal = (r.cost ?? "").trim();
 
-    if (!stockMap.has(r.erpItemCode)) {
-      stockMap.set(r.erpItemCode, r.availableStock ?? "");
+    if (!stockMap.has(code)) {
+      stockMap.set(code, r.availableStock ?? "");
     }
-    if (!rmNameMap.has(r.erpItemCode)) {
-      rmNameMap.set(r.erpItemCode, r.itemNameAuto ?? null);
+    if (!rmNameMap.has(code)) {
+      rmNameMap.set(code, r.itemNameAuto ?? null);
     }
     if (costVal && !erpCodeCostMap.has(code)) {
       erpCodeCostMap.set(code, costVal);
@@ -305,14 +318,23 @@ export async function recomputeVerifyBomValues(): Promise<{
 
   const updates = items
     .map((item) => {
-      const stock = item.rmItemCode
-        ? (stockMap.get(item.rmItemCode) ?? "")
-        : null;
-      const rmItemName = item.rmItemCode
-        ? (rmNameMap.get(item.rmItemCode) ?? null)
+      const rmKey = (item.rmItemCode ?? "").trim().toUpperCase();
+      const liveStock = rmKey ? stockMap.get(rmKey) : undefined;
+      // Fall back to the value already stored on VerifyBom (e.g. written by
+      // syncNullVerifyBomStockAction) so a known stock is never clobbered with "".
+      const stock =
+        (liveStock !== undefined && liveStock !== "" ? liveStock : null) ??
+        item.availableStock ??
+        "";
+      // A value already on the row wins. The derived sources
+      // (ITEM MASTER ERP via syncBomMastItemNamesAction, else ContractReview /
+      // GMDUpdateItem) only fill a gap, so a name is never silently replaced by
+      // a different one on every page load.
+      const rmItemName = rmKey
+        ? (present(item.rmItemName) ?? rmNameMap.get(rmKey) ?? null)
         : null;
       const itemName = item.itemCode
-        ? (itemNameMap.get(item.itemCode) ?? item.itemName)
+        ? (present(item.itemName) ?? itemNameMap.get(item.itemCode) ?? null)
         : null;
       const cost = costMap.get(item.id) ?? item.cost ?? null;
       return {

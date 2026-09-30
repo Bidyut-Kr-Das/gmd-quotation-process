@@ -136,6 +136,31 @@ export const DATA_SOURCES: DataSource[] = [
     ],
   },
   {
+    page: "Data Sources",
+    route: "/data-sources",
+    dashboardName: "Data Sources - C Batch sync",
+    sheetName: "BOM MAST ERP",
+    purpose:
+      "ITEM MASTER ERP (ITEM_CODE + ITEM_STATUS). The 'Sync C Batch' button marks cBatch='C' on every row whose code has ITEM_STATUS='C'. Set-only, never clears, and does not touch /bom (which uses the TO_DATE signal).",
+    sheetId: "1W3IUErIV2RXz2ZDS2ZLiVbvroOQlxDgk7JpThDxO544",
+    tabs: [
+      {
+        name: "ITEM MASTER ERP",
+        gid: "253020709",
+        headerRow: 1,
+        note: "ITEM_CODE -> ITEM_STATUS ('C' = 4279 of 22252 codes)",
+        file: "lib/gmd_lib/bomMastErp.ts:readItemMasterErp",
+      },
+      {
+        name: "BOM MAST ERP",
+        gid: "1180547059",
+        headerRow: 1,
+        note: "separate TO_DATE -> NO USE + batch C flow; drives the /bom page only",
+        file: "app/actions.ts:syncBomMastItemNamesAction",
+      },
+    ],
+  },
+  {
     page: "Indent Checking",
     route: "/indent_listing",
     dashboardName: "Indent Checking Dashboard",

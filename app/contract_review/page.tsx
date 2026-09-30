@@ -33,6 +33,7 @@ import {
   CONTRACT_REVIEW_COLUMN_GROUPS,
   CONTRACT_REVIEW_COLUMN_WIDTHS,
 } from "@/lib/gmd_lib/contract-review-columns";
+import { cBatchBadges } from "@/lib/gmd_lib/verify-bom-columns";
 import type { ContractReviewImage } from "@/lib/gmd_lib/contract-review-image-lookup";
 import {
   BOM_ID_COLUMN,
@@ -3407,6 +3408,7 @@ tileSize,
                 onCellUpdate={handleCellUpdate}
                 columnGroups={CONTRACT_REVIEW_COLUMN_GROUPS}
                 defaultColumnWidths={CONTRACT_REVIEW_COLUMN_WIDTHS}
+                cellBadges={cBatchBadges("ITEM_CODE")}
                 wrapCells
                 attachmentColumn={UPLOAD_DIAGRAM_COLUMN}
                 attachmentAccept=".pdf,application/pdf"
@@ -3452,6 +3454,7 @@ tileSize,
                 hiddenColumns={[
                   "VA %",
                   "CV",
+                  "C BATCH",
                   "COST FROM QUOTATION",
                   "FREE STOCK",
                   "FINAL REQ",

@@ -43,6 +43,8 @@ export interface EnquiryItemData {
   availableStock?: string | null;
   stockAgainstContract?: string | null;
   importedInhouse?: string | null;
+  /** Hidden carrier for the "C" chip beside the item code. Never a column. */
+  cBatch?: string | null;
 }
 
 export interface AttachmentData {

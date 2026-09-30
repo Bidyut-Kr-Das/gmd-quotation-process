@@ -22,7 +22,7 @@
  *         npm run cr:contract-dump:apply    (writes)
  */
 import "dotenv/config";
-import { google } from "googleapis";
+import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "../lib/googleAuth";
 import { prisma } from "../lib/prisma";
 import type { Prisma } from "../app/generated/prisma";
@@ -200,7 +200,7 @@ async function fetchSheet(): Promise<{
   rows: unknown[][];
 }> {
   const auth = getOAuthClient();
-  const sheets = google.sheets({ version: "v4", auth });
+  const sheets = googleSheets({ version: "v4", auth });
 
   let title = TAB_TITLE_FALLBACK;
   try {
