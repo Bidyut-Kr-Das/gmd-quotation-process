@@ -2077,13 +2077,29 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
       toast.info("No items with ERP item codes found on this page.")
       return
     }
-    if (!confirm(`Fetch Contract Review rates for ${itemsWithCode.length} item(s) with ERP item codes?`)) return
+    if (
+      !confirm(
+        `Fetch Contract Review rates for ${itemsWithCode.length} item(s) with ERP item codes?\n\n` +
+          `Any BLANK Cost Ref Code will also be filled from the Contract Review cost code ref. ` +
+          `Items that already have a Cost Ref Code are left untouched, and a cost code ref ` +
+          `that matches more than one RM code is skipped.`,
+      )
+    )
+      return
 
     setCrRateStatus("running")
     const toastId = toast.loading(`Fetching Contract Review rates for ${itemsWithCode.length} item(s)...`)
     try {
       const result = await dispatch(fetchContractReviewRates(itemsWithCode.map((i) => i.id))).unwrap()
-      toast.success(`Contract Review rates updated for ${result.updated} item(s).`, { id: toastId })
+      const costRefParts: string[] = []
+      if (result.costRefFilled) costRefParts.push(`${result.costRefFilled} cost code ref filled`)
+      if (result.costRefMulti) costRefParts.push(`${result.costRefMulti} multi-code skipped`)
+      if (result.costRefNoMatch) costRefParts.push(`${result.costRefNoMatch} no contract row`)
+      const costRefDetail = costRefParts.length > 0 ? ` | ${costRefParts.join(", ")}` : ""
+      toast.success(
+        `Contract Review rates updated for ${result.updated} item(s)${costRefDetail}`,
+        { id: toastId },
+      )
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to fetch CR rates."
       toast.error(message, { id: toastId })

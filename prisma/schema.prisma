@@ -60,6 +60,8 @@ model Enquiry {
   apm                 String?
   offerPdfGeneratedAt DateTime?
   offerPdfGeneratedBy String?
+  emailAddress        String?
+  contactNo           String?
 
   attachments Attachment[]
   items       EnquiryItem[]
@@ -361,6 +363,7 @@ model ContractReview {
   inspection                       String?
   offerPendingDone       String?
   remarks                          String?
+  costCodeRef                        String?
   offerNumber                      String[] @default([])
   inspectionNumber                 String[] @default([])
   diDate                           String[] @default([])

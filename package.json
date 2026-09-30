@@ -40,7 +40,9 @@
     "delivery:lookup:sync": "tsx scripts/sync-delivery-schedule-lookup.ts",
     "delivery:lookup:sync:apply": "tsx scripts/sync-delivery-schedule-lookup.ts --apply",
     "closure:lookup:sync": "tsx scripts/sync-closure-status-lookup.ts",
-    "closure:lookup:sync:apply": "tsx scripts/sync-closure-status-lookup.ts --apply"
+    "closure:lookup:sync:apply": "tsx scripts/sync-closure-status-lookup.ts --apply",
+    "itemcode:refresh": "tsx scripts/refresh-item-codes.ts",
+    "itemcode:refresh:apply": "tsx scripts/refresh-item-codes.ts --apply"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",

@@ -50,6 +50,10 @@ const PRESERVE_UI_FIELDS = new Set([
 ]);
 
 // Derived / UI-managed fields: never written by sync (create or update).
+// `costCodeRef` is derived too but is absent from CONTRACTS_SHEET_COLUMNS, so
+// mapContractReviewRow never emits it and the update loop below cannot reach it
+// — it is published by recomputeIndentListingVersionsAction from the Indent
+// Listing RM codes, and must survive a sheet sync untouched.
 const SKIP_FIELDS = new Set([
   "itemType",
   "rmCodeForActuator",

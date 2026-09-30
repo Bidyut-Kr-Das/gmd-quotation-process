@@ -297,19 +297,34 @@ export default function IndentListingTable({
               {COLUMNS.map((col, idx) => (
                 <th
                   key={col.key}
+                  aria-sort={
+                    sortIdx === idx
+                      ? sortAsc
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
                   className="relative py-2.5 px-3 sticky top-0 z-30 bg-muted text-[10px] font-bold tracking-wider text-muted-foreground uppercase border-r border-b border-border last:border-r-0"
                 >
-                  <div className="flex items-center justify-between gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleSort(idx)}
-                      className="flex items-center gap-1 cursor-pointer hover:text-foreground font-bold uppercase tracking-wider"
-                    >
-                      <span>{col.label}</span>
-                      {sortArrow(idx)}
-                    </button>
+                  {/* Full-cell sort target. It sits beneath the label and the
+                      filter so both keep their own clicks, and stays a real
+                      <button> so keyboard and screen reader users can still
+                      reach it — unlike an onClick on the <th> itself. */}
+                  <button
+                    type="button"
+                    onClick={() => handleSort(idx)}
+                    aria-label={`Sort by ${col.label}`}
+                    className="absolute inset-0 z-0 cursor-pointer transition-colors hover:bg-muted/60"
+                  />
+
+                  <div className="relative z-10 flex items-center justify-between gap-1 pointer-events-none">
+                    <span className="font-bold uppercase tracking-wider">
+                      {col.label}
+                    </span>
+                    {sortArrow(idx)}
                   </div>
-                  <div className="relative mt-1.5 normal-case font-normal text-left text-foreground">
+
+                  <div className="relative z-20 mt-1.5 normal-case font-normal text-left text-foreground">
                     <MultiSelectFilter
                       label={col.label}
                       allLabel={`${col.label}: All`}
@@ -325,7 +340,7 @@ export default function IndentListingTable({
                   </div>
                   <div
                     onMouseDown={(e) => handleMouseDown(idx, e)}
-                    className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-20 group"
+                    className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-30 group"
                     style={{ marginRight: "-3px" }}
                   >
                     <div className="absolute top-0 left-[-4px] w-[14px] h-full" />

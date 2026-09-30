@@ -592,6 +592,13 @@ export interface ColumnGroupChild {
   header: string;
   /** Short caption shown next to the field inside the collapsed cell. */
   label?: string;
+  /**
+   * Render as a bare wrapped line instead of a captioned, bordered box: no
+   * `label` caption and no border/padding chrome. The header still shows up as a
+   * tooltip. Used where the parent group caption already names the two fields
+   * and repeating them per row is noise.
+   */
+  plain?: boolean;
 }
 
 export interface ColumnGroup {
@@ -2576,6 +2583,30 @@ castingRateInputs,
                         {group.children.map((child) => {
                           const childIdx = headers.indexOf(child.header);
                           if (childIdx === -1) return null;
+                          const childContent = renderCellContent(
+                            child.header,
+                            childIdx,
+                            row,
+                            id,
+                            idx,
+                            false,
+                          );
+                          if (child.plain) {
+                            // Bare line: no caption, no border box. The parent
+                            // group caption already names the field, and the
+                            // header stays available as a tooltip. shrink-0 so
+                            // the line cannot be squashed by the capped scroll
+                            // box on the container.
+                            return (
+                              <div
+                                key={child.header}
+                                title={child.header}
+                                className="shrink-0 min-w-0 text-xs text-[#0a2540]"
+                              >
+                                {childContent}
+                              </div>
+                            );
+                          }
                           return (
                             <div
                               key={child.header}
@@ -2591,14 +2622,7 @@ castingRateInputs,
                                 {child.label ?? child.header}
                               </span>
                               <span className="flex-1 min-w-0 text-xs text-[#0a2540]">
-                                {renderCellContent(
-                                  child.header,
-                                  childIdx,
-                                  row,
-                                  id,
-                                  idx,
-                                  false,
-                                )}
+                                {childContent}
                               </span>
                             </div>
                           );
