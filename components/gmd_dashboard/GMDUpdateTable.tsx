@@ -762,6 +762,22 @@ interface GMDUpdateTableProps {
   editableColumns?: string[];
   hiddenFilters?: string[];
   hiddenColumns?: string[];
+  /**
+   * Renders a small chip inside another column's cell, driven by the value of
+   * a *hidden* column on the same row. Lets a flag travel in the row payload
+   * (so it can still be stored, filtered and synced) without occupying a
+   * visible column of its own.
+   *
+   * The driving column may be listed in `hiddenColumns` — that only removes it
+   * from the rendered columns, the value is still read from the row.
+   */
+  cellBadges?: {
+    onColumn: string;
+    fromColumn: string;
+    value: string;
+    label: string;
+    title?: string;
+  }[];
   groupByColumn?: string;
   mergeColumns?: string[];
   mergeTypeColumn?: string;
@@ -858,6 +874,28 @@ interface GMDUpdateTableProps {
   itemImagesByCode?: Record<string, ContractReviewImage[]>;
 }
 
+type CellBadge = NonNullable<GMDUpdateTableProps["cellBadges"]>[number];
+
+/**
+ * Resolves the badge for one cell, if any.
+ *
+ * The driving column is usually listed in `hiddenColumns`, which only removes
+ * it from the rendered columns - the value is still read from the row, so the
+ * flag travels in the payload without occupying a visible column.
+ */
+function badgeForCell(
+  cellBadges: GMDUpdateTableProps["cellBadges"],
+  headers: readonly string[],
+  header: string,
+  sourceRow: unknown[],
+): CellBadge | undefined {
+  return cellBadges?.find(
+    (b) =>
+      b.onColumn === header &&
+      String(sourceRow[headers.indexOf(b.fromColumn)] ?? "").trim() === b.value,
+  );
+}
+
 export default function GMDUpdateTable({
   headers,
   rows,
@@ -869,6 +907,7 @@ export default function GMDUpdateTable({
   editableColumns,
   hiddenFilters,
   hiddenColumns,
+  cellBadges,
   groupByColumn,
   mergeColumns,
   mergeTypeColumn,
@@ -1613,6 +1652,7 @@ castingRateInputs,
     id: string,
     idx: number,
     scrollable = true,
+    badgeOverride?: CellBadge,
   ): React.ReactNode => {
     const { display, isCellEditable, isAttachmentColumn } = cellMeta(
       header,
@@ -1902,6 +1942,28 @@ castingRateInputs,
         </span>
       );
     }
+
+    // Decorated AFTER the chain rather than as another else-if on purpose.
+    // As a branch it was shadowed by whichever widget branch matched first:
+    // imageButtonColumn wins for /contract_review's ITEM_CODE column, and
+    // isCellEditable wins for /raw_material's 2nd and 3rd tables (they pass
+    // `editable` with no `editableColumns`, which makes every column
+    // editable). Wrapping the finished cell keeps whatever the column
+    // rendered - image button, input, select, link - and adds the chip.
+    const badge = badgeOverride ?? badgeForCell(cellBadges, headers, header, row);
+    if (badge) {
+      cellContent = (
+        <span className="flex items-start gap-1.5 min-w-0">
+          <span className="min-w-0 flex-1">{cellContent}</span>
+          <span
+            title={badge.title}
+            className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold"
+          >
+            {badge.label}
+          </span>
+        </span>
+      );
+    }
     return cellContent;
   };
 
@@ -2180,7 +2242,7 @@ castingRateInputs,
                         className={`flex justify-between gap-1 ${wrapCells ? "items-start" : "items-center"}`}
                       >
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className={wrapCells ? "break-words" : "truncate"}>
+                          <span className={wrapCells ? "wrap-break-word" : "truncate"}>
                             {group.label}
                           </span>
                           {activeCount > 0 && (
@@ -2309,7 +2371,7 @@ castingRateInputs,
                       className={`flex justify-between gap-1.5 cursor-pointer ${wrapCells ? "items-start" : "items-center"}`}
                       onClick={() => handleSort(idx)}
                     >
-                      <span className={wrapCells ? "break-words" : "truncate"}>
+                      <span className={wrapCells ? "wrap-break-word" : "truncate"}>
                         {header}
                       </span>
                       {isSorted && (
@@ -2518,6 +2580,27 @@ castingRateInputs,
                       ? (mergedSpans.get(mergedKey) ?? undefined)
                       : undefined;
 
+                    // A merged cell renders once (rowSpan), so a per-row badge
+                    // check would only ever see the group's first row. Aggregate
+                    // instead: C if ANY row in the merge group is C. Unmerged
+                    // cells fall back to the per-row check in renderCellContent.
+                    let mergedBadge: CellBadge | undefined;
+                    if (isMergedCell && mergedSpan && mergedSpan > 1) {
+                      const end = Math.min(
+                        idx + mergedSpan,
+                        paginatedWithIds.length,
+                      );
+                      for (let k = idx; k < end; k++) {
+                        mergedBadge = badgeForCell(
+                          cellBadges,
+                          headers,
+                          header,
+                          paginatedWithIds[k].row,
+                        );
+                        if (mergedBadge) break;
+                      }
+                    }
+
                     const groupIsEditable = group
                       ? group.children.some((c) => {
                           const { isCellEditable: cEditable } = cellMeta(
@@ -2591,7 +2674,15 @@ castingRateInputs,
                         })}
                       </div>
                     ) : (
-                      renderCellContent(header, cellIdx, row, id, idx, true)
+                      renderCellContent(
+                        header,
+                        cellIdx,
+                        row,
+                        id,
+                        idx,
+                        true,
+                        mergedBadge,
+                      )
                     );
 
                     const frozenLeft = frozenOffsets[visIdx];

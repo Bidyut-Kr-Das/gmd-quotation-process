@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { CANONICAL_COLUMNS } from "@/lib/gmd_lib/sheet-columns";
 import { dbItemToRow } from "@/lib/gmd_lib/mapSheetRow";
 import { getBatchDistinctBomIds } from "@/lib/verifyBomLookup";
+import { C_BATCH_HEADER } from "@/lib/gmd_lib/verify-bom-columns";
 
 export async function GET() {
   try {
@@ -41,6 +42,7 @@ export async function GET() {
         transferred: true,
         vendorReference: true,
         attachmentUrl: true,
+        cBatch: true,
         syncedAt: true,
       },
     });
@@ -59,10 +61,10 @@ export async function GET() {
     }
 
     const syncedAt = items.length > 0 ? items[0].syncedAt : null;
-    const headers = [...CANONICAL_COLUMNS.slice(0, 2), "ITEM NAME (derived)", ...CANONICAL_COLUMNS.slice(2), "BOM ID", "Vendor Reference", "Attachment"];
+    const headers = [...CANONICAL_COLUMNS.slice(0, 2), "ITEM NAME (derived)", ...CANONICAL_COLUMNS.slice(2), "BOM ID", "Vendor Reference", "Attachment", C_BATCH_HEADER];
     const rows = items.map((i) => {
       const r = dbItemToRow(i);
-      return [...r.slice(0, 2), i.itemNameDerived, ...r.slice(2)];
+      return [...r.slice(0, 2), i.itemNameDerived, ...r.slice(2), i.cBatch];
     });
     const ids = items.map((item) => item.id);
     const transferredIds = items

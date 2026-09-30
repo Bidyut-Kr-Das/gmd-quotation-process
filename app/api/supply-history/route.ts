@@ -4,6 +4,7 @@ import {
   SUPPLY_HISTORY_HEADERS,
   dbItemToRow,
 } from "@/lib/gmd_lib/supply-history-columns";
+import { C_BATCH_HEADER } from "@/lib/gmd_lib/verify-bom-columns";
 
 const DISPLAY_HEADERS = <const>[
   "INVOICE NO",
@@ -46,6 +47,7 @@ const DISPLAY_HEADERS = <const>[
   "PBG AMOUNT",
   "Warranty Exp Date as Per Inv",
   "Party Mail Address",
+  C_BATCH_HEADER,
 ];
 
 const displayColumnMap = DISPLAY_HEADERS.map((h) =>

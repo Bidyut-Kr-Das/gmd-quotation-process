@@ -23,6 +23,7 @@ import { validateVaPercent } from "@/lib/vaValidation";
 import { parseAndValidateContractNumbers } from "@/lib/contractValidation";
 import { makeImageKey } from "@/lib/imageKey";
 import { RM_TYPE_OPTIONS } from "@/lib/gmd_lib/sheet-columns";
+import { C_BATCH_VALUE } from "@/lib/gmd_lib/verify-bom-columns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -294,6 +295,35 @@ function ItemImageCells({
         )}
       </td>
     </>
+  );
+}
+
+/* Item Code (read-only). An item whose ERP item master status is C is closed, so the
+   cell says so instead of showing the code; the real code stays in the title. Shared by
+   the enquiry row (first item) and the expanded sub-rows so both mark closed items. */
+function ItemCodeCell({ item }: { item?: EnquiryItemData }) {
+  if (!item) {
+    return (
+      <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
+        <span className="block text-[10px] text-muted-foreground p-1 font-mono">-</span>
+      </td>
+    );
+  }
+  return (
+    <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
+      {item.cBatch === C_BATCH_VALUE ? (
+        <span
+          title={`${item.erpItemCode || ""} - closed in ITEM MASTER ERP (ITEM_STATUS = C)`}
+          className="block text-[10px] font-semibold italic text-rose-700 dark:text-rose-400 p-1 truncate"
+        >
+          Deleted as Closed
+        </span>
+      ) : (
+        <span className="block text-[10px] text-muted-foreground p-1 font-mono truncate" title={item.erpItemCode || ""}>
+          {item.erpItemCode || "-"}
+        </span>
+      )}
+    </td>
   );
 }
 
@@ -4314,13 +4344,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     </td>
 
                     {/* 18. First Item Item Code (read-only) */}
-                    <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
-                      {firstItem ? (
-                        <span className="block text-[10px] text-muted-foreground p-1 font-mono truncate" title={firstItem.erpItemCode || ""}>
-                          {firstItem.erpItemCode || "-"}
-                        </span>
-                      ) : "-"}
-                    </td>
+                    <ItemCodeCell item={firstItem} />
 
                     {/* 18a. First Item BOM ID (dropdown when multiple, else read-only) */}
                     <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
@@ -5026,11 +5050,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                         </td>
 
                         {/* Item Code (read-only) */}
-                        <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
-                          <span className="block text-[10px] text-muted-foreground p-1 font-mono truncate" title={item.erpItemCode || ""}>
-                            {item.erpItemCode || "-"}
-                          </span>
-                        </td>
+                        <ItemCodeCell item={item} />
 
                         {/* BOM ID (dropdown when multiple, else read-only) */}
                         <td className="py-2 px-1 border-r border-b border-border last:border-r-0">

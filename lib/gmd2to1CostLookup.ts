@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { google } from "googleapis";
+import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "@/lib/googleAuth";
 import { recalculateItem, serializeItem } from "@/lib/costCalculator";
 
@@ -52,7 +52,7 @@ export async function getCached2to1BomRows(): Promise<Bom2to1SheetRow[]> {
  */
 export async function fetch2to1BomRows(): Promise<Bom2to1SheetRow[]> {
   const auth = getOAuthClient();
-  const sheets = google.sheets({ version: "v4", auth });
+  const sheets = googleSheets({ version: "v4", auth });
 
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_SPREADSHEET_ID });
   const tab = (meta.data.sheets ?? []).find(

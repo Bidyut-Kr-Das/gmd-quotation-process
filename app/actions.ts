@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { prisma } from "@/lib/prisma";
 import { uploadFileToDrive } from "@/lib/gdrive";
@@ -400,20 +400,20 @@ export async function updateEnquiryItemAction(formData: {
           (formData.vaPercent !== undefined && formData.vaPercent !== (item.vaPercent !== null && item.vaPercent !== undefined ? Number(item.vaPercent) : null)) ||
           (formData.quotedRate !== undefined && (formData.quotedRate || null) !== (item.quotedRate || null));
         if (frozenChanged) {
-          return { success: false, error: "Rate & cost columns are frozen after one-time PDF generation — revert APM to edit." };
+          return { success: false, error: "Rate & cost columns are frozen after one-time PDF generation â€” revert APM to edit." };
         }
       }
     }
     const fieldDiffs: string[] = [];
-    if (formData.itemName !== item.itemName) fieldDiffs.push(`itemName: "${item.itemName}" → "${formData.itemName}"`);
-    if (formData.itemType !== undefined && formData.itemType !== item.itemType) fieldDiffs.push(`itemType: "${item.itemType}" → "${formData.itemType}"`);
-    if (formData.moc !== undefined && formData.moc !== item.moc) fieldDiffs.push(`moc: "${item.moc}" → "${formData.moc}"`);
-    if (formData.size !== undefined && formData.size !== item.size) fieldDiffs.push(`size: "${item.size}" → "${formData.size}"`);
-    if (formData.operationType !== undefined && formData.operationType !== item.operationType) fieldDiffs.push(`opType: "${item.operationType}" → "${formData.operationType}"`);
-    if (formData.extension !== undefined && formData.extension !== item.extension) fieldDiffs.push(`extension: "${item.extension}" → "${formData.extension}"`);
-    if (formData.bypass !== undefined && formData.bypass !== item.bypass) fieldDiffs.push(`bypass: "${item.bypass}" → "${formData.bypass}"`);
-    if (formData.quantity !== undefined && formData.quantity !== Number(item.quantity)) fieldDiffs.push(`qty: "${item.quantity}" → "${formData.quantity}"`);
-    if (formData.cost !== undefined && formData.cost !== (item.cost ? Number(item.cost) : null)) fieldDiffs.push(`cost: "${item.cost}" → "${formData.cost}"`);
+    if (formData.itemName !== item.itemName) fieldDiffs.push(`itemName: "${item.itemName}" â†’ "${formData.itemName}"`);
+    if (formData.itemType !== undefined && formData.itemType !== item.itemType) fieldDiffs.push(`itemType: "${item.itemType}" â†’ "${formData.itemType}"`);
+    if (formData.moc !== undefined && formData.moc !== item.moc) fieldDiffs.push(`moc: "${item.moc}" â†’ "${formData.moc}"`);
+    if (formData.size !== undefined && formData.size !== item.size) fieldDiffs.push(`size: "${item.size}" â†’ "${formData.size}"`);
+    if (formData.operationType !== undefined && formData.operationType !== item.operationType) fieldDiffs.push(`opType: "${item.operationType}" â†’ "${formData.operationType}"`);
+    if (formData.extension !== undefined && formData.extension !== item.extension) fieldDiffs.push(`extension: "${item.extension}" â†’ "${formData.extension}"`);
+    if (formData.bypass !== undefined && formData.bypass !== item.bypass) fieldDiffs.push(`bypass: "${item.bypass}" â†’ "${formData.bypass}"`);
+    if (formData.quantity !== undefined && formData.quantity !== Number(item.quantity)) fieldDiffs.push(`qty: "${item.quantity}" â†’ "${formData.quantity}"`);
+    if (formData.cost !== undefined && formData.cost !== (item.cost ? Number(item.cost) : null)) fieldDiffs.push(`cost: "${item.cost}" â†’ "${formData.cost}"`);
     if (fieldDiffs.length > 0) fieldDiffs.forEach(d => console.log(`  ${d}`));
 
     const cleanDocket = formData.docketNumber.replace(/#/g, "").trim();
@@ -439,7 +439,7 @@ export async function updateEnquiryItemAction(formData: {
     let updatedTotalVal: string | null = null;
 
     if (formData.quotedRate !== undefined) {
-      // Reverse: QR explicitly provided — calculate VA% from QR/Cost
+      // Reverse: QR explicitly provided â€” calculate VA% from QR/Cost
       const qrRaw = formData.quotedRate;
       finalQuotedRate = qrRaw === "" ? null : qrRaw;
       if (finalQuotedRate !== null && updatedCost !== null && updatedCost > 0) {
@@ -450,7 +450,7 @@ export async function updateEnquiryItemAction(formData: {
         }
       }
     } else {
-      // Forward: QR not provided — calculate from Cost+VA% if both exist
+      // Forward: QR not provided â€” calculate from Cost+VA% if both exist
       if (updatedCost !== null && updatedCost > 0 && finalVa !== null) {
         const qr = updatedCost * (1 + (finalVa / 100));
         finalQuotedRate = roundUp(qr).toFixed(2);
@@ -1074,7 +1074,7 @@ export async function updateItemFieldAction(
           select: { apm: true, offerPdfGeneratedAt: true },
         });
         if (parent && isEnquiryFrozen(parent.apm, parent.offerPdfGeneratedAt)) {
-          return { success: false, error: "Rate & cost columns are frozen after one-time PDF generation — revert APM to edit." };
+          return { success: false, error: "Rate & cost columns are frozen after one-time PDF generation â€” revert APM to edit." };
         }
       }
     }
@@ -1114,7 +1114,7 @@ export async function updateItemFieldAction(
           where: { id: itemId },
           select: { itemName: true, itemType: true, moc: true, itemTypeSource: true, mocSource: true, size: true, pnRating: true, bypass: true },
         });
-        console.log(`[Server] itemName changed: "${currentItem?.itemName}" → "${parsedVal}"`);
+        console.log(`[Server] itemName changed: "${currentItem?.itemName}" â†’ "${parsedVal}"`);
         const resolved = await resolveItemCategory({
           itemName: parsedVal,
           sheetItemType: currentItem?.itemTypeSource === "sheet" ? currentItem.itemType : null,
@@ -1403,7 +1403,7 @@ async function maybeUpdateProductCostFromNewCode(itemId: string, newCode: string
         return;
       }
     }
-    // Zero or single but VerifyBom miss → fallback to sheet DIRECT_M2M BOM
+    // Zero or single but VerifyBom miss â†’ fallback to sheet DIRECT_M2M BOM
     // PRIORITY: Raw Materials wins; SupplyHistory fallback
     // Non-override: only fill missing productCost/availableStock/bomType
     {
@@ -1481,7 +1481,7 @@ async function maybeUpdateProductCostFromNewCode(itemId: string, newCode: string
   }
 }
 
-// User selects a single bomId from availableBomIds dropdown → persist to bomId/rmItemCode/bomType + optional cost
+// User selects a single bomId from availableBomIds dropdown â†’ persist to bomId/rmItemCode/bomType + optional cost
 export async function selectBomIdAction(itemId: string, bomId: string | null) {
   try {
     const item = await prisma.enquiryItem.findUnique({ where: { id: itemId }, select: { enquiryId: true, erpItemCode: true, productCost: true, availableBomIds: true } });
@@ -1491,7 +1491,7 @@ export async function selectBomIdAction(itemId: string, bomId: string | null) {
       const { isEnquiryFrozen } = await import("@/lib/oneClickAccess");
       const parent = await prisma.enquiry.findUnique({ where: { id: (item as any).enquiryId }, select: { apm: true, offerPdfGeneratedAt: true } });
       if (parent && isEnquiryFrozen(parent.apm, parent.offerPdfGeneratedAt)) {
-        return { success: false, error: "Cannot change BOM: rate & cost columns are frozen after one-time PDF generation — revert APM to edit." };
+        return { success: false, error: "Cannot change BOM: rate & cost columns are frozen after one-time PDF generation â€” revert APM to edit." };
       }
     }
     if (!item.erpItemCode) return { success: false, error: "Item has no Item Code." };
@@ -1654,7 +1654,7 @@ export async function fetchErpItemCodesAction(itemIds: string[]) {
     } else {
       const bulletList = failures
         .slice(0, 5)
-        .map((f) => `• ${f.itemName.slice(0, 35)}: ${f.reason}`)
+        .map((f) => `â€¢ ${f.itemName.slice(0, 35)}: ${f.reason}`)
         .join("\n");
       const extra = failures.length > 5 ? `\n...and ${failures.length - 5} more item(s)` : "";
       detailedError = `${failures.length} item(s) could not be matched:\n${bulletList}${extra}`;
@@ -1678,7 +1678,7 @@ export async function updateProductCostFromBomAction(itemIds: string[]) {
         const frozenIds = new Set(parents.filter((p) => isEnquiryFrozen(p.apm, p.offerPdfGeneratedAt)).map((p) => p.id));
         if (frozenIds.size > 0) {
           const frozenCount = checkItems.filter((i) => frozenIds.has(i.enquiryId)).length;
-          if (frozenCount > 0) return { success: false, error: `Cannot update product costs: ${frozenCount} item(s) are frozen after one-time PDF generation — revert APM to edit.` };
+          if (frozenCount > 0) return { success: false, error: `Cannot update product costs: ${frozenCount} item(s) are frozen after one-time PDF generation â€” revert APM to edit.` };
         }
       }
     }
@@ -1696,7 +1696,7 @@ export async function updateProductCostFromBomAction(itemIds: string[]) {
     let costMap = rawCostMap;
     const missing = rmCodes.filter((c) => !rawCostMap.has(c));
     if (missing.length > 0) {
-      // Fallback: SupplyHistory legacy path — only for codes missing in Raw Materials
+      // Fallback: SupplyHistory legacy path â€” only for codes missing in Raw Materials
       const supplyMap = await buildRmCostMap(missing);
       for (const [k, v] of supplyMap) {
         if (!costMap.has(k)) costMap.set(k, v);
@@ -1863,7 +1863,7 @@ export async function update2to1CostAction(itemIds: string[]) {
         const frozenIds = new Set(parents.filter((p) => isEnquiryFrozen(p.apm, p.offerPdfGeneratedAt)).map((p) => p.id));
         if (frozenIds.size > 0) {
           const frozenCount = checkItems.filter((i) => frozenIds.has(i.enquiryId)).length;
-          if (frozenCount > 0) return { success: false, error: `Cannot update 2:1 costs: ${frozenCount} item(s) are frozen after one-time PDF generation — revert APM to edit.` };
+          if (frozenCount > 0) return { success: false, error: `Cannot update 2:1 costs: ${frozenCount} item(s) are frozen after one-time PDF generation â€” revert APM to edit.` };
         }
       }
     }
@@ -2058,14 +2058,14 @@ export async function autoFillBlanksAction(itemIds: string[]) {
       if (Object.keys(updates).length > 0) {
         await prisma.enquiryItem.update({ where: { id: item.id }, data: updates })
         updated++
-        console.log(`\n  ✓ ${item.itemName.substring(0, 50)}`)
-        if (updates.itemType) console.log(`    itemType:  "${item.itemType || ""}" → "${updates.itemType}" (${updates.itemTypeSource})`)
-        if (updates.moc) console.log(`    moc:       "${item.moc || ""}" → "${updates.moc}" (${updates.mocSource})`)
-        if (updates.size) console.log(`    size:      "${item.size || ""}" → "${updates.size}"`)
-        if (updates.pnRating) console.log(`    pnRating:  "${item.pnRating || ""}" → "${updates.pnRating}"`)
-        if (updates.operationType) console.log(`    opType:    "${item.operationType || ""}" → "${updates.operationType}"`)
-        if (updates.extension) console.log(`    extension: "${item.extension || ""}" → "${updates.extension}"`)
-        if (updates.bypass) console.log(`    bypass:    "${item.bypass || ""}" → "${updates.bypass}"`)
+        console.log(`\n  âœ“ ${item.itemName.substring(0, 50)}`)
+        if (updates.itemType) console.log(`    itemType:  "${item.itemType || ""}" â†’ "${updates.itemType}" (${updates.itemTypeSource})`)
+        if (updates.moc) console.log(`    moc:       "${item.moc || ""}" â†’ "${updates.moc}" (${updates.mocSource})`)
+        if (updates.size) console.log(`    size:      "${item.size || ""}" â†’ "${updates.size}"`)
+        if (updates.pnRating) console.log(`    pnRating:  "${item.pnRating || ""}" â†’ "${updates.pnRating}"`)
+        if (updates.operationType) console.log(`    opType:    "${item.operationType || ""}" â†’ "${updates.operationType}"`)
+        if (updates.extension) console.log(`    extension: "${item.extension || ""}" â†’ "${updates.extension}"`)
+        if (updates.bypass) console.log(`    bypass:    "${item.bypass || ""}" â†’ "${updates.bypass}"`)
       }
 
       const effectiveItemType = updates.itemType || item.itemType
@@ -2075,8 +2075,8 @@ export async function autoFillBlanksAction(itemIds: string[]) {
         if (defaultVa !== null) {
           await recalculateItem(item.id, { vaPercent: defaultVa })
           updated++
-          console.log(`\n  ✓ ${item.itemName.substring(0, 50)}`)
-          console.log(`    vaPercent: "" → "${defaultVa}" (auto from ${effectiveItemType} / ${effectiveSize || "any"})`)
+          console.log(`\n  âœ“ ${item.itemName.substring(0, 50)}`)
+          console.log(`    vaPercent: "" â†’ "${defaultVa}" (auto from ${effectiveItemType} / ${effectiveSize || "any"})`)
         }
       }
     }
@@ -2108,7 +2108,7 @@ export async function updateVaPercentAction(itemIds: string[]) {
         const frozenIds = new Set(parents.filter((p) => isEnquiryFrozen(p.apm, p.offerPdfGeneratedAt)).map((p) => p.id));
         if (frozenIds.size > 0) {
           const frozenCount = checkItems.filter((i) => frozenIds.has(i.enquiryId)).length;
-          if (frozenCount > 0) return { success: false, error: `Cannot update VA%: ${frozenCount} item(s) are frozen after one-time PDF generation — revert APM to edit.` };
+          if (frozenCount > 0) return { success: false, error: `Cannot update VA%: ${frozenCount} item(s) are frozen after one-time PDF generation â€” revert APM to edit.` };
         }
       }
     }
@@ -2136,7 +2136,7 @@ export async function updateVaPercentAction(itemIds: string[]) {
         console.log(`  - SKIP ${item.itemName.substring(0, 50)}: no default VA% for type "${type}" / size "${item.size || "any"}"`)
         continue;
       }
-      console.log(`  ✓ ${item.itemName.substring(0, 50)}: VA% "" → "${defaultVa}" (from ${type} / ${item.size || "any"})`)
+      console.log(`  âœ“ ${item.itemName.substring(0, 50)}: VA% "" â†’ "${defaultVa}" (from ${type} / ${item.size || "any"})`)
       await recalculateItem(item.id, { vaPercent: defaultVa });
       updated++;
     }
@@ -2752,7 +2752,7 @@ export async function applyTransferCostMatchAction(transferredRowId: string) {
       if (targetIds.length === 0) {
         return {
           success: false,
-          error: "Multiple matches exist but none are Indian — skipped.",
+          error: "Multiple matches exist but none are Indian â€” skipped.",
         };
       }
     }
@@ -2777,7 +2777,7 @@ export async function applyTransferCostMatchAction(transferredRowId: string) {
     });
 
     console.log(
-      `[MATCH] Applied cost ₹${cost} from transferred ${tr.erpItemCode ?? tr.id} to ${targetIds.length} new item(s) (${targetIds.join(", ")}); row moved out of Transferred.`,
+      `[MATCH] Applied cost â‚¹${cost} from transferred ${tr.erpItemCode ?? tr.id} to ${targetIds.length} new item(s) (${targetIds.join(", ")}); row moved out of Transferred.`,
     );
 
     return {
@@ -3848,7 +3848,7 @@ export async function recomputeIndentListingVersionsAction() {
     });
 
     // A recompute collapses `item` down to the base item ("SLV", "BFV", ...),
-    // which is what makes the merge work — but it also destroys the variant
+    // which is what makes the merge work â€” but it also destroys the variant
     // suffixes the V1..V4 split was derived from. Once that has happened the
     // split cannot be rebuilt, so re-running the recompute on an already
     // collapsed table would funnel every balance into V1 and wipe the
@@ -3868,7 +3868,7 @@ export async function recomputeIndentListingVersionsAction() {
       const syncedAt = new Date();
 
       // Only write rows where the derived values actually differ from what is
-      // currently stored — never rewrite already-correct rows.
+      // currently stored â€” never rewrite already-correct rows.
       const currentById = new Map(rows.map((r) => [r.id, r]));
       const realUpdates = updates.filter((u) => {
         const cur = currentById.get(u.id);
@@ -4355,6 +4355,7 @@ export async function syncNullVerifyBomStockAction() {
       },
       select: {
         id: true,
+        bomId: true,
         itemCode: true,
         rmItemCode: true,
         availableStock: true,
@@ -4362,24 +4363,42 @@ export async function syncNullVerifyBomStockAction() {
     });
 
     const updates: { id: string; stock: string }[] = [];
+    const unmatchedSamples: string[] = [];
+    let matchedByRmCode = 0;
+    let matchedByItemCode = 0;
+    let unmatched = 0;
 
     for (const row of nullRows) {
       const currentStock = (row.availableStock ?? "").trim();
       if (currentStock !== "") continue;
 
-      const rmCode = (row.rmItemCode ?? "").trim();
-      const itemCode = (row.itemCode ?? "").trim();
+      const rmCode = (row.rmItemCode ?? "").trim().toUpperCase();
+      const itemCode = (row.itemCode ?? "").trim().toUpperCase();
 
       let foundStock: string | null = null;
+      let source: "rmItemCode" | "itemCode" | null = null;
 
       if (rmCode && rmCode in stockPhysMap) {
         foundStock = stockPhysMap[rmCode];
+        source = "rmItemCode";
       } else if (itemCode && itemCode in stockPhysMap) {
         foundStock = stockPhysMap[itemCode];
+        source = "itemCode";
       }
 
-      if (foundStock !== null && foundStock !== "") {
+      // A sheet value of "0" is a real count and must be kept; only a blank
+      // (or a code missing from the sheet) counts as no match.
+      if (foundStock !== null && foundStock.trim() !== "") {
         updates.push({ id: row.id, stock: foundStock });
+        if (source === "rmItemCode") matchedByRmCode++;
+        else if (source === "itemCode") matchedByItemCode++;
+      } else {
+        unmatched++;
+        if (unmatchedSamples.length < 20) {
+          unmatchedSamples.push(
+            `${row.bomId || "-"} :: ${row.itemCode || "-"} :: ${row.rmItemCode || "<empty>"}`,
+          );
+        }
       }
     }
 
@@ -4402,6 +4421,10 @@ export async function syncNullVerifyBomStockAction() {
       success: true,
       updatedCount: updates.length,
       totalNullCount: nullRows.length,
+      matchedByRmCode,
+      matchedByItemCode,
+      unmatched,
+      unmatchedSamples,
     };
   } catch (error: any) {
     console.error("Error syncing null VerifyBom stock:", error);
@@ -4412,6 +4435,595 @@ export async function syncNullVerifyBomStockAction() {
   }
 }
 
+const BATCH_NO_USE = "NO USE";
+const BATCH_C = "C";
+
+type BomMastSyncPlan = {
+  phase1: {
+    tabTitle: string;
+    sheetRows: number;
+    skippedNoKey: number;
+    withToDate: number;
+    withoutToDate: number;
+    willMark: number;
+    willAddBatch: number;
+    alreadyCorrect: number;
+    willCreate: number;
+    staleNoUse: number;
+    untouchedBlank: number;
+    use: number;
+    samples: {
+      willAddBatch: string[];
+      willCreate: string[];
+      staleNoUse: string[];
+      staleBatch: string[];
+    };
+  };
+  phase2: {
+    tabTitle: string;
+    sheetCodes: number;
+    duplicateCodes: number;
+    scanned: number;
+    itemNameChanged: number;
+    rmItemNameChanged: number;
+    unchanged: number;
+    unmatched: number;
+    samples: string[];
+  };
+};
+
+/**
+ * Builds the full write plan for the "ItemName (C)" button without touching the
+ * database. Shared by the check and the apply paths so the numbers the user
+ * reviews are produced by exactly the code that will run.
+ *
+ * Phase 1 - BOM MAST ERP (gid 1180547059), key bomId||itemCode||rmItemCode:
+ *   any row with a TO_DATE is marked noUse="NO USE" + cBatch="C". Combos absent
+ *   from VerifyBom are created with every other field null. Rows already
+ *   NO USE but with no TO_DATE in the sheet are reported and left untouched.
+ *
+ * Phase 2 - ITEM MASTER ERP (gid 253020709), ITEM_CODE -> ITEM_NAME:
+ *   every itemCode and rmItemCode in VerifyBom is looked up and the sheet name
+ *   wins wherever it has a value. A null/empty sheet cell never replaces an
+ *   existing name. Identical values are skipped so only real changes are written.
+ */
+async function buildBomMastSyncPlan(): Promise<BomMastSyncPlan> {
+  const { readBomMastErp, readItemMasterErp } = await import(
+    "@/lib/gmd_lib/bomMastErp"
+  );
+
+  const keyOf = (bomId: string, itemCode: string, rmItemCode: string) =>
+    `${bomId}||${itemCode}||${rmItemCode}`;
+  const norm = (v: string | null) => (v ?? "").trim().toUpperCase();
+  const sample = (arr: string[], v: string, cap = 10) => {
+    if (arr.length < cap) arr.push(v);
+  };
+
+  // ---------------- Phase 1: BOM MAST ERP ----------------
+  const bomMast = await readBomMastErp();
+
+  const toDateKeys = new Set<string>();
+  for (const r of bomMast.rows) {
+    if (!r.toDate) continue;
+    toDateKeys.add(
+      keyOf(
+        r.bomId.trim().toUpperCase(),
+        r.itemCode.trim().toUpperCase(),
+        r.rmItemCode.trim().toUpperCase(),
+      ),
+    );
+  }
+
+  const dbRows = await prisma.verifyBom.findMany({
+    select: {
+      id: true,
+      bomId: true,
+      itemCode: true,
+      rmItemCode: true,
+      noUse: true,
+      cBatch: true,
+      itemName: true,
+      rmItemName: true,
+    },
+  });
+
+  const byKey = new Map<
+    string,
+    (typeof dbRows)[number]
+  >();
+  for (const r of dbRows) {
+    byKey.set(keyOf(norm(r.bomId), norm(r.itemCode), norm(r.rmItemCode)), r);
+  }
+
+  const p1 = {
+    tabTitle: bomMast.tabTitle,
+    sheetRows: bomMast.rows.length,
+    skippedNoKey: bomMast.skipped,
+    withToDate: toDateKeys.size,
+    withoutToDate: bomMast.rows.length - toDateKeys.size,
+    willMark: 0,
+    willAddBatch: 0,
+    alreadyCorrect: 0,
+    willCreate: 0,
+    staleNoUse: 0,
+    untouchedBlank: 0,
+    use: 0,
+    samples: {
+      willAddBatch: [] as string[],
+      willCreate: [] as string[],
+      staleNoUse: [] as string[],
+      staleBatch: [] as string[],
+    },
+  };
+
+  for (const key of toDateKeys) {
+    const existing = byKey.get(key);
+    if (!existing) {
+      p1.willCreate++;
+      sample(p1.samples.willCreate, key);
+      continue;
+    }
+    const isNoUse = (existing.noUse ?? "").trim() === BATCH_NO_USE;
+    const isC = (existing.cBatch ?? "").trim() === BATCH_C;
+    if (isNoUse && isC) p1.alreadyCorrect++;
+    else if (isNoUse) {
+      p1.willAddBatch++;
+      sample(p1.samples.willAddBatch, key);
+    } else {
+      p1.willMark++;
+    }
+  }
+
+  // DB rows the sheet no longer backs, plus the untouched buckets.
+  for (const [key, row] of byKey) {
+    const isNoUse = (row.noUse ?? "").trim() === BATCH_NO_USE;
+    const isC = (row.cBatch ?? "").trim() === BATCH_C;
+    if (isC && !isNoUse) {
+      // invariant violation: a C without NO USE
+      p1.samples.staleBatch.push(key);
+    }
+    if (isNoUse && !toDateKeys.has(key)) {
+      p1.staleNoUse++;
+      sample(p1.samples.staleNoUse, key);
+      continue;
+    }
+    if (!isNoUse && !toDateKeys.has(key)) {
+      if ((row.noUse ?? "").trim().toUpperCase() === "USE") p1.use++;
+      else p1.untouchedBlank++;
+    }
+  }
+
+  // ---------------- Phase 2: ITEM MASTER ERP ----------------
+  const itemMaster = await readItemMasterErp();
+  const { nameByCode } = itemMaster;
+
+  const p2 = {
+    tabTitle: itemMaster.tabTitle,
+    sheetCodes: nameByCode.size,
+    duplicateCodes: itemMaster.duplicateCodes,
+    scanned: dbRows.length,
+    itemNameChanged: 0,
+    rmItemNameChanged: 0,
+    unchanged: 0,
+    unmatched: 0,
+    samples: [] as string[],
+  };
+
+  for (const row of dbRows) {
+    const itemSheet = nameByCode.get(norm(row.itemCode));
+    const rmSheet = nameByCode.get(norm(row.rmItemCode));
+    if (itemSheet !== undefined) {
+      if (itemSheet !== (row.itemName ?? "")) p2.itemNameChanged++;
+      else p2.unchanged++;
+    } else {
+      p2.unmatched++;
+      sample(p2.samples, `itemCode: ${row.itemCode || "<empty>"}`);
+    }
+    if (rmSheet !== undefined && rmSheet !== (row.rmItemName ?? "")) {
+      p2.rmItemNameChanged++;
+    }
+  }
+
+  return { phase1: p1, phase2: p2 };
+}
+
+/** Read-only preview behind the confirm dialog. Performs no writes. */
+export async function checkBomMastSyncAction() {
+  "use server";
+  try {
+    return { success: true, plan: await buildBomMastSyncPlan() };
+  } catch (error: any) {
+    console.error("Error checking BOM MAST ERP / ITEM MASTER ERP:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to check sheets.",
+    };
+  }
+}
+
+/**
+ * Applies the "ItemName (C)" button: Phase 1 (TO_DATE -> NO USE + batch C,
+ * creating missing combinations) then Phase 2 (ITEM MASTER ERP names).
+ *
+ * Phase 1 is one-way: nothing in this codebase can set noUse back to "USE".
+ */
+export async function syncBomMastItemNamesAction() {
+  "use server";
+  try {
+    const plan = await buildBomMastSyncPlan();
+    const { readBomMastErp, readItemMasterErp } = await import(
+      "@/lib/gmd_lib/bomMastErp"
+    );
+
+    const keyOf = (bomId: string, itemCode: string, rmItemCode: string) =>
+      `${bomId}||${itemCode}||${rmItemCode}`;
+    const norm = (v: string | null) => (v ?? "").trim().toUpperCase();
+    const CHUNK = 100;
+
+    // ---------------- Phase 1 ----------------
+    const bomMast = await readBomMastErp();
+    const toDateKeys = new Set<string>();
+    for (const r of bomMast.rows) {
+      if (!r.toDate) continue;
+      toDateKeys.add(
+        keyOf(
+          r.bomId.trim().toUpperCase(),
+          r.itemCode.trim().toUpperCase(),
+          r.rmItemCode.trim().toUpperCase(),
+        ),
+      );
+    }
+
+    const dbRows = await prisma.verifyBom.findMany({
+      select: {
+        id: true,
+        bomId: true,
+        itemCode: true,
+        rmItemCode: true,
+        noUse: true,
+        cBatch: true,
+      },
+    });
+    const idByKey = new Map<string, string>();
+    for (const r of dbRows) {
+      idByKey.set(keyOf(norm(r.bomId), norm(r.itemCode), norm(r.rmItemCode)), r.id);
+    }
+
+    const syncedAt = new Date();
+    const updateOps: ReturnType<typeof prisma.verifyBom.update>[] = [];
+    const createOps: ReturnType<typeof prisma.verifyBom.upsert>[] = [];
+    let marked = 0;
+    let created = 0;
+
+    for (const key of toDateKeys) {
+      const existingId = idByKey.get(key);
+      if (existingId) {
+        updateOps.push(
+          prisma.verifyBom.update({
+            where: { id: existingId },
+            // only the two flag fields - never clobber names/stock/cost
+            data: { noUse: BATCH_NO_USE, cBatch: BATCH_C },
+          }),
+        );
+        marked++;
+      } else {
+        const [bomId, itemCode, rmItemCode] = key.split("||");
+        createOps.push(
+          prisma.verifyBom.upsert({
+            where: {
+              bomId_itemCode_rmItemCode: { bomId, itemCode, rmItemCode },
+            },
+            create: {
+              bomId,
+              itemCode,
+              rmItemCode,
+              noUse: BATCH_NO_USE,
+              cBatch: BATCH_C,
+              syncedAt,
+            },
+            update: { noUse: BATCH_NO_USE, cBatch: BATCH_C },
+          }),
+        );
+        created++;
+      }
+    }
+
+    for (let i = 0; i < updateOps.length; i += CHUNK) {
+      await prisma.$transaction(updateOps.slice(i, i + CHUNK), {
+        timeout: 20000,
+      });
+    }
+    for (let i = 0; i < createOps.length; i += CHUNK) {
+      await prisma.$transaction(createOps.slice(i, i + CHUNK), {
+        timeout: 20000,
+      });
+    }
+
+    // ---------------- Phase 2 ----------------
+    const { nameByCode } = await readItemMasterErp();
+
+    const nameRows = await prisma.verifyBom.findMany({
+      select: {
+        id: true,
+        itemCode: true,
+        rmItemCode: true,
+        itemName: true,
+        rmItemName: true,
+      },
+    });
+
+    const nameOps: ReturnType<typeof prisma.verifyBom.update>[] = [];
+    const unmatchedCodes: string[] = [];
+    let itemNameChanged = 0;
+    let rmItemNameChanged = 0;
+
+    for (const row of nameRows) {
+      const data: { itemName?: string; rmItemName?: string } = {};
+
+      // A null/empty sheet cell never replaces an existing name.
+      const itemSheet = nameByCode.get(norm(row.itemCode));
+      if (itemSheet !== undefined && itemSheet !== (row.itemName ?? "")) {
+        data.itemName = itemSheet;
+        itemNameChanged++;
+      } else if (itemSheet === undefined && unmatchedCodes.length < 20) {
+        unmatchedCodes.push(`itemCode: ${row.itemCode || "<empty>"}`);
+      }
+
+      const rmSheet = nameByCode.get(norm(row.rmItemCode));
+      if (rmSheet !== undefined && rmSheet !== (row.rmItemName ?? "")) {
+        data.rmItemName = rmSheet;
+        rmItemNameChanged++;
+      } else if (rmSheet === undefined && unmatchedCodes.length < 20) {
+        unmatchedCodes.push(`rmItemCode: ${row.rmItemCode || "<empty>"}`);
+      }
+
+      if (Object.keys(data).length > 0) {
+        nameOps.push(
+          prisma.verifyBom.update({ where: { id: row.id }, data }),
+        );
+      }
+    }
+
+    for (let i = 0; i < nameOps.length; i += CHUNK) {
+      await prisma.$transaction(nameOps.slice(i, i + CHUNK), {
+        timeout: 20000,
+      });
+    }
+
+    if (unmatchedCodes.length > 0) {
+      console.warn(
+        `[ItemName (C)] ${unmatchedCodes.length} code(s) not present in ITEM MASTER ERP:\n` +
+          unmatchedCodes.map((c) => `  ${c}`).join("\n"),
+      );
+    }
+
+    return {
+      success: true,
+      plan,
+      applied: {
+        marked,
+        created,
+        itemNameChanged,
+        rmItemNameChanged,
+        unmatchedSamples: unmatchedCodes,
+      },
+    };
+  } catch (error: any) {
+    console.error("Error syncing BOM MAST ERP / ITEM MASTER ERP:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to sync item names from sheets.",
+    };
+  }
+}
+
+const C_BATCH_VALUE = "C";
+const C_BATCH_CHUNK = 1000;
+
+type CBatchTableResult = {
+  table: string;
+  fields: string;
+  distinctCodes: number;
+  matchedCodes: number;
+  rowsToUpdate: number;
+  alreadyMarked: number;
+};
+
+/**
+ * Marks cBatch="C" on every row whose item code carries ITEM_STATUS = "C" in the
+ * ITEM MASTER ERP tab (gid 253020709).
+ *
+ * SET-ONLY BY DESIGN: nothing is ever cleared. A code that flips C -> U in the
+ * sheet, or disappears from it, keeps the mark it already has, so re-running is
+ * idempotent and a mis-click cannot destroy data.
+ *
+ * VerifyBom is deliberately NOT written: /bom's cBatch comes from the BOM MAST
+ * ERP TO_DATE flow, which is a different signal and is left alone.
+ *
+ * Prisma's per-model delegates have incompatible generic signatures, so the four
+ * targets are handled with explicit calls rather than a table of delegates. The
+ * pure matching logic is shared.
+ */
+export async function syncCBatchAction(dryRun = false) {
+  "use server";
+  try {
+    const { readItemMasterErp } = await import("@/lib/gmd_lib/bomMastErp");
+    const { tabTitle, statusByCode } = await readItemMasterErp();
+
+    const cCodes = new Set<string>();
+    for (const [code, status] of statusByCode) {
+      if (status === C_BATCH_VALUE) cCodes.add(code);
+    }
+
+    // Collect the codes a table actually holds, then keep only the C ones.
+    const matchedFor = (values: (string | null)[]) => {
+      const present = new Set<string>();
+      for (const v of values) {
+        const k = String(v ?? "").trim().toUpperCase();
+        if (k) present.add(k);
+      }
+      return { present, matched: [...present].filter((c) => cCodes.has(c)) };
+    };
+
+    const perTable: CBatchTableResult[] = [];
+    const push = (r: Omit<CBatchTableResult, "alreadyMarked">, total: number) =>
+      perTable.push({ ...r, alreadyMarked: Math.max(0, total - r.rowsToUpdate) });
+
+    // ---- GMDUpdateItem.erpItemCode ----
+    {
+      const rows = await prisma.gMDUpdateItem.findMany({
+        select: { erpItemCode: true, cBatch: true },
+      });
+      const { present, matched } = matchedFor(rows.map((r) => r.erpItemCode));
+      const total = rows.filter(
+        (r) => r.erpItemCode && matched.includes(String(r.erpItemCode).trim().toUpperCase()),
+      ).length;
+      const pending = rows.filter(
+        (r) =>
+          r.erpItemCode &&
+          !r.cBatch &&
+          matched.includes(String(r.erpItemCode).trim().toUpperCase()),
+      ).length;
+      if (!dryRun && pending > 0) {
+        for (let i = 0; i < matched.length; i += C_BATCH_CHUNK) {
+          await prisma.gMDUpdateItem.updateMany({
+            where: { erpItemCode: { in: matched.slice(i, i + C_BATCH_CHUNK) } },
+            data: { cBatch: C_BATCH_VALUE },
+          });
+        }
+      }
+      push(
+        {
+          table: "GMDUpdateItem",
+          fields: "erpItemCode",
+          distinctCodes: present.size,
+          matchedCodes: matched.length,
+          rowsToUpdate: pending,
+        },
+        total,
+      );
+    }
+
+    // ---- ContractReview.itemCode ----
+    {
+      const rows = await prisma.contractReview.findMany({
+        select: { itemCode: true, cBatch: true },
+      });
+      const { present, matched } = matchedFor(rows.map((r) => r.itemCode));
+      const set = new Set(matched);
+      const total = rows.filter(
+        (r) => r.itemCode && set.has(String(r.itemCode).trim().toUpperCase()),
+      ).length;
+      const pending = rows.filter(
+        (r) => r.itemCode && !r.cBatch && set.has(String(r.itemCode).trim().toUpperCase()),
+      ).length;
+      if (!dryRun && pending > 0) {
+        for (let i = 0; i < matched.length; i += C_BATCH_CHUNK) {
+          await prisma.contractReview.updateMany({
+            where: { itemCode: { in: matched.slice(i, i + C_BATCH_CHUNK) } },
+            data: { cBatch: C_BATCH_VALUE },
+          });
+        }
+      }
+      push(
+        {
+          table: "ContractReview",
+          fields: "itemCode",
+          distinctCodes: present.size,
+          matchedCodes: matched.length,
+          rowsToUpdate: pending,
+        },
+        total,
+      );
+    }
+
+    // ---- SupplyHistoryItem.erpItemCode ----
+    {
+      const rows = await prisma.supplyHistoryItem.findMany({
+        select: { erpItemCode: true, cBatch: true },
+      });
+      const { present, matched } = matchedFor(rows.map((r) => r.erpItemCode));
+      const set = new Set(matched);
+      const total = rows.filter(
+        (r) => r.erpItemCode && set.has(String(r.erpItemCode).trim().toUpperCase()),
+      ).length;
+      const pending = rows.filter(
+        (r) => r.erpItemCode && !r.cBatch && set.has(String(r.erpItemCode).trim().toUpperCase()),
+      ).length;
+      if (!dryRun && pending > 0) {
+        for (let i = 0; i < matched.length; i += C_BATCH_CHUNK) {
+          await prisma.supplyHistoryItem.updateMany({
+            where: { erpItemCode: { in: matched.slice(i, i + C_BATCH_CHUNK) } },
+            data: { cBatch: C_BATCH_VALUE },
+          });
+        }
+      }
+      push(
+        {
+          table: "SupplyHistoryItem",
+          fields: "erpItemCode",
+          distinctCodes: present.size,
+          matchedCodes: matched.length,
+          rowsToUpdate: pending,
+        },
+        total,
+      );
+    }
+
+    // ---- EnquiryItem: erpItemCode OR rmItemCode marks the row ----
+    {
+      const rows = await prisma.enquiryItem.findMany({
+        select: { erpItemCode: true, rmItemCode: true, cBatch: true },
+      });
+      const { present, matched } = matchedFor([
+        ...rows.map((r) => r.erpItemCode),
+        ...rows.map((r) => r.rmItemCode),
+      ]);
+      const set = new Set(matched);
+      const isC = (r: { erpItemCode: string | null; rmItemCode: string | null }) =>
+        (r.erpItemCode && set.has(String(r.erpItemCode).trim().toUpperCase())) ||
+        (r.rmItemCode && set.has(String(r.rmItemCode).trim().toUpperCase()));
+      const total = rows.filter(isC).length;
+      const pending = rows.filter((r) => !r.cBatch && isC(r)).length;
+      if (!dryRun && pending > 0) {
+        for (let i = 0; i < matched.length; i += C_BATCH_CHUNK) {
+          const slice = matched.slice(i, i + C_BATCH_CHUNK);
+          await prisma.enquiryItem.updateMany({
+            where: {
+              OR: [{ erpItemCode: { in: slice } }, { rmItemCode: { in: slice } }],
+            },
+            data: { cBatch: C_BATCH_VALUE },
+          });
+        }
+      }
+      push(
+        {
+          table: "EnquiryItem",
+          fields: "erpItemCode + rmItemCode",
+          distinctCodes: present.size,
+          matchedCodes: matched.length,
+          rowsToUpdate: pending,
+        },
+        total,
+      );
+    }
+
+    return {
+      success: true,
+      dryRun,
+      tabTitle,
+      sheetCodes: statusByCode.size,
+      cCodes: cCodes.size,
+      perTable,
+    };
+  } catch (error: any) {
+    console.error("Error syncing cBatch from ITEM MASTER ERP:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to sync cBatch from the sheet.",
+    };
+  }
+}
 export async function syncContractReviewRmAvailAction() {
   "use server";
   try {
@@ -4436,13 +5048,16 @@ export async function syncContractReviewRmAvailAction() {
     let stockFilled = 0;
     const stockUpdates: { id: string; stock: string }[] = [];
     for (const row of blankStockRows) {
-      const code = (row.erpItemCode ?? "").trim();
+      const code = (row.erpItemCode ?? "").trim().toUpperCase();
       if (!code) continue;
       const currentStock = (row.availableStock ?? "").trim();
       if (currentStock !== "") continue;
       const found = stockPhysMap[code];
-      if (found !== undefined && found !== null && String(found).trim() !== "") {
-        stockUpdates.push({ id: row.id, stock: String(found).trim() });
+      if (found !== undefined && found !== null) {
+        const stock = String(found).trim();
+        if (stock !== "") {
+          stockUpdates.push({ id: row.id, stock });
+        }
       }
     }
     if (stockUpdates.length > 0) {
@@ -4637,7 +5252,7 @@ export async function fetchContractReviewRatesAction(itemIds: string[]) {
       select: { itemCode: true, rate: true, dateOfContract: true, createdAt: true },
     });
 
-    // Build a map: itemCode → best rate (most recent dateOfContract, then createdAt)
+    // Build a map: itemCode â†’ best rate (most recent dateOfContract, then createdAt)
     const bestRateMap = new Map<string, string>();
     for (const row of contractRows) {
       if (!row.rate) continue;
@@ -4865,7 +5480,7 @@ export async function clearQuotedRatesAction(itemIds: string[]) {
       if (frozenParents.size > 0) {
         const frozenItemIds = existing.filter((e) => frozenParents.has(e.enquiryId)).map((e) => e.id);
         if (frozenItemIds.length > 0) {
-          return { success: false, error: `Cannot clear rates: ${frozenItemIds.length} item(s) are frozen after one-time PDF generation — revert APM to edit.` };
+          return { success: false, error: `Cannot clear rates: ${frozenItemIds.length} item(s) are frozen after one-time PDF generation â€” revert APM to edit.` };
         }
       }
     }
@@ -5012,7 +5627,7 @@ export async function createGeneratedImageAction(data: {
     return { success: true, data: created };
   } catch (error: any) {
     if (error?.code === "P2002") {
-      return { success: false, error: "Duplicate imageKey — an entry for this combination already exists." };
+      return { success: false, error: "Duplicate imageKey â€” an entry for this combination already exists." };
     }
     return { success: false, error: error?.message || "Failed to create entry." };
   }

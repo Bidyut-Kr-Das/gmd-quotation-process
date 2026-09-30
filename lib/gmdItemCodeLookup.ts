@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { google } from "googleapis";
+import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "@/lib/googleAuth";
 
 const SHEET_SPREADSHEET_ID = "1LIC8GGgs7K7XWf8kUJFwvfOWpAkElYp6SJ83jk9wWGM";
@@ -16,7 +16,7 @@ function normalizeHeader(h: string): string {
 
 export async function syncGmdItemCodes(): Promise<{ count: number }> {
   const auth = getAuth();
-  const sheets = google.sheets({ version: "v4", auth });
+  const sheets = googleSheets({ version: "v4", auth });
 
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_SPREADSHEET_ID });
   const tab = (meta.data.sheets ?? []).find(
@@ -180,7 +180,7 @@ export async function fetchBomIdSet(): Promise<Set<string>> {
   }
 
   const auth = getAuth();
-  const sheets = google.sheets({ version: "v4", auth });
+  const sheets = googleSheets({ version: "v4", auth });
 
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_SPREADSHEET_ID });
   const tab = (meta.data.sheets ?? []).find(

@@ -1,9 +1,9 @@
-import { google } from "googleapis";
+import { drive, type drive_v3 } from "@googleapis/drive";
 import { Readable } from "stream";
 import { getOAuthClient } from "./googleAuth";
 
 // Singleton instance for Drive client
-let driveInstance: ReturnType<typeof google.drive> | null = null;
+let driveInstance: drive_v3.Drive | null = null;
 
 const DRIVE_FOLDER_ID = "1Zj4-Uwg_YC-p-NtyU7xWTEWfedGsEvMz";
 
@@ -16,11 +16,11 @@ function getDriveClient() {
   }
 
   const oauth2Client = getOAuthClient();
-  const drive = google.drive({ version: "v3", auth: oauth2Client });
+  const driveApi = drive({ version: "v3", auth: oauth2Client });
 
-  driveInstance = drive;
+  driveInstance = driveApi;
 
-  return drive;
+  return driveApi;
 }
 
 /**
@@ -28,7 +28,7 @@ function getDriveClient() {
  */
 export async function uploadFileToDrive(fileName: string, mimeType: string, base64Data: string) {
   try {
-    const drive = getDriveClient();
+    const driveApi = getDriveClient();
     const buffer = Buffer.from(base64Data, "base64");
     const fileMetadata = {
       name: fileName,
@@ -39,7 +39,7 @@ export async function uploadFileToDrive(fileName: string, mimeType: string, base
       body: Readable.from(buffer),
     };
 
-    const response = await drive.files.create({
+    const response = await driveApi.files.create({
       requestBody: fileMetadata,
       media: media,
       fields: "id, webViewLink",
@@ -52,7 +52,7 @@ export async function uploadFileToDrive(fileName: string, mimeType: string, base
     }
 
     // Set permission so that anyone with the link can view it (shares public access for spreadsheet linking)
-    await drive.permissions.create({
+    await driveApi.permissions.create({
       fileId: fileId,
       requestBody: {
         role: "reader",

@@ -67,6 +67,9 @@ export const CONTRACT_REVIEW_HEADERS = [
   "ORDER LIST",
   "PROD ORDER NO",
   "Upload Drawing",
+  // Hidden data carrier. Never rendered: listed in the page's hiddenColumns and
+  // only used to drive the "C" chip inside the ITEM_CODE cell.
+  "C BATCH",
 ] as const;
 
 /**
@@ -487,6 +490,7 @@ export function dbContractReviewToRow(item: {
   vaPercentfromcost: string | null;
   productionOrderNumber: string | null;
   diagramUrl: string | null;
+  cBatch: string | null;
 }): unknown[] {
   return [
     item.contractNo,
@@ -532,6 +536,7 @@ export function dbContractReviewToRow(item: {
     (item.orderList ?? []).join(", "),
     item.productionOrderNumber,
     item.diagramUrl,
+    item.cBatch,
   ];
 }
 

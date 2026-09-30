@@ -1,4 +1,4 @@
-import { google } from 'googleapis';
+import { sheets as googleSheets } from '@googleapis/sheets';
 import { getOAuthClient } from '../lib/googleAuth.ts';
 import { buildColumnMap, mapSheetRowToDb } from '../lib/gmd_lib/supply-history-columns.ts';
 import { buildGmdClientwiseOrderLinkMap, matchOrderLink, mergeOrderListCsv, splitCsvLinks } from '../lib/gmd_lib/contract-order-links.ts';
@@ -8,7 +8,7 @@ async function main(){
   const masterId = process.env.SUPPLY_HISTORY_SPREADSHEET_ID || '1aONKJmRM1bg14qPvtAoXelBbahUJVwnNs4dVPiEcbWs';
   const sheetName = 'MASTER';
   const auth = getOAuthClient();
-  const sheets = google.sheets({ version: 'v4', auth });
+  const sheets = googleSheets({ version: 'v4', auth });
 
   console.log('fetching MASTER', masterId);
   const resp = await sheets.spreadsheets.values.get({

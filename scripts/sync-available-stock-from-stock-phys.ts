@@ -38,7 +38,7 @@ async function main() {
   let notInSheet = 0;
 
   for (const item of items) {
-    const code = item.erpItemCode?.trim();
+    const code = item.erpItemCode?.trim().toUpperCase();
     if (!code) continue;
     if (!(code in stockMap)) {
       notInSheet++;

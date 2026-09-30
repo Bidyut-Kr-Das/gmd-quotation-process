@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../app/generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { google } from "googleapis";
+import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "../lib/googleAuth";
 
 const SPREADSHEET_ID = process.env.SALE_BILL_SPREADSHEET_ID;
@@ -86,7 +86,7 @@ async function main() {
   }
 
   const auth = getAuth();
-  const sheets = google.sheets({ version: "v4", auth });
+  const sheets = googleSheets({ version: "v4", auth });
 
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
   const tab = (meta.data.sheets ?? []).find(

@@ -6,6 +6,7 @@ import {
 } from "@/lib/gmd_lib/verify-bom-columns";
 import {
   recomputeVerifyBomValues,
+  present,
 } from "@/lib/verifyBomLookup";
 
 export const dynamic = "force-dynamic";
@@ -28,22 +29,32 @@ export async function GET() {
           )
         : null;
 
-    const rows = items.map((item) =>
-      dbVerifyBomToRow({
+    const rows = items.map((item) => {
+      const rmKey = (item.rmItemCode ?? "").trim().toUpperCase();
+      const liveStock = rmKey ? stockMap.get(rmKey) : undefined;
+      // Prefer the live GMDUpdateItem value, else keep whatever is already
+      // stored on VerifyBom so the Sync Missing Stock write is not discarded.
+      const availableStock =
+        (liveStock !== undefined && liveStock !== "" ? liveStock : null) ??
+        item.availableStock ??
+        "";
+      return dbVerifyBomToRow({
         ...item,
         noUse: item.noUse ?? "",
-        availableStock: item.rmItemCode
-          ? (stockMap.get(item.rmItemCode) ?? "")
-          : "",
+        availableStock,
         cost: (item.id ? costMap.get(item.id) : null) ?? item.cost ?? "",
-        rmItemName: item.rmItemCode
-          ? (rmNameMap.get(item.rmItemCode) ?? null)
+        // Same precedence as recomputeVerifyBomValues, or the grid would show
+        // a different name than the one on the row. Previously this had no
+        // fallback at all, so any rmItemCode absent from GMDUpdateItem
+        // rendered blank despite a good value being stored.
+        rmItemName: rmKey
+          ? (present(item.rmItemName) ?? rmNameMap.get(rmKey) ?? null)
           : null,
         itemName: item.itemCode
-          ? (itemNameMap.get(item.itemCode) ?? item.itemName)
+          ? (present(item.itemName) ?? itemNameMap.get(item.itemCode) ?? null)
           : null,
-      }),
-    );
+      });
+    });
 
     return NextResponse.json({
       headers: VERIFY_BOM_HEADERS,
