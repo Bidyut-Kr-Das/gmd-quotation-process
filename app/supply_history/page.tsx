@@ -8,6 +8,7 @@ import GMDUpdateSkeleton from "../../components/gmd_dashboard/skeletons/GMDUpdat
 import { toast } from "sonner";
 import { updateSupplyHistoryFieldAction } from "@/app/actions";
 import { SUPPLY_HEADER_TO_DB_FIELD } from "@/lib/gmd_lib/supply-history-columns";
+import { C_BATCH_HEADER, cBatchBadges } from "@/lib/gmd_lib/verify-bom-columns";
 import { INDIAN_STATES } from "@/lib/supplyStateResolver";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import {
@@ -184,6 +185,8 @@ export default function SupplyHistoryPage() {
             onCellUpdate={handleCellUpdate}
             categoryOptions={categoryOptions}
             uniqueKeyColumns={["INVOICE NO", "item name"]}
+            hiddenColumns={[C_BATCH_HEADER]}
+            cellBadges={cBatchBadges("ERP ITEM CODE")}
             filterState={filterState}
             filterActions={filterActions}
             fullHeight

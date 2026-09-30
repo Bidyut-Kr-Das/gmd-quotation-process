@@ -16,7 +16,7 @@ import {
   deriveVerifyBomItemNameBatchAction,
   recomputeVerifyBomBomQtyCostBatchAction,
 } from "@/app/actions";
-import { VERIFY_BOM_HEADER_TO_DB_FIELD } from "@/lib/gmd_lib/verify-bom-columns";
+import { VERIFY_BOM_HEADER_TO_DB_FIELD, cBatchBadges } from "@/lib/gmd_lib/verify-bom-columns";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -61,15 +61,7 @@ type ItemNamePlan = {
   };
 };
 
-const ITEM_CODE_BADGES = [
-  {
-    onColumn: "ITEM CODE",
-    fromColumn: "C BATCH",
-    value: "C",
-    label: "C",
-    title: "BOM MAST ERP - TO_DATE present",
-  },
-];
+const ITEM_CODE_BADGES = cBatchBadges("ITEM CODE");
 
 const TABLE2_EDITABLE_COLUMNS = [
   "BOM ID TYPE",
@@ -575,7 +567,7 @@ export default function BomPage() {
         </div>
 
         <Dialog open={confirmItemName} onOpenChange={setConfirmItemName}>
-          <DialogContent className="sm:max-w-[520px] max-h-[85vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-130 max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Run ItemName (C) sync?</DialogTitle>
               <DialogDescription>

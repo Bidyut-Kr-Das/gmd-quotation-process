@@ -55,6 +55,7 @@ const SKIP_FIELDS = new Set([
   "rmCodeForActuator",
   "diagramUrl",
   "diagramVerdict",
+  "cBatch",
 ]);
 
 export async function POST() {

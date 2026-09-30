@@ -128,6 +128,9 @@ model EnquiryItem {
   availableStock       String?
   stockAgainstContract String?
   importedInhouse       String?
+  // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
+  // never rendered as its own column.
+  cBatch                String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -141,6 +144,9 @@ model GmdItemCode {
   operation String // OPERATION (col 21)
   size      String // SIZE (col 22)
   pnGmd     String // PN-GMD (col 24)
+  // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
+  // never rendered as its own column.
+  cBatch    String?
   syncedAt  DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -242,6 +248,9 @@ model SupplyHistoryItem {
   derivedItemType                String?
   derivedMoc                     String?
   derivedSize                    String?
+  // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
+  // never rendered as its own column.
+  cBatch                         String?
   syncedAt                       DateTime @default(now())
   createdAt                      DateTime @default(now())
   updatedAt                      DateTime @updatedAt
@@ -280,8 +289,13 @@ model GMDUpdateItem {
   bomId             String?
   transferred       Boolean  @default(false)
   vendorReference   String?
-  orderDelivery     String?
+  // Added by migration 20260831125743_add_availablebomid but was never declared
+  // here, so the generated client silently lacked it. Declared to match the DB.
   attachmentUrl     String?
+  orderDelivery     String?
+  // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
+  // never rendered as its own column.
+  cBatch            String?
   syncedAt          DateTime @default(now())
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -358,6 +372,10 @@ model ContractReview {
 
   poNo      String? //sync from sheetid = 1sf-uCfCSAUovNAWJSiSyojTPFvUSzmp23keF0ymkjIE
   orderList String[] @default([]) //sync from sheetid = 1sf-uCfCSAUovNAWJSiSyojTPFvUSzmp23keF0ymkjIE
+
+  // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
+  // never rendered as its own column.
+  cBatch    String?
 
   syncedAt  DateTime @default(now())
   createdAt DateTime @default(now())
