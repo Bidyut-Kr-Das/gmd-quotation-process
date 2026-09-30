@@ -298,6 +298,35 @@ function ItemImageCells({
   );
 }
 
+/* Item Code (read-only). An item whose ERP item master status is C is closed, so the
+   cell says so instead of showing the code; the real code stays in the title. Shared by
+   the enquiry row (first item) and the expanded sub-rows so both mark closed items. */
+function ItemCodeCell({ item }: { item?: EnquiryItemData }) {
+  if (!item) {
+    return (
+      <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
+        <span className="block text-[10px] text-muted-foreground p-1 font-mono">-</span>
+      </td>
+    );
+  }
+  return (
+    <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
+      {item.cBatch === C_BATCH_VALUE ? (
+        <span
+          title={`${item.erpItemCode || ""} - closed in ITEM MASTER ERP (ITEM_STATUS = C)`}
+          className="block text-[10px] font-semibold italic text-rose-700 dark:text-rose-400 p-1 truncate"
+        >
+          Deleted as Closed
+        </span>
+      ) : (
+        <span className="block text-[10px] text-muted-foreground p-1 font-mono truncate" title={item.erpItemCode || ""}>
+          {item.erpItemCode || "-"}
+        </span>
+      )}
+    </td>
+  );
+}
+
 export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
   const { data: session } = useSession();
   const role = (session?.user as any)?.role as string | undefined;
@@ -4271,13 +4300,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     </td>
 
                     {/* 18. First Item Item Code (read-only) */}
-                    <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
-                      {firstItem ? (
-                        <span className="block text-[10px] text-muted-foreground p-1 font-mono truncate" title={firstItem.erpItemCode || ""}>
-                          {firstItem.erpItemCode || "-"}
-                        </span>
-                      ) : "-"}
-                    </td>
+                    <ItemCodeCell item={firstItem} />
 
                     {/* 18a. First Item BOM ID (dropdown when multiple, else read-only) */}
                     <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
@@ -4982,22 +5005,8 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                         />
                         </td>
 
-                        {/* Item Code (read-only) + C batch chip */}
-                        <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="block text-[10px] text-muted-foreground p-1 font-mono truncate" title={item.erpItemCode || ""}>
-                              {item.erpItemCode || "-"}
-                            </span>
-                            {item.cBatch === C_BATCH_VALUE && (
-                              <span
-                                title="BOM MAST ERP - TO_DATE present"
-                                className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold"
-                              >
-                                {C_BATCH_VALUE}
-                              </span>
-                            )}
-                          </div>
-                        </td>
+                        {/* Item Code (read-only) */}
+                        <ItemCodeCell item={item} />
 
                         {/* BOM ID (dropdown when multiple, else read-only) */}
                         <td className="py-2 px-1 border-r border-b border-border last:border-r-0">

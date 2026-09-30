@@ -45,6 +45,12 @@ export interface GMDUpdateRow {
   bomId: string | null;
   vendorReference: string | null;
   attachmentUrl: string | null;
+  /**
+   * Hidden carrier for the "C" chip beside the item code. Appended after
+   * dbItemToRow by the /raw_material route, so it is always the last column of
+   * the payload and must be re-appended by any page that rebuilds rows.
+   */
+  cBatch: string | null;
 }
 
 const adapter = createEntityAdapter<GMDUpdateRow>();
