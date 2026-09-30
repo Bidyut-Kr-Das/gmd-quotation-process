@@ -3984,15 +3984,89 @@ export async function recomputeIndentListingVersionsAction() {
       `[indent-listing-rmcode] rawMaterials=${rawMaterials.length} rows=${rmCodePlan.updates.length} written=${rmCodeUpdates.length} resolved=${rmCodePlan.resolved} ambiguous=${rmCodePlan.ambiguous} unmatched=${rmCodePlan.unmatched}`,
     );
 
+    // Phase 3: publish the RM codes just written onto the Contract Review
+    // COST CODE REF column. This reads rmCodeV1..V4 back from disk rather than
+    // reusing `rmCodeUpdates`, so a slot that matched several raw materials
+    // lands on the contract exactly as the Indent Listing displays it.
+    const { planContractCostCodeRefs } = await import(
+      "@/lib/contractCostCodeRefResolver"
+    );
+
+    const [contractCostRefRows, indentRmCodeRows] = await Promise.all([
+      // `item` is what drives the indent pipeline and what the join parses into
+      // a base item + variant slot, so rows without one can never match.
+      prisma.contractReview.findMany({
+        where: { item: { not: null } },
+        select: {
+          id: true,
+          item: true,
+          size: true,
+          pnRating: true,
+          mcReceivedPending: true,
+          costCodeRef: true,
+        },
+      }),
+      prisma.indentListing.findMany({
+        select: {
+          id: true,
+          item: true,
+          size: true,
+          pnRating: true,
+          mcReceivedPending: true,
+          rmCodeV1: true,
+          rmCodeV2: true,
+          rmCodeV3: true,
+          rmCodeV4: true,
+        },
+      }),
+    ]);
+
+    const costCodeRefPlan = planContractCostCodeRefs(
+      contractCostRefRows,
+      indentRmCodeRows,
+    );
+    const costCodeRefCurrentById = new Map(
+      contractCostRefRows.map((r) => [r.id, r]),
+    );
+    const costCodeRefUpdates = costCodeRefPlan.updates.filter((u) => {
+      const cur = costCodeRefCurrentById.get(u.id);
+      if (!cur) return false;
+      return (cur.costCodeRef ?? null) !== u.costCodeRef;
+    });
+
+    // syncedAt is left alone for the same reason as the RM code pass above: it
+    // tracks the Contract Review sync, not this derived column.
+    if (costCodeRefUpdates.length > 0) {
+      await prisma.$transaction(
+        costCodeRefUpdates.map((u) =>
+          prisma.contractReview.update({
+            where: { id: u.id },
+            data: { costCodeRef: u.costCodeRef },
+          }),
+        ),
+      );
+    }
+
+    console.log(
+      `[contract-review-costcoderef] contractRows=${contractCostRefRows.length} indentRows=${indentRmCodeRows.length} written=${costCodeRefUpdates.length} resolved=${costCodeRefPlan.resolved} ambiguous=${costCodeRefPlan.ambiguous} unmatched=${costCodeRefPlan.unmatched} skippedNoItem=${costCodeRefPlan.skippedNoItem} skippedNoIndent=${costCodeRefPlan.skippedNoIndent}`,
+    );
+
     const rmCodeSummary =
       rmCodePlan.updates.length === 0
         ? "No SLV / SLV METAL indent rows to link."
         : `${rmCodePlan.resolved} linked, ${rmCodePlan.ambiguous} with multiple RM codes, ${rmCodePlan.unmatched} with no RM code.`;
 
+    const costCodeRefSummary =
+      costCodeRefPlan.resolved === 0 &&
+      costCodeRefPlan.ambiguous === 0 &&
+      costCodeRefPlan.unmatched === 0
+        ? "No cost code ref to publish."
+        : `Cost code ref: ${costCodeRefPlan.resolved} filled, ${costCodeRefPlan.ambiguous} with multiple RM codes, ${costCodeRefPlan.unmatched} with no RM code, ${costCodeRefPlan.skippedNoIndent} with no matching indent row.`;
+
     const reason = recomputeSkipped
-      ? `V1-V4 recompute skipped: every row is already collapsed to its base item, so the variant split can no longer be rebuilt. Sync from Contract Review first. ${rmCodeSummary}`
+      ? `V1-V4 recompute skipped: every row is already collapsed to its base item, so the variant split can no longer be rebuilt. Sync from Contract Review first. ${rmCodeSummary} ${costCodeRefSummary}`
       : updated === 0 && deleted === 0
-        ? `All indent rows already have the correct base item and V1-V4 values. ${rmCodeSummary}`
+        ? `All indent rows already have the correct base item and V1-V4 values. ${rmCodeSummary} ${costCodeRefSummary}`
         : undefined;
 
     return {
@@ -4008,6 +4082,15 @@ export async function recomputeIndentListingVersionsAction() {
           resolved: rmCodePlan.resolved,
           ambiguous: rmCodePlan.ambiguous,
           unmatched: rmCodePlan.unmatched,
+        },
+        costCodeRef: {
+          rows: contractCostRefRows.length,
+          written: costCodeRefUpdates.length,
+          resolved: costCodeRefPlan.resolved,
+          ambiguous: costCodeRefPlan.ambiguous,
+          unmatched: costCodeRefPlan.unmatched,
+          skippedNoItem: costCodeRefPlan.skippedNoItem,
+          skippedNoIndent: costCodeRefPlan.skippedNoIndent,
         },
         reason,
       },
@@ -4478,12 +4561,22 @@ export async function saveGMDCastingRateAction(key: string, value: string) {
 
 // Match each EnquiryItem's erpItemCode against ContractReview.itemCode and
 // populate contractReviewRate with the rate from the most-recent contract row.
+//
+// The same button also gap-fills a BLANK costRefCode from
+// ContractReview.costCodeRef (the Indent Listing RM code), which is a separate
+// lookup: different normalizer, different case sensitivity, different recency
+// handling. A cell that already has a value is never touched.
 export async function fetchContractReviewRatesAction(itemIds: string[]) {
   try {
     // 1. Fetch the items we care about
     const items = await prisma.enquiryItem.findMany({
       where: { id: { in: itemIds } },
-      select: { id: true, erpItemCode: true, productCost: true },
+      select: {
+        id: true,
+        erpItemCode: true,
+        productCost: true,
+        costRefCode: true,
+      },
     });
 
     // 2. Collect unique non-null erpItemCodes
@@ -4523,6 +4616,52 @@ export async function fetchContractReviewRatesAction(itemIds: string[]) {
       }
     }
 
+    // 3b. Cost code ref source. Queried separately from the rate rows above and
+    //     on purpose: the rate map keys off raw strings with a case-sensitive
+    //     `in`, so adding `mode: "insensitive"` there would silently change
+    //     which rows the rate lookup matches. The cost ref path normalizes both
+    //     sides (trim / collapse whitespace / upper), so it needs the
+    //     case-insensitive filter to agree with its own keying.
+    const { planCostRefBackfill } = await import(
+      "@/lib/contractReviewCostRefBackfill"
+    );
+    const { normalizeContractKey } = await import(
+      "@/lib/gmd_lib/contract-review-enquiry-backfill"
+    );
+
+    const normalizedCodes = [
+      ...new Set(
+        items
+          .map((i) => i.erpItemCode)
+          .filter((c): c is string => !!c)
+          .map(normalizeContractKey)
+          .filter(Boolean),
+      ),
+    ];
+
+    let costRefPlan: Awaited<
+      ReturnType<typeof planCostRefBackfill>
+    > | null = null;
+    if (normalizedCodes.length > 0) {
+      const costCodeRefRows = await prisma.contractReview.findMany({
+        where: { itemCode: { in: normalizedCodes, mode: "insensitive" } },
+        select: {
+          itemCode: true,
+          costCodeRef: true,
+          dateOfContract: true,
+          createdAt: true,
+          syncedAt: true,
+        },
+      });
+      costRefPlan = planCostRefBackfill(items, costCodeRefRows);
+    } else {
+      costRefPlan = planCostRefBackfill(items, []);
+    }
+
+    const costRefById = new Map(
+      (costRefPlan?.fills ?? []).map((f) => [f.id, f.costRefCode]),
+    );
+
     // 4. Update each matching item
     const updatedItems: ReturnType<typeof serializeItem>[] = [];
     let updated = 0;
@@ -4530,33 +4669,80 @@ export async function fetchContractReviewRatesAction(itemIds: string[]) {
     for (const item of items) {
       if (!item.erpItemCode) continue;
       const rate = bestRateMap.get(item.erpItemCode);
-      if (rate === undefined) continue; // no contract row for this code
 
-      let pdVal: string | null = null;
-      if (rate && item.productCost != null) {
-        const cr = parseFloat(String(rate).replace(/,/g, ""));
-        const pc = Number(item.productCost);
-        if (!isNaN(cr) && !isNaN(pc) && pc !== 0) {
-          pdVal = `${(((cr - pc) / pc) * 100).toFixed(2)}%`;
+      // Sparse write: the rate and the cost code ref are resolved
+      // independently, so an item with no matching rate row can still get a
+      // cost ref filled (and vice versa).
+      const data: Record<string, string | null> = {};
+
+      if (rate !== undefined) {
+        let pdVal: string | null = null;
+        if (rate && item.productCost != null) {
+          const cr = parseFloat(String(rate).replace(/,/g, ""));
+          const pc = Number(item.productCost);
+          if (!isNaN(cr) && !isNaN(pc) && pc !== 0) {
+            pdVal = `${(((cr - pc) / pc) * 100).toFixed(2)}%`;
+          }
         }
+        data.contractReviewRate = rate;
+        data.pdcostValidation = pdVal;
       }
+
+      const costRef = costRefById.get(item.id);
+      if (costRef !== undefined) {
+        data.costRefCode = costRef;
+      }
+
+      if (Object.keys(data).length === 0) continue;
 
       await prisma.enquiryItem.update({
         where: { id: item.id },
-        data: { contractReviewRate: rate, pdcostValidation: pdVal },
+        data,
       });
 
       const refreshed = await prisma.enquiryItem.findUnique({ where: { id: item.id } });
       if (refreshed) {
         updatedItems.push(serializeItem(refreshed));
-        updated++;
+        // `updated` keeps its original meaning (rate writes) so the existing
+        // report stays truthful; a cost-ref-only item still lands in
+        // `updatedItems` so the client repaints the cell.
+        if (rate !== undefined) updated++;
       }
     }
 
-    if (updated === 0) {
-      return { success: false, error: "No matching contract review rows found for the selected items." };
+    const costRef = costRefPlan ?? {
+      fills: [],
+      filled: 0,
+      multi: 0,
+      noMatch: 0,
+      alreadySet: 0,
+    };
+
+    console.log(
+      `[fetch-cr-rates] items=${items.length} rateUpdated=${updated} itemsTouched=${updatedItems.length} costRefFilled=${costRef.filled} costRefMulti=${costRef.multi} costRefNoMatch=${costRef.noMatch} costRefAlreadySet=${costRef.alreadySet}`,
+    );
+
+    if (updatedItems.length === 0) {
+      return {
+        success: false,
+        error: "No matching contract review rows found for the selected items.",
+        costRefFilled: 0,
+        costRefMulti: costRef.multi,
+        costRefNoMatch: costRef.noMatch,
+        costRefAlreadySet: costRef.alreadySet,
+      };
     }
-    return { success: true, data: { items: updatedItems, updated } };
+    return {
+      success: true,
+      data: {
+        items: updatedItems,
+        updated,
+        costRefFilled: costRef.filled,
+        costRefMulti: costRef.multi,
+        costRefNoMatch: costRef.noMatch,
+        costRefAlreadySet: costRef.alreadySet,
+      },
+    };
   } catch (error: any) {
     console.error("Error fetching contract review rates:", error);
     return { success: false, error: error.message || "Failed to fetch contract review rates." };

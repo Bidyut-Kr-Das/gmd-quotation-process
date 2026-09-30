@@ -3,10 +3,10 @@ export const CONTRACT_REVIEW_HEADERS = [
   "DATE OF CONTRACT",
   "PARTY NAME",
   "ITEM_CODE",
-  "MC NO",
-  "PO NO",
   "ITEM_NAME",
   "PARTY ITEM NAME",
+  "MC NO",
+  "PO NO",
   "RATE",
   "VALUE",
   "VA % FROM COST",
@@ -35,6 +35,7 @@ export const CONTRACT_REVIEW_HEADERS = [
   "Item",
   "SIZE",
   "PN RATING",
+  "COST CODE REF",
   "CLEARANCE STATUS",
   "Actuator",
   "RM CODE FOR ACTUATOR",
@@ -93,6 +94,7 @@ export const CONTRACT_REVIEW_COLUMN_WIDTHS: Partial<
   "MC NO": 110,
   "ic qty": 100,
   "ITEM_CODE": 130,
+  "COST CODE REF": 130,
   "JOB Code": 120,
   "BOM ID": 130,
   "RM CODE FOR GB": 130,
@@ -158,8 +160,8 @@ export const CONTRACT_REVIEW_COLUMN_WIDTHS: Partial<
  * A group always renders at the position of its first *visible* child in
  * CONTRACT_REVIEW_HEADERS, so visual order follows the header array, not the
  * order groups are listed here. Declared in visual order for readability:
- *   Contract/PO (idx 0) -> Item Names (idx 6) -> Item/Size/PN (idx 33) ->
- *   Actuator (idx 36) -> LC/RTGS/Bank (idx 39)
+ *   Contract/PO (idx 0) -> Item Names (idx 4) -> Item/Size/PN/CostRef (idx 33)
+ *   -> Actuator (idx 38) -> LC/RTGS/Bank (idx 42)
  *
  * These are purely a display concern: the headers array, the row serializer and
  * the header->DB field map are all untouched, so every *IDX constant and all
@@ -185,12 +187,23 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
     children: [{ header: "ITEM_NAME", plain: true }, { header: "PARTY ITEM NAME", plain: true }],
   },
   {
-    label: "Item / Size / PN RATING",
+    // Cost Code Ref is a child rather than a column of its own: the group
+    // collapses onto its first child ("Item"), so a non-first child renders
+    // inside the single collapsed cell. COST CODE REF must therefore stay in
+    // CONTRACT_REVIEW_HEADERS — GMDUpdateTable looks group children up with
+    // headers.includes(), so a header that is missing from the array makes its
+    // child render silently never.
+    //
+    // Four captioned boxes overflow the collapsed cell's 64px cap
+    // (GMDUpdateTable WRAPPED_CELL_BOX), so this cell scrolls — the same
+    // behaviour the four-child LC/RTGS group already has.
+    label: "Item / Size / PN Rating / Cost Code Ref",
     width: 185,
     children: [
       { header: "Item", label: "Item -" },
       { header: "SIZE", label: "Size -" },
       { header: "PN RATING", label: "PN Rating -" },
+      { header: "COST CODE REF", label: "Cost Code Ref -" },
     ],
   },
   {
@@ -407,6 +420,7 @@ export function mapContractReviewRow(
 export function dbContractReviewToRow(item: {
   contractNo: string | null;
   itemCode: string | null;
+  costCodeRef: string | null;
   mcNo: string | null;
   itemName: string | null;
   partyItemName: string | null;
@@ -477,8 +491,9 @@ export function dbContractReviewToRow(item: {
     item.contractNo,
     item.dateOfContract,
     item.partyNameDump,
-    item.itemCode, item.mcNo, item.poNo,
-    item.itemName, item.partyItemName, item.rate,
+    item.itemCode, item.itemName, item.partyItemName,
+    item.mcNo, item.poNo,
+    item.rate,
     item.value,
     item.vaPercentfromcost,
     item.costfromQuotation,
@@ -492,7 +507,7 @@ export function dbContractReviewToRow(item: {
     item.balDiQty, item.balMcVal, item.balProdOrdVal,
     item.balToProdOrdEntVal, item.balBillAgContVal, item.balBillAgMcVal,
     item.balDiVal, item.diVal,
-    item.item, item.size, item.pnRating,
+    item.item, item.size, item.pnRating, item.costCodeRef,
     item.clearanceStatus, item.actuator,
     item.rmCodeForActuator, item.rmCodeForGb, item.paymentTerms,
     item.lcRtgsRefNo, item.lcDateRtgsDate, item.lastDateOfShipmentDateOfLc,

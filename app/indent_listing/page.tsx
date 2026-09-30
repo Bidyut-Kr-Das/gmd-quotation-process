@@ -85,7 +85,9 @@ export default function IndentListingPage() {
   const handleRecompute = useCallback(async () => {
     setSyncing(true);
     setError(null);
-    const toastId = toast.loading("Recomputing V1-V4 and RM codes from Item...");
+    const toastId = toast.loading(
+      "Recomputing V1-V4, RM codes and cost code ref from Item...",
+    );
     try {
       const res = await recomputeIndentListingVersionsAction();
       if (!res?.success) {
@@ -95,8 +97,12 @@ export default function IndentListingPage() {
       const rmCodeDetail = rm
         ? ` | RM codes: ${rm.resolved} linked, ${rm.ambiguous} multi, ${rm.unmatched} unmatched`
         : "";
+      const costRef = res.data?.costCodeRef;
+      const costRefDetail = costRef
+        ? ` | Cost code ref: ${costRef.resolved} filled, ${costRef.ambiguous} multi, ${costRef.unmatched} unmatched, ${costRef.skippedNoIndent} no indent row`
+        : "";
       toast.success(
-        `Recomputed: ${res.data?.updated ?? 0} updated, ${res.data?.deleted ?? 0} merged/deleted${rmCodeDetail}`,
+        `Recomputed: ${res.data?.updated ?? 0} updated, ${res.data?.deleted ?? 0} merged/deleted${rmCodeDetail}${costRefDetail}`,
         { id: toastId },
       );
       await fetchData();
