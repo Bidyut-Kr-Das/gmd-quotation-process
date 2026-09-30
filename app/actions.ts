@@ -7,10 +7,10 @@ import { resolveItemCategory } from "@/lib/itemCategoryResolver";
 import { extractSizeFromItemName } from "@/lib/sizeExtractor";
 import { roundUp } from "@/lib/rounding";
 import { validateVaPercent, getDefaultVaPercent } from "@/lib/vaValidation";
-import { lookupAndSetItemCode, lookupAndSetItemCodeWithReason, recomputeItemCodeForValues, fetchBomIdSet } from "@/lib/gmdItemCodeLookup";
-import { fetchBomRows, buildRmCostMap, DIRECT_M2M, getBomEntry, getCachedBomRows } from "@/lib/gmdBomCostLookup";
-import { update2to1CostForItems, buildRawMaterialsCostMap } from "@/lib/gmd2to1CostLookup";
-import { getDistinctBomIds, getBomRmAvailBatch, resolveContractReviewBomIdsFromActuator, computeContractReviewRmAvail, getNoUseBomIdSet, normalizeActuatorPart } from "@/lib/verifyBomLookup";
+import { recomputeItemCodeForValues, fetchBomIdSet, refreshItemCodeForItem, syncGmdItemCodes, clearBomIdCache } from "@/lib/gmdItemCodeLookup";
+import { fetchBomRows, buildRmCostMap, DIRECT_M2M, getBomEntry, getCachedBomRows, clearBomCache } from "@/lib/gmdBomCostLookup";
+import { update2to1CostForItems, buildRawMaterialsCostMap, clear2to1BomCache } from "@/lib/gmd2to1CostLookup";
+import { getDistinctBomIds, getBomRmAvailBatch, resolveContractReviewBomIdsFromActuator, computeContractReviewRmAvail, getNoUseBomIdSet, normalizeActuatorPart, clearVerifyBomCache } from "@/lib/verifyBomLookup";
 import { splitCsvLinks } from "@/lib/gmd_lib/contract-order-links";
 import { getUsdInrRate } from "@/lib/gmd_lib/exchangeRate";
 import { getRmStockMap, getRmTypeMap, syncDirectM2MAvailableStock } from "@/lib/directM2MStockLookup";
@@ -1551,11 +1551,44 @@ export type ItemCodeFetchFailure = {
   reason: string;
 };
 
-// Fetch/refresh ERP item codes for multiple enquiry items (triggered via UI button)
+export type ItemCodeChange = {
+  itemId: string;
+  itemName: string;
+  from: string | null;
+  to: string;
+};
+
+// Fetch/refresh ERP item codes for multiple enquiry items (triggered via UI button).
+// Every supplied item is re-derived from a freshly synced master snapshot, so a
+// mapping changed in the GMD Item Creation Form is picked up rather than only
+// filling blanks. A stored code is never nulled: when the master cannot vouch for
+// a code (blank field, or combination it no longer lists) the row is left as-is and
+// the item is reported as a failure.
 export async function fetchErpItemCodesAction(itemIds: string[]) {
   const updatedItems: ReturnType<typeof serializeItem>[] = [];
   const failures: ItemCodeFetchFailure[] = [];
+  const changes: ItemCodeChange[] = [];
   let fetched = 0;
+  let changed = 0;
+  let syncFailed = false;
+
+  // Force a full master re-sync so edits made seconds ago are visible. On failure
+  // the previous snapshot survives (the sync is an atomic wipe-and-replace) and we
+  // carry on with it, flagging the degraded run to the UI.
+  try {
+    const { count } = await syncGmdItemCodes();
+    console.log(`[fetchErpItemCodes] Re-synced ${count} master row(s) from the GMD Item Creation Form`);
+  } catch (e) {
+    syncFailed = true;
+    console.error("[fetchErpItemCodes] Master sheet sync failed, using the existing snapshot:", e);
+  }
+
+  // Drop every cache derived from the master/BOM sheet so this run reads fresh data.
+  clearBomIdCache();
+  clearBomCache();
+  clearVerifyBomCache();
+  clear2to1BomCache();
+
   // Pre-warm BOM & BOM ID cache so gate checks don't fetch per item
   try {
     await Promise.all([getCachedBomRows(), fetchBomIdSet()]);
@@ -1563,33 +1596,45 @@ export async function fetchErpItemCodesAction(itemIds: string[]) {
 
   for (const itemId of itemIds) {
     try {
-      const { code, reason } = await lookupAndSetItemCodeWithReason(itemId, { bomGate: true });
-      let item = await prisma.enquiryItem.findUnique({
-        where: { id: itemId },
-      });
-      if (item) {
-        // Populate availableBomIds from VerifyBom for every code (even if productCost not null)
-        if (item.erpItemCode) {
-          try { await syncAvailableBomIds(itemId, item.erpItemCode); item = await prisma.enquiryItem.findUnique({ where: { id: itemId } }) as any; } catch {}
-          // Only count as fetched if item now has a code (gate passed)
-          fetched++;
-          // If we just fetched a new code and productCost is null, auto-fill cost (do not clear existing) - respects multi-BOM defer
-          if (code && item!.productCost === null) {
-            await maybeUpdateProductCostFromNewCode(itemId, item!.erpItemCode, item!.productCost);
-            const refreshed = await prisma.enquiryItem.findUnique({ where: { id: itemId } });
-            if (refreshed) {
-              updatedItems.push(serializeItem(refreshed));
-              continue;
-            }
-          }
-          updatedItems.push(serializeItem(item!));
-        } else {
-          failures.push({
-            itemId: item.id,
-            itemName: item.itemName,
-            reason: reason || "No matching code in master sheet.",
-          });
+      const result = await refreshItemCodeForItem(itemId);
+
+      if (result.changed && result.code) {
+        // The code moved, so any bomId/bomType/rmItemCode/rmType/availableStock on
+        // this row belonged to the OLD code. Clear them before re-deriving for the
+        // new one. productCost is deliberately untouched here.
+        await prisma.enquiryItem.update({
+          where: { id: itemId },
+          data: { bomId: null, bomType: null, rmItemCode: null, rmType: null, availableStock: null },
+        });
+        changed++;
+        changes.push({
+          itemId,
+          itemName: result.itemName ?? itemId,
+          from: result.oldCode,
+          to: result.code,
+        });
+      }
+
+      if (result.code) {
+        // Repopulate availableBomIds from VerifyBom for the current code (idempotent).
+        try { await syncAvailableBomIds(itemId, result.code); } catch {}
+        // Re-derive BOM linkage and fill cost only when the code actually moved.
+        // maybeUpdateProductCostFromNewCode only writes missing values, so an
+        // existing productCost is never overwritten.
+        if (result.changed) {
+          await maybeUpdateProductCostFromNewCode(itemId, result.code, null);
         }
+        const item = await prisma.enquiryItem.findUnique({ where: { id: itemId } });
+        if (item) {
+          fetched++;
+          updatedItems.push(serializeItem(item));
+        }
+      } else {
+        failures.push({
+          itemId,
+          itemName: result.itemName ?? `Item ${itemId}`,
+          reason: result.reason || "No matching code in master sheet.",
+        });
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to fetch ERP item code.";
@@ -1614,9 +1659,9 @@ export async function fetchErpItemCodesAction(itemIds: string[]) {
       const extra = failures.length > 5 ? `\n...and ${failures.length - 5} more item(s)` : "";
       detailedError = `${failures.length} item(s) could not be matched:\n${bulletList}${extra}`;
     }
-    return { success: false, error: detailedError, data: { items: updatedItems, fetched: 0, failures } };
+    return { success: false, error: detailedError, data: { items: updatedItems, fetched: 0, changed, changes, failures, syncFailed } };
   }
-  return { success: true, data: { items: updatedItems, fetched, failures } };
+  return { success: true, data: { items: updatedItems, fetched, changed, changes, failures, syncFailed } };
 }
 
 // Fill blank productCost from raw material (BOM DIRECT M2M) costs, triggered via UI button

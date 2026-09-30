@@ -491,6 +491,75 @@ export async function lookupAndSetItemCodeWithReason(
   return { code: null, reason };
 }
 
+export type ItemCodeRefreshResult = {
+  itemName: string | null;
+  oldCode: string | null;
+  /** Code derived from the master sheet, or the unchanged stored code when derivable. */
+  code: string | null;
+  changed: boolean;
+  /** False when a 5-field value is blank or the master has no such combination. */
+  derivable: boolean;
+  reason?: string;
+};
+
+/**
+ * Re-derive an item's code from the current master snapshot and overwrite it only
+ * when the master still vouches for a code.
+ *
+ * Unlike `lookupAndSetItemCodeWithReason({ force: true })`, this NEVER nulls a
+ * stored code. A blank field or a combination the master no longer lists is
+ * reported as not derivable and leaves the row completely alone, so a bulk
+ * refresh can never strip codes off live dockets.
+ */
+export async function refreshItemCodeForItem(itemId: string): Promise<ItemCodeRefreshResult> {
+  const item = await prisma.enquiryItem.findUnique({
+    where: { id: itemId },
+    select: {
+      itemName: true,
+      itemType: true,
+      moc: true,
+      size: true,
+      pnRating: true,
+      operationType: true,
+      erpItemCode: true,
+    },
+  });
+  if (!item) {
+    return { itemName: null, oldCode: null, code: null, changed: false, derivable: false, reason: "Item not found in database." };
+  }
+
+  const oldCode = item.erpItemCode ?? null;
+  const itemName = item.itemName ?? null;
+
+  if (!item.itemType || !item.moc || !item.size || !item.pnRating || !item.operationType) {
+    const reason = await getDetailedItemCodeFailureReason(item);
+    return { itemName, oldCode, code: oldCode, changed: false, derivable: false, reason };
+  }
+
+  const newCode = await lookupItemCodeGated({
+    itemType: item.itemType,
+    moc: item.moc,
+    operationType: item.operationType,
+    size: item.size,
+    pnRating: item.pnRating,
+  });
+
+  if (!newCode) {
+    const reason = await getDetailedItemCodeFailureReason(item);
+    return { itemName, oldCode, code: oldCode, changed: false, derivable: false, reason };
+  }
+
+  if (newCode === oldCode) {
+    return { itemName, oldCode, code: newCode, changed: false, derivable: true };
+  }
+
+  await prisma.enquiryItem.update({
+    where: { id: itemId },
+    data: { erpItemCode: newCode },
+  });
+  return { itemName, oldCode, code: newCode, changed: true, derivable: true };
+}
+
 /**
  * Recompute item code from given field values (after an edit) with BOM gate.
  * Returns { oldCode, newCode, changed }

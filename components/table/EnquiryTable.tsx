@@ -1925,7 +1925,9 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
   }
 
   const handleFetchItemCodes = async () => {
-    // Collect items that pass all active filters
+    // Collect every item that passes all active filters. Already-coded items are
+    // included too: the button re-syncs the master sheet, so codes whose mapping
+    // changed upstream are updated, not just blanks.
     const matchedItems: EnquiryItemData[] = []
     for (const enquiry of paginatedEnquiries) {
       for (const item of getFilteredItems(enquiry)) {
@@ -1934,23 +1936,47 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
     }
 
     const missingCodeItems = matchedItems.filter((i) => !i.erpItemCode)
-    console.log(`[Client] fetchItemCodes: ${missingCodeItems.length} items missing item code out of ${matchedItems.length} matched`)
-    if (missingCodeItems.length === 0) {
-      toast.info("No items missing ERP item codes.")
+    const alreadyCoded = matchedItems.length - missingCodeItems.length
+    console.log(`[Client] fetchItemCodes: ${matchedItems.length} item(s) in scope, ${missingCodeItems.length} currently missing a code`)
+    if (matchedItems.length === 0) {
+      toast.info("No items in the current view to refresh.")
       return
     }
-    if (!confirm(`Fetch ERP item codes for ${missingCodeItems.length} items?`)) return
+    if (
+      !confirm(
+        `Re-check ERP item codes for ${matchedItems.length} item(s) against the live master sheet? ` +
+          `${alreadyCoded} already coded (updated if the sheet mapping changed), ${missingCodeItems.length} missing.`
+      )
+    ) return
 
     setFetchCodesStatus("running")
-    const toastId = toast.loading(`Fetching ERP item codes for ${missingCodeItems.length} items...`)
+    const toastId = toast.loading(`Refreshing ERP item codes for ${matchedItems.length} item(s)...`)
     try {
-      const result = await dispatch(fetchItemCodes(missingCodeItems.map((i) => i.id))).unwrap()
+      const result = await dispatch(fetchItemCodes(matchedItems.map((i) => i.id))).unwrap()
+      const changed: { itemName: string; from: string | null; to: string }[] = result?.changes ?? []
+      const syncFailed = result?.syncFailed === true
+      const changeLines = changed
+        .slice(0, 8)
+        .map((c) => `• ${(c.itemName || "").slice(0, 35)}: ${c.from ?? "(blank)"} → ${c.to}`)
+        .join("\n")
+      const extraChanges = changed.length > 8 ? `\n...and ${changed.length - 8} more` : ""
+      const changeBlock = changeLines ? (
+        <div className="mt-1 whitespace-pre-line">
+          {changeLines}
+          {extraChanges}
+        </div>
+      ) : null
+
       if (result?.failures && result.failures.length > 0) {
         toast.warning(
           <div className="text-xs">
             <div className="font-semibold">
-              Item codes fetched for {result.fetched} item(s), but {result.failures.length} not found:
+              {syncFailed ? "Master sheet sync failed - used last snapshot. " : ""}
+              {changed.length > 0
+                ? `Updated ${changed.length} code(s), ${result.fetched} item(s) now have a code, ${result.failures.length} not derivable:`
+                : `${result.fetched} item(s) verified, ${result.failures.length} not derivable:`}
             </div>
+            {changeBlock}
             <div className="mt-1 space-y-1 text-[11px] leading-relaxed opacity-90 max-h-48 overflow-y-auto whitespace-pre-line">
               {result.failures.map((f: any, idx: number) => (
                 <div key={idx}>
@@ -1962,8 +1988,26 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
           </div>,
           { id: toastId, duration: 12000 }
         )
+      } else if (changed.length > 0) {
+        toast.success(
+          <div className="text-xs">
+            <div className="font-semibold">
+              {syncFailed ? "Master sheet sync failed - used last snapshot. " : ""}
+              Updated {changed.length} item code(s), {result.fetched} verified.
+            </div>
+            {changeBlock}
+          </div>,
+          { id: toastId, duration: 9000 }
+        )
+      } else if (syncFailed) {
+        toast.warning(`Master sheet sync failed - verified ${result?.fetched ?? 0} item(s) against the last snapshot.`, {
+          id: toastId,
+          duration: 8000,
+        })
       } else {
-        toast.success(`Item codes fetched for ${result.fetched} item(s).`, { id: toastId })
+        toast.success(`Item codes up to date - ${result?.fetched ?? 0} item(s) verified, no changes in the master sheet.`, {
+          id: toastId,
+        })
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to fetch item codes."
@@ -2251,7 +2295,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
             className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 text-blue-700 dark:text-blue-400 stroke-2 ${fetchCodesStatus === "running" ? "animate-spin" : ""}`} />
-            {fetchCodesStatus === "running" ? "Fetching..." : "Fetch Item Codes"}
+            {fetchCodesStatus === "running" ? "Refreshing..." : "Fetch Item Codes"}
           </button>
 
           <button
