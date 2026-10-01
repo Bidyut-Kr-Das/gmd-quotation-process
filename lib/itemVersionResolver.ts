@@ -115,7 +115,7 @@ interface VariantFlags {
  * Rules per base item:
  *  - SLV / TPAV+SLV / SLV METAL: V1 = plain, V2 = 9523, V3 = RISING,
  *    V4 = RISING + 9523.
- *  - BFV: V1 = plain, V2 = DI, V3 = WAFER, V4 = 9523.
+ *  - BFV: V1 = plain/DI, V2 = CS, V3 = WAFER, V4 = 9523.
  *  - DPCV: V1 = plain/DI, V2 = CS, V3 = spare, V4 = 9523.
  *  - NRV / TPAV: V1 = plain/DI, V2 = spare, V4 = 9523.
  *  - CF / DV / GV / PRV: V1 = plain, V2 = spare.
@@ -142,7 +142,8 @@ function resolveSlot(
   if (baseItem === "BFV") {
     if (has9523) return { slot: 4, variant: "9523" };
     if (hasWafer) return { slot: 3, variant: "WAFER" };
-    if (hasDi) return { slot: 2, variant: "DI" };
+    if (hasCs) return { slot: 2, variant: "CS" };
+    if (hasDi) return { slot: 1, variant: "DI" };
     return { slot: 1, variant: "OTHER" };
   }
 
@@ -184,7 +185,11 @@ export function parseItem(item: string | null | undefined): ItemVersionResult {
     hasRising: /\bRISING\b/.test(normalized),
     hasWafer: /\bWAFER\b/.test(normalized),
     hasDi: /\bDI\b/.test(normalized),
-    hasCs: /\bCS\b/.test(normalized),
+    // "CAST STEEL" is recognised for BFV only, so the CS variant lands in V2
+    // for butterfly valves without moving the CS variant of any other item.
+    hasCs:
+      /\bCS\b/.test(normalized) ||
+      (baseItem === "BFV" && /cast\s*steel|carbon\s*steel/i.test(normalized)),
   };
 
   const { slot, variant } = resolveSlot(baseItem, flags);

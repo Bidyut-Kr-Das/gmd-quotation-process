@@ -9,37 +9,39 @@ export const DEFAULT_COLUMN_WIDTHS: Record<number, number> = {
   4: 130,  // Enquiry Type
   5: 200,  // State/Utility
   6: 210,  // Payment Terms / PBG / Inspection
-  7: 130,  // Order Status
-  8: 140,  // Closure Status
-  9: 160,  // Project Reference
-  10: 300, // Item Name As Per Party
-  11: 400, // Details
-  12: 110, // Quantity
-  13: 140, // Item Code
-  14: 140, // BOM ID
-  15: 110, // Product Cost
-  16: 120, // Cost Ref Code
-  17: 130, // Cost
-  18: 120, // Stock Status
-  19: 120, // Stock Quantity
-  20: 140, // Available Stock
-  21: 140, // View Image
-  22: 100, // Stock Against Contract
-  23: 120, // Discount
-  24: 150, // VA%
-  25: 120, // Quoted Rate
-  26: 140, // Rate (Contract Review)
-  27: 140, // PD Cost Val
-  28: 140, // QR incl. GST
-  29: 240, // Item Name (Merge)
-  30: 140, // Total Value incl. GST
-  31: 140, // Itemwise Total Value
-  32: 170, // Validation
-  33: 180, // Attachment
-  34: 140, // Delivery Schedule
-  35: 170, // APM
-  36: 150, // Offer PDF
-  37: 80,  // Actions
+  7: 200,  // Email Address
+  8: 140,  // Contact No
+  9: 130,  // Order Status
+  10: 140, // Closure Status
+  11: 160, // Project Reference
+  12: 300, // Item Name As Per Party
+  13: 400, // Details
+  14: 110, // Quantity
+  15: 140, // Item Code
+  16: 140, // BOM ID
+  17: 110, // Product Cost
+  18: 120, // Cost Ref Code
+  19: 130, // Cost
+  20: 120, // Stock Status
+  21: 120, // Stock Quantity
+  22: 140, // Available Stock
+  23: 140, // View Image
+  24: 100, // Stock Against Contract
+  25: 120, // Discount
+  26: 150, // VA%
+  27: 120, // Quoted Rate
+  28: 140, // Rate (Contract Review)
+  29: 140, // PD Cost Val
+  30: 140, // QR incl. GST
+  31: 240, // Item Name (Merge)
+  32: 140, // Total Value incl. GST
+  33: 140, // Itemwise Total Value
+  34: 170, // Validation
+  35: 180, // Attachment
+  36: 140, // Delivery Schedule
+  37: 170, // APM
+  38: 150, // Offer PDF
+  39: 80,  // Actions
 };
 
 const initialState: UiState = {

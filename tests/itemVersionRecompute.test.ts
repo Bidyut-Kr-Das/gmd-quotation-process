@@ -87,24 +87,25 @@ test('DPCV maps DI->V1, CS->V2, 9523->V4 and leaves V3 blank', () => {
   assert.equal(updates[0].v4Category, '9523')
 })
 
-test('BFV maps plain->V1, DI->V2, WAFER->V3, 9523->V4', () => {
+test('BFV maps plain/DI->V1, CS->V2, WAFER->V3, 9523->V4', () => {
   const { updates } = planIndentRecompute([
     row({ id: 'a', item: 'BFV', totalBalBillAgCont: 1 }),
     row({ id: 'b', item: 'BFV-DI', totalBalBillAgCont: 2 }),
-    row({ id: 'c', item: 'BFV-WAFER', totalBalBillAgCont: 3 }),
-    row({ id: 'd', item: 'BFV-9523', totalBalBillAgCont: 4 }),
+    row({ id: 'c', item: 'BFV CAST STEEL', totalBalBillAgCont: 5 }),
+    row({ id: 'd', item: 'BFV-WAFER', totalBalBillAgCont: 3 }),
+    row({ id: 'e', item: 'BFV-9523', totalBalBillAgCont: 4 }),
   ])
   assert.equal(updates.length, 1)
   assert.equal(updates[0].item, 'BFV')
   assert.deepEqual(
     [updates[0].v1, updates[0].v2, updates[0].v3, updates[0].v4],
-    ['1', '2', '3', '4'],
+    ['3', '5', '3', '4'],
   )
   assert.deepEqual(
     [updates[0].v1Category, updates[0].v2Category, updates[0].v3Category, updates[0].v4Category],
-    ['Base', 'DI', 'Wafer', '9523'],
+    ['Base, DI', 'CS', 'Wafer', '9523'],
   )
-  assert.equal(updates[0].totalBalBillAgCont, 10)
+  assert.equal(updates[0].totalBalBillAgCont, 15)
 })
 
 test('NRV unmapped suffix falls into the spare V2 slot', () => {

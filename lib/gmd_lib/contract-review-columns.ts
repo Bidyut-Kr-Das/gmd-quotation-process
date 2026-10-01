@@ -198,15 +198,16 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
     // child render silently never.
     //
     // Four captioned boxes overflow the collapsed cell's 64px cap
-    // (GMDUpdateTable WRAPPED_CELL_BOX), so this cell scrolls — the same
-    // behaviour the four-child LC/RTGS group already has.
+    // (GMDUpdateTable WRAPPED_CELL_BOX), so these now render as bare stacked lines
+    // instead of captioned boxes (see ColumnGroupChild.plain).
+    // The Item and PN Rating children are editable dropdowns, which render as-is.
     label: "Item / Size / PN Rating / Cost Code Ref",
     width: 185,
     children: [
-      { header: "Item", label: "Item -" },
-      { header: "SIZE", label: "Size -" },
-      { header: "PN RATING", label: "PN Rating -" },
-      { header: "COST CODE REF", label: "Cost Code Ref -" },
+      { header: "Item", plain: true },
+      { header: "SIZE", plain: true },
+      { header: "PN RATING", plain: true },
+      { header: "COST CODE REF", plain: true },
     ],
   },
   {
@@ -219,7 +220,7 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
   },
   {
     label: "LC / RTGS / Issuing bank name",
-    width: 420,
+    width: 240,
     children: [
       { header: "LC/RTGS REF NO", label: " LC/RTGSRef No -" },
       { header: "LC DATE/RTGS DATE", label: "LC Date -" },
