@@ -28,6 +28,9 @@ export default async function Navbar() {
           <ActiveNavLink href="/">
             Quotation Process
           </ActiveNavLink>
+          <ActiveNavLink href="/docket_follow_up">
+            Docket Follow Up
+          </ActiveNavLink>
           
           <ActiveNavLink href="/raw_material">
             Raw Material

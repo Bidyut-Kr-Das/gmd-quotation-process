@@ -464,3 +464,48 @@ model GeneratedImage {
   @@index([rmType])
   @@index([status])
 }
+
+model DocketQuotationThread {
+  id            Int       @id @default(autoincrement())
+  mysqlThreadId Int?      @map("mysql_thread_id")
+  threadId      String    @unique @map("thread_id") @db.VarChar(255)
+  mailType      String    @map("mail_type") @db.VarChar(50)
+  docketNo      String?   @map("docket_no") @db.VarChar(255)
+  docketStatus  String?   @map("docket_status") @db.VarChar(100)
+  state         String?   @db.VarChar(100)
+  isGmdClient   Boolean   @default(false) @map("is_gmd_client")
+  isReplied     Boolean   @default(false) @map("is_replied")
+  actionTag     String?   @map("action_tag") @db.VarChar(100)
+  matchReasons  String?   @map("match_reasons")
+  date          DateTime? @db.Timestamptz(6)
+  sender        String?   @db.VarChar(500)
+  senderDetails Json?     @map("sender_details")
+  toDetails     Json?     @map("to_details")
+  ccDetails     Json?     @map("cc_details")
+  subject       String?
+  body          String?
+  bodyPreview   String?   @map("body_preview")
+  attachNames   Json?     @map("attach_names")
+  attachLinks   Json?     @map("attach_links")
+  ocrText       String?   @map("ocr_text")
+  aiSummary     String?   @map("ai_summary")
+  category      String?   @db.VarChar(100)
+  subCategory   String?   @map("sub_category") @db.VarChar(100)
+  company       String?   @db.VarChar(100)
+  codeword      String?   @db.VarChar(100)
+  userLabels    Json?     @map("user_labels")
+  msgCount      Int       @default(1) @map("msg_count")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([threadId], map: "idx_dqt_thread_id")
+  @@index([docketNo], map: "idx_dqt_docket_no")
+  @@index([docketStatus], map: "idx_dqt_docket_status")
+  @@index([isGmdClient], map: "idx_dqt_is_gmd_client")
+  @@index([actionTag], map: "idx_dqt_action_tag")
+  @@index([mailType], map: "idx_dqt_mail_type")
+  @@index([date(sort: Desc)], map: "idx_dqt_date")
+  @@index([company], map: "idx_dqt_company")
+  @@map("docket_quotation_threads")
+}
+
