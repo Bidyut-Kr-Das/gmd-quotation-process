@@ -16,6 +16,8 @@ const initialState: FiltersState = {
   vaPercent: [],
   orderStatus: [],
   closureStatus: [],
+  emailAddress: "",
+  contactNo: "",
   itemName: "",
   quantity: "",
   itemType: [],

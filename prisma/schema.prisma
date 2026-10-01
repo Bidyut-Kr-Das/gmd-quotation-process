@@ -113,7 +113,7 @@ model EnquiryItem {
   bomId                String?
   bomType              String? //(stores "DIRECT M2M")
   rmItemCode           String? //(the CONSUMPTION-1 rm code, for traceability)
-  rmType               String?
+  rmType               String?  @default("COMMON")
   contractReviewRate   String?
   pdcostValidation     String?
   quotedRateGst        String?

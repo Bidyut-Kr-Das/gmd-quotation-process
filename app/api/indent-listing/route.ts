@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { applySlvFamilySums } from "@/lib/indentListingFamilySum";
 
 export const INDENT_LISTING_HEADERS = [
   "ITEM NAME",
@@ -36,27 +37,29 @@ export async function GET() {
           )
         : null;
 
-    const rows = items.map((item) => [
-      item.item,
-      item.size,
-      item.pnRating,
-      item.mcReceivedPending,
-      item.totalBalBillAgCont != null
-        ? String(item.totalBalBillAgCont)
-        : null,
-      item.v1,
-      item.v2,
-      item.v3,
-      item.v4,
-      item.v1Category,
-      item.v2Category,
-      item.v3Category,
-      item.v4Category,
-      item.rmCodeV1,
-      item.rmCodeV2,
-      item.rmCodeV3,
-      item.rmCodeV4,
-    ]);
+    const rows = applySlvFamilySums(
+      items.map((item) => [
+        item.item,
+        item.size,
+        item.pnRating,
+        item.mcReceivedPending,
+        item.totalBalBillAgCont != null
+          ? String(item.totalBalBillAgCont)
+          : null,
+        item.v1,
+        item.v2,
+        item.v3,
+        item.v4,
+        item.v1Category,
+        item.v2Category,
+        item.v3Category,
+        item.v4Category,
+        item.rmCodeV1,
+        item.rmCodeV2,
+        item.rmCodeV3,
+        item.rmCodeV4,
+      ]),
+    );
 
     return NextResponse.json({
       headers: INDENT_LISTING_HEADERS,
