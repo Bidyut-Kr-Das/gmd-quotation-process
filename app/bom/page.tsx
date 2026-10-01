@@ -528,7 +528,7 @@ export default function BomPage() {
           <div className="mt-2 text-sm text-red-600">{error}</div>
         )}
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4 pr-1 mt-4">
-          {/* <GMDUpdateTable
+          <GMDUpdateTable
             headers={headers}
             rows={yesRows}
             ids={yesIds}
@@ -563,7 +563,7 @@ export default function BomPage() {
             onCellUpdate={handleCellUpdate}
             hiddenColumns={["ITEM SCHEDULE NAME", "C BATCH"]}
             cellBadges={ITEM_CODE_BADGES}
-          /> */}
+          />
         </div>
 
         <Dialog open={confirmItemName} onOpenChange={setConfirmItemName}>
