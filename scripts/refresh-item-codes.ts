@@ -1,4 +1,4 @@
-/**
+﻿/**
  * One-time ERP item code re-derivation.
  *
  * Re-derives EnquiryItem.erpItemCode from the Google Sheet master ("GMD Item
@@ -8,21 +8,37 @@
  * Rules:
  *  - Only items where erpItemCode IS NOT NULL are considered. Blank codes are
  *    left completely alone (backfillExistingItems() already owns those).
- *  - A code is NEVER blanked. If re-derivation finds no exact match, the
- *    existing code is kept and the item is reported.
+ *  - Cost columns are NEVER written. This script only touches the item code
+ *    and its BOM linkage (bomId, bomType, rmItemCode, rmType, availableStock,
+ *    availableBomIds). productCost / cost / vaPercent / quotedRate / totalValue
+ *    are left exactly as they are.
+ *  - No BOM gate, matching current app behaviour (gate is commented out in
+ *    lib/gmdItemCodeLookup.ts).
+ *
+ *  --blank-unmatched additionally NULLS OUT the code and its BOM linkage on every
+ *  item the sheet cannot vouch for:
+ *    - NO_MATCH       all 5 fields present, no such row in the sheet -> code is wrong
+ *    - MISSING_FIELD  a field is blank, so the lookup cannot run. Blanked only if the
+ *                    sheet has no row for the item's OTHER fields carrying that code
+ *                    (i.e. the code is not even plausible). Plausible ones are kept.
+ *
+ *  --blank-unmatched-except=<code> keeps one specific code from being blanked.
  *  - No BOM gate, matching current app behaviour (gate is commented out in
  *    lib/gmdItemCodeLookup.ts).
  *
  * Dry run by default. Pass --apply to write.
  *
  * ---------------------------------------------------------------------------
- * CASCADE FUNCTIONS BELOW ARE DELIBERATE COPIES
+ * CASCADE FUNCTION BELOW IS A DELIBERATE COPY
  * ---------------------------------------------------------------------------
- * `localSyncAvailableBomIds` and `localMaybeUpdateProductCostFromNewCode` are
- * verbatim ports of the private helpers in `app/actions.ts:1289-1482`. They are
- * duplicated on purpose so this script can be run without touching the
- * "use server" module. If the logic in app/actions.ts changes, these MUST be
+ * `localSyncAvailableBomIds` is a verbatim port of the private helper at
+ * `app/actions.ts:1289-1306`. It is duplicated so this script can run without
+ * touching the "use server" module. If that logic changes, this MUST be
  * re-synced. That is the trade-off of leaving app/actions.ts untouched.
+ *
+ * The cost cascade (app/actions.ts:1313-1482, maybeUpdateProductCostFromNewCode)
+ * is deliberately NOT ported. It writes productCost / cost / vaPercent, which
+ * this script is not allowed to touch.
  */
 
 import "dotenv/config";
@@ -30,18 +46,19 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { prisma } from "@/lib/prisma";
 import { syncGmdItemCodes, getDetailedItemCodeFailureReason } from "@/lib/gmdItemCodeLookup";
-import { getCachedBomRows, getBomEntry, buildRmCostMap, DIRECT_M2M } from "@/lib/gmdBomCostLookup";
-import { buildRawMaterialsCostMap } from "@/lib/gmd2to1CostLookup";
 import { getDistinctBomIds, getNoUseBomIdSet } from "@/lib/verifyBomLookup";
-import { getRmStockMap, getRmTypeMap } from "@/lib/directM2MStockLookup";
-import { recalculateItem } from "@/lib/costCalculator";
 import { isEnquiryFrozen } from "@/lib/oneClickAccess";
 
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
 const SYNC = !args.includes("--no-sync");
+const BLANK_UNMATCHED = args.includes("--blank-unmatched");
 const KEEP_STALE_BOM = args.includes("--keep-stale-bom");
 const TTY = process.stdout.isTTY;
+const BLANK_EXCEPT = (args.find((a) => a.startsWith("--blank-unmatched-except="))?.split("=")[1] ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 const LIMIT = Number(args.find((a) => a.startsWith("--limit="))?.split("=")[1] ?? 0);
 const DOCKETS = args
   .find((a) => a.startsWith("--docket="))
@@ -83,15 +100,14 @@ type Report = {
   phantom: boolean;
   reason?: string;
   looseMatch?: string;
+  /** --blank-unmatched: this code should be nulled out. */
+  blank: boolean;
+  /** Why the code is (or is not) plausible for a partially-filled item. */
+  plausibility?: string;
 };
 
 const sep = (n = 78) => "-".repeat(n);
 const dec = (v: unknown) => (v === null || v === undefined ? null : String(v));
-
-/** Columns the BOM cascade is allowed to write. */
-type BomPatch = Partial<
-  Record<"bomId" | "bomType" | "rmItemCode" | "rmType" | "availableStock", string | null>
->;
 
 // ---------------------------------------------------------------------------
 // Verbatim port of app/actions.ts:1289-1306 (syncAvailableBomIds)
@@ -117,172 +133,6 @@ async function localSyncAvailableBomIds(
   } catch (e) {
     console.warn(`[syncAvailableBomIds] failed for ${itemId} code=${erpItemCode}:`, e);
     return [];
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Verbatim port of app/actions.ts:1313-1482 (maybeUpdateProductCostFromNewCode)
-// ---------------------------------------------------------------------------
-async function localMaybeUpdateProductCostFromNewCode(
-  itemId: string,
-  newCode: string | null
-): Promise<void> {
-  if (!newCode) return;
-
-  const preMeta = await prisma.enquiryItem.findUnique({
-    where: { id: itemId },
-    select: { bomId: true, costRefCode: true, productCost: true, availableStock: true, bomType: true },
-  });
-  const needProductCost = preMeta?.productCost == null;
-  const needStock = !preMeta?.availableStock || preMeta.availableStock.trim() === "";
-  const needBomType = !preMeta?.bomType;
-  if (!needProductCost && !needStock && !needBomType) return;
-
-  try {
-    // First-class rule: bomId absent + costRefCode present -> direct GMDUpdateItem match
-    if (!preMeta?.bomId && preMeta?.costRefCode?.trim()) {
-      const refCode = preMeta.costRefCode.trim();
-      const rawMap = await buildRawMaterialsCostMap([refCode]);
-      const cost = rawMap.get(refCode);
-      let fbStock: string | undefined;
-      let fbRmType: string | undefined;
-      {
-        const stockMap = await getRmStockMap([refCode]);
-        const v = stockMap.get(refCode);
-        if (v !== undefined && v.trim() !== "") fbStock = v;
-      }
-      {
-        const rmTypeMap = await getRmTypeMap([refCode]);
-        const v = rmTypeMap.get(refCode);
-        if (v !== undefined) fbRmType = v;
-      }
-      const hasMatch = cost !== undefined || fbStock !== undefined || fbRmType !== undefined;
-      if (hasMatch) {
-        if (needProductCost && cost !== undefined && cost !== null) {
-          await recalculateItem(itemId, { productCost: cost });
-        }
-        const data: BomPatch = {};
-        if (fbRmType !== undefined) data.rmType = fbRmType;
-        if (needStock && fbStock !== undefined) data.availableStock = fbStock;
-        if (Object.keys(data).length > 0) {
-          await prisma.enquiryItem.update({ where: { id: itemId }, data });
-        }
-        return;
-      }
-      // No GMDUpdateItem match -> fall through to normal BOM logic
-    }
-
-    const candidateIds = await localSyncAvailableBomIds(itemId, newCode);
-    if (candidateIds.length > 1) return;
-
-    if (candidateIds.length === 1) {
-      const vbRow = await prisma.verifyBom.findFirst({
-        where: { itemCode: newCode, bomId: candidateIds[0] },
-        select: { bomId: true, rmItemCode: true, bomIdType: true },
-      });
-      if (vbRow?.rmItemCode) {
-        let cost: number | undefined;
-        if (needProductCost) {
-          const rawMap = await buildRawMaterialsCostMap([vbRow.rmItemCode]);
-          cost = rawMap.get(vbRow.rmItemCode);
-          if (cost === undefined) {
-            const supplyMap = await buildRmCostMap([vbRow.rmItemCode]);
-            cost = supplyMap.get(vbRow.rmItemCode);
-          }
-          if (cost !== undefined && cost !== null) {
-            await recalculateItem(itemId, { productCost: cost });
-          }
-        }
-        const bomType = vbRow.bomIdType || DIRECT_M2M;
-        const dataToUpdate: BomPatch = { bomId: vbRow.bomId, rmItemCode: vbRow.rmItemCode, bomType };
-        {
-          const rmTypeMap = await getRmTypeMap([vbRow.rmItemCode]);
-          const rmTypeVal = rmTypeMap.get(vbRow.rmItemCode);
-          if (rmTypeVal !== undefined) dataToUpdate.rmType = rmTypeVal;
-        }
-        if (bomType === DIRECT_M2M && needStock) {
-          const stockMap = await getRmStockMap([vbRow.rmItemCode]);
-          const stock = stockMap.get(vbRow.rmItemCode);
-          if (stock !== undefined && stock.trim() !== "") dataToUpdate.availableStock = stock;
-        }
-        if (Object.keys(dataToUpdate).length > 0) {
-          await prisma.enquiryItem.update({ where: { id: itemId }, data: dataToUpdate });
-        }
-        return;
-      }
-    }
-
-    // Fallback to sheet DIRECT M2M BOM
-    {
-      const bom = await getBomEntry(newCode);
-      if (bom) {
-        let cost: number | undefined;
-        if (needProductCost) {
-          const rawMap = await buildRawMaterialsCostMap([bom.rmItemCode]);
-          cost = rawMap.get(bom.rmItemCode);
-          if (cost === undefined) {
-            const supplyMap = await buildRmCostMap([bom.rmItemCode]);
-            cost = supplyMap.get(bom.rmItemCode);
-          }
-          if (cost !== undefined && cost !== null) {
-            await recalculateItem(itemId, { productCost: cost });
-          }
-        }
-        const dataToUpdate: BomPatch = { bomId: bom.bomId, rmItemCode: bom.rmItemCode, bomType: DIRECT_M2M };
-        {
-          const rmTypeMap = await getRmTypeMap([bom.rmItemCode]);
-          const rmTypeVal = rmTypeMap.get(bom.rmItemCode);
-          if (rmTypeVal !== undefined) dataToUpdate.rmType = rmTypeVal;
-        }
-        if (needStock) {
-          const stockMap = await getRmStockMap([bom.rmItemCode]);
-          const stock = stockMap.get(bom.rmItemCode);
-          if (stock !== undefined && stock.trim() !== "") dataToUpdate.availableStock = stock;
-          else delete dataToUpdate.availableStock;
-        }
-        if (!needStock) delete dataToUpdate.availableStock;
-        if (Object.keys(dataToUpdate).length > 0) {
-          await prisma.enquiryItem.update({ where: { id: itemId }, data: dataToUpdate });
-        }
-        return;
-      }
-    }
-
-    if (candidateIds.length !== 0) return;
-
-    // Final fallback: bomId absent -> direct GMDUpdateItem match on costRefCode
-    const fallbackMeta = preMeta;
-    if (fallbackMeta?.bomId) return;
-    const fallbackCode = fallbackMeta?.costRefCode?.trim();
-    if (!fallbackCode) return;
-    let fallbackCost: number | undefined;
-    let fbStock: string | undefined;
-    let fbRmType: string | undefined;
-    {
-      const rawMap = await buildRawMaterialsCostMap([fallbackCode]);
-      fallbackCost = rawMap.get(fallbackCode);
-    }
-    {
-      const stockMap = await getRmStockMap([fallbackCode]);
-      const stockVal = stockMap.get(fallbackCode);
-      if (stockVal !== undefined && stockVal.trim() !== "") fbStock = stockVal;
-    }
-    {
-      const rmTypeMap = await getRmTypeMap([fallbackCode]);
-      const rt = rmTypeMap.get(fallbackCode);
-      if (rt !== undefined) fbRmType = rt;
-    }
-    if (needProductCost && fallbackCost !== undefined && fallbackCost !== null) {
-      await recalculateItem(itemId, { productCost: fallbackCost });
-    }
-    const fallbackData: BomPatch = {};
-    if (fbRmType !== undefined) fallbackData.rmType = fbRmType;
-    if (needStock && fbStock !== undefined) fallbackData.availableStock = fbStock;
-    if (Object.keys(fallbackData).length > 0) {
-      await prisma.enquiryItem.update({ where: { id: itemId }, data: fallbackData });
-    }
-  } catch (e) {
-    console.warn(`[maybeUpdateProductCost] failed for ${itemId} code=${newCode}:`, e);
   }
 }
 
@@ -322,6 +172,50 @@ async function looseMatchFor(row: Row): Promise<string | undefined> {
     (c) => n(c.operation) === n(row.operationType) && n(c.pnGmd) === n(row.pnRating)
   );
   return hit?.itemCode;
+}
+
+/**
+ * For an item with a blank 5-field value, decide whether the code it already
+ * carries could still be the right one.
+ *
+ * Looks for ANY master row whose itemCode equals the item's current code and
+ * whose fields that the item DOES have match exactly. Blank item fields are
+ * wildcards, so a hit means "this code is at least consistent with what we know
+ * about the item" -> keep it. No hit means the code describes a different
+ * product -> it is wrong.
+ */
+async function codeIsPlausible(
+  row: Row
+): Promise<{ possible: boolean; detail: string }> {
+  // Blank item fields are wildcards, so only constrain on the ones present.
+  const where: { itemCode: string; itemType?: string; moc?: string; operation?: string; size?: string; pnGmd?: string } = {
+    itemCode: row.erpItemCode,
+  };
+  const used: string[] = [];
+  if (row.itemType?.trim()) where.itemType = row.itemType;
+  if (row.moc?.trim()) where.moc = row.moc;
+  if (row.operationType?.trim()) where.operation = row.operationType;
+  if (row.size?.trim()) where.size = row.size;
+  if (row.pnRating?.trim()) where.pnGmd = row.pnRating;
+  for (const k of Object.keys(where)) {
+    if (k !== "itemCode") used.push(k);
+  }
+
+  const rows = await prisma.gmdItemCode.findMany({
+    where,
+    select: { itemType: true, moc: true, operation: true, size: true, pnGmd: true },
+  });
+
+  if (rows.length === 0) {
+    return {
+      possible: false,
+      detail: `the sheet has no row carrying ${row.erpItemCode} at all, so it cannot describe this item`,
+    };
+  }
+  return {
+    possible: true,
+    detail: `the sheet maps ${row.erpItemCode} to ${rows[0].itemType} / ${rows[0].moc} / ${rows[0].operation} / ${rows[0].size}mm / ${rows[0].pnGmd}, which matches this item on ${used.join(", ")} - the code is probably correct, the blank field is the problem`,
+  };
 }
 
 function describe(row: Row) {
@@ -461,7 +355,20 @@ async function main() {
       ]
         .filter(Boolean)
         .join(", ");
-      reports.push({ bucket: "MISSING_FIELD", row, expected: null, phantom, reason: `Missing field(s): ${missing}` });
+      // A partially-filled item cannot be looked up. But the code it already
+      // carries may still be right. Test whether the sheet has ANY row carrying
+      // that code whose non-blank fields agree with this item. If yes the code is
+      // plausible -> keep. If no, the code belongs to something else -> blank.
+      const plausible = await codeIsPlausible(row);
+      reports.push({
+        bucket: "MISSING_FIELD",
+        row,
+        expected: null,
+        phantom,
+        blank: !plausible.possible && !BLANK_EXCEPT.includes(row.erpItemCode),
+        plausibility: plausible.detail,
+        reason: `Missing field(s): ${missing}. ${plausible.detail}`,
+      });
       continue;
     }
 
@@ -472,20 +379,23 @@ async function main() {
         row,
         expected: null,
         phantom,
+        // All 5 fields are present and the sheet has no row for them, so this
+        // code cannot belong to this item.
+        blank: !BLANK_EXCEPT.includes(row.erpItemCode),
         reason: await getDetailedItemCodeFailureReason(row),
         looseMatch: await looseMatchFor(row),
       });
       continue;
     }
     if (expected === row.erpItemCode) {
-      reports.push({ bucket: "OK", row, expected, phantom });
+      reports.push({ bucket: "OK", row, expected, phantom, blank: false });
       continue;
     }
     if (row.frozen) {
-      reports.push({ bucket: "SKIPPED_FROZEN", row, expected, phantom });
+      reports.push({ bucket: "SKIPPED_FROZEN", row, expected, phantom, blank: false });
       continue;
     }
-    reports.push({ bucket: "WOULD_CHANGE", row, expected, phantom });
+    reports.push({ bucket: "WOULD_CHANGE", row, expected, phantom, blank: false });
   }
   if (TTY) process.stdout.write("\r".padEnd(100) + "\r");
 
@@ -689,6 +599,8 @@ async function main() {
             cost: r.row.cost,
             availableBomIds: r.row.availableBomIds,
             frozen: r.row.frozen,
+            blank: r.blank,
+            plausibility: r.plausibility ?? null,
             reason: r.reason ?? null,
             looseMatch: r.looseMatch ?? null,
           })),
@@ -702,33 +614,51 @@ async function main() {
     console.log(`\nCould not write report: ${(e as Error).message}`);
   }
 
+  // [7] To be blanked -------------------------------------------------------
+  console.log(`\n--- [7] WOULD BE BLANKED (${reports.filter((r) => r.blank).length}) ---`);
+  if (reports.filter((r) => r.blank).length === 0) console.log("  (none)");
+  else {
+    const kept = reports.filter((r) => r.bucket === "MISSING_FIELD" && !r.blank);
+    for (const r of reports.filter((x) => x.blank)) {
+      console.log(
+        `  ${r.bucket.padEnd(14)} ${r.row.docketNumber.padEnd(20)} ${r.row.erpItemCode.padEnd(12)} bomId ${r.row.bomId ?? "-"} / rm ${r.row.rmItemCode ?? "-"} / cost ${r.row.productCost ?? "null"}`
+      );
+      console.log(`  ${" ".repeat(14)} ${describe(r.row)}`);
+    }
+    if (kept.length > 0) {
+      console.log(`\n  KEPT (code still plausible, only a field is missing):`);
+      for (const r of kept) {
+        console.log(`  ${r.row.docketNumber.padEnd(20)} ${r.row.erpItemCode.padEnd(12)} ${describe(r.row)}`);
+        console.log(`  ${" ".repeat(20)} ${r.plausibility}`);
+      }
+    }
+  }
+
   if (!APPLY) {
     console.log(`\n${sep()}`);
     console.log("DRY RUN. Nothing was written to EnquiryItem.");
     console.log("Re-run with --apply to persist. Options:");
     console.log("  npx tsx scripts/refresh-item-codes.ts --apply");
+    console.log("  npx tsx scripts/refresh-item-codes.ts --apply --blank-unmatched     # also null the wrong codes + their BOM");
     console.log("  npx tsx scripts/refresh-item-codes.ts --apply --limit=50          # rehearse on 50");
     console.log("  npx tsx scripts/refresh-item-codes.ts --apply --docket=GMD/2026-27/055");
     console.log("  npx tsx scripts/refresh-item-codes.ts --apply --keep-stale-bom     # do not clear stale bomId");
+    console.log("  npx tsx scripts/refresh-item-codes.ts --apply --blank-unmatched --blank-unmatched-except=FCE070025");
     console.log("  npx tsx scripts/refresh-item-codes.ts --no-sync                    # reuse current snapshot");
     await prisma.$disconnect();
     return;
   }
 
   // ---- Phase 4: apply ------------------------------------------------------
-  console.log(`\n${sep()}\nAPPLYING ${changes.length} change(s)...\n`);
-  // Pre-warm the sheet BOM cache so the per-item cascade does not refetch it.
-  try {
-    await getCachedBomRows();
-  } catch {}
+  console.log(`\n${sep()}\nAPPLYING ${changes.length} code change(s)...\n`);
   let done = 0;
   let failed = 0;
-  let frozenSkipped = 0;
   const applied: string[] = [];
 
   for (let i = 0; i < changes.length; i++) {
     const r = changes[i];
-    const { id, erpItemCode: from } = { id: r.row.id, erpItemCode: r.row.erpItemCode };
+    const id = r.row.id;
+    const from = r.row.erpItemCode;
     const to = r.expected!;
     if (TTY) {
       process.stdout.write(
@@ -736,9 +666,9 @@ async function main() {
       );
     }
     try {
-      if (!KEEP_STALE_BOM && r.row.bomId && r.row.bomId !== "") {
-        // The code changed, so any bomId/rmItemCode on this row belonged to the
-        // OLD code. Clear it so the cascade re-derives cleanly from the new one.
+      if (!KEEP_STALE_BOM) {
+        // The code changed, so any bomId/bomType/rmItemCode/rmType/availableStock
+        // on this row belonged to the OLD code. Clear them.
         await prisma.enquiryItem.update({
           where: { id },
           data: { bomId: null, bomType: null, rmItemCode: null, rmType: null, availableStock: null },
@@ -746,13 +676,8 @@ async function main() {
       }
       await prisma.enquiryItem.update({ where: { id }, data: { erpItemCode: to } });
       await localSyncAvailableBomIds(id, to);
-      if (r.row.frozen) {
-        // erpItemCode/availableBomIds are not frozen fields, but recalculateItem
-        // rewrites cost/quotedRate which are. Stop here.
-        frozenSkipped++;
-      } else {
-        await localMaybeUpdateProductCostFromNewCode(id, to);
-      }
+      // No cost cascade: productCost / cost / vaPercent / quotedRate are never
+      // written by this script.
       applied.push(id);
       done++;
     } catch (e) {
@@ -761,13 +686,55 @@ async function main() {
     }
   }
 
+  // ---- Phase 5: blank un-vouchable codes -----------------------------------
+  const toBlank = reports.filter((r) => r.blank);
+  if (BLANK_UNMATCHED) {
+    console.log(`\n${sep()}\nBLANKING ${toBlank.length} un-vouchable code(s)...\n`);
+    let blanked = 0;
+    let blankFailed = 0;
+    for (let i = 0; i < toBlank.length; i++) {
+      const r = toBlank[i];
+      if (TTY) {
+        process.stdout.write(
+          `\r[${i + 1}/${toBlank.length}] ${r.row.docketNumber.padEnd(20)} clear ${r.row.erpItemCode}`.padEnd(90)
+        );
+      }
+      try {
+        await prisma.enquiryItem.update({
+          where: { id: r.row.id },
+          data: {
+            erpItemCode: null,
+            bomId: null,
+            bomType: null,
+            rmItemCode: null,
+            rmType: null,
+            availableStock: null,
+            availableBomIds: [],
+          },
+        });
+        blanked++;
+      } catch (e) {
+        blankFailed++;
+        console.log(`\n  FAILED ${r.row.id}: ${(e as Error).message}`);
+      }
+    }
+    if (TTY) process.stdout.write(`\r${" ".padEnd(100)}\r`);
+    console.log(`  blanked: ${blanked} | failed: ${blankFailed}`);
+  } else if (toBlank.length > 0) {
+    console.log(
+      `\n  ${toBlank.length} item(s) would be blanked. Re-run with --blank-unmatched to do it (see section [7]).`
+    );
+  }
+
   if (TTY) process.stdout.write(`\r${" ".padEnd(100)}\r`);
+  const blankedCount = BLANK_UNMATCHED ? toBlank.length : 0;
   console.log(`\n=== DONE ===`);
-  console.log(`  codes changed : ${done}`);
-  console.log(`  failed        : ${failed}`);
-  console.log(`  frozen, cost cascade skipped: ${frozenSkipped}`);
-  console.log(`  left untouched: ${noMatch.length} NO_MATCH, ${missing.length} MISSING_FIELD, ${by("OK").length} OK`);
-  console.log(`  NOTE: ${phantomAll.length} phantom-code item(s) and ${misassigned.length} mis-assigned item(s) still need manual review - see the report.`);
+  console.log(`  codes changed           : ${done}`);
+  console.log(`  failed                  : ${failed}`);
+  console.log(`  codes blanked           : ${blankedCount}`);
+  console.log(`  codes still showing     : ${noMatch.length - blankedCount} NO_MATCH, ${missing.length - reports.filter((r) => r.bucket === "MISSING_FIELD" && r.blank).length} MISSING_FIELD (kept as plausible)`);
+  console.log(`  untouched, already OK   : ${by("OK").length}`);
+  console.log(`  cost columns written    : 0 (productCost / cost / vaPercent / quotedRate untouched)`);
 
   await prisma.$disconnect();
 }

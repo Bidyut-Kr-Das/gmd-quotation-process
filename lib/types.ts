@@ -76,6 +76,8 @@ export interface EnquiryData {
   apm?: string | null;
   offerPdfGeneratedAt?: string | Date | null;
   offerPdfGeneratedBy?: string | null;
+  emailAddress?: string | null;
+  contactNo?: string | null;
   attachments: AttachmentData[];
   items: EnquiryItemData[];
 }
@@ -117,6 +119,8 @@ export interface FiltersState {
   vaPercent: string[];
   orderStatus: string[];
   closureStatus: string[];
+  emailAddress: string;
+  contactNo: string;
   itemName: string;
   quantity: string;
   itemType: string[];

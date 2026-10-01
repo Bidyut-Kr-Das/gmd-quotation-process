@@ -98,15 +98,32 @@ test('TPAV+SLV and SLV METAL follow the same SLV-family slot mapping', () => {
   assert.equal(parseItem('SLV RISING-METAL').slot, 3)
 })
 
-test('BFV: plain -> V1, DI -> V2, WAFER -> V3, 9523 -> V4', () => {
+test('BFV: plain/DI -> V1, CS -> V2, WAFER -> V3, 9523 -> V4', () => {
   assert.equal(parseItem('BFV').slot, 1)
   assert.equal(parseItem('BFV').variant, 'PLAIN')
-  assert.equal(parseItem('BFV-DI').slot, 2)
+  assert.equal(parseItem('BFV-DI').slot, 1)
   assert.equal(parseItem('BFV-DI').variant, 'DI')
+  assert.equal(parseItem('BFV-CS').slot, 2)
+  assert.equal(parseItem('BFV-CS').variant, 'CS')
+  // The live Contract Review sheet spells this variant "BFV CAST STEEL"; it
+  // must be treated as the same CS variant as "BFV-CS".
+  assert.equal(parseItem('BFV CAST STEEL').slot, 2)
+  assert.equal(parseItem('BFV CAST STEEL').variant, 'CS')
+  assert.equal(parseItem('BFV CAST STEEL').label, 'CS')
   assert.equal(parseItem('BFV-WAFER').slot, 3)
   assert.equal(parseItem('BFV-WAFER').variant, 'WAFER')
   assert.equal(parseItem('BFV-9523').slot, 4)
   assert.equal(parseItem('BFV-9523').variant, '9523')
+})
+
+test('CAST STEEL is only recognised as CS for BFV', () => {
+  // "BFV CAST STEEL" reaches V2, but the same spelling on any other item must
+  // not be re-classified as a CS variant.
+  assert.equal(parseItem('SLV CAST STEEL').baseItem, 'SLV')
+  assert.equal(parseItem('SLV CAST STEEL').hasVersionExtras, false)
+  assert.equal(parseItem('SLV CAST STEEL').label, 'Base')
+  assert.equal(parseItem('NRV CAST STEEL').slot, 1)
+  assert.equal(parseItem('NRV CAST STEEL').label, 'Base')
 })
 
 test('DPCV: plain/DI -> V1, CS -> V2, 9523 -> V4, spare -> V3', () => {

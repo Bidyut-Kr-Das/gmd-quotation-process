@@ -3276,7 +3276,7 @@ tileSize,
           </button>
         </aside>
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
-          <GMDUpdateHeader
+          {/* <GMDUpdateHeader
             title="CONTRACT REVIEW"
             totalRows={data?.totalRows ?? 0}
             syncedAt={data?.syncedAt ?? undefined}
@@ -3299,7 +3299,7 @@ tileSize,
               </button>
             }
           />
-          {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
+          {error && <div className="mt-2 text-sm text-red-600">{error}</div>} */}
           <ResizablePanelGroup
             orientation="vertical"
             id="contract-review-vertical"

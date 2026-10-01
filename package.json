@@ -42,7 +42,9 @@
     "closure:lookup:sync": "tsx scripts/sync-closure-status-lookup.ts",
     "closure:lookup:sync:apply": "tsx scripts/sync-closure-status-lookup.ts --apply",
     "itemcode:refresh": "tsx scripts/refresh-item-codes.ts",
-    "itemcode:refresh:apply": "tsx scripts/refresh-item-codes.ts --apply"
+    "itemcode:refresh:apply": "tsx scripts/refresh-item-codes.ts --apply",
+    "rmtype:common": "tsx scripts/backfill-rmtype-common.ts",
+    "rmtype:common:apply": "tsx scripts/backfill-rmtype-common.ts --apply"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",

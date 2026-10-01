@@ -127,7 +127,11 @@ function applyCastingCost(
   return { items: out, lockedIds };
 }
 
-function rowToGMDUpdateItem(id: string, row: unknown[]): GMDUpdateRow {
+function rowToGMDUpdateItem(
+  id: string,
+  row: unknown[],
+  cBatchIdx: number,
+): GMDUpdateRow {
   return {
     id,
     erpItemCode: String(row[0] ?? ""),
@@ -160,6 +164,9 @@ function rowToGMDUpdateItem(id: string, row: unknown[]): GMDUpdateRow {
     bomId: String(row[27] ?? ""),
     vendorReference: String(row[28] ?? ""),
     attachmentUrl: String(row[29] ?? ""),
+    // cBatch is appended after dbItemToRow by the route, so its index is not
+    // fixed here - it is resolved from the payload headers at the call site.
+    cBatch: cBatchIdx >= 0 ? String(row[cBatchIdx] ?? "") : "",
   };
 }
 
@@ -196,6 +203,7 @@ function blankGMDUpdateRow(id: string, erpItemCode: string): GMDUpdateRow {
     vendorReference: null,
     attachmentUrl: null,
     itemNameDerived: null,
+    cBatch: null,
   };
 }
 
@@ -429,8 +437,9 @@ export default function Home() {
             transferredIdSet.has(data.ids[i]),
         )
         .map(({ i }) => i);
+      const cBatchIdx = (data.headers ?? []).indexOf(C_BATCH_HEADER);
       const items = validIndices.map((i) =>
-        rowToGMDUpdateItem(data.ids[i], data.rows[i]),
+        rowToGMDUpdateItem(data.ids[i], data.rows[i], cBatchIdx),
       );
       dispatch(hydrateGMDUpdate(items));
     }
@@ -483,7 +492,7 @@ export default function Home() {
     () =>
       processedCost.items.map((i) => {
         const r = dbItemToRow(i);
-        return [...r.slice(0, 2), i.itemNameDerived, ...r.slice(2)];
+        return [...r.slice(0, 2), i.itemNameDerived, ...r.slice(2), i.cBatch];
       }),
     [processedCost],
   );
@@ -496,7 +505,7 @@ export default function Home() {
     () =>
       transferredItems.map((i) => {
         const r = dbItemToRow(i);
-        return [...r.slice(0, 2), i.itemNameDerived, ...r.slice(2)];
+        return [...r.slice(0, 2), i.itemNameDerived, ...r.slice(2), i.cBatch];
       }),
     [transferredItems],
   );
@@ -1004,7 +1013,7 @@ export default function Home() {
     () =>
       scopedNewCost.items.map((i) => {
         const r = dbItemToRow(i);
-        return [...r.slice(0, 2), i.itemNameDerived, ...r.slice(2)];
+        return [...r.slice(0, 2), i.itemNameDerived, ...r.slice(2), i.cBatch];
       }),
     [scopedNewCost],
   );
@@ -1022,7 +1031,7 @@ export default function Home() {
   const sidebarBaseRows = useMemo(() => {
     const allRows = newItems.map((i) => {
       const r = dbItemToRow(i);
-      return [...r.slice(0, 2), i.itemNameDerived, ...r.slice(2)];
+      return [...r.slice(0, 2), i.itemNameDerived, ...r.slice(2), i.cBatch];
     });
     if (!headers.length) return allRows;
     return allRows.filter((row) =>
