@@ -3412,6 +3412,7 @@ tileSize,
                 wrapCells
                 attachmentColumn={UPLOAD_DIAGRAM_COLUMN}
                 attachmentAccept=".pdf,application/pdf"
+                filterAttachmentColumn
                 onUploadAttachment={handleUploadDiagram}
                 onClearAttachment={handleClearDiagram}
                 verdictColumn={UPLOAD_DIAGRAM_COLUMN}

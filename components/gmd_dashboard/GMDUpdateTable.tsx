@@ -639,6 +639,7 @@ function MultiSelect({
   selected,
   onChange,
   optionMeta,
+  hideBlank,
 }: {
   options: string[];
   selected: string[];
@@ -647,6 +648,7 @@ function MultiSelect({
     string,
     { count: number; sumLabel: string; partyName?: string }
   >;
+  hideBlank?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -696,20 +698,22 @@ function MultiSelect({
             </button>
           </div>
           <div className="max-h-48 overflow-y-auto">
-            <label className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-50 cursor-pointer text-[10px]">
-              <input
-                type="checkbox"
-                checked={selected.includes("(Blank)")}
-                onChange={() => {
-                  const next = selected.includes("(Blank)")
-                    ? selected.filter((v) => v !== "(Blank)")
-                    : [...selected, "(Blank)"];
-                  onChange(next);
-                }}
-                className="accent-blue-600"
-              />
-              <span className="italic text-gray-400">(Blank)</span>
-            </label>
+            {!hideBlank && (
+              <label className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-50 cursor-pointer text-[10px]">
+                <input
+                  type="checkbox"
+                  checked={selected.includes("(Blank)")}
+                  onChange={() => {
+                    const next = selected.includes("(Blank)")
+                      ? selected.filter((v) => v !== "(Blank)")
+                      : [...selected, "(Blank)"];
+                    onChange(next);
+                  }}
+                  className="accent-blue-600"
+                />
+                <span className="italic text-gray-400">(Blank)</span>
+              </label>
+            )}
             {options.map((opt) => {
               const meta = optionMeta?.[opt];
               return (
@@ -844,6 +848,12 @@ interface GMDUpdateTableProps {
   onUploadAttachment?: (id: string, file: File) => Promise<void>;
   onClearAttachment?: (id: string) => Promise<void>;
   attachmentAccept?: string;
+  /**
+   * When true, the attachment column gets a two-option filter dropdown
+   * ("Has Drawing" / "No Drawing") derived from whether the cell holds a URL.
+   * Off by default so other attachment dashboards keep their current behaviour.
+   */
+  filterAttachmentColumn?: boolean;
   verdictColumn?: string;
   verdictsById?: Record<string, string | null | undefined>;
   onSetVerdict?: (id: string, verdict: string | null) => Promise<void>;
@@ -938,6 +948,7 @@ castingRateInputs,
   onUploadAttachment,
   onClearAttachment,
   attachmentAccept,
+  filterAttachmentColumn,
   verdictColumn,
   verdictsById,
   onSetVerdict,
@@ -1144,8 +1155,8 @@ castingRateInputs,
               ? 300
               : h === "ORDER LIST"
                 ? 160
-                : h === "Upload Drawing"
-                  ? 100
+                // : h === "Upload Drawing"
+                //   ? 250
                   : h === "CONTRACT NO"
                     ? 360
                     : 180;
@@ -1333,6 +1344,19 @@ castingRateInputs,
         const colIdx = headers.indexOf(colName);
         if (colIdx === -1) continue;
         const cellVal = String(row[colIdx] ?? "").trim();
+        if (
+          filterAttachmentColumn &&
+          attachmentColumn &&
+          colName === attachmentColumn
+        ) {
+          const hasDrawing = cellVal !== "";
+          const matchesHasDrawing =
+            selected.includes("Has Drawing") && hasDrawing;
+          const matchesNoDrawing =
+            selected.includes("No Drawing") && !hasDrawing;
+          if (!(matchesHasDrawing || matchesNoDrawing)) return false;
+          continue;
+        }
         const matchesBlank = selected.includes("(Blank)") && cellVal === "";
         const matchesHasValue =
           selected.includes(FLOW_HAS_VALUE) && cellHasValue(cellVal);
@@ -1400,6 +1424,8 @@ castingRateInputs,
       dateTo,
       bomIdCategoryFilter,
       bomIdOptionsById,
+      attachmentColumn,
+      filterAttachmentColumn,
     ],
   );
 
@@ -2386,7 +2412,12 @@ castingRateInputs,
                     </div>
                     {/* Column filter */}
                     {!hiddenFilters?.includes(header) &&
-                      !(attachmentColumn && header === attachmentColumn && onUploadAttachment) &&
+                      !(
+                        attachmentColumn &&
+                        header === attachmentColumn &&
+                        onUploadAttachment &&
+                        !filterAttachmentColumn
+                      ) &&
                       (isDateFilterHeader(header) ? (
                         <div className="flex flex-col gap-1 mt-1.5">
                           <div className="flex items-center gap-1">
@@ -2493,10 +2524,21 @@ castingRateInputs,
                       ) : (
                         <div className="flex flex-col gap-1 mt-1.5">
                           <MultiSelect
-                            options={uniqueVals}
+                            options={
+                              filterAttachmentColumn &&
+                              attachmentColumn &&
+                              header === attachmentColumn
+                                ? ["Has Drawing", "No Drawing"]
+                                : uniqueVals
+                            }
                             selected={multiFilters[header] ?? []}
                             onChange={(vals) => handleMultiFilter(header, vals)}
                             optionMeta={columnOptionMeta?.[header]}
+                            hideBlank={
+                              !!filterAttachmentColumn &&
+                              !!attachmentColumn &&
+                              header === attachmentColumn
+                            }
                           />
                           <div className="flex items-center gap-1">
                             <DebouncedSearchInput
