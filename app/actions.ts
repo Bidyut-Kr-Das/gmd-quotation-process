@@ -19,6 +19,7 @@ import { resolveImportedInhouse } from "@/lib/importInhouseMapping";
 import { makeImageKey } from "@/lib/imageKey";
 import { parseAndValidateProdOrderNumber } from "@/lib/contractValidation";
 import { matchPnRating } from "@/lib/pnRatingMatcher";
+import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
 import {
   uploadToS3,
   deleteFromS3,
@@ -922,6 +923,36 @@ export async function updateEnquiryFieldAction(
 }
 
 /**
+ * Syncs the Email Address column for every enquiry by matching docket number
+ * against docket_quotation_threads (sender / to_details / cc_details) and
+ * extracting external party email addresses.
+ *
+ * Fill-blanks-only: existing values (manual or previously synced) are never
+ * overwritten, so repeated runs are idempotent and safe.
+ */
+export async function syncEnquiryEmailAddressesAction() {
+  try {
+    const result = await syncEnquiryEmailAddresses({ onlyBlank: true, dryRun: false });
+    console.log(
+      `[Server] syncEnquiryEmailAddresses scanned=${result.scanned} updated=${result.updated} skipped=${result.skipped}`
+    );
+    return {
+      success: true as const,
+      data: {
+        scanned: result.scanned,
+        updated: result.updated,
+        skipped: result.skipped,
+        threadCount: result.threadCount,
+        enquiries: result.proposals.map((p) => ({ id: p.id, emailAddress: p.emailAddress })),
+      },
+    };
+  } catch (error: any) {
+    console.error("Error syncing enquiry email addresses:", error);
+    return { success: false as const, error: error.message || "Failed to sync email addresses." };
+  }
+}
+
+/**
  * Back-calculates and populates BOM ID from a selected rmType on an EnquiryItem.
  * Matches candidate BOMs from VerifyBom whose raw material (rmItemCode) in GMDUpdateItem has matching rmType.
  */
@@ -1705,7 +1736,7 @@ export async function updateProductCostFromBomAction(itemIds: string[]) {
 
     const items = await prisma.enquiryItem.findMany({
       where: { id: { in: itemIds } },
-      select: { id: true, erpItemCode: true, productCost: true, bomId: true, costRefCode: true, availableStock: true, bomType: true },
+      select: { id: true, itemName: true, size: true, pnRating: true, erpItemCode: true, productCost: true, bomId: true, costRefCode: true, availableStock: true, bomType: true },
     });
 
     const updatedItems: ReturnType<typeof serializeItem>[] = [];
@@ -1713,6 +1744,55 @@ export async function updateProductCostFromBomAction(itemIds: string[]) {
     let lastError: string | null = null;
     const noCostRmCodes = new Set<string>();
     const noBomItemCodes = new Set<string>();
+
+    // No-BOM fallback: derive the COST CODE REF from the Indent Listing RM codes
+    // for lines that have no BOM and a blank cost ref. The ref is persisted even
+    // when no raw-material cost exists, and the existing "bomId absent +
+    // costRefCode present" path below then resolves productCost.
+    let indentRefFilled = 0;
+    let indentRefIds: string[] = [];
+    {
+      const { planQuotationIndentCostRefs } = await import(
+        "@/lib/quotationIndentCostRefResolver"
+      );
+      const indentRows = await prisma.indentListing.findMany({
+        select: {
+          item: true,
+          size: true,
+          pnRating: true,
+          mcReceivedPending: true,
+          rmCodeV1: true,
+          rmCodeV2: true,
+          rmCodeV3: true,
+          rmCodeV4: true,
+        },
+      });
+      const indentRefPlan = planQuotationIndentCostRefs(items, indentRows);
+      if (indentRefPlan.fills.length > 0) {
+        await prisma.$transaction(
+          indentRefPlan.fills.map((f) =>
+            prisma.enquiryItem.update({
+              where: { id: f.id },
+              data: { costRefCode: f.costRefCode },
+            }),
+          ),
+        );
+        const fillsById = new Map(
+          indentRefPlan.fills.map((f) => [f.id, f.costRefCode]),
+        );
+        indentRefIds = indentRefPlan.fills.map((f) => f.id);
+        indentRefFilled = indentRefIds.length;
+        // Feed the derived ref back into the in-memory rows so the matching
+        // pass below picks it up without a second read.
+        for (const it of items) {
+          const derived = fillsById.get(it.id);
+          if (derived !== undefined) it.costRefCode = derived;
+        }
+      }
+      console.log(
+        `[update-product-cost-indent] indentRows=${indentRows.length} filled=${indentRefPlan.filled} ambiguous=${indentRefPlan.ambiguous} unmatched=${indentRefPlan.unmatched} noMatch=${indentRefPlan.noMatch} skippedNoItem=${indentRefPlan.skippedNoItem} hasBom=${indentRefPlan.hasBom} alreadySet=${indentRefPlan.alreadySet}`,
+      );
+    }
 
     // First-class rule: bomId absent + costRefCode present -> direct GMDUpdateItem match (before sheet BOM).
     // Pre-batch GMDUpdateItem lookups for all costRefCode candidates.
@@ -1833,7 +1913,19 @@ export async function updateProductCostFromBomAction(itemIds: string[]) {
       }
     }
 
-    if (updated === 0) {
+    // A line whose cost ref was just derived from the Indent Listing but whose
+    // raw material had no cost still needs to reach the client so the Cost Ref
+    // Code cell repaints.
+    if (indentRefIds.length > 0) {
+      const returned = new Set(updatedItems.map((i) => i.id));
+      const missing = indentRefIds.filter((id) => !returned.has(id));
+      if (missing.length > 0) {
+        const rows = await prisma.enquiryItem.findMany({ where: { id: { in: missing } } });
+        for (const row of rows) updatedItems.push(serializeItem(row));
+      }
+    }
+
+    if (updated === 0 && indentRefFilled === 0) {
       const errMsgs: string[] = [];
       if (noCostRmCodes.size > 0) {
         errMsgs.push(`No cost found in Raw Materials or Supply History for RM Code(s): ${[...noCostRmCodes].join(", ")}.`);
@@ -1843,7 +1935,7 @@ export async function updateProductCostFromBomAction(itemIds: string[]) {
       }
       return { success: false, error: errMsgs.join(" ") || lastError || "No product costs updated." };
     }
-    return { success: true, data: { items: updatedItems, updated } };
+    return { success: true, data: { items: updatedItems, updated, indentRefFilled } };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to update product cost.";
     return { success: false, error: message };
@@ -1890,6 +1982,7 @@ export async function updateAllBomCostsAction(itemIds: string[]) {
   try {
     const updatedItemsMap = new Map<string, ReturnType<typeof serializeItem>>();
     let totalUpdated = 0;
+    let indentRefFilled = 0;
     const errorMessages: string[] = [];
 
     // 1. Process DIRECT M2M product costs
@@ -1899,6 +1992,7 @@ export async function updateAllBomCostsAction(itemIds: string[]) {
         updatedItemsMap.set(item.id, item);
       }
       totalUpdated += m2mRes.data.updated;
+      indentRefFilled += m2mRes.data.indentRefFilled ?? 0;
     } else if (m2mRes.error) {
       errorMessages.push(m2mRes.error);
     }
@@ -1930,7 +2024,7 @@ export async function updateAllBomCostsAction(itemIds: string[]) {
       console.warn("[updateAllBomCostsAction] syncDirectM2MAvailableStock failed:", e);
     }
 
-    if (totalUpdated === 0) {
+    if (totalUpdated === 0 && indentRefFilled === 0) {
       return { success: false, error: errorMessages.join(" ") || "No BOM costs updated." };
     }
 
@@ -1939,6 +2033,7 @@ export async function updateAllBomCostsAction(itemIds: string[]) {
       data: {
         items: Array.from(updatedItemsMap.values()),
         updated: totalUpdated,
+        indentRefFilled,
       },
     };
   } catch (error: unknown) {
@@ -5035,6 +5130,9 @@ export async function syncContractReviewRmAvailAction() {
     const { fetchStockPhysicalSheet } = await import(
       "@/lib/gmd_lib/google-sheets"
     );
+    const { planContractPhysicalStock } = await import(
+      "@/lib/contractPhysicalStock"
+    );
 
     // 1. Blank-fill GMDUpdateItem.availableStock from the stock-phys sheet
     const stockPhysMap = await fetchStockPhysicalSheet();
@@ -5106,12 +5204,37 @@ export async function syncContractReviewRmAvailAction() {
       await prisma.$transaction(rmAvailUpdates);
     }
 
+    // 4. Push the PHYSICAL STOCK column: match each row's RM code (costCodeRef)
+    //    against the stock-phys sheet, summing every code in a comma-joined ref.
+    const physicalRows = await prisma.contractReview.findMany({
+      select: { id: true, costCodeRef: true, rmPhysicalStock: true },
+    });
+    const physicalMap = planContractPhysicalStock(physicalRows, stockPhysMap);
+    const physicalUpdates = physicalRows.filter(
+      (row) => (physicalMap.get(row.id) ?? null) !== row.rmPhysicalStock,
+    );
+    if (physicalUpdates.length > 0) {
+      const chunkSize = 200;
+      for (let i = 0; i < physicalUpdates.length; i += chunkSize) {
+        const chunk = physicalUpdates.slice(i, i + chunkSize);
+        await prisma.$transaction(
+          chunk.map((row) =>
+            prisma.contractReview.update({
+              where: { id: row.id },
+              data: { rmPhysicalStock: physicalMap.get(row.id) ?? null },
+            }),
+          ),
+        );
+      }
+    }
+
     return {
       success: true,
       data: {
         stockFilled,
         stockPhysCodes: stockPhysCodes.length,
         rmAvailUpdated: rmAvailUpdates.length,
+        physicalStockUpdated: physicalUpdates.length,
       },
     };
   } catch (error: any) {

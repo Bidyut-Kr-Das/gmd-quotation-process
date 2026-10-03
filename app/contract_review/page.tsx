@@ -692,7 +692,7 @@ export default function ContractReviewPage() {
       const res = await syncContractReviewRmAvailAction();
       if (res?.success) {
         toast.success(
-          `RM AVAIL synced: ${res.data?.rmAvailUpdated ?? 0} updated, ${res.data?.stockFilled ?? 0} stock filled`,
+          `RM AVAIL synced: ${res.data?.rmAvailUpdated ?? 0} updated, ${res.data?.stockFilled ?? 0} stock filled, ${res.data?.physicalStockUpdated ?? 0} physical stock updated`,
           { id: toastId },
         );
         await fetchData();
@@ -2607,7 +2607,7 @@ tileSize,
             onClick={handleRmAvailSync}
             disabled={rmAvailSyncing}
             className="flex items-center justify-center gap-1.5 bg-[#38ef7d]/10 hover:bg-[#38ef7d]/20 border border-[#38ef7d]/40 rounded px-3 py-2 text-[11px] font-semibold text-[#38ef7d] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Refresh stock from stock-phys, recompute VerifyBom, and update RM AVAIL"
+            title="Refresh stock from stock-phys, recompute VerifyBom, update RM AVAIL and PHYSICAL STOCK"
           >
             {rmAvailSyncing ? (
               <Loader2 size={12} className="animate-spin" />

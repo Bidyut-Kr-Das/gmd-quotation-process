@@ -147,6 +147,18 @@ Queried from **`SupplyHistoryItem`** (see `03`), not from the same sheet:
 
 **CLI/Script:** `scripts/update-product-cost-from-bom.ts:31-58` same selection `erpItemCode,productCost` skipping `productCost != null` stats `filled/bomOnly/skippedExisting` `L74-78`.
 
+### 4.5 No-BOM fallback — Cost Ref from the Indent Listing
+
+When the **Update BOM Costs** button runs, items that have **no BOM ID** (`bomId` blank) and a **blank Cost Ref Code** (`costRefCode`) are first gap-filled from the **Indent Listing** before any BOM/raw-material lookup:
+
+1. `lib/quotationIndentCostRefResolver.ts planQuotationIndentCostRefs(items, indentRows)` joins a quotation line to an Indent Listing row through `parseItem(itemName)`:
+   - **base item + variant slot** from `parseItem` on the quotation `itemName` (e.g. `SLV RISING 9523` → slot 4 → `rmCodeV4`). The indent side is indexed with `indentCostRefKey`, which uses `parseItem` too, so an already-collapsed indent base item (`SLV`) still joins.
+   - **size** via `rmCodeSizeKey` (`200MM` ↔ `200`) and **PN rating** via `pnRatingBucket` (`PN-10/16` ↔ `PN-16`).
+2. If the key resolves to exactly one indent row, the slot's RM code is written to `costRefCode`. A **Received/Pending pair**, an **empty slot**, or a **comma-joined (multiple-RM) slot** is skipped and reported, never guessed. An existing cost ref and any item with a BOM are left untouched.
+3. The written ref then flows through the existing **first-class rule** (`bomId` absent + `costRefCode` present → direct `GMDUpdateItem.erpItemCode` match → `cost` → `recalculateItem({ productCost })`). The ref is persisted even when Raw Materials has no cost; only `productCost` stays blank in that case.
+
+The action returns `indentRefFilled` so the UI toast can report how many cost refs were filled from the Indent Listing.
+
 ## 5. Common Pitfalls (Layman FAQ)
 
 - **Fetch Item Code returns 0?** All 5 fields must be exactly non-blank and sheet must have a row where normalized `ITEM TYPE/MOC/OPERATION/SIZE/PN-GMD` equal exactly (trimmed, case-sensitive after trim). Check `pnRating` ↔ `PN-GMD` mapping — e.g., quotation `PN10` vs sheet `PN-10/16` — mismatch → no code.

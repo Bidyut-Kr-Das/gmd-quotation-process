@@ -47,6 +47,9 @@ export default async function Navbar() {
           <ActiveNavLink href="/bis-status">
             BIS Status
           </ActiveNavLink>
+          <ActiveNavLink href="/docket_follow_up">
+            Docket Follow Up
+          </ActiveNavLink>
           <ActiveNavLink href="/upload-image">
             Upload Image
           </ActiveNavLink>

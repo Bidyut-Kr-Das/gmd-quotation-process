@@ -36,6 +36,7 @@ export const CONTRACT_REVIEW_HEADERS = [
   "SIZE",
   "PN RATING",
   "COST CODE REF",
+  "PHYSICAL STOCK",
   "CLEARANCE STATUS",
   "Actuator",
   "RM CODE FOR ACTUATOR",
@@ -108,6 +109,7 @@ export const CONTRACT_REVIEW_COLUMN_WIDTHS: Partial<
   // Plain numeric values: the value is short, the caption is not.
   "CV": 100,
   "VA %": 80,
+  "PHYSICAL STOCK": 130,
   RATE: 90,
   "ORDER QTY": 100,
   "FREE STOCK": 110,
@@ -164,7 +166,7 @@ export const CONTRACT_REVIEW_COLUMN_WIDTHS: Partial<
  * CONTRACT_REVIEW_HEADERS, so visual order follows the header array, not the
  * order groups are listed here. Declared in visual order for readability:
  *   Contract/PO (idx 0) -> Item Names (idx 4) -> Item/Size/PN/CostRef (idx 33)
- *   -> Actuator (idx 38) -> LC/RTGS/Bank (idx 42)
+ *   -> Actuator (idx 39) -> LC/RTGS/Bank (idx 43)
  *
  * These are purely a display concern: the headers array, the row serializer and
  * the header->DB field map are all untouched, so every *IDX constant and all
@@ -454,6 +456,7 @@ export function dbContractReviewToRow(item: {
   value: string | null;
   size: string | null;
   pnRating: string | null;
+  rmPhysicalStock: string | null;
   dateOfContract: string | null;
   clearanceStatus: string | null;
   actuator: string | null;
@@ -513,6 +516,7 @@ export function dbContractReviewToRow(item: {
     item.balToProdOrdEntVal, item.balBillAgContVal, item.balBillAgMcVal,
     item.balDiVal, item.diVal,
     item.item, item.size, item.pnRating, item.costCodeRef,
+    item.rmPhysicalStock,
     item.clearanceStatus, item.actuator,
     item.rmCodeForActuator, item.rmCodeForGb, item.paymentTerms,
     item.lcRtgsRefNo, item.lcDateRtgsDate, item.lastDateOfShipmentDateOfLc,
