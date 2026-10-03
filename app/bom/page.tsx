@@ -82,6 +82,52 @@ const TABLE2_EDITABLE_COLUMNS = [
   "CONSUMPTION 3",
 ];
 
+// Grouped view column order: parent (once per ITEM CODE), then BOM (once per
+// BOM ID), then RM detail (one line per row). GMDUpdateTable collapses a column
+// by rowSpan when consecutive rows share the group key and the cell value, so
+// listing all parent + BOM headers in mergeColumns renders them once and the
+// RM headers below them once per row.
+const GROUPED_PARENT_HEADERS = [
+  "ITEM CODE",
+  "ITEM NAME",
+  "ITEM SCHEDULE NAME",
+  "ITEM TYPE",
+  "MOC",
+  "OPERATION",
+  "SIZE",
+  "NO",
+  "PN-GMD",
+  "CURRENT REQT",
+  "NEW ITEM NAME",
+  "DUPLICATE MERGER COUNT",
+  "BOM NATURE",
+  "CONSUMPTION-1",
+  "CONSUMPTION 2",
+  "CONSUMPTION 3",
+];
+
+const GROUPED_BOM_HEADERS = ["BOM ID", "BOM ID TYPE", "BOM ITEM QTY"];
+
+const GROUPED_DETAIL_HEADERS = [
+  "RM ITEM CODE",
+  "RM ITEM NAME",
+  "USE/NO USE",
+  "AVAILABLE STOCK",
+  "COST",
+  "BOM ITEM QTY * COST",
+];
+
+const GROUPED_MERGE_COLUMNS = [
+  ...GROUPED_PARENT_HEADERS,
+  ...GROUPED_BOM_HEADERS,
+];
+
+const GROUPED_HEADER_ORDER = [
+  ...GROUPED_PARENT_HEADERS,
+  ...GROUPED_BOM_HEADERS,
+  ...GROUPED_DETAIL_HEADERS,
+];
+
 interface BomData {
   headers: string[];
   rows: unknown[][];
@@ -102,6 +148,9 @@ export default function BomPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [selectedNoIndex, setSelectedNoIndex] = useState<number | null>(null);
+  const [selectedGroupedIndex, setSelectedGroupedIndex] = useState<
+    number | null
+  >(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -387,6 +436,66 @@ export default function BomPage() {
     return { yesRows, yesIds, noRows, noIds };
   }, [data, headers, ids]);
 
+  // Reorder every row into GROUPED_HEADER_ORDER and sort by ITEM CODE then
+  // BOM ID so equal BOM IDs sit on consecutive rows. GMDUpdateTable only merges
+  // consecutive rows, so this ordering is what makes the BOM cells collapse.
+  const groupedData = useMemo(() => {
+    const srcRows = data?.rows ?? [];
+    const srcIds = data?.ids ?? [];
+    const srcHeaders = data?.headers ?? [];
+    const itemCodeIdx = srcHeaders.indexOf("ITEM CODE");
+    const bomIdIdx = srcHeaders.indexOf("BOM ID");
+    const colMap = GROUPED_HEADER_ORDER.map((h) => srcHeaders.indexOf(h));
+    const decorated = srcRows
+      .map((row, i) => ({
+        id: srcIds[i],
+        row: colMap.map((j) => (j >= 0 ? row[j] : "")),
+        itemCode: String(row[itemCodeIdx] ?? "").trim(),
+        bomId: String(row[bomIdIdx] ?? "").trim(),
+      }))
+      .filter((d) => d.id !== undefined);
+    decorated.sort(
+      (a, b) =>
+        a.itemCode.localeCompare(b.itemCode, undefined, { numeric: true }) ||
+        a.bomId.localeCompare(b.bomId, undefined, { numeric: true }),
+    );
+
+    // One ITEM CODE spans many rows and a parent cell may be filled on only some
+    // of them. Copy the first non-empty value across every row of the group so
+    // GMDUpdateTable can collapse the whole group into a single spanned cell
+    // (its merge only fires on equal consecutive values) and the cell shows the
+    // non-null value instead of blank.
+    const parentCount = GROUPED_PARENT_HEADERS.length;
+    for (let i = 0; i < decorated.length; ) {
+      let j = i;
+      while (
+        j + 1 < decorated.length &&
+        decorated[j + 1].itemCode === decorated[i].itemCode
+      ) {
+        j++;
+      }
+      for (let c = 0; c < parentCount; c++) {
+        let value: unknown = "";
+        for (let k = i; k <= j; k++) {
+          if (String(decorated[k].row[c] ?? "").trim() !== "") {
+            value = decorated[k].row[c];
+            break;
+          }
+        }
+        if (value !== "") {
+          for (let k = i; k <= j; k++) decorated[k].row[c] = value;
+        }
+      }
+      i = j + 1;
+    }
+
+    return {
+      headers: GROUPED_HEADER_ORDER,
+      rows: decorated.map((d) => d.row) as unknown[][],
+      ids: decorated.map((d) => d.id),
+    };
+  }, [data]);
+
   const handleCellUpdate = useCallback(
     async (id: string, colIndex: number, value: string) => {
       if (!data) return;
@@ -528,6 +637,7 @@ export default function BomPage() {
           <div className="mt-2 text-sm text-red-600">{error}</div>
         )}
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4 pr-1 mt-4">
+          {/*
           <GMDUpdateTable
             headers={headers}
             rows={yesRows}
@@ -563,6 +673,18 @@ export default function BomPage() {
             onCellUpdate={handleCellUpdate}
             hiddenColumns={["ITEM SCHEDULE NAME", "C BATCH"]}
             cellBadges={ITEM_CODE_BADGES}
+          />
+          */}
+          <GMDUpdateTable
+            headers={groupedData.headers}
+            rows={groupedData.rows}
+            ids={groupedData.ids}
+            selectedIndex={selectedGroupedIndex}
+            onSelect={setSelectedGroupedIndex}
+            title="Verify BOM — grouped by ITEM CODE"
+            groupByColumn="ITEM CODE"
+            mergeColumns={GROUPED_MERGE_COLUMNS}
+            fullHeight
           />
         </div>
 
