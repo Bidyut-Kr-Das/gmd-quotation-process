@@ -372,6 +372,7 @@ model ContractReview {
   productionOrderNumber            String?
   diagramUrl                       String?
   diagramVerdict                   String?
+  rmPhysicalStock                  String?
 
   poNo      String? //sync from sheetid = 1sf-uCfCSAUovNAWJSiSyojTPFvUSzmp23keF0ymkjIE
   orderList String[] @default([]) //sync from sheetid = 1sf-uCfCSAUovNAWJSiSyojTPFvUSzmp23keF0ymkjIE

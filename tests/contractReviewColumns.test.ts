@@ -121,6 +121,7 @@ test('spot-checked headers resolve to their own DB field', () => {
     Item: 'item',
     SIZE: 'size',
     'PN RATING': 'pnRating',
+    'PHYSICAL STOCK': 'rmPhysicalStock',
     Actuator: 'actuator',
     'BOM ID': 'bomId',
     'RM AVAIL': 'noUse',
@@ -143,15 +144,15 @@ test('the collapsed groups hold their documented anchor positions', () => {
   assert.equal(headers.indexOf('CONTRACT NO'), 0)
   assert.equal(headers.indexOf('ITEM_NAME'), 4)
   assert.equal(headers.indexOf('Item'), 33)
-  assert.equal(headers.indexOf('Actuator'), 38)
-  assert.equal(headers.indexOf('LC/RTGS REF NO'), 42)
+  assert.equal(headers.indexOf('Actuator'), 39)
+  assert.equal(headers.indexOf('LC/RTGS REF NO'), 43)
 
   // The anchors are where each group actually renders, so assert them from the
   // group data rather than restating the numbers.
   const anchors = CONTRACT_REVIEW_COLUMN_GROUPS.map(
     (g) => headers.indexOf(g.children[0].header),
   )
-  assert.deepEqual(anchors, [0, 4, 33, 38, 42])
+  assert.deepEqual(anchors, [0, 4, 33, 39, 43])
 })
 
 test('every collapsed group child is a real header', () => {

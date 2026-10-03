@@ -57,7 +57,7 @@ So filtering/editing happens on **DB data** that was either created here or sync
 | Extension | `extension String? :64` | Yes | Yes | `0,1,2,3,4,4.5,5,6,8` meters; drives **flat cost** `lib/costCalculator.ts:86` |
 | Bypass | `bypass String? :65` | Yes | Yes | `-,25..300` from size `lib/bypassDetector.ts:11`; drives **flat cost** `:93` |
 | Product Cost | `productCost Decimal? :66` | Yes | Yes | Raw cost; can be auto-filled from BOM — see `06` |
-| Cost Ref Code | `costRefCode String? :67` | Yes | Yes | display/ref only |
+| Cost Ref Code | `costRefCode String? :67` | Yes | Yes | COST CODE REF. When `bomId` is blank it is used as a direct `GMDUpdateItem.erpItemCode` key to resolve `productCost` (see `06`, Indent Listing fallback) |
 | Cost | `cost Decimal? :68` | Yes | Yes | **Computed** `lib/costCalculator.ts:133` unless you override `:138` |
 | Stock Status | `stockStatus String? :69` | Yes | Yes | display |
 | Discount | `discount Decimal? :70` | Yes | — | **Stored but never in formula** |
@@ -116,7 +116,7 @@ So filtering/editing happens on **DB data** that was either created here or sync
 |--------|-----------------------|------|--------------|
 | **Auto-fill blanks** | Items passing active filters with missing attributes | `app/actions.ts:922 autoFillBlanksAction` | Calls `resolveItemCategory({itemName})` — only fills blanks, respects existing, then defaults VA |
 | **Fetch ERP Codes** | `!erpItemCode` matching active filters | `app/actions.ts:778 fetchErpItemCodesAction` | Loops `lookupAndSetItemCode()` per item using **BOM ID presence gate** (`hasBomId` in `lib/gmdItemCodeLookup.ts`) |
-| **Update Product Cost** | `erpItemCode && !productCost` matching active filters | `app/actions.ts:807 updateProductCostFromBomAction` | Fetches `DIRECT M2M` BOM + RM latest cost from `SupplyHistoryItem`. Only counts items where cost is set; warns if RM prices or BOM recipes are missing |
+| **Update BOM Costs** | items needing cost (blank/zero `productCost` or `cost`) matching active filters | `app/actions.ts updateAllBomCostsAction` → `updateProductCostFromBomAction` + `update2to1CostAction` | Resolves `productCost` from BOM DIRECT M2M + RM cost and 2:1 BOM cost. **No-BOM items**: takes the RM code from the Indent Listing (matched on `parseItem(itemName)` variant slot + size + PN), writes it to Cost Ref Code, then looks it up in Raw Materials. Warns if RM prices or BOM recipes are missing |
 | **Auto-fill VA%** | `!vaPercent` matching active filters | `app/actions.ts:1002 updateVaPercentAction` | `getDefaultVaPercent(itemType,size)` → `recalculateItem({vaPercent})` |
 | **Fetch Contract Review Rates** | `erpItemCode` exists matching active filters | `app/actions.ts:1080 fetchContractReviewRatesAction` | Finds most recent `ContractReview` by `dateOfContract` → stores `contractReviewRate` + `pdcostValidation%` |
 | **Populate PD Cost Val** | `contractReviewRate && productCost != null` | `app/actions.ts:1403 populatePdCostValidationAction` | Computes $\text{PD \%} = \frac{\text{ContractReviewRate} - \text{productCost}}{\text{productCost}} \times 100$ and updates `pdcostValidation` |

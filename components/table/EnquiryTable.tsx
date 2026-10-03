@@ -2090,26 +2090,34 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
       toast(`Skipping frozen enquiries (${frozenEnquiryIds.size}) — rate & cost are frozen after one-time PDF.`, { duration: 3000 });
     }
 
+    // Items that need a cost: either they have an item code (sheet/DIRECT M2M
+    // path) or they have no BOM at all (Indent Listing cost-ref path, which is
+    // keyed on item name/size/PN and does not need an item code).
     const targetItems = matchedItems.filter(
-      (i) => i.erpItemCode && (!i.productCost || !i.cost || Number(i.cost) === 0)
+      (i) =>
+        (i.erpItemCode || !i.bomId) &&
+        (!i.productCost || !i.cost || Number(i.cost) === 0)
     )
     console.log(`[Client] updateAllBomCosts: ${targetItems.length} target items out of ${matchedItems.length} matched`)
     if (targetItems.length === 0) {
-      const missingCodeCount = matchedItems.filter((i) => !i.erpItemCode).length
-      if (missingCodeCount > 0) {
-        toast.info(`Found ${missingCodeCount} item(s) missing ERP item codes. Please click 'Fetch Item Codes' first.`)
+      const bomNoCodeCount = matchedItems.filter((i) => i.bomId && !i.erpItemCode).length
+      if (bomNoCodeCount > 0) {
+        toast.info(`Found ${bomNoCodeCount} item(s) with a BOM but no ERP item code. Please click 'Fetch Item Codes' first.`)
       } else {
-        toast.info("No items requiring BOM cost updates found.")
+        toast.info("No items requiring cost updates found.")
       }
       return
     }
-    if (!confirm(`Update BOM costs (DIRECT M2M & 2:1) for ${targetItems.length} item(s)?`)) return
+    if (!confirm(`Update costs (BOM DIRECT M2M & 2:1, plus Indent Listing fallback) for ${targetItems.length} item(s)?`)) return
 
     setUpdateCostStatus("running")
     const toastId = toast.loading(`Updating BOM costs for ${targetItems.length} item(s)...`)
     try {
       const result = await dispatch(updateAllBomCosts(targetItems.map((i) => i.id))).unwrap()
-      toast.success(`BOM costs updated for ${result.updated} item(s).`, { id: toastId })
+      const indentPart = result.indentRefFilled
+        ? `, ${result.indentRefFilled} cost ref(s) filled from Indent Listing`
+        : ""
+      toast.success(`Costs updated for ${result.updated} item(s)${indentPart}.`, { id: toastId })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to update BOM costs."
       toast.error(message, { id: toastId })
