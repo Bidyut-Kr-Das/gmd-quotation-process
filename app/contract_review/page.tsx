@@ -3307,7 +3307,7 @@ tileSize,
             onLayoutChanged={onVerticalLayoutChanged}
             className="flex-1 min-h-0 "
           >
-            <ResizablePanel id="graph" defaultSize="20" minSize="12" maxSize="20">
+            <ResizablePanel id="graph" defaultSize="20" minSize="12" maxSize="32">
               <div className="h-full overflow-hidden rounded-lg border border-[#1e3d59] bg-[#0a2540]">
                 <FlowDiagram
                   trees={CONTRACT_REVIEW_TREES}

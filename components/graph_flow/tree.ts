@@ -209,6 +209,136 @@ export const CLOSED_TREE: FlowNode = {
   edge: "rgb(253 164 175)",
 };
 
+export const InspectionCalledRaisedTree: FlowNode = {
+  id: "inspectionCalledRaised",
+  filter: { column: "OFFER NUMBER", values: [FLOW_HAS_VALUE] },
+  label: "Inspection Called Raised",
+  accent: "text-blue-300",
+  edge: "rgb(147 197 253)",
+  children: [
+    {
+      id: "inspectioncallDone",
+      filter: { column: "Inspection", values: ["DONE"] },
+      label: "Inspection Done",
+      accent: "text-emerald-300",
+      edge: "rgb(110 231 183)",
+      children: [
+        {
+          id: "inspectioncallDoneRma",
+          filter: { column: "RM AVAIL", values: ["SA"] },
+          label: "RMA",
+          accent: "text-emerald-300",
+          edge: "rgb(110 231 183)",
+        },
+        {
+          id: "inspectioncallDoneRmna",
+          filter: { column: "RM AVAIL", values: ["Not available"] },
+          label: "RM NA",
+          accent: "text-rose-300",
+          edge: "rgb(253 164 175)",
+        }
+      ]
+    },
+    {
+      id: "inspectioncallPending",
+      filter: { column: "Inspection", values: ["PENDING"] },
+      label: "Inspection Pending",
+      accent: "text-amber-300",
+      edge: "rgb(252 211 77)",
+      children: [
+        {
+          id: "inspectioncallPendingRma",
+          filter: { column: "RM AVAIL", values: ["SA"] },
+          label: "RMA",
+          accent: "text-emerald-300",
+          edge: "rgb(110 231 183)",
+        },
+        {
+          id: "inspectioncallPendingRmna",
+          filter: { column: "RM AVAIL", values: ["Not available"] },
+          label: "RM NA",
+          accent: "text-rose-300",
+          edge: "rgb(253 164 175)",
+        }
+      ]
+    },
+  ],
+};
+
+
+export const MCpendingTree: FlowNode = {
+  id: "mcpending2",
+  filter: { column: "MC Received/Pending", values: ["Pending"] },
+  label: "MC Pending",
+  accent: "text-amber-300",
+  edge: "rgb(252 211 77)",
+  children: [
+    {
+      id: "mcpendingRma2",
+      filter: { column: "RM AVAIL", values: ["SA"] },
+      label: "RMA",
+      accent: "text-emerald-300",
+      edge: "rgb(110 231 183)",
+    },
+    {
+      id: "mcpendingRmna2",
+      filter: { column: "RM AVAIL", values: ["Not available"] },
+      label: "RM NA",
+      accent: "text-rose-300",
+      edge: "rgb(253 164 175)",
+    },
+  ],
+};
+
+export const MCreceivedTree: FlowNode = {
+  id: "mcreceived2",
+  filter: { column: "MC Received/Pending", values: ["Received"] },
+  label: "MC Received",
+  accent: "text-emerald-300",
+  edge: "rgb(110 231 183)",
+  children: [
+    {
+      id: "mcreceivedRma2",
+      filter: { column: "RM AVAIL", values: ["SA"] },
+      label: "RMA",
+      accent: "text-emerald-300",
+      edge: "rgb(110 231 183)",
+    },
+    {
+      id: "mcreceivedRmna2",
+      filter: { column: "RM AVAIL", values: ["Not available"] },
+      label: "RM NA",
+      accent: "text-rose-300",
+      edge: "rgb(253 164 175)",
+    },
+  ],
+};
+
+export const clearancePendingTree: FlowNode = 
+  {
+      id: "livePending1",
+      filter: { column: "CLEARANCE STATUS", values: ["PENDING", ""] },
+      label: "Pending",
+      accent: "text-amber-300",
+      edge: "rgb(252 211 77)",
+      children: [
+        {
+          id: "pendingRma",
+          filter: { column: "RM AVAIL", values: ["SA"] },
+          label: "RMA",
+          accent: "text-emerald-300",
+          edge: "rgb(110 231 183)",
+        },
+        {
+          id: "pendingRmna",
+          filter: { column: "RM AVAIL", values: ["Not available"] },
+          label: "RM NA",
+          accent: "text-rose-300",
+          edge: "rgb(253 164 175)",
+        },
+      ],
+    }
+
 export const CONTRACT_REVIEW_TREES: {
   tree: FlowNode;
   heading: string;
@@ -216,6 +346,10 @@ export const CONTRACT_REVIEW_TREES: {
 }[] = [
   { tree: LIVE_TREE, heading: "Live", tone: "text-cyan-300/80" },
   { tree: CLOSED_TREE, heading: "Closed", tone: "text-rose-300/80" },
+  { tree: InspectionCalledRaisedTree, heading: "Inspection Called Raised", tone: "text-blue-300/80" },
+  { tree: clearancePendingTree, heading: "Clearance Pending", tone: "text-amber-300/80" },
+  { tree: MCpendingTree, heading: "MC Pending", tone: "text-amber-300/80" },
+  { tree: MCreceivedTree, heading: "MC Received", tone: "text-emerald-300/80" },
 ];
 
 /** Every node of a tree, depth-first. */
