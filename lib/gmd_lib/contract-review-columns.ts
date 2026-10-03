@@ -147,7 +147,7 @@ export const CONTRACT_REVIEW_COLUMN_WIDTHS: Partial<
   "ORDER LIST": 160,
   "PAYMENT TERMS": 180,
   "PROJECT REFERENCE": 200,
-  "Upload Drawing": 100,
+  "Upload Drawing": 180,
   Remarks: 220,
 
   // Long free text.

@@ -84,6 +84,18 @@ export async function POST() {
 
     const dbItems = mergedRows.map((row) => sheetRowToDbItem(row, syncedAt));
 
+    const SKIPPED_STATUSES = new Set([
+      "CLOSED",
+      "TO BE CLOSED",
+      "TO BE LOCKED",
+    ]);
+    const liveDbItems = dbItems.filter(
+      (item) =>
+        !SKIPPED_STATUSES.has(
+          String(item.newItemStatus ?? "").trim().toUpperCase(),
+        ),
+    );
+
     const existingRows = await prisma.gMDUpdateItem.findMany({
       select: EXISTING_SELECT,
     });
@@ -104,7 +116,7 @@ export async function POST() {
     const seen = new Set<string>();
     const changedCodes: string[] = [];
 
-    for (const item of dbItems) {
+    for (const item of liveDbItems) {
       const code = (item.erpItemCode ?? "").trim();
       if (!code) continue;
       if (seen.has(code)) continue;
@@ -224,7 +236,7 @@ export async function POST() {
       updated,
       unchanged,
       changedColumns,
-      skipped: data.rows.length - toCreate.length,
+      skipped: data.rows.length - toCreate.length - (dbItems.length - liveDbItems.length),
       totalInSheet: data.rows.length,
       createdCodes,
       derivedCount,

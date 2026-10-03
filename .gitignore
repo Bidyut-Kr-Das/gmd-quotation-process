@@ -47,4 +47,6 @@ token.json
 assets/
 public/offers
 public/generated-images
+
+tmp
 /tmp

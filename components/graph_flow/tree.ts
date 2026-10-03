@@ -58,13 +58,6 @@ export const LIVE_TREE: FlowNode = {
           accent: "text-emerald-300",
           edge: "rgb(110 231 183)",
           children: [
-            {
-              id: "mcreceivedRma",
-              filter: { column: "RM AVAIL", values: ["SA"] },
-              label: "RMA",
-              accent: "text-emerald-300",
-              edge: "rgb(110 231 183)",
-              children: [
                 {
                   id: "inspcallraised",
                   filter: { column: "OFFER NUMBER", values: [FLOW_HAS_VALUE] },
@@ -138,15 +131,23 @@ export const LIVE_TREE: FlowNode = {
                   edge: "rgb(252 211 77)",
                 }
               ],
-            },
-            {
-              id: "mcreceivedRmna",
-              filter: { column: "RM AVAIL", values: ["Not available"] },
-              label: "RM NA",
-              accent: "text-rose-300",
-              edge: "rgb(253 164 175)",
-            },
-          ],
+          // children: [
+          //   {
+          //     id: "mcreceivedRma",
+          //     filter: { column: "RM AVAIL", values: ["SA"] },
+          //     label: "RMA",
+          //     accent: "text-emerald-300",
+          //     edge: "rgb(110 231 183)",
+              
+          //   },
+          //   {
+          //     id: "mcreceivedRmna",
+          //     filter: { column: "RM AVAIL", values: ["Not available"] },
+          //     label: "RM NA",
+          //     accent: "text-rose-300",
+          //     edge: "rgb(253 164 175)",
+          //   },
+          // ],
         },
         {
           id: "mcpending",
@@ -154,22 +155,22 @@ export const LIVE_TREE: FlowNode = {
           label: "MC Pending",
           accent: "text-amber-300",
           edge: "rgb(252 211 77)",
-          children: [
-            {
-              id: "mcpendingRma",
-              filter: { column: "RM AVAIL", values: ["SA"] },
-              label: "RMA",
-              accent: "text-emerald-300",
-              edge: "rgb(110 231 183)",
-            },
-            {
-              id: "mcpendingRmna",
-              filter: { column: "RM AVAIL", values: ["Not available"] },
-              label: "RM NA",
-              accent: "text-rose-300",
-              edge: "rgb(253 164 175)",
-            },
-          ],
+          // children: [
+          //   {
+          //     id: "mcpendingRma",
+          //     filter: { column: "RM AVAIL", values: ["SA"] },
+          //     label: "RMA",
+          //     accent: "text-emerald-300",
+          //     edge: "rgb(110 231 183)",
+          //   },
+          //   {
+          //     id: "mcpendingRmna",
+          //     filter: { column: "RM AVAIL", values: ["Not available"] },
+          //     label: "RM NA",
+          //     accent: "text-rose-300",
+          //     edge: "rgb(253 164 175)",
+          //   },
+          // ],
         },
       ],
     },
@@ -180,22 +181,22 @@ export const LIVE_TREE: FlowNode = {
       label: "Pending",
       accent: "text-amber-300",
       edge: "rgb(252 211 77)",
-      children: [
-        {
-          id: "pendingRma",
-          filter: { column: "RM AVAIL", values: ["SA"] },
-          label: "RMA",
-          accent: "text-emerald-300",
-          edge: "rgb(110 231 183)",
-        },
-        {
-          id: "pendingRmna",
-          filter: { column: "RM AVAIL", values: ["Not available"] },
-          label: "RM NA",
-          accent: "text-rose-300",
-          edge: "rgb(253 164 175)",
-        },
-      ],
+      // children: [
+      //   {
+      //     id: "pendingRma",
+      //     filter: { column: "RM AVAIL", values: ["SA"] },
+      //     label: "RMA",
+      //     accent: "text-emerald-300",
+      //     edge: "rgb(110 231 183)",
+      //   },
+      //   {
+      //     id: "pendingRmna",
+      //     filter: { column: "RM AVAIL", values: ["Not available"] },
+      //     label: "RM NA",
+      //     accent: "text-rose-300",
+      //     edge: "rgb(253 164 175)",
+      //   },
+      // ],
     },
   ],
 };
