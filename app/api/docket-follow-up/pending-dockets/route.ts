@@ -154,6 +154,7 @@ export async function GET() {
         userLabels: true,
         actionTag: true,
         msgCount: true,
+        company: true,
       },
     });
 
