@@ -143,9 +143,9 @@ export default function PendingDocketsTable({ rows, loading = false }: PendingDo
         count: rows.filter((r) => r.pendingStatus === "PENDING_DOCKET").length,
       },
       {
-        value: "DOCKET_STAMPED",
+        value: "DOCKET_STAMPED_NO_REPLY",
         label: "Docket Stamped in DB",
-        count: rows.filter((r) => r.pendingStatus === "DOCKET_STAMPED").length,
+        count: rows.filter((r) => r.pendingStatus === "DOCKET_STAMPED_NO_REPLY").length,
       },
     ],
     [rows]
