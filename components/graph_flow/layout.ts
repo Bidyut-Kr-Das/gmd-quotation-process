@@ -32,6 +32,25 @@ export const FLOW_NODE_HEIGHT = 34;
 export const FLOW_COL_GAP = 32;
 export const FLOW_ROW_GAP = 3;
 
+/**
+ * Node box metrics for `layoutFlow`. The strip of mini-graphs passes a narrower
+ * set so eight trees fit side by side; the first tree uses the defaults via
+ * `layoutFlowFill`.
+ */
+export interface FlowGeometry {
+  nodeWidth: number;
+  nodeHeight: number;
+  colGap: number;
+  rowGap: number;
+}
+
+export const DEFAULT_FLOW_GEOMETRY: FlowGeometry = {
+  nodeWidth: FLOW_NODE_WIDTH,
+  nodeHeight: FLOW_NODE_HEIGHT,
+  colGap: FLOW_COL_GAP,
+  rowGap: FLOW_ROW_GAP,
+};
+
 /** Indented-rail geometry (narrow sidebar). */
 export const RAIL_NODE_HEIGHT = 20;
 export const RAIL_ROW_GAP = 3;
@@ -55,10 +74,13 @@ function childrenOf(node: FlowNode): FlowNode[] {
  * children. Purely computed - no DOM measurement - so the edge paths below
  * land exactly on node edges by construction.
  */
-export function layoutFlow(root: FlowNode): FlowLayout {
+export function layoutFlow(
+  root: FlowNode,
+  geometry: FlowGeometry = DEFAULT_FLOW_GEOMETRY,
+): FlowLayout {
   const nodes: PositionedNode[] = [];
   const byId = new Map<string, PositionedNode>();
-  const stride = FLOW_NODE_HEIGHT + FLOW_ROW_GAP;
+  const stride = geometry.nodeHeight + geometry.rowGap;
   let leafCursor = 0;
   let maxDepth = 0;
 
@@ -76,10 +98,10 @@ export function layoutFlow(root: FlowNode): FlowLayout {
     const positioned: PositionedNode = {
       node,
       depth,
-      x: depth * (FLOW_NODE_WIDTH + FLOW_COL_GAP),
+      x: depth * (geometry.nodeWidth + geometry.colGap),
       y,
-      width: FLOW_NODE_WIDTH,
-      height: FLOW_NODE_HEIGHT,
+      width: geometry.nodeWidth,
+      height: geometry.nodeHeight,
     };
     nodes.push(positioned);
     byId.set(node.id, positioned);
@@ -94,8 +116,9 @@ export function layoutFlow(root: FlowNode): FlowLayout {
     mode: "flow",
     nodes,
     edges,
-    width: (maxDepth + 1) * FLOW_NODE_WIDTH + maxDepth * FLOW_COL_GAP,
-    height: Math.max(0, leafCursor * stride - FLOW_ROW_GAP),
+    width:
+      (maxDepth + 1) * geometry.nodeWidth + maxDepth * geometry.colGap,
+    height: Math.max(0, leafCursor * stride - geometry.rowGap),
   };
 }
 

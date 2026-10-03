@@ -3307,7 +3307,7 @@ tileSize,
             onLayoutChanged={onVerticalLayoutChanged}
             className="flex-1 min-h-0 "
           >
-            <ResizablePanel id="graph" defaultSize="20" minSize="12" maxSize="32">
+            <ResizablePanel id="graph" defaultSize="20" minSize="12" maxSize="24">
               <div className="h-full overflow-hidden rounded-lg border border-[#1e3d59] bg-[#0a2540]">
                 <FlowDiagram
                   trees={CONTRACT_REVIEW_TREES}
@@ -3446,11 +3446,26 @@ tileSize,
                       filterActions.onMultiFilter(child.header, []);
                     }
                   }
-                  filterActions.onMultiFilter("CLEARANCE STATUS", []);
-                  filterActions.onMultiFilter("STATUS", []);
+                  // Graph clicks filter on their own columns, several of which
+                  // are hidden or have no sidebar control (OFFER NUMBER, RM
+                  // AVAIL, INSPECTION NUMBER, DI DATE, BAL BILL AG CONT), so
+                  // clear every column any tree node can filter on - otherwise
+                  // Reset empties activePath but leaves the table filtered.
+                  const graphColumns = new Set<string>();
+                  for (const { tree } of CONTRACT_REVIEW_TREES) {
+                    for (const node of flatten(tree)) {
+                      if (
+                        (CONTRACT_REVIEW_HEADERS as readonly string[]).includes(
+                          node.filter.column,
+                        )
+                      )
+                        graphColumns.add(node.filter.column);
+                    }
+                  }
+                  for (const col of graphColumns) {
+                    filterActions.onMultiFilter(col, []);
+                  }
                   filterActions.onMultiFilter("PN RATING", []);
-                  filterActions.onMultiFilter("MC Received/Pending", []);
-                  filterActions.onMultiFilter("Inspection", []);
                 }}
                 hiddenColumns={[
                   "VA %",

@@ -58,79 +58,94 @@ export const LIVE_TREE: FlowNode = {
           accent: "text-emerald-300",
           edge: "rgb(110 231 183)",
           children: [
-                {
-                  id: "inspcallraised",
-                  filter: { column: "OFFER NUMBER", values: [FLOW_HAS_VALUE] },
-                  label: "Inspection Call Raised",
-                  accent: "text-amber-300",
-                  edge: "rgb(252 211 77)",
-                  children:[
-                  
+            {
+              id: "inspcallraised",
+              filter: { column: "OFFER NUMBER", values: [FLOW_HAS_VALUE] },
+              label: "Inspection Call Raised",
+              accent: "text-amber-300",
+              edge: "rgb(252 211 77)",
+              children: [
                 {
                   id: "inspectionDone",
-                  filter: { column: "INSPECTION NUMBER", values: [FLOW_HAS_VALUE] },
+                  filter: {
+                    column: "INSPECTION NUMBER",
+                    values: [FLOW_HAS_VALUE],
+                  },
                   label: "Inspection Done",
                   accent: "text-emerald-300",
                   edge: "rgb(110 231 183)",
-                  children: [{
-                    id: "DI Received",
-                    filter: { column: "DI DATE", values: [FLOW_HAS_VALUE] },
-                    label: "DI Received",
-                    accent: "text-emerald-300",
-                    edge: "rgb(110 231 183)",
-                    children: [
-                      {
-                        id:"dispatchDone",
-                        filter: { column: "BAL BILL AG CONT", values: [FLOW_ZERO] },
-                        label: "Dispatch Done",
-                        accent: "text-emerald-300",
-                        edge: "rgb(110 231 183)",
-                      },
-                      {
-                        id:"dispatchPending",
-                        filter: { column: "BAL BILL AG CONT", values: [FLOW_NON_ZERO] },
-                        label: "Dispatch Pending",
-                        accent: "text-rose-300",
-                        edge: "rgb(253 164 175)",
-                        children: [
-                          {id :"bal di",
-                            filter: { column: "DI Balance", values: ["YES"] },
-                            label: "Balance DI",
-                            accent: "text-rose-300",
-                            edge: "rgb(253 164 175)",
-                            metric: "diBalance",
-                          }
-                        ]
-                      },
-                    ]
-                  },
-                  {
-                    id: "DI pending",
-                    filter: { column: "DI DATE", values: [FLOW_NO_VALUE] },
-                    label: "DI Pending",
-                    accent: "text-rose-300",
-                    edge: "rgb(253 164 175)",
-                    
-                  }
+                  children: [
+                    {
+                      id: "diReceived",
+                      filter: { column: "DI DATE", values: [FLOW_HAS_VALUE] },
+                      label: "DI Received",
+                      accent: "text-emerald-300",
+                      edge: "rgb(110 231 183)",
+                      children: [
+                        {
+                          id: "dispatchDone",
+                          filter: {
+                            column: "BAL BILL AG CONT",
+                            values: [FLOW_ZERO],
+                          },
+                          label: "Dispatch Done",
+                          accent: "text-emerald-300",
+                          edge: "rgb(110 231 183)",
+                        },
+                        {
+                          id: "dispatchPending",
+                          filter: {
+                            column: "BAL BILL AG CONT",
+                            values: [FLOW_NON_ZERO],
+                          },
+                          label: "Dispatch Pending",
+                          accent: "text-rose-300",
+                          edge: "rgb(253 164 175)",
+                          children: [
+                            {
+                              id: "balDi",
+                              filter: {
+                                column: "DI DATE",
+                                values: [FLOW_HAS_VALUE],
+                              },
+                              label: "Balance DI",
+                              accent: "text-rose-300",
+                              edge: "rgb(253 164 175)",
+                              metric: "diBalance",
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                    {
+                      id: "diPending",
+                      filter: { column: "DI DATE", values: [FLOW_NO_VALUE] },
+                      label: "DI Pending",
+                      accent: "text-rose-300",
+                      edge: "rgb(253 164 175)",
+                    },
                   ],
                 },
                 {
                   id: "inspectionPending",
-                  filter: { column: "INSPECTION NUMBER", values: [FLOW_NO_VALUE] },
+                  filter: {
+                    column: "INSPECTION NUMBER",
+                    values: [FLOW_NO_VALUE],
+                  },
                   label: "Inspection Pending",
                   accent: "text-amber-300",
                   edge: "rgb(252 211 77)",
                 },
-                  ]
-                },
-                {
-                  id: "inspcallpending",
-                  filter: { column: "OFFER NUMBER", values: [FLOW_NO_VALUE] },
-                  label: "Inspection Call Pending",
-                  accent: "text-amber-300",
-                  edge: "rgb(252 211 77)",
-                }
               ],
+            },
+            {
+              id: "inspcallpending",
+              filter: { column: "OFFER NUMBER", values: [FLOW_NO_VALUE] },
+              label: "Inspection Call Pending",
+              accent: "text-amber-300",
+              edge: "rgb(252 211 77)",
+            },
+          ],
           // children: [
           //   {
           //     id: "mcreceivedRma",
@@ -138,7 +153,7 @@ export const LIVE_TREE: FlowNode = {
           //     label: "RMA",
           //     accent: "text-emerald-300",
           //     edge: "rgb(110 231 183)",
-              
+
           //   },
           //   {
           //     id: "mcreceivedRmna",
@@ -212,59 +227,74 @@ export const CLOSED_TREE: FlowNode = {
 export const InspectionCalledRaisedTree: FlowNode = {
   id: "inspectionCalledRaised",
   filter: { column: "OFFER NUMBER", values: [FLOW_HAS_VALUE] },
-  label: "Inspection Called Raised",
+  label: "IC Raised",
   accent: "text-blue-300",
   edge: "rgb(147 197 253)",
   children: [
     {
-      id: "inspectioncallDone",
-      filter: { column: "Inspection", values: ["DONE"] },
-      label: "Inspection Done",
+      id: "inspectioncallRaisedRma",
+      filter: { column: "RM AVAIL", values: ["SA"] },
+      label: "RMA",
       accent: "text-emerald-300",
       edge: "rgb(110 231 183)",
-      children: [
-        {
-          id: "inspectioncallDoneRma",
-          filter: { column: "RM AVAIL", values: ["SA"] },
-          label: "RMA",
-          accent: "text-emerald-300",
-          edge: "rgb(110 231 183)",
-        },
-        {
-          id: "inspectioncallDoneRmna",
-          filter: { column: "RM AVAIL", values: ["Not available"] },
-          label: "RM NA",
-          accent: "text-rose-300",
-          edge: "rgb(253 164 175)",
-        }
-      ]
     },
     {
-      id: "inspectioncallPending",
-      filter: { column: "Inspection", values: ["PENDING"] },
-      label: "Inspection Pending",
-      accent: "text-amber-300",
-      edge: "rgb(252 211 77)",
-      children: [
-        {
-          id: "inspectioncallPendingRma",
-          filter: { column: "RM AVAIL", values: ["SA"] },
-          label: "RMA",
-          accent: "text-emerald-300",
-          edge: "rgb(110 231 183)",
-        },
-        {
-          id: "inspectioncallPendingRmna",
-          filter: { column: "RM AVAIL", values: ["Not available"] },
-          label: "RM NA",
-          accent: "text-rose-300",
-          edge: "rgb(253 164 175)",
-        }
-      ]
+      id: "inspectioncallRaisedRmna",
+      filter: { column: "RM AVAIL", values: ["Not available"] },
+      label: "RM NA",
+      accent: "text-rose-300",
+      edge: "rgb(253 164 175)",
     },
   ],
 };
 
+export const InspectionDoneTree: FlowNode = {
+  id: "inspectioncallDone",
+  filter: { column: "Inspection", values: ["DONE"] },
+  label: "IC Done",
+  accent: "text-emerald-300",
+  edge: "rgb(110 231 183)",
+  children: [
+    {
+      id: "inspectioncallDoneRma",
+      filter: { column: "RM AVAIL", values: ["SA"] },
+      label: "RMA",
+      accent: "text-emerald-300",
+      edge: "rgb(110 231 183)",
+    },
+    {
+      id: "inspectioncallDoneRmna",
+      filter: { column: "RM AVAIL", values: ["Not available"] },
+      label: "RM NA",
+      accent: "text-rose-300",
+      edge: "rgb(253 164 175)",
+    },
+  ],
+};
+
+export const InspectionPendingTree: FlowNode = {
+  id: "inspectioncallPending",
+  filter: { column: "Inspection", values: ["PENDING"] },
+  label: "IC Pending",
+  accent: "text-amber-300",
+  edge: "rgb(252 211 77)",
+  children: [
+    {
+      id: "inspectioncallPendingRma",
+      filter: { column: "RM AVAIL", values: ["SA"] },
+      label: "RMA",
+      accent: "text-emerald-300",
+      edge: "rgb(110 231 183)",
+    },
+    {
+      id: "inspectioncallPendingRmna",
+      filter: { column: "RM AVAIL", values: ["Not available"] },
+      label: "RM NA",
+      accent: "text-rose-300",
+      edge: "rgb(253 164 175)",
+    },
+  ],
+};
 
 export const MCpendingTree: FlowNode = {
   id: "mcpending2",
@@ -314,30 +344,53 @@ export const MCreceivedTree: FlowNode = {
   ],
 };
 
-export const clearancePendingTree: FlowNode = 
-  {
-      id: "livePending1",
-      filter: { column: "CLEARANCE STATUS", values: ["PENDING", ""] },
-      label: "Pending",
-      accent: "text-amber-300",
-      edge: "rgb(252 211 77)",
-      children: [
-        {
-          id: "pendingRma",
-          filter: { column: "RM AVAIL", values: ["SA"] },
-          label: "RMA",
-          accent: "text-emerald-300",
-          edge: "rgb(110 231 183)",
-        },
-        {
-          id: "pendingRmna",
-          filter: { column: "RM AVAIL", values: ["Not available"] },
-          label: "RM NA",
-          accent: "text-rose-300",
-          edge: "rgb(253 164 175)",
-        },
-      ],
-    }
+export const clearancePendingTree: FlowNode = {
+  id: "livePending1",
+  filter: { column: "CLEARANCE STATUS", values: ["PENDING", ""] },
+  label: "Pending",
+  accent: "text-amber-300",
+  edge: "rgb(252 211 77)",
+  children: [
+    {
+      id: "pendingRma",
+      filter: { column: "RM AVAIL", values: ["SA"] },
+      label: "RMA",
+      accent: "text-emerald-300",
+      edge: "rgb(110 231 183)",
+    },
+    {
+      id: "pendingRmna",
+      filter: { column: "RM AVAIL", values: ["Not available"] },
+      label: "RM NA",
+      accent: "text-rose-300",
+      edge: "rgb(253 164 175)",
+    },
+  ],
+};
+
+export const DIReceivedTree: FlowNode = {
+  id: "recDi",
+  filter: { column: "DI DATE", values: [FLOW_HAS_VALUE] },
+  label: "DI Received",
+  accent: "text-emerald-300",
+  edge: "rgb(110 231 183)",
+  children: [
+    {
+      id: "recDiRma",
+      filter: { column: "RM AVAIL", values: ["SA"] },
+      label: "RMA",
+      accent: "text-emerald-300",
+      edge: "rgb(110 231 183)",
+    },
+    {
+      id: "recDiRmna",
+      filter: { column: "RM AVAIL", values: ["Not available"] },
+      label: "RM NA",
+      accent: "text-rose-300",
+      edge: "rgb(253 164 175)",
+    },
+  ],
+};
 
 export const CONTRACT_REVIEW_TREES: {
   tree: FlowNode;
@@ -346,10 +399,29 @@ export const CONTRACT_REVIEW_TREES: {
 }[] = [
   { tree: LIVE_TREE, heading: "Live", tone: "text-cyan-300/80" },
   { tree: CLOSED_TREE, heading: "Closed", tone: "text-rose-300/80" },
-  { tree: InspectionCalledRaisedTree, heading: "Inspection Called Raised", tone: "text-blue-300/80" },
-  { tree: clearancePendingTree, heading: "Clearance Pending", tone: "text-amber-300/80" },
+  {
+    tree: InspectionCalledRaisedTree,
+    heading: "Inspection Called Raised",
+    tone: "text-blue-300/80",
+  },
+  {
+    tree: InspectionDoneTree,
+    heading: "Inspection Done",
+    tone: "text-emerald-300/80",
+  },
+  {
+    tree: InspectionPendingTree,
+    heading: "Inspection Pending",
+    tone: "text-amber-300/80",
+  },
+  {
+    tree: clearancePendingTree,
+    heading: "Clearance Pending",
+    tone: "text-amber-300/80",
+  },
   { tree: MCpendingTree, heading: "MC Pending", tone: "text-amber-300/80" },
   { tree: MCreceivedTree, heading: "MC Received", tone: "text-emerald-300/80" },
+  { tree: DIReceivedTree, heading: "DI Received", tone: "text-emerald-300/80" },
 ];
 
 /** Every node of a tree, depth-first. */
