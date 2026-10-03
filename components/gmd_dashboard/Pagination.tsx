@@ -19,9 +19,9 @@ export default function Pagination({
   onPageSizeChange
 }: PaginationProps) {
   const totalPages = Math.ceil(total / pageSize);
-  if (totalPages <= 1) return null;
+  const hasPagination = totalPages > 1;
 
-  const from = (currentPage - 1) * pageSize + 1;
+  const from = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const to = Math.min(currentPage * pageSize, total);
 
   const getPageNumbers = () => {
@@ -40,13 +40,19 @@ export default function Pagination({
     return pages;
   };
 
-  const pageNumbers = getPageNumbers();
+  const pageNumbers = hasPagination ? getPageNumbers() : [];
 
+  // The footer is always rendered (even with a single page / no rows) so the
+  // table card keeps a constant height when a filter or dropdown selection
+  // reduces the row count. The right block keeps a fixed height so the bar does
+  // not shrink when the page controls are hidden.
   return (
     <div className="bg-[#f4f6f8] border-t border-[#e1e6eb] px-4 py-2.5 flex items-center justify-between text-xs">
       <div className="flex items-center gap-2">
         <span className="text-[#0a2540] font-medium">
-          Showing {from}–{to} of {total.toLocaleString()}
+          {total === 0
+            ? "No records"
+            : `Showing ${from}–${to} of ${total.toLocaleString()}`}
         </span>
         <select
           value={pageSize}
@@ -59,57 +65,61 @@ export default function Pagination({
           <option value={1000}>1000</option>
         </select>
       </div>
-      <div className="flex items-center gap-1.5">
-        <button
-          className={btnBase}
-          disabled={currentPage === 1}
-          onClick={() => onPageChange(1)}
-        >
-          FIRST
-        </button>
-        <button
-          className={btnBase}
-          disabled={currentPage === 1}
-          onClick={() => onPageChange(currentPage - 1)}
-        >
-          PREV
-        </button>
-        {pageNumbers.map((page, i) =>
-          page === "..." ? (
-            <span
-              key={`e${i}`}
-              className="px-1 text-[#0a2540]/40 font-semibold"
-            >
-              ...
-            </span>
-          ) : (
+      <div className="flex items-center gap-1.5 h-8">
+        {hasPagination && (
+          <>
             <button
-              key={page}
-              className={`${btnBase} ${
-                page === currentPage
-                  ? "bg-[#0070f3]! border-[#0070f3]! text-white!"
-                  : ""
-              }`}
-              onClick={() => onPageChange(page)}
+              className={btnBase}
+              disabled={currentPage === 1}
+              onClick={() => onPageChange(1)}
             >
-              {page}
+              FIRST
             </button>
-          ),
+            <button
+              className={btnBase}
+              disabled={currentPage === 1}
+              onClick={() => onPageChange(currentPage - 1)}
+            >
+              PREV
+            </button>
+            {pageNumbers.map((page, i) =>
+              page === "..." ? (
+                <span
+                  key={`e${i}`}
+                  className="px-1 text-[#0a2540]/40 font-semibold"
+                >
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={page}
+                  className={`${btnBase} ${
+                    page === currentPage
+                      ? "bg-[#0070f3]! border-[#0070f3]! text-white!"
+                      : ""
+                  }`}
+                  onClick={() => onPageChange(page)}
+                >
+                  {page}
+                </button>
+              ),
+            )}
+            <button
+              className={btnBase}
+              disabled={currentPage === totalPages}
+              onClick={() => onPageChange(currentPage + 1)}
+            >
+              NEXT
+            </button>
+            <button
+              className={btnBase}
+              disabled={currentPage === totalPages}
+              onClick={() => onPageChange(totalPages)}
+            >
+              LAST
+            </button>
+          </>
         )}
-        <button
-          className={btnBase}
-          disabled={currentPage === totalPages}
-          onClick={() => onPageChange(currentPage + 1)}
-        >
-          NEXT
-        </button>
-        <button
-          className={btnBase}
-          disabled={currentPage === totalPages}
-          onClick={() => onPageChange(totalPages)}
-        >
-          LAST
-        </button>
       </div>
     </div>
   );

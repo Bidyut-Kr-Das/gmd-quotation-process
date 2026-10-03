@@ -19,6 +19,7 @@ import { resolveImportedInhouse } from "@/lib/importInhouseMapping";
 import { makeImageKey } from "@/lib/imageKey";
 import { parseAndValidateProdOrderNumber } from "@/lib/contractValidation";
 import { matchPnRating } from "@/lib/pnRatingMatcher";
+import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
 import {
   uploadToS3,
   deleteFromS3,
@@ -918,6 +919,36 @@ export async function updateEnquiryFieldAction(
   } catch (error: any) {
     console.error(`Error updating enquiry ${field}:`, error);
     return { success: false, error: error.message || `Failed to update ${field}.` };
+  }
+}
+
+/**
+ * Syncs the Email Address column for every enquiry by matching docket number
+ * against docket_quotation_threads (sender / to_details / cc_details) and
+ * extracting external party email addresses.
+ *
+ * Fill-blanks-only: existing values (manual or previously synced) are never
+ * overwritten, so repeated runs are idempotent and safe.
+ */
+export async function syncEnquiryEmailAddressesAction() {
+  try {
+    const result = await syncEnquiryEmailAddresses({ onlyBlank: true, dryRun: false });
+    console.log(
+      `[Server] syncEnquiryEmailAddresses scanned=${result.scanned} updated=${result.updated} skipped=${result.skipped}`
+    );
+    return {
+      success: true as const,
+      data: {
+        scanned: result.scanned,
+        updated: result.updated,
+        skipped: result.skipped,
+        threadCount: result.threadCount,
+        enquiries: result.proposals.map((p) => ({ id: p.id, emailAddress: p.emailAddress })),
+      },
+    };
+  } catch (error: any) {
+    console.error("Error syncing enquiry email addresses:", error);
+    return { success: false as const, error: error.message || "Failed to sync email addresses." };
   }
 }
 

@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useCallback, useMemo } from "react";
-import { Search, PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import React, { useCallback, useMemo, useState } from "react";
+import { Search, PanelLeftOpen, PanelLeftClose, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { openAddItemsDialog, openNewEnquiryDialog } from "@/lib/dialogsSlice";
 import { setFilter } from "@/lib/filtersSlice";
 import { toggleAnalyticsSidebar } from "@/lib/uiSlice";
-import { selectAllEnquiries } from "@/lib/enquiriesSlice";
+import { selectAllEnquiries, syncEnquiryEmailAddresses } from "@/lib/enquiriesSlice";
 import { BLANK, filterEnquiries } from "@/lib/filterUtils";
 import DebouncedSearchInput from "@/components/table/DebouncedSearchInput";
 import AddItemsDialog from "./AddItemsDialog";
@@ -27,6 +28,29 @@ export default function DashboardHeader({
   const dispatch = useAppDispatch();
   const isCollapsed = useAppSelector((s) => s.ui.isAnalyticsSidebarCollapsed);
   const searchVal = useAppSelector((s) => s.filters.globalSearch);
+  const [syncingEmails, setSyncingEmails] = useState(false);
+
+  const handleSyncEmails = useCallback(async () => {
+    setSyncingEmails(true);
+    const toastId = toast.loading("Syncing email addresses...");
+    try {
+      const res = await dispatch(syncEnquiryEmailAddresses()).unwrap();
+      const count = res?.enquiries?.length ?? 0;
+      toast.success(
+        count > 0
+          ? `Updated ${count} email address${count === 1 ? "" : "es"}.`
+          : "No new email addresses found.",
+        { id: toastId }
+      );
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : err ? String(err) : "Sync failed.",
+        { id: toastId }
+      );
+    } finally {
+      setSyncingEmails(false);
+    }
+  }, [dispatch]);
 
   // Search filters the already-loaded rows client-side. It used to push ?search= and re-run
   // the dashboard's Prisma query, which refetched and re-hydrated the entire dataset.
@@ -142,6 +166,16 @@ export default function DashboardHeader({
             Not Sent ({notSentCount})
           </button>
         </div>
+
+        <Button
+          onClick={handleSyncEmails}
+          disabled={syncingEmails}
+          title="Fetch party email addresses from email threads by docket number"
+          className="flex h-9 items-center gap-1.5 border border-border bg-background px-4 text-sm font-semibold text-foreground hover:bg-accent"
+        >
+          <RefreshCw className={`h-4 w-4 ${syncingEmails ? "animate-spin" : ""}`} />
+          {syncingEmails ? "Syncing..." : "Sync Emails"}
+        </Button>
 
         <Button
           onClick={() => dispatch(openAddItemsDialog())}

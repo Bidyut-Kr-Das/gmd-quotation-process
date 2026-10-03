@@ -44,7 +44,9 @@
     "itemcode:refresh": "tsx scripts/refresh-item-codes.ts",
     "itemcode:refresh:apply": "tsx scripts/refresh-item-codes.ts --apply",
     "rmtype:common": "tsx scripts/backfill-rmtype-common.ts",
-    "rmtype:common:apply": "tsx scripts/backfill-rmtype-common.ts --apply"
+    "rmtype:common:apply": "tsx scripts/backfill-rmtype-common.ts --apply",
+    "email:backfill": "tsx scripts/backfill-enquiry-email-addresses.ts",
+    "email:backfill:apply": "tsx scripts/backfill-enquiry-email-addresses.ts --apply"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",

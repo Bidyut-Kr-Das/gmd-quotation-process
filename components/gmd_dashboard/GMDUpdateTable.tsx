@@ -2178,7 +2178,7 @@ castingRateInputs,
         className={`w-full min-w-0 ${
           fullHeight ? "flex-1 min-h-0 overflow-auto" : "overflow-x-auto overflow-y-auto"
         }`}
-        style={fullHeight ? undefined : { maxHeight: maxHeight || "50vh" }}
+        style={fullHeight ? undefined : { height: maxHeight || "50vh" }}
       >
         {" "}
         <table

@@ -29,6 +29,7 @@ import {
   populatePdCostValidationAction,
   selectBomIdAction,
   syncDirectM2MAvailableStockAction,
+  syncEnquiryEmailAddressesAction,
 } from "@/app/actions";
 
 export const populatePdCostValidation = createAsyncThunk(
@@ -334,6 +335,17 @@ export const syncAvailableStock = createAsyncThunk(
   }
 );
 
+export const syncEnquiryEmailAddresses = createAsyncThunk(
+  "enquiries/syncEnquiryEmailAddresses",
+  async (_: void, { rejectWithValue }) => {
+    const result = await syncEnquiryEmailAddressesAction();
+    if (!result.success) {
+      return rejectWithValue(result.error || "Failed to sync email addresses");
+    }
+    return result.data;
+  }
+);
+
 const enquiriesAdapter = createEntityAdapter<EnquiryData>({
   sortComparer: (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
 });
@@ -439,6 +451,17 @@ const enquiriesSlice = createSlice({
       .addCase(updateEnquiryField.rejected, (state, action) => {
         state.updateStatus = "failed";
         state.updateError = (action.payload as string) || "Update failed";
+      })
+      .addCase(syncEnquiryEmailAddresses.fulfilled, (state, action) => {
+        const updates = action.payload.enquiries;
+        if (updates && updates.length > 0) {
+          for (const u of updates) {
+            const existing = state.enquiries.entities[u.id];
+            if (existing) {
+              existing.emailAddress = u.emailAddress;
+            }
+          }
+        }
       })
       .addCase(updateItemField.fulfilled, (state, action) => {
         const updatedItem = action.payload;
