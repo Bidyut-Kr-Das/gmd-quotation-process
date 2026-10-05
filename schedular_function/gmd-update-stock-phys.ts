@@ -165,7 +165,7 @@ export async function runStockPhysSync(
   const stockMap = await fetchStockPhysicalSheet();
   const sheetCodes = Object.keys(stockMap);
 
-  const items = await prisma.gMDUpdateItem.findMany({
+  const items = await prisma.rawMaterial.findMany({
     select: { id: true, erpItemCode: true, availableStock: true },
   });
 

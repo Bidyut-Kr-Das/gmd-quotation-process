@@ -165,7 +165,7 @@ export async function runGmdCatalogueSync(
 
   const skippedByStatus = dbItems.length - liveDbItems.length;
 
-  const existingRows = await prisma.gMDUpdateItem.findMany({
+  const existingRows = await prisma.rawMaterial.findMany({
     select: EXISTING_SELECT,
   });
 
@@ -251,7 +251,7 @@ export async function runGmdCatalogueSync(
 
   if (toCreate.length > 0) {
     try {
-      await prisma.gMDUpdateItem.createMany({ data: toCreate });
+      await prisma.rawMaterial.createMany({ data: toCreate });
     } catch (err) {
       throw new Error(
         `Catalogue createMany failed for ${toCreate.length} row(s): ${

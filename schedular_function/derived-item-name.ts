@@ -101,7 +101,7 @@ async function deriveOne(
     const itemNameDerived = buildDerivedItemName(item);
     if (!itemNameDerived) return { success: true };
 
-    await prisma.gMDUpdateItem.update({
+    await prisma.rawMaterial.update({
       where: { id: item.id },
       data: { itemNameDerived },
     });
