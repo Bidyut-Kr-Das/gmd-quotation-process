@@ -36,6 +36,7 @@ export const CONTRACT_REVIEW_HEADERS = [
   "SIZE",
   "PN RATING",
   "COST CODE REF",
+  "BOM ID",
   "PHYSICAL STOCK",
   "CLEARANCE STATUS",
   "Actuator",
@@ -52,7 +53,6 @@ export const CONTRACT_REVIEW_HEADERS = [
   "JOB Code",
   "BAL BILL AG MC",
   "ic qty",
-  "BOM ID",
   "RM AVAIL",
   "STATUS",
   "MC Received/Pending",
@@ -71,7 +71,39 @@ export const CONTRACT_REVIEW_HEADERS = [
   // Hidden data carrier. Never rendered: listed in the page's hiddenColumns and
   // only used to drive the "C" chip inside the ITEM_CODE cell.
   "C BATCH",
+  // Hidden data carrier for the "N" chip (item code is NOT in CURRENT REQT).
+  // Appended after C BATCH so existing column indices/widths stay stable.
+  "N BATCH",
 ] as const;
+
+export const N_BATCH_HEADER = "N BATCH";
+export const N_BATCH_VALUE = "N";
+
+/**
+ * Only an explicit "NO" (case-insensitive, trimmed) means the item code is not
+ * a current requirement. Blank / missing / any other value stays unmarked.
+ */
+export function isNotCurrentReqt(value: string | null | undefined): boolean {
+  return String(value ?? "").trim().toUpperCase() === "NO";
+}
+
+/**
+ * Badge definition for the "N" chip that sits beside the item code when the
+ * code is not in CURRENT REQT on the GMD Item Creation Form. Mirrors
+ * `cBatchBadges` but with an amber tone so it reads differently from "C".
+ */
+export function nBatchBadges(onColumn: string) {
+  return [
+    {
+      onColumn,
+      fromColumn: N_BATCH_HEADER,
+      value: N_BATCH_VALUE,
+      label: N_BATCH_VALUE,
+      tone: "amber" as const,
+      title: "Item code is NOT in CURRENT REQT (GMD Item Creation Form)",
+    },
+  ];
+}
 
 /**
  * Default rendered width, in px, for each column on the Contract Review
@@ -165,8 +197,10 @@ export const CONTRACT_REVIEW_COLUMN_WIDTHS: Partial<
  * A group always renders at the position of its first *visible* child in
  * CONTRACT_REVIEW_HEADERS, so visual order follows the header array, not the
  * order groups are listed here. Declared in visual order for readability:
- *   Contract/PO (idx 0) -> Item Names (idx 4) -> Item/Size/PN/CostRef (idx 33)
- *   -> Actuator (idx 39) -> LC/RTGS/Bank (idx 43)
+ *   Contract/PO (idx 0) -> Item Code/Type (idx 3) -> Item Names (idx 4)
+ *   -> Item/Size/PN/CostRef (idx 33) -> BOM ID (idx 37)
+ *   -> Physical Stock/RM Avail (idx 38) -> Actuator (idx 40)
+ *   -> LC/RTGS/Bank (idx 44)
  *
  * These are purely a display concern: the headers array, the row serializer and
  * the header->DB field map are all untouched, so every *IDX constant and all
@@ -180,8 +214,18 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
     label: "Contract / PO NO",
     width: 175,
     children: [
-      { header: "CONTRACT NO", label: "Contract NO -" },
-      { header: "PO NO", label: "PO NO -" },
+      { header: "CONTRACT NO", plain: true },
+      { header: "PO NO", plain: true },
+    ],
+  },
+  {
+    label: "Item Code / Item Type",
+    width: 185,
+    // Both render as bare stacked lines (no captioned boxes): the item code
+    // keeps its images/drawing icon buttons, the item type sits below it.
+    children: [
+      { header: "ITEM_CODE", plain: true },
+      { header: "ITEM TYPE", plain: true },
     ],
   },
   {
@@ -213,6 +257,15 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
     ],
   },
   {
+    label: "Physical Stock / RM Avail",
+    width: 160,
+    // Anchored at PHYSICAL STOCK; both render as bare stacked lines.
+    children: [
+      { header: "PHYSICAL STOCK", plain: true },
+      { header: "RM AVAIL", plain: true },
+    ],
+  },
+  {
     label: "Actuator / RM Code for Actuator",
     width: 185,
     // Same as the Item Names group: the parent caption already names both
@@ -224,13 +277,10 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
     label: "LC / RTGS / Issuing bank name",
     width: 240,
     children: [
-      { header: "LC/RTGS REF NO", label: " LC/RTGSRef No -" },
-      { header: "LC DATE/RTGS DATE", label: "LC Date -" },
-      {
-        header: "LAST DATE OF SHIPMENT/DATE OF LC",
-        label: "Ship Date Of LC -",
-      },
-      { header: "Issuing bank name", label: "Issuing Bank Name -" },
+      { header: "LC/RTGS REF NO", plain: true },
+      { header: "LC DATE/RTGS DATE", plain: true },
+      { header: "LAST DATE OF SHIPMENT/DATE OF LC", plain: true },
+      { header: "Issuing bank name", plain: true },
     ],
   },
 ];
@@ -494,6 +544,7 @@ export function dbContractReviewToRow(item: {
   productionOrderNumber: string | null;
   diagramUrl: string | null;
   cBatch: string | null;
+  nBatch: string | null;
 }): unknown[] {
   return [
     item.contractNo,
@@ -516,6 +567,7 @@ export function dbContractReviewToRow(item: {
     item.balToProdOrdEntVal, item.balBillAgContVal, item.balBillAgMcVal,
     item.balDiVal, item.diVal,
     item.item, item.size, item.pnRating, item.costCodeRef,
+    item.bomId,
     item.rmPhysicalStock,
     item.clearanceStatus, item.actuator,
     item.rmCodeForActuator, item.rmCodeForGb, item.paymentTerms,
@@ -524,7 +576,6 @@ export function dbContractReviewToRow(item: {
     item.itemType,
     item.erpPartyNameFromGmdSupplyHistory,
     item.jobCode, item.balBillAgMc, item.icQty,
-    item.bomId,
     item.noUse,
     item.status,
     item.mcReceivedPending,
@@ -541,6 +592,7 @@ export function dbContractReviewToRow(item: {
     item.productionOrderNumber,
     item.diagramUrl,
     item.cBatch,
+    item.nBatch,
   ];
 }
 

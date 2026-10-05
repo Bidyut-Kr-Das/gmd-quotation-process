@@ -10,7 +10,7 @@ import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import DebouncedSearchInput from "./DebouncedSearchInput";
 import { selectAllEnquiries, selectAllItems, updateEnquiryField, updateItemField, addAttachments, fetchItemCodes, updateProductCost, update2to1Cost, updateAllBomCosts, fetchContractReviewRates, populatePdCostValidation, deleteEnquiryItems, bulkUpdateValidation, bulkUpdateApm, clearQuotedRates, selectBomId, syncAvailableStock } from "@/lib/enquiriesSlice";
 import { setFilter, resetFilters } from "@/lib/filtersSlice";
-import { matchesGlobalSearch } from "@/lib/filterUtils";
+import { matchesGlobalSearch, itemDeletedStatus, DELETED_STATUS_OPTIONS } from "@/lib/filterUtils";
 import { setPage, setPageSize, resetPage } from "@/lib/paginationSlice";
 import { toggleRow, setRowExpanded, setColumnWidth, setExpandedRows, DEFAULT_COLUMN_WIDTHS, setGeneratedImages } from "@/lib/uiSlice";
 import type { DropdownOptions, EnquiryData, EnquiryItemData, FiltersState } from "@/lib/types";
@@ -24,6 +24,7 @@ import { parseAndValidateContractNumbers } from "@/lib/contractValidation";
 import { makeImageKey } from "@/lib/imageKey";
 import { RM_TYPE_OPTIONS } from "@/lib/gmd_lib/sheet-columns";
 import { C_BATCH_VALUE } from "@/lib/gmd_lib/verify-bom-columns";
+import { N_BATCH_VALUE } from "@/lib/gmd_lib/contract-review-columns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -311,7 +312,14 @@ function ItemCodeCell({ item }: { item?: EnquiryItemData }) {
   }
   return (
     <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
-      {item.cBatch === C_BATCH_VALUE ? (
+      {item.nBatch === N_BATCH_VALUE ? (
+        <span
+          title={`${item.erpItemCode || ""} - NOT in CURRENT REQT on the GMD Item Creation Form`}
+          className="block text-[10px] font-semibold italic text-amber-700 dark:text-amber-400 p-1 truncate"
+        >
+          Deleted as Current Reqt = No
+        </span>
+      ) : item.cBatch === C_BATCH_VALUE ? (
         <span
           title={`${item.erpItemCode || ""} - closed in ITEM MASTER ERP (ITEM_STATUS = C)`}
           className="block text-[10px] font-semibold italic text-rose-700 dark:text-rose-400 p-1 truncate"
@@ -1053,6 +1061,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
         if (wantPresent && !wantBlank && !hasImg) return false;
         if (wantBlank && !wantPresent && hasImg) return false;
       }
+      if (!itemDeletedStatus(item, filters.deletedStatus)) return false;
       return true;
     });
   }, [filters, getItemImage]);
@@ -1645,6 +1654,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
         if (wantPresent && !wantBlank && !hasImg) return false;
         if (wantBlank && !wantPresent && hasImg) return false;
       }
+      if (!itemDeletedStatus(item, filters.deletedStatus)) return false;
       return true;
     });
 
@@ -3103,6 +3113,17 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                 placeholder="Search item code..."
                 className="mt-1 w-full h-6 rounded border border-border bg-background px-1.5 py-0.5 text-[9px] font-normal text-foreground placeholder:text-muted-foreground outline-none focus:border-blue-500 normal-case"
               />
+              <div className="relative mt-1 normal-case font-normal text-left text-foreground">
+                <MultiSelectFilter
+                  label="Deleted"
+                  allLabel="All Items"
+                  options={DELETED_STATUS_OPTIONS}
+                  cascadedOptions={DELETED_STATUS_OPTIONS}
+                  selected={filters.deletedStatus}
+                  onChange={(v) => dispatch(setFilter({ field: "deletedStatus", value: v }))}
+                  searchPlaceholder="Search status..."
+                />
+              </div>
               <div
                 onMouseDown={(e) => handleMouseDown(15, e)}
                 className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-20 group"

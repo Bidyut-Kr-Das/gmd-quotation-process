@@ -5,12 +5,17 @@ import { pnRatingBucket } from "./pnRatingMatcher";
  * records the matching ERP item code — which is the RM code everywhere else in
  * this codebase — against each V1..V4 variant column.
  *
- * Only SLV and SLV METAL are mapped for now. Both sit under
+ * Only SLV, SLV METAL and TPAV+SLV are mapped for now. All sit under
  * L8 "TRADING VALVES" with L2 "SLUICE VALVE", and the item name only decides
  * the L4 component:
  *
  *   SLV       -> L4 = METAL TO RUBBER
+ *   TPAV+SLV  -> L4 = METAL TO RUBBER  (its sluice-valve body is a plain SLV)
  *   SLV METAL -> L4 = METAL TO METAL
+ *
+ * TPAV+SLV shares SLV's L4 so it resolves to the same raw material code as the
+ * matching SLV row (same size / PN rating / V slot); it is a distinct base item
+ * only for the indent family totals, not for the raw-material lookup.
  *
  * Each V column is one rising/9523 variant, which is exactly the L6 standard on
  * the raw material side:
@@ -35,6 +40,7 @@ import { pnRatingBucket } from "./pnRatingMatcher";
 
 export const RM_CODE_COMPONENT_BY_ITEM: Record<string, string> = {
   SLV: "METAL TO RUBBER",
+  "TPAV+SLV": "METAL TO RUBBER",
   "SLV METAL": "METAL TO METAL",
 };
 
@@ -205,7 +211,8 @@ function collectCodes(
 
 /**
  * Resolves the RM code for every populated V1..V4 slot of every SLV / SLV METAL
- * indent row. Rows for any other item (including TPAV+SLV) produce no update.
+ * / TPAV+SLV indent row. Rows for any other item (BFV, DPCV, NRV, ...) produce
+ * no update.
  *
  * `rawMaterials` must already be restricted to live rows by the caller; this
  * function never falls back to CLOSED history.

@@ -8,14 +8,14 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String        @id @default(cuid())
   name          String?
-  email         String    @unique
+  email         String        @unique
   password      String // bcrypt hash
-  role          String    @default("user") // "user" | "admin" | "developer"
+  role          String        @default("user") // "user" | "admin" | "developer"
   emailVerified DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   chatSessions  ChatSession[]
   userMemories  UserMemory[]
 }
@@ -96,7 +96,7 @@ model EnquiryItem {
   itemTypeSource       String?
   mocSource            String?
   size                 String?
-  sizeAndHeight           String?
+  sizeAndHeight        String?
   pnRating             String?
   erpItemCode          String?
   operationType        String?
@@ -129,29 +129,33 @@ model EnquiryItem {
   costLogic            String?
   availableStock       String?
   stockAgainstContract String?
-  importedInhouse       String?
+  importedInhouse      String?
   // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
   // never rendered as its own column.
-  cBatch                String?
+  cBatch               String?
+  // Hidden data carrier. Drives the "Deleted as Current Reqt = No" label and the
+  // deleted-status filter beside the item code in the quotation dashboard.
+  nBatch               String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model GmdItemCode {
-  id        String   @id @default(cuid())
-  itemCode  String // "Code for The Item" column
-  itemType  String // ITEM TYPE (col 19)
-  moc       String // MOC (col 20)
-  operation String // OPERATION (col 21)
-  size      String // SIZE (col 22)
-  pnGmd     String // PN-GMD (col 24)
+  id          String   @id @default(cuid())
+  itemCode    String // "Code for The Item" column
+  itemType    String // ITEM TYPE (col 19)
+  moc         String // MOC (col 20)
+  operation   String // OPERATION (col 21)
+  size        String // SIZE (col 22)
+  pnGmd       String // PN-GMD (col 24)
   // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
   // never rendered as its own column.
-  cBatch    String?
-  syncedAt  DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  cBatch      String?
+  currentReqt String?
+  syncedAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([itemType, moc, operation, size, pnGmd])
 }
@@ -303,6 +307,161 @@ model GMDUpdateItem {
   updatedAt         DateTime @updatedAt
 }
 
+model RawMaterial {
+  id                String   @id @default(cuid())
+  erpItemCode       String?  @unique
+  itemNameAuto      String?
+  itemNameDerived   String?
+  l1                String?
+  l2ValveType       String?
+  l3Dia             String?
+  l7Dimension       String?
+  l4Component       String?
+  l5Material        String?
+  l6Std             String?
+  l8ItemCategory    String?
+  um                String?
+  conv1             String?
+  pcsWgt            String?
+  aum               String?
+  availableStock    String?
+  cost              Decimal?
+  usdRateOption     String?
+  hsnCode           String?
+  hsnCodeValidation String?
+  conv2             String?
+  majorMarking      String?
+  newItemStatus     String?
+  currentStatus     String?
+  rmType            String?
+  indianImported    String?
+  transferred       Boolean  @default(false)
+  vendorReference   String?
+  attachmentUrl     String?
+  orderDelivery     String?
+  cBatch            String?
+
+  // BOMs where this RawMaterial is used as a component
+  bomComponents BomItem[]
+
+  syncedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FullItem {
+  id                   String   @id @default(cuid())
+  itemCode             String?  @unique
+  itemName             String?
+  itemScheduleName     String?
+  itemType             String?
+  moc                  String?
+  operation            String?
+  size                 String?
+  no                   String?
+  pnGmd                String?
+  cost                 Decimal?
+  currentReqt          String?
+  merged               String?
+  duplicateMergerCount String?
+  bomNature            String?
+  consumption1         String?
+  consumption2         String?
+  consumption3         String?
+
+  // BOMs belonging to this FullItem
+  boms Bom[] @relation("FullItemBoms")
+
+  // Where this FullItem itself is used as a BOM component
+  bomComponents BomItem[] @relation("FullItemAsComponent")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Bom {
+  id        String   @id @default(cuid())
+  bomId     String   @unique
+  bomIdType String?
+  bomCost   Decimal?
+
+  // The FullItem this BOM belongs to
+  fullItemId String
+  fullItem   FullItem @relation("FullItemBoms", fields: [fullItemId], references: [id])
+
+  // Materials / FullItems consumed by this BOM
+  components BomItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fullItemId])
+}
+
+model BomItem {
+  id String @id @default(cuid())
+
+  bomId String
+  bom           Bom          @relation(fields: [bomId],references: [id], onDelete: Cascade)
+
+  // If this component is a RawMaterial
+  rawMaterialId String?
+  rawMaterial   RawMaterial? @relation(fields: [rawMaterialId], references: [id])
+
+  // If this component is another FullItem
+  fullItemId String?
+  fullItem   FullItem? @relation("FullItemAsComponent", fields: [fullItemId], references: [id])
+
+  // Component-specific fields
+  quantity Int?
+  cost     Decimal?
+  noUse    String?
+  cBatch   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bomId])
+  @@index([rawMaterialId])
+  @@index([fullItemId])
+}
+
+model VerifyBom {
+  id                   String   @id @default(cuid())
+  bomId                String
+  itemCode             String
+  rmItemCode           String
+  bomIdType            String?
+  bomItemQty           String?
+  noUse                String?
+  cBatch               String?
+  availableStock       String?
+  itemName             String?
+  itemScheduleName     String?
+  rmItemName           String?
+  itemType             String?
+  moc                  String?
+  operation            String?
+  size                 String?
+  no                   String?
+  pnGmd                String?
+  currentReqt          String?
+  merged               String?
+  duplicateMergerCount String?
+  bomNature            String?
+  consumption1         String?
+  consumption2         String?
+  consumption3         String?
+  cost                 String?
+  bomItemQtyCost       String?
+  syncedAt             DateTime @default(now())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([bomId, itemCode, rmItemCode])
+  @@index([itemCode])
+}
+
 model ContractReview {
   id                               String   @id @default(cuid())
   contractNo                       String
@@ -361,9 +520,9 @@ model ContractReview {
   status                           String?
   mcReceivedPending                String?
   inspection                       String?
-  offerPendingDone       String?
+  offerPendingDone                 String?
   remarks                          String?
-  costCodeRef                        String?
+  costCodeRef                      String?
   offerNumber                      String[] @default([])
   inspectionNumber                 String[] @default([])
   diDate                           String[] @default([])
@@ -379,47 +538,12 @@ model ContractReview {
 
   // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
   // never rendered as its own column.
-  cBatch    String?
+  cBatch String?
+  nBatch String?
 
   syncedAt  DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-model VerifyBom {
-  id                   String   @id @default(cuid())
-  bomId                String
-  itemCode             String
-  rmItemCode           String
-  bomIdType            String?
-  bomItemQty           String?
-  noUse                String?
-  cBatch               String?
-  availableStock       String?
-  itemName             String?
-  itemScheduleName     String?
-  rmItemName           String?
-  itemType             String?
-  moc                  String?
-  operation            String?
-  size                 String?
-  no                   String?
-  pnGmd                String?
-  currentReqt          String?
-  merged               String?
-  duplicateMergerCount String?
-  bomNature     String?
-  consumption1  String?
-  consumption2  String?
-  consumption3  String?
-  cost         String?
-  bomItemQtyCost String?
-  syncedAt   DateTime @default(now())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@unique([bomId, itemCode, rmItemCode])
-  @@index([itemCode])
 }
 
 model BisStatus {
@@ -437,27 +561,27 @@ model BisStatus {
 }
 
 model IndentListing {
-  id                String   @id @default(cuid())
-  item         String?
-  size              String?
-  pnRating          String?
-  mcReceivedPending String?              // "Received" | "Pending"
-  totalBalBillAgCont Float?              // summed BAL BILL AG CONT
-  v1                String?
-  v2                String?
-  v3                String?
-  v4                String?
-  v1Category        String?
-  v2Category        String?
-  v3Category        String?
-  v4Category        String?
-  rmCodeV1      String?
-  rmCodeV2      String?
-  rmCodeV3      String?
-  rmCodeV4      String?
-  syncedAt          DateTime @default(now())
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  item               String?
+  size               String?
+  pnRating           String?
+  mcReceivedPending  String? // "Received" | "Pending"
+  totalBalBillAgCont Float? // summed BAL BILL AG CONT
+  v1                 String?
+  v2                 String?
+  v3                 String?
+  v4                 String?
+  v1Category         String?
+  v2Category         String?
+  v3Category         String?
+  v4Category         String?
+  rmCodeV1           String?
+  rmCodeV2           String?
+  rmCodeV3           String?
+  rmCodeV4           String?
+  syncedAt           DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@unique([item, size, pnRating, mcReceivedPending])
 }
@@ -527,6 +651,8 @@ model DocketQuotationThread {
   company       String?   @db.VarChar(100)
   codeword      String?   @db.VarChar(100)
   userLabels    Json?     @map("user_labels")
+  pendingDocket Boolean?
+  partyName     String?
   msgCount      Int       @default(1) @map("msg_count")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -541,4 +667,3 @@ model DocketQuotationThread {
   @@index([company], map: "idx_dqt_company")
   @@map("docket_quotation_threads")
 }
-

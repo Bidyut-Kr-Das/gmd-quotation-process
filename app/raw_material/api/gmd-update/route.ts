@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CANONICAL_COLUMNS } from "@/lib/gmd_lib/sheet-columns";
 import { dbItemToRow } from "@/lib/gmd_lib/mapSheetRow";
-import { getBatchDistinctBomIds } from "@/lib/verifyBomLookup";
 import { C_BATCH_HEADER } from "@/lib/gmd_lib/verify-bom-columns";
 
 export async function GET() {
   try {
-    const items = await prisma.gMDUpdateItem.findMany({
+    const items = await prisma.rawMaterial.findMany({
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
@@ -38,7 +37,6 @@ export async function GET() {
         rmType: true,
         indianImported: true,
         orderDelivery: true,
-        bomId: true,
         transferred: true,
         vendorReference: true,
         attachmentUrl: true,
@@ -47,23 +45,51 @@ export async function GET() {
       },
     });
 
-    const codes = [
-      ...new Set(
-        items
-          .map((item) => item.erpItemCode)
-          .filter((c): c is string => Boolean(c)),
-      ),
-    ];
-    const bomMap = await getBatchDistinctBomIds(codes);
+    // RM → BOM links now live in BomItem (RawMaterial no longer carries bomId).
+    const bomLinks = await prisma.bomItem.findMany({
+      where: { rawMaterialId: { in: items.map((item) => item.id) } },
+      select: {
+        rawMaterialId: true,
+        bom: { select: { bomId: true } },
+      },
+    });
+    const bomIdsByRmId = new Map<string, string[]>();
+    for (const link of bomLinks) {
+      const bId = link.bom?.bomId?.trim();
+      if (!link.rawMaterialId || !bId) continue;
+      const arr = bomIdsByRmId.get(link.rawMaterialId) ?? [];
+      if (!arr.includes(bId)) arr.push(bId);
+      bomIdsByRmId.set(link.rawMaterialId, arr);
+    }
+
+    // Available BOM IDs per item code come from the FullItem → Bom relation.
+    const allBoms = await prisma.bom.findMany({
+      select: { bomId: true, fullItem: { select: { itemCode: true } } },
+    });
+    const bomIdsByCode = new Map<string, string[]>();
+    for (const bom of allBoms) {
+      const code = bom.fullItem?.itemCode?.trim();
+      const bId = bom.bomId?.trim();
+      if (!code || !bId) continue;
+      const arr = bomIdsByCode.get(code) ?? [];
+      if (!arr.includes(bId)) arr.push(bId);
+      bomIdsByCode.set(code, arr);
+    }
+
     const bomIdOptions: Record<string, string[]> = {};
     for (const item of items) {
-      bomIdOptions[item.id] = bomMap.get(item.erpItemCode ?? "") ?? [];
+      bomIdOptions[item.id] =
+        bomIdsByCode.get((item.erpItemCode ?? "").trim()) ?? [];
     }
 
     const syncedAt = items.length > 0 ? items[0].syncedAt : null;
     const headers = [...CANONICAL_COLUMNS.slice(0, 2), "ITEM NAME (derived)", ...CANONICAL_COLUMNS.slice(2), "BOM ID", "Vendor Reference", "Attachment", C_BATCH_HEADER];
     const rows = items.map((i) => {
-      const r = dbItemToRow(i);
+      const r = dbItemToRow({
+        ...i,
+        bomId: (bomIdsByRmId.get(i.id) ?? []).join(", ") || null,
+        cost: i.cost != null ? Number(i.cost) : null,
+      });
       return [...r.slice(0, 2), i.itemNameDerived, ...r.slice(2), i.cBatch];
     });
     const ids = items.map((item) => item.id);

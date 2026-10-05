@@ -15,7 +15,12 @@ export function sheetRowToDbItem(row: unknown[], syncedAt: Date) {
     conv1:          String(row[12] ?? ""),
     pcsWgt:         String(row[13] ?? ""),
     aum:            String(row[14] ?? ""),
-    cost:           String(row[15] ?? ""),
+    cost: (() => {
+      const v = String(row[15] ?? "").replace(/,/g, "").trim();
+      if (!v || v === "-") return null;
+      const n = parseFloat(v);
+      return isNaN(n) ? null : n;
+    })(),
     usdRateOption:  (() => { const v = String(row[16] ?? "").trim(); return (!v || v === "0") ? null : v; })(),
     hsnCode:        String(row[17] ?? ""),
     hsnCodeValidation: String(row[18] ?? ""),
@@ -45,7 +50,7 @@ export function dbItemToRow(item: {
   pcsWgt: string | null;
   aum: string | null;
   availableStock: string | null;
-  cost: string | null;
+  cost: number | null;
   usdRateOption: string | null;
   hsnCode: string | null;
   hsnCodeValidation: string | null;

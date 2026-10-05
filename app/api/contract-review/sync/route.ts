@@ -60,6 +60,7 @@ const SKIP_FIELDS = new Set([
   "diagramUrl",
   "diagramVerdict",
   "cBatch",
+  "nBatch",
 ]);
 
 export async function POST() {
@@ -243,6 +244,21 @@ export async function POST() {
       console.warn("[contract-review sync] contractNo sync failed:", e);
     }
 
+    // Re-derive the "N" chip / "Deleted as Current Reqt = No" mark from the item
+    // master's CURRENT REQT now that the contract rows exist/are updated.
+    let notCurrentReqt = {
+      contractReview: { marked: 0, cleared: 0 },
+      enquiryItem: { marked: 0, cleared: 0 },
+    };
+    try {
+      const { recomputeNotCurrentReqtMarks } = await import(
+        "@/lib/contractReviewCurrentReqt"
+      );
+      notCurrentReqt = await recomputeNotCurrentReqtMarks();
+    } catch (e) {
+      console.warn("[contract-review sync] current reqt mark failed:", e);
+    }
+
     const total = created + updated + unchanged;
     console.log(
       `[contract-review-sync] Summary: created=${created} updated=${updated} unchanged=${unchanged} total=${total} backfilled=${backfill.changed}`,
@@ -257,6 +273,10 @@ export async function POST() {
       backfilled: backfill.changed,
       contractNoSynced: contractNoSynced.updated,
       contractNoMatched: contractNoSynced.matched,
+      notCurrentReqtMarked: notCurrentReqt.contractReview.marked,
+      notCurrentReqtCleared: notCurrentReqt.contractReview.cleared,
+      notCurrentReqtEnquiryMarked: notCurrentReqt.enquiryItem.marked,
+      notCurrentReqtEnquiryCleared: notCurrentReqt.enquiryItem.cleared,
       changedColumns,
       totalInContracts: contractsByKey.size,
       syncedAt: syncedAt.toISOString(),

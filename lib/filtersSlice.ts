@@ -61,6 +61,7 @@ const initialState: FiltersState = {
   stockAgainstContract: "",
   contractNo: [],
   image: [],
+  deletedStatus: [],
 };
 
 const filtersSlice = createSlice({

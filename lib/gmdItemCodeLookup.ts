@@ -48,6 +48,8 @@ export async function syncGmdItemCodes(): Promise<{ count: number }> {
   const operationIdx = colIdx("OPERATION");
   const sizeIdx = colIdx("SIZE");
   const pnGmdIdx = colIdx("PN-GMD");
+  // CURRENT REQT is optional metadata: a master without the column still syncs.
+  const currentReqtIdx = colIdx("CURRENT REQT");
 
   if (itemCodeIdx === -1 || itemTypeIdx === -1 || mocIdx === -1 || operationIdx === -1 || sizeIdx === -1 || pnGmdIdx === -1) {
     throw new Error(`Required columns not found. Found: ${JSON.stringify({ itemCodeIdx, itemTypeIdx, mocIdx, operationIdx, sizeIdx, pnGmdIdx })}`);
@@ -55,6 +57,11 @@ export async function syncGmdItemCodes(): Promise<{ count: number }> {
 
   const dataRows = allRows.slice(1).filter((r) => r.some((c) => c !== null && c !== ""));
   const syncedAt = new Date();
+  const getOptional = (row: unknown[], i: number): string | null => {
+    if (i < 0) return null;
+    const v = row[i];
+    return v != null && v !== "" ? String(v).trim() : null;
+  };
 
   const dbRows = dataRows.map((row) => ({
     itemCode: String(row[itemCodeIdx] ?? "").trim(),
@@ -63,6 +70,7 @@ export async function syncGmdItemCodes(): Promise<{ count: number }> {
     operation: String(row[operationIdx] ?? "").trim(),
     size: String(row[sizeIdx] ?? "").trim(),
     pnGmd: String(row[pnGmdIdx] ?? "").trim(),
+    currentReqt: getOptional(row, currentReqtIdx),
     syncedAt,
   })).filter((r) => r.itemCode && r.itemType && r.moc && r.operation && r.size && r.pnGmd);
 
@@ -125,6 +133,7 @@ async function ensureFreshData(): Promise<void> {
     console.log(`[GmdItemCode] Synced ${syncCount} rows`);
     const backfill = await backfillExistingItems();
     console.log(`[GmdItemCode] Backfilled ${backfill.filled}/${backfill.total} existing items`);
+    await refreshContractReviewCurrentReqtMark();
     return;
   }
 
@@ -137,7 +146,28 @@ async function ensureFreshData(): Promise<void> {
       console.log(`[GmdItemCode] Re-synced ${syncCount} rows`);
       const backfill = await backfillExistingItems();
       console.log(`[GmdItemCode] Re-backfilled ${backfill.filled}/${backfill.total} items`);
+      await refreshContractReviewCurrentReqtMark();
     }
+  }
+}
+
+/**
+ * The master snapshot carries CURRENT REQT, which drives the contract review
+ * "N" chip and the quotation "Deleted as Current Reqt = No" mark. Re-derive
+ * both whenever the snapshot is refreshed. Best-effort: a failure must never
+ * block an item-code lookup.
+ */
+async function refreshContractReviewCurrentReqtMark(): Promise<void> {
+  try {
+    const { recomputeNotCurrentReqtMarks } = await import(
+      "@/lib/contractReviewCurrentReqt"
+    );
+    const r = await recomputeNotCurrentReqtMarks();
+    console.log(
+      `[GmdItemCode] CURRENT REQT marks: CR +${r.contractReview.marked}/-${r.contractReview.cleared}, items +${r.enquiryItem.marked}/-${r.enquiryItem.cleared}`,
+    );
+  } catch (e) {
+    console.warn("[GmdItemCode] current reqt mark failed:", e);
   }
 }
 

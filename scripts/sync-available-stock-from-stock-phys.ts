@@ -23,7 +23,7 @@ async function main() {
   const sheetCodes = Object.keys(stockMap);
   console.log(`stock-phys ERP codes:  ${sheetCodes.length}`);
 
-  const items = await prisma.gMDUpdateItem.findMany({
+  const items = await prisma.rawMaterial.findMany({
     select: { id: true, erpItemCode: true, availableStock: true },
   });
   console.log(`GMDUpdateItem rows:    ${items.length}\n`);
@@ -98,7 +98,7 @@ async function main() {
 
   let updatedRows = 0;
   for (const [erpItemCode, availableStock] of changedCodes) {
-    const res = await prisma.gMDUpdateItem.updateMany({
+    const res = await prisma.rawMaterial.updateMany({
       where: { erpItemCode },
       data: { availableStock },
     });

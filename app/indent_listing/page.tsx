@@ -47,7 +47,7 @@ export default function IndentListingPage() {
   const handleSync = useCallback(async () => {
     setSyncing(true);
     setError(null);
-    const toastId = toast.loading("Syncing from Contract Review...");
+    const toastId = toast.loading("Syncing and recomputing V1-V4...");
     try {
       const res = await fetch("/api/indent-listing/sync", { method: "POST" });
       if (!res.ok) {
@@ -67,10 +67,29 @@ export default function IndentListingPage() {
       ]
         .filter(Boolean)
         .join(", ");
-      toast.success(
-        `Synced: ${result.created} created, ${result.updated} updated${details ? `, ${details}` : ""}`,
-        { id: toastId },
-      );
+
+      // Collapse the freshly restored variant rows (SLV RISING, SLV-9523,
+      // TPAV+RISING SLV, ...) into their base rows' V1..V4 so the SLV / TPAV+SLV
+      // family total the dashboard shows includes every variant. The same pass
+      // also resolves the RM codes and publishes the Contract Review cost code
+      // ref. It is a no-op when the rows are already collapsed.
+      const recompute = await recomputeIndentListingVersionsAction();
+      const r = recompute?.data;
+      const syncSummary = `Synced: ${result.created} created, ${result.updated} updated${details ? `, ${details}` : ""}`;
+
+      if (recompute?.success) {
+        const collapseDetail = r
+          ? ` | collapse: ${r.updated} updated, ${r.deleted} merged${r.recomputeSkipped ? " (already collapsed)" : ""}`
+          : "";
+        toast.success(`${syncSummary}${collapseDetail}`, { id: toastId });
+      } else {
+        // The sync itself succeeded; surface the collapse failure without
+        // discarding the sync result.
+        toast.warning(
+          `${syncSummary} | recompute failed: ${recompute?.error ?? "unknown error"}`,
+          { id: toastId },
+        );
+      }
       await fetchData();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sync failed", {

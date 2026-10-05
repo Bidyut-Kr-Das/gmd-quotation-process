@@ -5,6 +5,9 @@ import {
   CONTRACT_REVIEW_COLUMN_GROUPS,
   CONTRACT_REVIEW_HEADER_TO_DB_FIELD,
   dbContractReviewToRow,
+  isNotCurrentReqt,
+  N_BATCH_HEADER,
+  N_BATCH_VALUE,
 } from '../lib/gmd_lib/contract-review-columns.js'
 
 /**
@@ -144,15 +147,16 @@ test('the collapsed groups hold their documented anchor positions', () => {
   assert.equal(headers.indexOf('CONTRACT NO'), 0)
   assert.equal(headers.indexOf('ITEM_NAME'), 4)
   assert.equal(headers.indexOf('Item'), 33)
-  assert.equal(headers.indexOf('Actuator'), 39)
-  assert.equal(headers.indexOf('LC/RTGS REF NO'), 43)
+  assert.equal(headers.indexOf('BOM ID'), 37)
+  assert.equal(headers.indexOf('Actuator'), 40)
+  assert.equal(headers.indexOf('LC/RTGS REF NO'), 44)
 
   // The anchors are where each group actually renders, so assert them from the
   // group data rather than restating the numbers.
   const anchors = CONTRACT_REVIEW_COLUMN_GROUPS.map(
     (g) => headers.indexOf(g.children[0].header),
   )
-  assert.deepEqual(anchors, [0, 4, 33, 39, 43])
+  assert.deepEqual(anchors, [0, 3, 4, 33, 38, 40, 44])
 })
 
 test('every collapsed group child is a real header', () => {
@@ -197,4 +201,29 @@ test('inline-editable headers all exist and point at a DB field', () => {
     )
     assert.equal(typeof field, 'string')
   }
+})
+
+test('N BATCH is the last hidden carrier and serialized last', () => {
+  const headers = CONTRACT_REVIEW_HEADERS as readonly string[]
+  assert.equal(headers[headers.length - 1], N_BATCH_HEADER)
+  assert.equal(headers[headers.length - 2], 'C BATCH')
+
+  // The serializer must emit one cell per header, in order, so nBatch lands on
+  // the N BATCH index (the fixture proxy echoes the property name back).
+  const row = dbContractReviewToRow(makeRow())
+  assert.equal(row[headers.length - 1], 'nBatch')
+})
+
+test('isNotCurrentReqt only flags an explicit NO', () => {
+  assert.equal(isNotCurrentReqt('NO'), true)
+  assert.equal(isNotCurrentReqt('no'), true)
+  assert.equal(isNotCurrentReqt('No'), true)
+  assert.equal(isNotCurrentReqt('  No  '), true)
+  assert.equal(isNotCurrentReqt('YES'), false)
+  assert.equal(isNotCurrentReqt('yes'), false)
+  assert.equal(isNotCurrentReqt(''), false)
+  assert.equal(isNotCurrentReqt(null), false)
+  assert.equal(isNotCurrentReqt(undefined), false)
+  assert.equal(isNotCurrentReqt('N/A'), false)
+  assert.equal(N_BATCH_VALUE, 'N')
 })
