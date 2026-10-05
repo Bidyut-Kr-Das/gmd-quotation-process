@@ -2506,11 +2506,14 @@ castingRateInputs,
                                   </button>
                                 )}
                               </div>
-                              {ch === imageButtonColumn && presenceFilterControls}
                             </div>
                           );
                         })}
                       </div>
+                      {imageButtonColumn &&
+                        group.children.some(
+                          (c) => c.header === imageButtonColumn,
+                        ) && presenceFilterControls}
 
                       <div
                         onMouseDown={(e) => handleResizeStart(idx, e)}

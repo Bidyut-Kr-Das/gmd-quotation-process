@@ -36,6 +36,7 @@ export const CONTRACT_REVIEW_HEADERS = [
   "SIZE",
   "PN RATING",
   "COST CODE REF",
+  "BOM ID",
   "PHYSICAL STOCK",
   "CLEARANCE STATUS",
   "Actuator",
@@ -52,7 +53,6 @@ export const CONTRACT_REVIEW_HEADERS = [
   "JOB Code",
   "BAL BILL AG MC",
   "ic qty",
-  "BOM ID",
   "RM AVAIL",
   "STATUS",
   "MC Received/Pending",
@@ -166,8 +166,9 @@ export const CONTRACT_REVIEW_COLUMN_WIDTHS: Partial<
  * CONTRACT_REVIEW_HEADERS, so visual order follows the header array, not the
  * order groups are listed here. Declared in visual order for readability:
  *   Contract/PO (idx 0) -> Item Code/Type (idx 3) -> Item Names (idx 4)
- *   -> Item/Size/PN/CostRef (idx 33) -> Actuator (idx 39)
- *   -> LC/RTGS/Bank (idx 43)
+ *   -> Item/Size/PN/CostRef (idx 33) -> BOM ID (idx 37)
+ *   -> Physical Stock/RM Avail (idx 38) -> Actuator (idx 40)
+ *   -> LC/RTGS/Bank (idx 44)
  *
  * These are purely a display concern: the headers array, the row serializer and
  * the header->DB field map are all untouched, so every *IDX constant and all
@@ -221,6 +222,15 @@ export const CONTRACT_REVIEW_COLUMN_GROUPS = [
       { header: "SIZE", plain: true },
       { header: "PN RATING", plain: true },
       { header: "COST CODE REF", plain: true },
+    ],
+  },
+  {
+    label: "Physical Stock / RM Avail",
+    width: 160,
+    // Anchored at PHYSICAL STOCK; both render as bare stacked lines.
+    children: [
+      { header: "PHYSICAL STOCK", plain: true },
+      { header: "RM AVAIL", plain: true },
     ],
   },
   {
@@ -524,6 +534,7 @@ export function dbContractReviewToRow(item: {
     item.balToProdOrdEntVal, item.balBillAgContVal, item.balBillAgMcVal,
     item.balDiVal, item.diVal,
     item.item, item.size, item.pnRating, item.costCodeRef,
+    item.bomId,
     item.rmPhysicalStock,
     item.clearanceStatus, item.actuator,
     item.rmCodeForActuator, item.rmCodeForGb, item.paymentTerms,
@@ -532,7 +543,6 @@ export function dbContractReviewToRow(item: {
     item.itemType,
     item.erpPartyNameFromGmdSupplyHistory,
     item.jobCode, item.balBillAgMc, item.icQty,
-    item.bomId,
     item.noUse,
     item.status,
     item.mcReceivedPending,
