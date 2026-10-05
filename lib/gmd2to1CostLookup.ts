@@ -143,7 +143,7 @@ export async function buildRawMaterialsCostMap(
   const costMap = new Map<string, number>();
   if (rmCodes.length === 0) return costMap;
 
-  const rawMaterials = await prisma.gMDUpdateItem.findMany({
+  const rawMaterials = await prisma.rawMaterial.findMany({
     where: { erpItemCode: { in: rmCodes } },
     select: {
       erpItemCode: true,

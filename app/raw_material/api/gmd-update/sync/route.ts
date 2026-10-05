@@ -96,7 +96,7 @@ export async function POST() {
         ),
     );
 
-    const existingRows = await prisma.gMDUpdateItem.findMany({
+    const existingRows = await prisma.rawMaterial.findMany({
       select: EXISTING_SELECT,
     });
     const existingByCode = new Map<string, (typeof existingRows)[number]>();
@@ -155,7 +155,7 @@ export async function POST() {
     }
 
     if (toCreate.length > 0) {
-      await prisma.gMDUpdateItem.createMany({ data: toCreate });
+      await prisma.rawMaterial.createMany({ data: toCreate });
     }
 
     let updated = 0;
@@ -166,7 +166,7 @@ export async function POST() {
         const chunk = toUpdate.slice(i, i + chunkSize);
         const results = await Promise.allSettled(
           chunk.map((u) =>
-            prisma.gMDUpdateItem.update({
+            prisma.rawMaterial.update({
               where: { id: u.id },
               data: u.data,
             }),

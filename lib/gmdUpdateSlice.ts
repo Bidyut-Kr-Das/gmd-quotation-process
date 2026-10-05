@@ -31,7 +31,7 @@ export interface GMDUpdateRow {
   pcsWgt: string | null;
   aum: string | null;
   availableStock: string | null;
-  cost: string | null;
+  cost: number | null;
   usdRateOption: string | null;
   hsnCode: string | null;
   hsnCodeValidation: string | null;
@@ -141,7 +141,7 @@ const gmdUpdateSlice = createSlice({
         payload: {
           transferredRowId: string;
           newItemIds: string[];
-          cost: string;
+          cost: number;
         };
         type: string;
       },
@@ -168,7 +168,7 @@ const gmdUpdateSlice = createSlice({
   extraReducers: (builder) => {
     builder.addCase(updateGMDUpdateField.fulfilled, (state, action) => {
       const { id, field, value } = action.payload;
-      adapter.updateOne(state, { id, changes: { [field]: value } });
+      adapter.updateOne(state, { id, changes: { [field]: field === "cost" ? (value == null || value === "" ? null : Number(value)) : value } });
     });
     builder.addCase(updateGMDUsdCost.fulfilled, (state, action) => {
       const { id, usdCost, cost } = action.payload;

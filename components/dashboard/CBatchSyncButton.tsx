@@ -31,7 +31,7 @@ type Plan = {
 };
 
 const PAGE_HINT: Record<string, string> = {
-  GMDUpdateItem: "Raw Material",
+  RawMaterial: "Raw Material",
   ContractReview: "Contract Review",
   SupplyHistoryItem: "Supply History",
   EnquiryItem: "Quotation",
