@@ -122,7 +122,7 @@ function applyCastingCost(
     const wgt = parseFloat(String(item.pcsWgt ?? "").replace(/,/g, ""));
     if (isNaN(rate) || isNaN(wgt)) return item;
     lockedIds.add(item.id);
-    return { ...item, cost: (rate * wgt).toFixed(2) };
+    return { ...item, cost: Number((rate * wgt).toFixed(2)) };
   });
   return { items: out, lockedIds };
 }
@@ -150,7 +150,7 @@ function rowToGMDUpdateItem(
     conv1: String(row[13] ?? ""),
     pcsWgt: String(row[14] ?? ""),
     aum: String(row[15] ?? ""),
-    cost: String(row[16] ?? ""),
+    cost: row[16] != null && row[16] !== "" ? Number(row[16]) : null,
     usdRateOption: String(row[17] ?? ""),
     hsnCode: String(row[18] ?? ""),
     hsnCodeValidation: String(row[19] ?? ""),

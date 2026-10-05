@@ -12,7 +12,7 @@ export async function getRmStockMap(rmCodes: string[]): Promise<Map<string, stri
 
   const uniqueRmCodes = [...new Set(rmCodes.filter(Boolean))];
 
-  const records = await prisma.gMDUpdateItem.findMany({
+  const records = await prisma.rawMaterial.findMany({
     where: { erpItemCode: { in: uniqueRmCodes } },
     select: { erpItemCode: true, availableStock: true },
   });
@@ -39,7 +39,7 @@ export async function getRmTypeMap(rmCodes: string[]): Promise<Map<string, strin
 
   const uniqueRmCodes = [...new Set(rmCodes.filter(Boolean))];
 
-  const records = await prisma.gMDUpdateItem.findMany({
+  const records = await prisma.rawMaterial.findMany({
     where: { erpItemCode: { in: uniqueRmCodes } },
     select: { erpItemCode: true, rmType: true },
   });

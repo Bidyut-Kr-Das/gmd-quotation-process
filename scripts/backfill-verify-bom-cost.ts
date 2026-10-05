@@ -32,7 +32,7 @@ async function main() {
     ...new Set(items.map((i) => i.bomId).filter((b): b is string => !!b)),
   ];
 
-  const rawItems = await prisma.gMDUpdateItem.findMany({
+  const rawItems = await prisma.rawMaterial.findMany({
     where: {
       OR: [
         { erpItemCode: { in: codes } },
@@ -53,7 +53,7 @@ async function main() {
     if (!r.erpItemCode) continue;
     const code = r.erpItemCode.trim().toUpperCase();
     const bId = (r.bomId ?? "").trim().toUpperCase();
-    const costVal = (r.cost ?? "").trim();
+    const costVal = r.cost != null ? r.cost.toString() : "";
 
     if (costVal && !erpCodeCostMap.has(code)) {
       erpCodeCostMap.set(code, costVal);

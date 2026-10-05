@@ -2260,7 +2260,7 @@ export async function setGMDUpdateTransferredAction(
     if (uniqueIds.length === 0) {
       return { success: true, data: { count: 0 } };
     }
-    const res = await prisma.gMDUpdateItem.updateMany({
+    const res = await prisma.rawMaterial.updateMany({
       where: { id: { in: uniqueIds } },
       data: { transferred },
     });
@@ -2288,7 +2288,7 @@ export async function addTransferredBlankItemsAction(codes: string[]) {
         invalid.push(code);
         continue;
       }
-      const existing = await prisma.gMDUpdateItem.findFirst({
+      const existing = await prisma.rawMaterial.findFirst({
         where: { erpItemCode: code, transferred: true },
         select: { id: true },
       });
@@ -2297,7 +2297,7 @@ export async function addTransferredBlankItemsAction(codes: string[]) {
     }
     const created: { code: string; id: string }[] = [];
     for (const code of toCreate) {
-      const row = await prisma.gMDUpdateItem.create({
+      const row = await prisma.rawMaterial.create({
         data: { erpItemCode: code, transferred: true },
         select: { id: true },
       });
@@ -2318,7 +2318,7 @@ export async function transferFilteredByCodeAction(code: string) {
   try {
     const trimmed = (code ?? "").trim();
     if (!trimmed) return { success: true, data: { id: null } };
-    const target = await prisma.gMDUpdateItem.findFirst({
+    const target = await prisma.rawMaterial.findFirst({
       where: {
         erpItemCode: trimmed,
         transferred: false,
@@ -2329,7 +2329,7 @@ export async function transferFilteredByCodeAction(code: string) {
       select: { id: true },
     });
     if (!target) return { success: true, data: { id: null } };
-    await prisma.gMDUpdateItem.update({
+    await prisma.rawMaterial.update({
       where: { id: target.id },
       data: { transferred: true },
     });
@@ -2361,7 +2361,7 @@ export async function importTransferredExcelAction(
         const s = String(v ?? "").trim();
         if (s !== "") values[field] = s;
       }
-      const existing = await prisma.gMDUpdateItem.findFirst({
+      const existing = await prisma.rawMaterial.findFirst({
         where: { erpItemCode: code, transferred: true },
         orderBy: { createdAt: "asc" },
         select: { id: true },
@@ -2370,7 +2370,7 @@ export async function importTransferredExcelAction(
         skipped++;
         continue;
       }
-      await prisma.gMDUpdateItem.update({
+      await prisma.rawMaterial.update({
         where: { id: existing.id },
         data: { ...values, transferred: true },
       });
@@ -2396,7 +2396,7 @@ export async function uploadGMDUpdateAttachmentAction(
       return { success: false, error: "Missing item id." };
     }
     validateAttachment(file);
-    const existing = await prisma.gMDUpdateItem.findUnique({
+    const existing = await prisma.rawMaterial.findUnique({
       where: { id },
       select: { erpItemCode: true, attachmentUrl: true },
     });
@@ -2413,7 +2413,7 @@ export async function uploadGMDUpdateAttachmentAction(
     if (existing.attachmentUrl) {
       await deleteFromS3(existing.attachmentUrl);
     }
-    await prisma.gMDUpdateItem.update({
+    await prisma.rawMaterial.update({
       where: { id },
       data: { attachmentUrl },
     });
@@ -2433,7 +2433,7 @@ export async function clearGMDUpdateAttachmentAction(id: string) {
     if (!id) {
       return { success: false, error: "Missing item id." };
     }
-    const existing = await prisma.gMDUpdateItem.findUnique({
+    const existing = await prisma.rawMaterial.findUnique({
       where: { id },
       select: { attachmentUrl: true },
     });
@@ -2443,7 +2443,7 @@ export async function clearGMDUpdateAttachmentAction(id: string) {
     if (existing.attachmentUrl) {
       await deleteFromS3(existing.attachmentUrl);
     }
-    await prisma.gMDUpdateItem.update({
+    await prisma.rawMaterial.update({
       where: { id },
       data: { attachmentUrl: null },
     });
@@ -2592,7 +2592,7 @@ export async function deleteGMDUpdateTransferredAction(id: string) {
     if (!id) {
       return { success: false, error: "Missing item id." };
     }
-    const existing = await prisma.gMDUpdateItem.findUnique({
+    const existing = await prisma.rawMaterial.findUnique({
       where: { id },
       select: { transferred: true, attachmentUrl: true, erpItemCode: true },
     });
@@ -2609,7 +2609,7 @@ export async function deleteGMDUpdateTransferredAction(id: string) {
         console.warn("[deleteGMDUpdateTransferred] S3 delete failed, continuing:", e);
       }
     }
-    await prisma.gMDUpdateItem.delete({ where: { id } });
+    await prisma.rawMaterial.delete({ where: { id } });
     console.log(`[Server] Deleted transferred item id=${id} code=${existing.erpItemCode ?? ""}`);
     return { success: true, data: { id } };
   } catch (error: any) {
@@ -2624,7 +2624,7 @@ export async function deleteGMDUpdateTransferredAction(id: string) {
 export interface TransferCostMatchProposal {
   transferredRowId: string;
   transferredErpCode: string;
-  cost: string;
+  cost: number;
   tuple: {
     l1: string;
     l2ValveType: string;
@@ -2692,7 +2692,7 @@ const GMD_L_MATCH_SELECT = {
 export async function getTransferCostMatchProposalsAction() {
   "use server";
   try {
-    const transferred = await prisma.gMDUpdateItem.findMany({
+    const transferred = await prisma.rawMaterial.findMany({
       where: { transferred: true },
       orderBy: { createdAt: "asc" },
       select: {
@@ -2703,7 +2703,7 @@ export async function getTransferCostMatchProposalsAction() {
         ...GMD_L_MATCH_SELECT,
       },
     });
-    const newItems = await prisma.gMDUpdateItem.findMany({
+    const newItems = await prisma.rawMaterial.findMany({
       where: {
         transferred: false,
         OR: [
@@ -2733,7 +2733,7 @@ export async function getTransferCostMatchProposalsAction() {
     const proposals: TransferCostMatchProposal[] = [];
     for (const tr of transferred) {
       if (!lTupleComplete(tr)) continue;
-      const cost = (tr.cost ?? "").trim();
+      const cost = Number(tr.cost ?? 0);
       if (!cost) continue;
       const matches = byKey.get(lMatchKey(tr)) ?? [];
       if (matches.length === 0) continue;
@@ -2792,7 +2792,7 @@ export async function applyTransferCostMatchAction(transferredRowId: string) {
     if (!transferredRowId) {
       return { success: false, error: "Missing item id." };
     }
-    const tr = await prisma.gMDUpdateItem.findUnique({
+    const tr = await prisma.rawMaterial.findUnique({
       where: { id: transferredRowId },
       select: {
         id: true,
@@ -2812,12 +2812,12 @@ export async function applyTransferCostMatchAction(transferredRowId: string) {
     if (!lTupleComplete(tr)) {
       return { success: false, error: "L1-L8 are not complete on this row." };
     }
-    const cost = (tr.cost ?? "").trim();
+    const cost = Number(tr.cost ?? 0);
     if (!cost) {
       return { success: false, error: "Row has no cost to apply." };
     }
 
-    const newItems = await prisma.gMDUpdateItem.findMany({
+    const newItems = await prisma.rawMaterial.findMany({
       where: {
         transferred: false,
         OR: [
@@ -2852,11 +2852,11 @@ export async function applyTransferCostMatchAction(transferredRowId: string) {
       }
     }
 
-    await prisma.gMDUpdateItem.updateMany({
+    await prisma.rawMaterial.updateMany({
       where: { id: { in: targetIds } },
       data: { cost },
     });
-    await prisma.gMDUpdateItem.update({
+    await prisma.rawMaterial.update({
       where: { id: transferredRowId },
       data: {
         transferred: false,
@@ -2891,7 +2891,7 @@ export async function applyTransferCostMatchAction(transferredRowId: string) {
 export async function getTradingValveOptionsAction() {
   "use server";
   try {
-    const rows = await prisma.gMDUpdateItem.findMany({
+    const rows = await prisma.rawMaterial.findMany({
       where: {
         l8ItemCategory: {
           contains: "TRADING VALVE",
@@ -2936,7 +2936,7 @@ export async function getTradingValveOptionsAction() {
 export async function getActuatorOptionsAction() {
   "use server";
   try {
-    const rows = await prisma.gMDUpdateItem.findMany({
+    const rows = await prisma.rawMaterial.findMany({
       where: {
         l8ItemCategory: { contains: "ACTUATORS", mode: "insensitive" },
         transferred: false,
@@ -3001,7 +3001,7 @@ export async function saveActuatorWithRmCodeAction(
         error: "Invalid actuator format. Expected L7@L6.",
       };
     }
-    const rows = await prisma.gMDUpdateItem.findMany({
+    const rows = await prisma.rawMaterial.findMany({
       where: {
         l8ItemCategory: { contains: "ACTUATORS", mode: "insensitive" },
         transferred: false,
@@ -3052,9 +3052,13 @@ export async function updateGMDUpdateFieldAction(
   value: string | null,
 ) {
   "use server";
-  const updated = await prisma.gMDUpdateItem.update({
+  const data =
+    field === "cost"
+      ? { [field]: value == null || value.trim() === "" ? null : value }
+      : { [field]: value };
+  const updated = await prisma.rawMaterial.update({
     where: { id },
-    data: { [field]: value },
+    data,
   });
   console.log(`Updated GMDUpdateItem: ${id}, Field: ${field}, Value: ${value}, ${updated}`);
   console.dir(updated, { depth: Infinity });
@@ -3064,7 +3068,7 @@ export async function updateGMDUpdateFieldAction(
 export async function updateDerivedItemName(itemCode: string) {
   "use server";
   try {
-    const item = await prisma.gMDUpdateItem.findFirst({
+    const item = await prisma.rawMaterial.findFirst({
       where: { erpItemCode: itemCode },
     });
     if (!item) return { success: false, error: "Item not found." };
@@ -3099,7 +3103,7 @@ export async function updateDerivedItemName(itemCode: string) {
     }
 
     const itemNameDerived = parts.join("-");
-    await prisma.gMDUpdateItem.update({
+    await prisma.rawMaterial.update({
       where: { id: item.id },
       data: { itemNameDerived },
     });
@@ -3130,17 +3134,17 @@ export async function updateGMDUsdCostAction(id: string, usdCost: string | null)
   try {
     const trimmed = usdCost?.trim() ?? "";
     if (!trimmed) {
-      const existing = await prisma.gMDUpdateItem.findUnique({
+      const existing = await prisma.rawMaterial.findUnique({
         where: { id },
         select: { cost: true },
       });
-      await prisma.gMDUpdateItem.update({
+      await prisma.rawMaterial.update({
         where: { id },
         data: { usdRateOption: null },
       });
       return {
         success: true,
-        data: { id, usdCost: null, cost: existing?.cost ?? null, rate: null, fetchedAt: new Date().toISOString() },
+        data: { id, usdCost: null, cost: Number(existing?.cost ?? 0), rate: null, fetchedAt: new Date().toISOString() },
       };
     }
     const usd = parseFloat(trimmed.replace(/,/g, ""));
@@ -3149,9 +3153,9 @@ export async function updateGMDUsdCostAction(id: string, usdCost: string | null)
     }
 
     const { rate, fetchedAt } = await getUsdInrRate();
-    const cost = (usd * rate).toFixed(2);
+    const cost = Number((usd * rate).toFixed(2));
 
-    await prisma.gMDUpdateItem.update({
+    await prisma.rawMaterial.update({
       where: { id },
       data: { usdRateOption: String(usd), cost },
     });
@@ -3169,7 +3173,7 @@ export async function selectGMDUpdateBomIdAction(
 ) {
   "use server";
   try {
-    const item = await prisma.gMDUpdateItem.findUnique({
+    const item = await prisma.rawMaterial.findUnique({
       where: { id },
       select: { erpItemCode: true },
     });
@@ -3181,7 +3185,7 @@ export async function selectGMDUpdateBomIdAction(
         return { success: false, error: "Selected BOM ID is not in available options." };
       }
     }
-    await prisma.gMDUpdateItem.update({
+    await prisma.rawMaterial.update({
       where: { id },
       data: { bomId: value },
     });
@@ -4067,7 +4071,7 @@ export async function recomputeIndentListingVersionsAction() {
       }),
       // Only live raw materials: CLOSED history rows share the same L-values
       // and would match nearly every indent row.
-      prisma.gMDUpdateItem.findMany({
+      prisma.rawMaterial.findMany({
         where: {
           l8ItemCategory: {
             contains: RM_CODE_ITEM_CATEGORY,
@@ -4966,7 +4970,7 @@ export async function syncCBatchAction(dryRun = false) {
 
     // ---- GMDUpdateItem.erpItemCode ----
     {
-      const rows = await prisma.gMDUpdateItem.findMany({
+      const rows = await prisma.rawMaterial.findMany({
         select: { erpItemCode: true, cBatch: true },
       });
       const { present, matched } = matchedFor(rows.map((r) => r.erpItemCode));
@@ -4981,7 +4985,7 @@ export async function syncCBatchAction(dryRun = false) {
       ).length;
       if (!dryRun && pending > 0) {
         for (let i = 0; i < matched.length; i += C_BATCH_CHUNK) {
-          await prisma.gMDUpdateItem.updateMany({
+          await prisma.rawMaterial.updateMany({
             where: { erpItemCode: { in: matched.slice(i, i + C_BATCH_CHUNK) } },
             data: { cBatch: C_BATCH_VALUE },
           });
@@ -4989,7 +4993,7 @@ export async function syncCBatchAction(dryRun = false) {
       }
       push(
         {
-          table: "GMDUpdateItem",
+          table: "RawMaterial",
           fields: "erpItemCode",
           distinctCodes: present.size,
           matchedCodes: matched.length,
@@ -5137,7 +5141,7 @@ export async function syncContractReviewRmAvailAction() {
     // 1. Blank-fill GMDUpdateItem.availableStock from the stock-phys sheet
     const stockPhysMap = await fetchStockPhysicalSheet();
     const stockPhysCodes = Object.keys(stockPhysMap);
-    const blankStockRows = await prisma.gMDUpdateItem.findMany({
+    const blankStockRows = await prisma.rawMaterial.findMany({
       where: {
         OR: [{ availableStock: null }, { availableStock: "" }],
       },
@@ -5164,7 +5168,7 @@ export async function syncContractReviewRmAvailAction() {
         const chunk = stockUpdates.slice(i, i + chunkSize);
         await prisma.$transaction(
           chunk.map((u) =>
-            prisma.gMDUpdateItem.update({
+            prisma.rawMaterial.update({
               where: { id: u.id },
               data: { availableStock: u.stock },
             }),

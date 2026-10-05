@@ -254,7 +254,7 @@ export async function recomputeVerifyBomValues(): Promise<{
         .filter((c): c is string => !!c),
     ),
   ];
-  const rawItems = await prisma.gMDUpdateItem.findMany({
+  const rawItems = await prisma.rawMaterial.findMany({
     where: {
       OR: [
         { erpItemCode: { in: codes } },
@@ -279,7 +279,7 @@ export async function recomputeVerifyBomValues(): Promise<{
     if (!r.erpItemCode) continue;
     const code = r.erpItemCode.trim().toUpperCase();
     const bId = (r.bomId ?? "").trim().toUpperCase();
-    const costVal = (r.cost ?? "").trim();
+    const costVal = r.cost != null ? r.cost.toString() : "";
 
     if (!stockMap.has(code)) {
       stockMap.set(code, r.availableStock ?? "");
@@ -493,7 +493,7 @@ export async function resolveContractReviewBomIdsFromActuator(
   const rmCodes = [
     ...new Set(vbRows.map((r) => r.rmItemCode).filter(Boolean)),
   ];
-  const rmItems = await prisma.gMDUpdateItem.findMany({
+  const rmItems = await prisma.rawMaterial.findMany({
     where: { erpItemCode: { in: rmCodes } },
     select: { erpItemCode: true, l7Dimension: true, l6Std: true },
   });

@@ -7,7 +7,7 @@ import { C_BATCH_HEADER } from "@/lib/gmd_lib/verify-bom-columns";
 
 export async function GET() {
   try {
-    const items = await prisma.gMDUpdateItem.findMany({
+    const items = await prisma.rawMaterial.findMany({
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
@@ -63,7 +63,7 @@ export async function GET() {
     const syncedAt = items.length > 0 ? items[0].syncedAt : null;
     const headers = [...CANONICAL_COLUMNS.slice(0, 2), "ITEM NAME (derived)", ...CANONICAL_COLUMNS.slice(2), "BOM ID", "Vendor Reference", "Attachment", C_BATCH_HEADER];
     const rows = items.map((i) => {
-      const r = dbItemToRow(i);
+      const r = dbItemToRow({ ...i, cost: i.cost != null ? Number(i.cost) : null });
       return [...r.slice(0, 2), i.itemNameDerived, ...r.slice(2), i.cBatch];
     });
     const ids = items.map((item) => item.id);

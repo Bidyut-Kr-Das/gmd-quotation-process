@@ -8,6 +8,7 @@
     "build-start": "npx prisma generate && next build && next start --port 4570",
     "start": "next start --port 4570",
     "lint": "eslint",
+    "typecheck": "tsc --noemit",
     "seed:lookups": "tsx scripts/seed-lookup-options.ts",
     "bom:cost": "tsx scripts/update-product-cost-from-bom.ts",
     "round:qr": "tsx scripts/round-qr.ts",

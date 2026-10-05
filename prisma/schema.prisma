@@ -8,14 +8,14 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String        @id @default(cuid())
   name          String?
-  email         String    @unique
+  email         String        @unique
   password      String // bcrypt hash
-  role          String    @default("user") // "user" | "admin" | "developer"
+  role          String        @default("user") // "user" | "admin" | "developer"
   emailVerified DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   chatSessions  ChatSession[]
   userMemories  UserMemory[]
 }
@@ -96,7 +96,7 @@ model EnquiryItem {
   itemTypeSource       String?
   mocSource            String?
   size                 String?
-  sizeAndHeight           String?
+  sizeAndHeight        String?
   pnRating             String?
   erpItemCode          String?
   operationType        String?
@@ -129,10 +129,10 @@ model EnquiryItem {
   costLogic            String?
   availableStock       String?
   stockAgainstContract String?
-  importedInhouse       String?
+  importedInhouse      String?
   // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
   // never rendered as its own column.
-  cBatch                String?
+  cBatch               String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -304,6 +304,66 @@ model GMDUpdateItem {
   updatedAt         DateTime @updatedAt
 }
 
+model RawMaterial {
+  id                String   @id @default(cuid())
+  erpItemCode       String?  @unique
+  itemNameAuto      String?
+  itemNameDerived   String?
+  l1                String?
+  l2ValveType       String?
+  l3Dia             String?
+  l7Dimension       String?
+  l4Component       String?
+  l5Material        String?
+  l6Std             String?
+  l8ItemCategory    String?
+  um                String?
+  conv1             String?
+  pcsWgt            String?
+  aum               String?
+  availableStock    String?
+  cost              Decimal?
+  usdRateOption     String?
+  hsnCode           String?
+  hsnCodeValidation String?
+  conv2             String?
+  majorMarking      String?
+  newItemStatus     String?
+  currentStatus     String?
+  rmType            String?
+  indianImported    String?
+  bomId             String?
+  transferred       Boolean  @default(false)
+  vendorReference   String?
+  attachmentUrl     String?
+  orderDelivery     String?
+  // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
+  // never rendered as its own column.
+  cBatch            String?
+  syncedAt          DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // @@map("raw_material")
+  bom Bom? @relation(fields: [bomId], references: [id])
+}
+
+
+// model FullItem {
+
+// }
+
+model Bom {
+  id          String        @id @default(cuid())
+  bomId       String?
+  bomIdType   String?
+  bomItemQty  Int?
+  bomCost     Decimal?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  RawMaterial RawMaterial[]
+}
+
 model ContractReview {
   id                               String   @id @default(cuid())
   contractNo                       String
@@ -362,9 +422,9 @@ model ContractReview {
   status                           String?
   mcReceivedPending                String?
   inspection                       String?
-  offerPendingDone       String?
+  offerPendingDone                 String?
   remarks                          String?
-  costCodeRef                        String?
+  costCodeRef                      String?
   offerNumber                      String[] @default([])
   inspectionNumber                 String[] @default([])
   diDate                           String[] @default([])
@@ -380,7 +440,7 @@ model ContractReview {
 
   // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
   // never rendered as its own column.
-  cBatch    String?
+  cBatch String?
   nBatch       String?
 
   syncedAt  DateTime @default(now())
@@ -410,15 +470,15 @@ model VerifyBom {
   currentReqt          String?
   merged               String?
   duplicateMergerCount String?
-  bomNature     String?
-  consumption1  String?
-  consumption2  String?
-  consumption3  String?
-  cost         String?
-  bomItemQtyCost String?
-  syncedAt   DateTime @default(now())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  bomNature            String?
+  consumption1         String?
+  consumption2         String?
+  consumption3         String?
+  cost                 String?
+  bomItemQtyCost       String?
+  syncedAt             DateTime @default(now())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@unique([bomId, itemCode, rmItemCode])
   @@index([itemCode])
@@ -439,27 +499,27 @@ model BisStatus {
 }
 
 model IndentListing {
-  id                String   @id @default(cuid())
-  item         String?
-  size              String?
-  pnRating          String?
-  mcReceivedPending String?              // "Received" | "Pending"
-  totalBalBillAgCont Float?              // summed BAL BILL AG CONT
-  v1                String?
-  v2                String?
-  v3                String?
-  v4                String?
-  v1Category        String?
-  v2Category        String?
-  v3Category        String?
-  v4Category        String?
-  rmCodeV1      String?
-  rmCodeV2      String?
-  rmCodeV3      String?
-  rmCodeV4      String?
-  syncedAt          DateTime @default(now())
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  item               String?
+  size               String?
+  pnRating           String?
+  mcReceivedPending  String? // "Received" | "Pending"
+  totalBalBillAgCont Float? // summed BAL BILL AG CONT
+  v1                 String?
+  v2                 String?
+  v3                 String?
+  v4                 String?
+  v1Category         String?
+  v2Category         String?
+  v3Category         String?
+  v4Category         String?
+  rmCodeV1           String?
+  rmCodeV2           String?
+  rmCodeV3           String?
+  rmCodeV4           String?
+  syncedAt           DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@unique([item, size, pnRating, mcReceivedPending])
 }
@@ -543,4 +603,3 @@ model DocketQuotationThread {
   @@index([company], map: "idx_dqt_company")
   @@map("docket_quotation_threads")
 }
-
