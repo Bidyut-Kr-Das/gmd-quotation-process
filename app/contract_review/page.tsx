@@ -460,11 +460,22 @@ function matchesGraphFilter(row: unknown[], filter: FlowFilter): boolean {
   );
 }
 
+/**
+ * Whether a row satisfies a tree-level scope. The mini-graphs carry
+ * `LIVE_SCOPE`, so their counts and clicks only ever touch Live rows.
+ */
+function matchesScope(row: unknown[], scope?: FlowFilter): boolean {
+  return !scope || matchesGraphFilter(row, scope);
+}
+
 /** Reduce a node path to one constraint per column (last level wins). */
 function pathToColumnFilters(
   path: { filter: FlowFilter }[],
+  scope?: FlowFilter,
 ): Record<string, string[]> {
   const byCol: Record<string, string[]> = {};
+  // The scope is part of what a click means, so it has to reach the table too.
+  if (scope) byCol[scope.column] = scope.values;
   for (const node of path) {
     // Skip columns that don't exist yet — they can't filter the table.
     if (
@@ -2278,7 +2289,7 @@ tileSize,
 
   const graphCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const { tree } of CONTRACT_REVIEW_TREES) {
+    for (const { tree, scope } of CONTRACT_REVIEW_TREES) {
       for (const node of flatten(tree)) {
         const path = pathTo(tree, node.id);
         let n = 0;
@@ -2297,6 +2308,7 @@ tileSize,
             !matchesRateTile(row, activeRateTile)
           )
             continue;
+          if (!matchesScope(row, scope)) continue;
           if (!path.every((p) => matchesGraphFilter(row, p.filter))) continue;
           n++;
         }
@@ -2318,21 +2330,20 @@ tileSize,
 
   const handleGraphToggle = useCallback(
     (id: string) => {
-      for (const { tree } of CONTRACT_REVIEW_TREES) {
+      for (const { tree, scope } of CONTRACT_REVIEW_TREES) {
         const node = flatten(tree).find((n) => n.id === id);
         if (!node) continue;
+        const path = pathTo(tree, id);
+        const byCol = pathToColumnFilters(path, scope);
         if (activePath.includes(id)) {
-          const path = pathTo(tree, id);
-          for (const col of Object.keys(pathToColumnFilters(path))) {
+          for (const col of Object.keys(byCol)) {
             filterActions.onMultiFilter(col, []);
           }
-          if (path.some((p) => p.filter.column === "STATUS")) {
+          if (byCol["STATUS"]) {
             setStatusFilter("all");
           }
           setActivePath([]);
         } else {
-          const path = pathTo(tree, id);
-          const byCol = pathToColumnFilters(path);
           for (const [col, values] of Object.entries(byCol)) {
             filterActions.onMultiFilter(col, values);
           }
@@ -2343,6 +2354,8 @@ tileSize,
                 : byCol["STATUS"][0],
             );
           }
+          // Real node ids only: a tree-level scope is not a node, so it must
+          // not appear in the highlighted path.
           setActivePath(path.map((p) => p.id));
         }
         return;
@@ -2359,7 +2372,7 @@ tileSize,
   // yields, formatted with the en-IN convention used by the sidebar tiles.
   const graphValues = useMemo(() => {
     const values: Record<string, string> = {};
-    for (const { tree } of CONTRACT_REVIEW_TREES) {
+    for (const { tree, scope } of CONTRACT_REVIEW_TREES) {
       for (const node of flatten(tree)) {
         if (node.metric !== "diBalance") continue;
         const path = pathTo(tree, node.id);
@@ -2379,6 +2392,7 @@ tileSize,
             !matchesRateTile(row, activeRateTile)
           )
             continue;
+          if (!matchesScope(row, scope)) continue;
           if (!path.every((p) => matchesGraphFilter(row, p.filter))) continue;
           const rate = parseNum(row[RATE_IDX]);
           const di = parseNum(row[DI_QTY_IDX]);

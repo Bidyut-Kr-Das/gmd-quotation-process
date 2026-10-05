@@ -20,6 +20,12 @@ export interface FlowFilter {
   values: string[];
 }
 
+/**
+ * Live rows: STATUS blank. Used as LIVE_TREE's root filter and as the
+ * tree-level scope of every mini-graph, so "Live" is defined once.
+ */
+export const LIVE_SCOPE: FlowFilter = { column: "STATUS", values: ["(Blank)"] };
+
 export interface FlowNode {
   id: string;
   filter: FlowFilter;
@@ -39,7 +45,7 @@ export interface FlowNode {
 
 export const LIVE_TREE: FlowNode = {
   id: "live",
-  filter: { column: "STATUS", values: ["(Blank)"] },
+  filter: LIVE_SCOPE,
   label: "Live",
   accent: "text-cyan-300",
   edge: "rgb(103 232 249)",
@@ -394,6 +400,12 @@ export const DIReceivedTree: FlowNode = {
 
 export const CONTRACT_REVIEW_TREES: {
   tree: FlowNode;
+  /**
+   * Row constraint ANDed onto every node of this tree. A node's own `filter` is
+   * single-column, so this is how the mini-graphs are scoped to Live rows
+   * without adding a level to their shape.
+   */
+  scope?: FlowFilter;
   heading: string;
   tone: string;
 }[] = [
@@ -401,27 +413,46 @@ export const CONTRACT_REVIEW_TREES: {
   { tree: CLOSED_TREE, heading: "Closed", tone: "text-rose-300/80" },
   {
     tree: InspectionCalledRaisedTree,
+    scope: LIVE_SCOPE,
     heading: "Inspection Called Raised",
     tone: "text-blue-300/80",
   },
   {
     tree: InspectionDoneTree,
+    scope: LIVE_SCOPE,
     heading: "Inspection Done",
     tone: "text-emerald-300/80",
   },
   {
     tree: InspectionPendingTree,
+    scope: LIVE_SCOPE,
     heading: "Inspection Pending",
     tone: "text-amber-300/80",
   },
   {
     tree: clearancePendingTree,
+    scope: LIVE_SCOPE,
     heading: "Clearance Pending",
     tone: "text-amber-300/80",
   },
-  { tree: MCpendingTree, heading: "MC Pending", tone: "text-amber-300/80" },
-  { tree: MCreceivedTree, heading: "MC Received", tone: "text-emerald-300/80" },
-  { tree: DIReceivedTree, heading: "DI Received", tone: "text-emerald-300/80" },
+  {
+    tree: MCpendingTree,
+    scope: LIVE_SCOPE,
+    heading: "MC Pending",
+    tone: "text-amber-300/80",
+  },
+  {
+    tree: MCreceivedTree,
+    scope: LIVE_SCOPE,
+    heading: "MC Received",
+    tone: "text-emerald-300/80",
+  },
+  {
+    tree: DIReceivedTree,
+    scope: LIVE_SCOPE,
+    heading: "DI Received",
+    tone: "text-emerald-300/80",
+  },
 ];
 
 /** Every node of a tree, depth-first. */
