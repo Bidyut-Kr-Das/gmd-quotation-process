@@ -6,6 +6,7 @@ import { FlowEdges } from "./FlowEdges";
 import {
   layoutFlow,
   layoutFlowFill,
+  type FlowGeometry,
   type FlowLayout,
 } from "./layout";
 import type { FlowNode } from "./tree";
@@ -20,6 +21,43 @@ interface FlowDiagramProps {
   activePath: string[];
   /** Toggle a node on/off; receives the node id. */
   onToggle: (id: string) => void;
+}
+
+/** Gap between the first tree and the strip of mini-graphs. */
+const STRIP_PAD_Y = 8;
+/** Horizontal breathing room either side of the strip. */
+const STRIP_PAD_X = 16;
+/** Gap between two mini-graphs in the strip. */
+const STRIP_GAP = 20;
+/** Room reserved for a mini-graph's heading label. */
+const STRIP_HEADING_H = 14;
+/** The first tree never shrinks below this, so its labels stay legible. */
+const FIRST_MIN_HEIGHT = 120;
+/**
+ * Narrower boxes for the mini-graphs than the first tree gets: eight trees side
+ * by side have to share the panel width, and the fit-to-box scale below turns
+ * the width they save into larger on-screen text.
+ */
+const STRIP_GEOMETRY: FlowGeometry = {
+  nodeWidth: 110,
+  nodeHeight: 30,
+  colGap: 25,
+  rowGap: 3,
+};
+
+/** Strip height: the tallest mini-graph plus its heading, as they sit in a row. */
+function stripHeightOf(layouts: FlowLayout[]): number {
+  if (layouts.length === 0) return 0;
+  return Math.max(...layouts.map((l) => l.height)) + STRIP_HEADING_H;
+}
+
+/** Natural (unscaled) width of the side-by-side mini-graphs. */
+function stripWidthOf(layouts: FlowLayout[]): number {
+  if (layouts.length === 0) return 0;
+  return (
+    layouts.reduce((s, l) => s + l.width, 0) +
+    STRIP_GAP * (layouts.length - 1)
+  );
 }
 
 export function FlowDiagram({
@@ -58,20 +96,42 @@ export function FlowDiagram({
 
   const layouts = useMemo(() => {
     if (trees.length === 0) return [];
-    const W = containerWidth > 0 ? containerWidth : 800;
+    const W = containerWidth > 0 ? containerWidth : 600;
     const H = containerHeight > 0 ? containerHeight : 400;
-    const HEADING = 24;
-    const PAD_Y = 8;
-    // Trees after the first render below at their natural size.
-    const restLayouts = trees.slice(1).map(({ tree }) => layoutFlow(tree));
-    const restHeight =
-      restLayouts.reduce((s, l) => s + l.height , 0) +
-      (restLayouts.length > 0 ? PAD_Y : 0);
-    const liveHeight = Math.max(120, H - restHeight);
+    // Trees after the first render side by side in one strip, so it costs the
+    // tallest tree's height rather than the sum of all of them.
+    const restLayouts = trees
+      .slice(1)
+      .map(({ tree }) => layoutFlow(tree, STRIP_GEOMETRY));
+    const stripHeight = stripHeightOf(restLayouts);
     // First tree (Live) fills the full width + remaining height.
-    const first = layoutFlowFill(trees[0].tree, W, liveHeight);
+    const first = layoutFlowFill(
+      trees[0].tree,
+      W,
+      Math.max(FIRST_MIN_HEIGHT, H - stripHeight - STRIP_PAD_Y),
+    );
     return [first, ...restLayouts];
   }, [trees, containerWidth, containerHeight]);
+
+  /**
+   * Fit-to-box scale for the strip: one uniform factor for the whole row so
+   * every mini-graph stays visible without horizontal scrolling, clamped by
+   * height too so the strip can never squeeze the first tree below its floor.
+   */
+  const stripScale = useMemo(() => {
+    const rest = layouts.slice(1);
+    if (rest.length === 0) return 1;
+    const availW = Math.max(240, containerWidth - STRIP_PAD_X * 2);
+    const availH = Math.max(
+      60,
+      containerHeight - FIRST_MIN_HEIGHT - STRIP_PAD_Y * 2,
+    );
+    return Math.min(
+      1,
+      availW / stripWidthOf(rest),
+      availH / stripHeightOf(rest),
+    );
+  }, [layouts, containerWidth, containerHeight]);
 
   const emptyIds = useMemo(
     () =>
@@ -129,7 +189,11 @@ export function FlowDiagram({
     </>
   );
 
-  if (trees.length === 0) return null;
+if (trees.length === 0) return null;
+
+  const rest = layouts.slice(1);
+  const stripWidth = stripWidthOf(rest);
+  const stripHeight = stripHeightOf(rest);
 
   return (
     <div
@@ -144,26 +208,52 @@ export function FlowDiagram({
           {renderTreeNodes(layouts[0], trees[0].tree)}
         </div>
       )}
-      {trees.slice(1).length > 0 && (
-        <div className="flex items-center gap-8 px-8 pb-2 pt-0">
-          {trees.slice(1).map(({ tree,  tone }, index) => {
-            const layout: FlowLayout = layouts[index + 1];
-            return (
-              <div key={tree.id} className="flex flex-col gap-1.5">
-                {/* <span
-                  className={`text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${tone}`}
-                >
-                  {heading}
-                </span> */}
-                <div
-                  style={{ width: layout.width, height: layout.height }}
-                  className="relative"
-                >
-                  {renderTreeNodes(layout, tree)}
-                </div>
-              </div>
-            );
-          })}
+      {rest.length > 0 && (
+        <div
+          className="relative shrink-0 mt-1"
+          style={{
+            width: stripWidth * stripScale + STRIP_PAD_X * 2,
+            height: stripHeight * stripScale,
+          }}
+        >
+          <div
+            className="absolute top-0 origin-top-left"
+            style={{
+              left: STRIP_PAD_X,
+              width: stripWidth,
+              height: stripHeight,
+              transform: `scale(${stripScale})`,
+            }}
+          >
+            <div className="flex items-start" style={{ gap: STRIP_GAP }}>
+              {rest.map((layout, index) => {
+                const { tree, heading, tone } = trees[index + 1];
+                return (
+                  <div
+                    key={tree.id}
+                    className="flex shrink-0 flex-col"
+                    style={{ width: layout.width }}
+                  >
+                    <span
+                      className={`truncate text-[10px] font-bold uppercase tracking-wider ${tone}`}
+                      style={{
+                        height: STRIP_HEADING_H,
+                        lineHeight: `${STRIP_HEADING_H}px`,
+                      }}
+                    >
+                      {heading}
+                    </span>
+                    <div
+                      style={{ width: layout.width, height: layout.height }}
+                      className="relative"
+                    >
+                      {renderTreeNodes(layout, tree)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
     </div>

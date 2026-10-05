@@ -460,11 +460,22 @@ function matchesGraphFilter(row: unknown[], filter: FlowFilter): boolean {
   );
 }
 
+/**
+ * Whether a row satisfies a tree-level scope. The mini-graphs carry
+ * `LIVE_SCOPE`, so their counts and clicks only ever touch Live rows.
+ */
+function matchesScope(row: unknown[], scope?: FlowFilter): boolean {
+  return !scope || matchesGraphFilter(row, scope);
+}
+
 /** Reduce a node path to one constraint per column (last level wins). */
 function pathToColumnFilters(
   path: { filter: FlowFilter }[],
+  scope?: FlowFilter,
 ): Record<string, string[]> {
   const byCol: Record<string, string[]> = {};
+  // The scope is part of what a click means, so it has to reach the table too.
+  if (scope) byCol[scope.column] = scope.values;
   for (const node of path) {
     // Skip columns that don't exist yet — they can't filter the table.
     if (
@@ -692,7 +703,7 @@ export default function ContractReviewPage() {
       const res = await syncContractReviewRmAvailAction();
       if (res?.success) {
         toast.success(
-          `RM AVAIL synced: ${res.data?.rmAvailUpdated ?? 0} updated, ${res.data?.stockFilled ?? 0} stock filled`,
+          `RM AVAIL synced: ${res.data?.rmAvailUpdated ?? 0} updated, ${res.data?.stockFilled ?? 0} stock filled, ${res.data?.physicalStockUpdated ?? 0} physical stock updated`,
           { id: toastId },
         );
         await fetchData();
@@ -2278,7 +2289,7 @@ tileSize,
 
   const graphCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const { tree } of CONTRACT_REVIEW_TREES) {
+    for (const { tree, scope } of CONTRACT_REVIEW_TREES) {
       for (const node of flatten(tree)) {
         const path = pathTo(tree, node.id);
         let n = 0;
@@ -2297,6 +2308,7 @@ tileSize,
             !matchesRateTile(row, activeRateTile)
           )
             continue;
+          if (!matchesScope(row, scope)) continue;
           if (!path.every((p) => matchesGraphFilter(row, p.filter))) continue;
           n++;
         }
@@ -2318,21 +2330,20 @@ tileSize,
 
   const handleGraphToggle = useCallback(
     (id: string) => {
-      for (const { tree } of CONTRACT_REVIEW_TREES) {
+      for (const { tree, scope } of CONTRACT_REVIEW_TREES) {
         const node = flatten(tree).find((n) => n.id === id);
         if (!node) continue;
+        const path = pathTo(tree, id);
+        const byCol = pathToColumnFilters(path, scope);
         if (activePath.includes(id)) {
-          const path = pathTo(tree, id);
-          for (const col of Object.keys(pathToColumnFilters(path))) {
+          for (const col of Object.keys(byCol)) {
             filterActions.onMultiFilter(col, []);
           }
-          if (path.some((p) => p.filter.column === "STATUS")) {
+          if (byCol["STATUS"]) {
             setStatusFilter("all");
           }
           setActivePath([]);
         } else {
-          const path = pathTo(tree, id);
-          const byCol = pathToColumnFilters(path);
           for (const [col, values] of Object.entries(byCol)) {
             filterActions.onMultiFilter(col, values);
           }
@@ -2343,6 +2354,8 @@ tileSize,
                 : byCol["STATUS"][0],
             );
           }
+          // Real node ids only: a tree-level scope is not a node, so it must
+          // not appear in the highlighted path.
           setActivePath(path.map((p) => p.id));
         }
         return;
@@ -2359,7 +2372,7 @@ tileSize,
   // yields, formatted with the en-IN convention used by the sidebar tiles.
   const graphValues = useMemo(() => {
     const values: Record<string, string> = {};
-    for (const { tree } of CONTRACT_REVIEW_TREES) {
+    for (const { tree, scope } of CONTRACT_REVIEW_TREES) {
       for (const node of flatten(tree)) {
         if (node.metric !== "diBalance") continue;
         const path = pathTo(tree, node.id);
@@ -2379,6 +2392,7 @@ tileSize,
             !matchesRateTile(row, activeRateTile)
           )
             continue;
+          if (!matchesScope(row, scope)) continue;
           if (!path.every((p) => matchesGraphFilter(row, p.filter))) continue;
           const rate = parseNum(row[RATE_IDX]);
           const di = parseNum(row[DI_QTY_IDX]);
@@ -2607,7 +2621,7 @@ tileSize,
             onClick={handleRmAvailSync}
             disabled={rmAvailSyncing}
             className="flex items-center justify-center gap-1.5 bg-[#38ef7d]/10 hover:bg-[#38ef7d]/20 border border-[#38ef7d]/40 rounded px-3 py-2 text-[11px] font-semibold text-[#38ef7d] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Refresh stock from stock-phys, recompute VerifyBom, and update RM AVAIL"
+            title="Refresh stock from stock-phys, recompute VerifyBom, update RM AVAIL and PHYSICAL STOCK"
           >
             {rmAvailSyncing ? (
               <Loader2 size={12} className="animate-spin" />
@@ -3307,7 +3321,7 @@ tileSize,
             onLayoutChanged={onVerticalLayoutChanged}
             className="flex-1 min-h-0 "
           >
-            <ResizablePanel id="graph" defaultSize="20" minSize="12" maxSize="20">
+            <ResizablePanel id="graph" defaultSize="20" minSize="12" maxSize="24">
               <div className="h-full overflow-hidden rounded-lg border border-[#1e3d59] bg-[#0a2540]">
                 <FlowDiagram
                   trees={CONTRACT_REVIEW_TREES}
@@ -3446,11 +3460,26 @@ tileSize,
                       filterActions.onMultiFilter(child.header, []);
                     }
                   }
-                  filterActions.onMultiFilter("CLEARANCE STATUS", []);
-                  filterActions.onMultiFilter("STATUS", []);
+                  // Graph clicks filter on their own columns, several of which
+                  // are hidden or have no sidebar control (OFFER NUMBER, RM
+                  // AVAIL, INSPECTION NUMBER, DI DATE, BAL BILL AG CONT), so
+                  // clear every column any tree node can filter on - otherwise
+                  // Reset empties activePath but leaves the table filtered.
+                  const graphColumns = new Set<string>();
+                  for (const { tree } of CONTRACT_REVIEW_TREES) {
+                    for (const node of flatten(tree)) {
+                      if (
+                        (CONTRACT_REVIEW_HEADERS as readonly string[]).includes(
+                          node.filter.column,
+                        )
+                      )
+                        graphColumns.add(node.filter.column);
+                    }
+                  }
+                  for (const col of graphColumns) {
+                    filterActions.onMultiFilter(col, []);
+                  }
                   filterActions.onMultiFilter("PN RATING", []);
-                  filterActions.onMultiFilter("MC Received/Pending", []);
-                  filterActions.onMultiFilter("Inspection", []);
                 }}
                 hiddenColumns={[
                   "VA %",
