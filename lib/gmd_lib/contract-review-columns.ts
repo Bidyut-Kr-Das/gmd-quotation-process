@@ -80,6 +80,14 @@ export const N_BATCH_HEADER = "N BATCH";
 export const N_BATCH_VALUE = "N";
 
 /**
+ * Only an explicit "NO" (case-insensitive, trimmed) means the item code is not
+ * a current requirement. Blank / missing / any other value stays unmarked.
+ */
+export function isNotCurrentReqt(value: string | null | undefined): boolean {
+  return String(value ?? "").trim().toUpperCase() === "NO";
+}
+
+/**
  * Badge definition for the "N" chip that sits beside the item code when the
  * code is not in CURRENT REQT on the GMD Item Creation Form. Mirrors
  * `cBatchBadges` but with an amber tone so it reads differently from "C".
@@ -584,6 +592,7 @@ export function dbContractReviewToRow(item: {
     item.productionOrderNumber,
     item.diagramUrl,
     item.cBatch,
+    item.nBatch,
   ];
 }
 

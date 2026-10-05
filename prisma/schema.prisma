@@ -133,6 +133,9 @@ model EnquiryItem {
   // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
   // never rendered as its own column.
   cBatch               String?
+  // Hidden data carrier. Drives the "Deleted as Current Reqt = No" label and the
+  // deleted-status filter beside the item code in the quotation dashboard.
+  nBatch               String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

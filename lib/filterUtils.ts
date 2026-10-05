@@ -1,7 +1,32 @@
 import type { EnquiryData, EnquiryItemData, FiltersState } from "./types";
 import { makeImageKey } from "./imageKey";
+import { C_BATCH_VALUE } from "./gmd_lib/verify-bom-columns";
+import { N_BATCH_VALUE } from "./gmd_lib/contract-review-columns";
 
 export const BLANK = "__blank__";
+
+/** Dropdown options for the item-code "deleted" status filter. */
+export const DELETED_CLOSED = "Deleted as Closed";
+export const DELETED_CURRENT_REQT = "Deleted as Current Reqt = No";
+export const DELETED_STATUS_OPTIONS = [DELETED_CLOSED, DELETED_CURRENT_REQT];
+
+/**
+ * Item-code deleted-status filter. Empty selection passes everything; otherwise
+ * the item matches only when its closed / not-current marker is selected. A row
+ * can be "closed" (cBatch=C) and/or "not current reqt" (nBatch=N).
+ */
+export function itemDeletedStatus(
+  item: Pick<EnquiryItemData, "cBatch" | "nBatch">,
+  values: string[] | undefined,
+): boolean {
+  if (!values || values.length === 0) return true;
+  const isClosed = String(item.cBatch ?? "").trim() === C_BATCH_VALUE;
+  const isNotCurrent = String(item.nBatch ?? "").trim() === N_BATCH_VALUE;
+  return (
+    (values.includes(DELETED_CLOSED) && isClosed) ||
+    (values.includes(DELETED_CURRENT_REQT) && isNotCurrent)
+  );
+}
 
 export function isBlankValue(value: unknown): boolean {
   return value === null || value === undefined || value === "" || value === "-";
@@ -176,6 +201,7 @@ export function itemPassesFilters(item: EnquiryItemData, filters: FiltersState, 
   if (filters.totalValue && !matchesText(filters.totalValue, item.totalValue || "")) return false;
   if (filters.itemWiseTotalValue && !matchesText(filters.itemWiseTotalValue, item.itemWiseTotalValue || "")) return false;
   if (filters.validation.length > 0 && !matchesMulti(filters.validation, item.validation)) return false;
+  if (!itemDeletedStatus(item, filters.deletedStatus)) return false;
 
   return true;
 }

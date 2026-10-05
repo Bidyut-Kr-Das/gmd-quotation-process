@@ -45,6 +45,8 @@ export interface EnquiryItemData {
   importedInhouse?: string | null;
   /** Hidden carrier for the "C" chip beside the item code. Never a column. */
   cBatch?: string | null;
+  /** Hidden carrier for the "Deleted as Current Reqt = No" label + filter. */
+  nBatch?: string | null;
 }
 
 export interface AttachmentData {
@@ -164,6 +166,8 @@ export interface FiltersState {
   stockAgainstContract: string;
   contractNo: string[];
   image: string[];
+  /** Item code "deleted" statuses: "Deleted as Closed" / "Deleted as Current Reqt = No". */
+  deletedStatus: string[];
 }
 
 export interface UiState {
