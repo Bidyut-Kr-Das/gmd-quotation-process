@@ -144,15 +144,16 @@ test('the collapsed groups hold their documented anchor positions', () => {
   assert.equal(headers.indexOf('CONTRACT NO'), 0)
   assert.equal(headers.indexOf('ITEM_NAME'), 4)
   assert.equal(headers.indexOf('Item'), 33)
-  assert.equal(headers.indexOf('Actuator'), 39)
-  assert.equal(headers.indexOf('LC/RTGS REF NO'), 43)
+  assert.equal(headers.indexOf('BOM ID'), 37)
+  assert.equal(headers.indexOf('Actuator'), 40)
+  assert.equal(headers.indexOf('LC/RTGS REF NO'), 44)
 
   // The anchors are where each group actually renders, so assert them from the
   // group data rather than restating the numbers.
   const anchors = CONTRACT_REVIEW_COLUMN_GROUPS.map(
     (g) => headers.indexOf(g.children[0].header),
   )
-  assert.deepEqual(anchors, [0, 4, 33, 39, 43])
+  assert.deepEqual(anchors, [0, 3, 4, 33, 38, 40, 44])
 })
 
 test('every collapsed group child is a real header', () => {
