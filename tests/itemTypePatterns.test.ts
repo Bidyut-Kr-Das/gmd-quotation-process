@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { matchItemType, matchMoc, ITEM_TYPE_PATTERNS, MOC_PATTERNS } from '../lib/itemTypePatterns.js'
+import { matchItemType, matchMoc, ITEM_TYPE_PATTERNS, MOC_PATTERNS, correctItemType } from '../lib/itemTypePatterns.js'
 
 test('matchItemType detects butterfly valve', () => {
   assert.equal(matchItemType('D.I. Double Flanged Butter Fly Valve 1800mm PN16'), 'BUTTERFLY VALVE')
@@ -37,6 +37,24 @@ test('matchItemType detects globe valve', () => {
 
 test('matchItemType detects check valve', () => {
   assert.equal(matchItemType('Non Return Valve 100mm'), 'CHECK VALVE')
+})
+
+test('matchItemType prioritises DPCV over check valve for dual plate names', () => {
+  assert.equal(matchItemType('Dual Plate Check Valve 100mm'), 'DPCV')
+  assert.equal(matchItemType('DUAL-PLATE CHECK VALVE'), 'DPCV')
+  assert.equal(matchItemType('Dualplate check valve DN80'), 'DPCV')
+  assert.equal(matchItemType('Dual Plate Non Return Valve'), 'DPCV')
+  assert.equal(matchItemType('DPCV 100mm'), 'DPCV')
+})
+
+test('correctItemType fixes a CHECK VALVE stored for a dual plate name', () => {
+  assert.equal(correctItemType('Dual Plate Check Valve 100mm', 'CHECK VALVE'), 'DPCV')
+  assert.equal(correctItemType('Dual-Plate Check Valve', 'check valve'), 'DPCV')
+  // Nothing to correct.
+  assert.equal(correctItemType('Non Return Valve 100mm', 'CHECK VALVE'), null)
+  assert.equal(correctItemType('Dual Plate Check Valve', 'DPCV'), null)
+  assert.equal(correctItemType('Dual Plate Check Valve', null), null)
+  assert.equal(correctItemType('Random text', 'CHECK VALVE'), null)
 })
 
 test('matchItemType detects companion flange', () => {

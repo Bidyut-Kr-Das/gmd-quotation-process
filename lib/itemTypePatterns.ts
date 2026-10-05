@@ -23,8 +23,11 @@ export const ITEM_TYPE_PATTERNS = [
   { category: "INSTRUMENT",       patterns: [/instrument/i, /transmitter/i, /sensor/i] },
   { category: "STRUCTURAL",       patterns: [/angle/i, /channel/i, /beam/i, /structural/i] },
   { category: "GLOBE VALVE",      patterns: [/globe\s*valve/i, /glove\s*valve/i, /\bglv/i] },
+  // DPCV is listed BEFORE CHECK VALVE on purpose: "Dual Plate Check Valve"
+  // contains "Check Valve", and matchKeyword returns the FIRST matching entry,
+  // so DPCV must win the match.
+  { category: "DPCV",             patterns: [/dual[\s-]*plate/i, /dpcv/i] },
   { category: "CHECK VALVE",      patterns: [/check\s*valve/i, /non\s*return/i, /\bnrv/i, /\bcv/i] },
-  { category: "DPCV",             patterns: [/dual\s*plate/i, /dpcv/i] },
   { category: "AIR CUSHION VALVE", patterns: [/air\s*cushion\s*valve/i] },
   { category: "AIR VALVE",        patterns: [/air\s*valve/i] },
   { category: "VACUM BREAKER VALVE", patterns: [/vacuum\s*breaker/i, /vacum\s*breaker/i] },
@@ -111,6 +114,32 @@ export function matchKeyword(text: string | null | undefined, patterns: { patter
 
 export function matchItemType(text: string | null | undefined): string | null {
   return matchKeyword(text, ITEM_TYPE_PATTERNS, 'category')
+}
+
+/**
+ * Item types that are known to be mis-derived for a given keyword match, so a
+ * re-run can correct them in place (e.g. a "Dual Plate Check Valve" that was
+ * previously stored as CHECK VALVE). Only the stored values listed here are
+ * ever overwritten — anything else is left untouched.
+ */
+export const ITEM_TYPE_CORRECTIONS: Record<string, string[]> = {
+  DPCV: ["CHECK VALVE"],
+}
+
+/**
+ * Returns the corrected item type when the item name clearly indicates a type
+ * that supersedes the currently stored one, otherwise null. Keyword-only (no
+ * AI) so it is cheap and safe to run over many rows.
+ */
+export function correctItemType(
+  itemName: string | null | undefined,
+  currentType: string | null | undefined,
+): string | null {
+  const matched = matchItemType(itemName)
+  if (!matched) return null
+  const current = String(currentType ?? "").trim().toUpperCase()
+  if (!current || current === matched) return null
+  return ITEM_TYPE_CORRECTIONS[matched]?.includes(current) ? matched : null
 }
 
 export function matchMoc(text: string | null | undefined): string | null {

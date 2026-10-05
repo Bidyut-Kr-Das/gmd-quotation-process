@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "@/lib/googleAuth";
+import { pickPreferredItemCodeRows } from "@/lib/gmd_lib/item-code-preference";
 
 const SHEET_SPREADSHEET_ID = "1LIC8GGgs7K7XWf8kUJFwvfOWpAkElYp6SJ83jk9wWGM";
 const SHEET_GID = 2142407502;
@@ -63,7 +64,7 @@ export async function syncGmdItemCodes(): Promise<{ count: number }> {
     return v != null && v !== "" ? String(v).trim() : null;
   };
 
-  const dbRows = dataRows.map((row) => ({
+  const mappedRows = dataRows.map((row) => ({
     itemCode: String(row[itemCodeIdx] ?? "").trim(),
     itemType: String(row[itemTypeIdx] ?? "").trim(),
     moc: String(row[mocIdx] ?? "").trim(),
@@ -73,6 +74,10 @@ export async function syncGmdItemCodes(): Promise<{ count: number }> {
     currentReqt: getOptional(row, currentReqtIdx),
     syncedAt,
   })).filter((r) => r.itemCode && r.itemType && r.moc && r.operation && r.size && r.pnGmd);
+
+  // One row per unique 5-field combination: a CURRENT REQT = YES row wins over a
+  // NO/blank row for the same combination; otherwise first in sheet order wins.
+  const dbRows = pickPreferredItemCodeRows(mappedRows);
 
   await prisma.$transaction([
     prisma.gmdItemCode.deleteMany(),

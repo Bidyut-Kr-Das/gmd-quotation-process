@@ -8,6 +8,13 @@ import UploadImageTable, { UploadImageComboRow } from "@/components/upload_image
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -15,6 +22,7 @@ import { createGeneratedImageAction } from "@/app/actions";
 
 export default function UploadImagePage() {
   const [items, setItems] = useState<UploadImageComboRow[]>([]);
+  const [itemTypeOptions, setItemTypeOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +42,7 @@ export default function UploadImagePage() {
       }
       const json = await res.json();
       setItems(json.items ?? []);
+      setItemTypeOptions(json.itemTypeOptions ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -135,12 +144,18 @@ export default function UploadImagePage() {
           <div className="grid gap-3 py-1">
             <div className="grid gap-1.5">
               <Label htmlFor="add-itemType">Item Type *</Label>
-              <Input
-                id="add-itemType"
-                placeholder="e.g. Ball Valve"
-                value={itemType}
-                onChange={(e) => setItemType(e.target.value)}
-              />
+              <Select value={itemType} onValueChange={(v) => setItemType(v ?? "")}>
+                <SelectTrigger id="add-itemType">
+                  <SelectValue placeholder="Select item type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {itemTypeOptions.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="add-operationType">Operation Type *</Label>

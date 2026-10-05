@@ -25,6 +25,7 @@ import { makeImageKey } from "@/lib/imageKey";
 import { RM_TYPE_OPTIONS } from "@/lib/gmd_lib/sheet-columns";
 import { C_BATCH_VALUE } from "@/lib/gmd_lib/verify-bom-columns";
 import { N_BATCH_VALUE } from "@/lib/gmd_lib/contract-review-columns";
+import { correctItemType } from "@/lib/itemTypePatterns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -1969,15 +1970,24 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
         !i.bypass ||
         i.bypass === "-"
     )
-    console.log(`[Client] autoFillBlanks: ${blankItems.length} items with blanks out of ${matchedItems.length} matched`);
-    if (blankItems.length === 0) {
-      toast.info("No blank fields to fill.")
+    // Items whose stored item type is wrong for the name (e.g. "Dual Plate Check
+    // Valve" kept as CHECK VALVE) are corrected too, even with no blanks.
+    const correctableItems = matchedItems.filter(
+      (i: EnquiryItemData) => correctItemType(i.itemName, i.itemType) !== null
+    )
+    const itemsToProcess = [
+      ...blankItems,
+      ...correctableItems.filter((c) => !blankItems.some((b) => b.id === c.id)),
+    ]
+    console.log(`[Client] autoFillBlanks: ${itemsToProcess.length} items (${blankItems.length} with blanks, ${correctableItems.length} wrong item type) out of ${matchedItems.length} matched`);
+    if (itemsToProcess.length === 0) {
+      toast.info("No blank fields or item types to fix.")
       return
     }
-    if (!confirm(`Auto-fill ${blankItems.length} items (itemType, MOC, Size, Operation Type, Extension, Bypass)? This uses AI tokens for complex cases.`)) return
+    if (!confirm(`Auto-fill blanks / fix item types for ${itemsToProcess.length} items? This uses AI tokens for complex cases.`)) return
 
     setAutoFillStatus("running")
-    await dispatch(autoFillBlanks(blankItems.map((i: EnquiryItemData) => i.id))).unwrap()
+    await dispatch(autoFillBlanks(itemsToProcess.map((i: EnquiryItemData) => i.id))).unwrap()
     setAutoFillStatus("idle")
     toast.success(`Auto-fill complete.`)
   }

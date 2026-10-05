@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { uploadFileToDrive } from "@/lib/gdrive";
 import { recalculateItem, recalculateEnquiryItems, serializeItem, serializeEnquiry, autoDetectItemType, autoDetectMoc, getItemNameMerge } from "@/lib/costCalculator";
 import { resolveItemCategory } from "@/lib/itemCategoryResolver";
+import { correctItemType } from "@/lib/itemTypePatterns";
 import { extractSizeFromItemName } from "@/lib/sizeExtractor";
 import { roundUp } from "@/lib/rounding";
 import { validateVaPercent, getDefaultVaPercent } from "@/lib/vaValidation";
@@ -1690,6 +1691,21 @@ export async function fetchErpItemCodesAction(itemIds: string[]) {
     }
   }
 
+  // Codes may have flipped NO -> YES during the loop above, so re-derive the
+  // CURRENT REQT "N" marks now: a stale mark from the OLD code must not survive
+  // a click that just moved the item to a current code. Best-effort only.
+  try {
+    const { recomputeNotCurrentReqtMarks } = await import(
+      "@/lib/contractReviewCurrentReqt"
+    );
+    const r = await recomputeNotCurrentReqtMarks();
+    console.log(
+      `[fetchErpItemCodes] CURRENT REQT marks after refresh: CR +${r.contractReview.marked}/-${r.contractReview.cleared}, items +${r.enquiryItem.marked}/-${r.enquiryItem.cleared}`,
+    );
+  } catch (e) {
+    console.warn("[fetchErpItemCodes] post-refresh current reqt mark failed:", e);
+  }
+
   if (fetched === 0) {
     let detailedError: string;
     if (failures.length === 1) {
@@ -2137,30 +2153,55 @@ export async function autoFillBlanksAction(itemIds: string[]) {
       const item = items[i]
       process.stdout.write(`\r[${i + 1}/${items.length}] ${item.itemName.substring(0, 60).padEnd(60)}`)
 
-      const resolved = await resolveItemCategory({ itemName: item.itemName })
+      const hasBlank =
+        !item.itemType ||
+        !item.moc ||
+        !item.size ||
+        item.size === "Not detectable" ||
+        item.size === "Not mentioned/cant detect size" ||
+        !item.operationType ||
+        !item.extension ||
+        item.extension === "-" ||
+        !item.bypass ||
+        item.bypass === "-"
+      // Keyword-only correction runs even when nothing is blank, so skip the
+      // AI-backed resolveItemCategory for pure-correction rows to save tokens.
+      const resolved = hasBlank ? await resolveItemCategory({ itemName: item.itemName }) : null
       const updates: any = {}
-      if (!item.itemType && resolved.itemType) {
-        updates.itemType = resolved.itemType
-        updates.itemTypeSource = resolved.itemTypeSource
+      if (!item.itemType) {
+        if (resolved?.itemType) {
+          updates.itemType = resolved.itemType
+          updates.itemTypeSource = resolved.itemTypeSource
+        }
+      } else {
+        // Fix a known-wrong item type, e.g. "Dual Plate Check Valve" stored as
+        // CHECK VALVE should become DPCV.
+        const corrected = correctItemType(item.itemName, item.itemType)
+        if (corrected) {
+          updates.itemType = corrected
+          updates.itemTypeSource = "keyword"
+        }
       }
-      if (!item.moc && resolved.moc) {
-        updates.moc = resolved.moc
-        updates.mocSource = resolved.mocSource
-      }
-      if ((!item.size || item.size === "Not detectable" || item.size === "Not mentioned/cant detect size") && resolved.size && resolved.size !== "Not detectable") {
-        updates.size = resolved.size
-      }
-      if (resolved.pnRating) {
-        updates.pnRating = resolved.pnRating
-      }
-      if (!item.operationType && resolved.operationType) {
-        updates.operationType = resolved.operationType
-      }
-      if ((!item.extension || item.extension === "-") && resolved.extension) {
-        updates.extension = resolved.extension
-      }
-      if ((!item.bypass || item.bypass === "-") && resolved.bypass && resolved.bypass !== "-") {
-        updates.bypass = resolved.bypass
+      if (resolved) {
+        if (!item.moc && resolved.moc) {
+          updates.moc = resolved.moc
+          updates.mocSource = resolved.mocSource
+        }
+        if ((!item.size || item.size === "Not detectable" || item.size === "Not mentioned/cant detect size") && resolved.size && resolved.size !== "Not detectable") {
+          updates.size = resolved.size
+        }
+        if (resolved.pnRating) {
+          updates.pnRating = resolved.pnRating
+        }
+        if (!item.operationType && resolved.operationType) {
+          updates.operationType = resolved.operationType
+        }
+        if ((!item.extension || item.extension === "-") && resolved.extension) {
+          updates.extension = resolved.extension
+        }
+        if ((!item.bypass || item.bypass === "-") && resolved.bypass && resolved.bypass !== "-") {
+          updates.bypass = resolved.bypass
+        }
       }
       if (Object.keys(updates).length > 0) {
         await prisma.enquiryItem.update({ where: { id: item.id }, data: updates })
