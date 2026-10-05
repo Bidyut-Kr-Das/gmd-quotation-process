@@ -149,6 +149,7 @@ model GmdItemCode {
   // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
   // never rendered as its own column.
   cBatch    String?
+  currentReqt String?
   syncedAt  DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -380,6 +381,7 @@ model ContractReview {
   // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
   // never rendered as its own column.
   cBatch    String?
+  nBatch       String?
 
   syncedAt  DateTime @default(now())
   createdAt DateTime @default(now())
