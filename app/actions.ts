@@ -1609,6 +1609,18 @@ export async function fetchErpItemCodesAction(itemIds: string[]) {
   try {
     const { count } = await syncGmdItemCodes();
     console.log(`[fetchErpItemCodes] Re-synced ${count} master row(s) from the GMD Item Creation Form`);
+    // Master snapshot changed: refresh the CURRENT REQT "N" marks.
+    try {
+      const { recomputeNotCurrentReqtMarks } = await import(
+        "@/lib/contractReviewCurrentReqt"
+      );
+      const r = await recomputeNotCurrentReqtMarks();
+      console.log(
+        `[fetchErpItemCodes] CURRENT REQT marks: CR +${r.contractReview.marked}/-${r.contractReview.cleared}, items +${r.enquiryItem.marked}/-${r.enquiryItem.cleared}`,
+      );
+    } catch (e) {
+      console.warn("[fetchErpItemCodes] current reqt mark failed:", e);
+    }
   } catch (e) {
     syncFailed = true;
     console.error("[fetchErpItemCodes] Master sheet sync failed, using the existing snapshot:", e);

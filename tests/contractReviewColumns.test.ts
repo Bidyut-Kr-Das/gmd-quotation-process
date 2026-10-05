@@ -5,6 +5,9 @@ import {
   CONTRACT_REVIEW_COLUMN_GROUPS,
   CONTRACT_REVIEW_HEADER_TO_DB_FIELD,
   dbContractReviewToRow,
+  isNotCurrentReqt,
+  N_BATCH_HEADER,
+  N_BATCH_VALUE,
 } from '../lib/gmd_lib/contract-review-columns.js'
 
 /**
@@ -198,4 +201,29 @@ test('inline-editable headers all exist and point at a DB field', () => {
     )
     assert.equal(typeof field, 'string')
   }
+})
+
+test('N BATCH is the last hidden carrier and serialized last', () => {
+  const headers = CONTRACT_REVIEW_HEADERS as readonly string[]
+  assert.equal(headers[headers.length - 1], N_BATCH_HEADER)
+  assert.equal(headers[headers.length - 2], 'C BATCH')
+
+  // The serializer must emit one cell per header, in order, so nBatch lands on
+  // the N BATCH index (the fixture proxy echoes the property name back).
+  const row = dbContractReviewToRow(makeRow())
+  assert.equal(row[headers.length - 1], 'nBatch')
+})
+
+test('isNotCurrentReqt only flags an explicit NO', () => {
+  assert.equal(isNotCurrentReqt('NO'), true)
+  assert.equal(isNotCurrentReqt('no'), true)
+  assert.equal(isNotCurrentReqt('No'), true)
+  assert.equal(isNotCurrentReqt('  No  '), true)
+  assert.equal(isNotCurrentReqt('YES'), false)
+  assert.equal(isNotCurrentReqt('yes'), false)
+  assert.equal(isNotCurrentReqt(''), false)
+  assert.equal(isNotCurrentReqt(null), false)
+  assert.equal(isNotCurrentReqt(undefined), false)
+  assert.equal(isNotCurrentReqt('N/A'), false)
+  assert.equal(N_BATCH_VALUE, 'N')
 })

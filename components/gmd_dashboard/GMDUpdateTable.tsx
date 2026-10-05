@@ -827,6 +827,8 @@ interface GMDUpdateTableProps {
     value: string;
     label: string;
     title?: string;
+    /** Chip colour. Defaults to rose so existing single-badge callers are unchanged. */
+    tone?: "rose" | "amber" | "slate";
   }[];
   groupByColumn?: string;
   mergeColumns?: string[];
@@ -950,20 +952,33 @@ interface GMDUpdateTableProps {
 
 type CellBadge = NonNullable<GMDUpdateTableProps["cellBadges"]>[number];
 
+function cellBadgeClass(tone: CellBadge["tone"]): string {
+  switch (tone) {
+    case "amber":
+      return "bg-amber-500 text-white";
+    case "slate":
+      return "bg-slate-500 text-white";
+    default:
+      return "bg-rose-600 text-white";
+  }
+}
+
 /**
- * Resolves the badge for one cell, if any.
+ * Resolves every badge that applies to one cell (a row can carry more than one,
+ * e.g. "C" and "N" side by side).
  *
  * The driving column is usually listed in `hiddenColumns`, which only removes
  * it from the rendered columns - the value is still read from the row, so the
  * flag travels in the payload without occupying a visible column.
  */
-function badgeForCell(
+function badgesForCell(
   cellBadges: GMDUpdateTableProps["cellBadges"],
   headers: readonly string[],
   header: string,
   sourceRow: unknown[],
-): CellBadge | undefined {
-  return cellBadges?.find(
+): CellBadge[] {
+  if (!cellBadges) return [];
+  return cellBadges.filter(
     (b) =>
       b.onColumn === header &&
       String(sourceRow[headers.indexOf(b.fromColumn)] ?? "").trim() === b.value,
@@ -1766,7 +1781,7 @@ castingRateInputs,
     id: string,
     idx: number,
     scrollable = true,
-    badgeOverride?: CellBadge,
+    badgesOverride?: CellBadge[],
   ): React.ReactNode => {
     const { display, isCellEditable, isAttachmentColumn } = cellMeta(
       header,
@@ -2083,16 +2098,21 @@ castingRateInputs,
     // `editable` with no `editableColumns`, which makes every column
     // editable). Wrapping the finished cell keeps whatever the column
     // rendered - image button, input, select, link - and adds the chip.
-    const badge = badgeOverride ?? badgeForCell(cellBadges, headers, header, row);
-    if (badge) {
+    const badges = badgesOverride ?? badgesForCell(cellBadges, headers, header, row);
+    if (badges.length > 0) {
       cellContent = (
         <span className="flex items-start gap-1.5 min-w-0">
           <span className="min-w-0 flex-1">{cellContent}</span>
-          <span
-            title={badge.title}
-            className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold"
-          >
-            {badge.label}
+          <span className="shrink-0 flex flex-col items-end gap-0.5">
+            {badges.map((b, i) => (
+              <span
+                key={`${b.label}-${i}`}
+                title={b.title}
+                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${cellBadgeClass(b.tone)}`}
+              >
+                {b.label}
+              </span>
+            ))}
           </span>
         </span>
       );
@@ -2776,23 +2796,30 @@ castingRateInputs,
 
                     // A merged cell renders once (rowSpan), so a per-row badge
                     // check would only ever see the group's first row. Aggregate
-                    // instead: C if ANY row in the merge group is C. Unmerged
-                    // cells fall back to the per-row check in renderCellContent.
-                    let mergedBadge: CellBadge | undefined;
+                    // instead: show a chip if ANY row in the merge group carries
+                    // it. Unmerged cells fall back to the per-row check in
+                    // renderCellContent.
+                    let mergedBadges: CellBadge[] | undefined;
                     if (isMergedCell && mergedSpan && mergedSpan > 1) {
                       const end = Math.min(
                         idx + mergedSpan,
                         paginatedWithIds.length,
                       );
+                      const seen = new Set<string>();
+                      const collected: CellBadge[] = [];
                       for (let k = idx; k < end; k++) {
-                        mergedBadge = badgeForCell(
+                        for (const b of badgesForCell(
                           cellBadges,
                           headers,
                           header,
                           paginatedWithIds[k].row,
-                        );
-                        if (mergedBadge) break;
+                        )) {
+                          if (seen.has(b.label)) continue;
+                          seen.add(b.label);
+                          collected.push(b);
+                        }
                       }
+                      if (collected.length > 0) mergedBadges = collected;
                     }
 
                     const groupIsEditable = group
@@ -2875,7 +2902,7 @@ castingRateInputs,
                         id,
                         idx,
                         true,
-                        mergedBadge,
+                        mergedBadges,
                       )
                     );
 

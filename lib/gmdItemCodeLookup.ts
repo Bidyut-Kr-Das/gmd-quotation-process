@@ -133,6 +133,7 @@ async function ensureFreshData(): Promise<void> {
     console.log(`[GmdItemCode] Synced ${syncCount} rows`);
     const backfill = await backfillExistingItems();
     console.log(`[GmdItemCode] Backfilled ${backfill.filled}/${backfill.total} existing items`);
+    await refreshContractReviewCurrentReqtMark();
     return;
   }
 
@@ -145,7 +146,28 @@ async function ensureFreshData(): Promise<void> {
       console.log(`[GmdItemCode] Re-synced ${syncCount} rows`);
       const backfill = await backfillExistingItems();
       console.log(`[GmdItemCode] Re-backfilled ${backfill.filled}/${backfill.total} items`);
+      await refreshContractReviewCurrentReqtMark();
     }
+  }
+}
+
+/**
+ * The master snapshot carries CURRENT REQT, which drives the contract review
+ * "N" chip and the quotation "Deleted as Current Reqt = No" mark. Re-derive
+ * both whenever the snapshot is refreshed. Best-effort: a failure must never
+ * block an item-code lookup.
+ */
+async function refreshContractReviewCurrentReqtMark(): Promise<void> {
+  try {
+    const { recomputeNotCurrentReqtMarks } = await import(
+      "@/lib/contractReviewCurrentReqt"
+    );
+    const r = await recomputeNotCurrentReqtMarks();
+    console.log(
+      `[GmdItemCode] CURRENT REQT marks: CR +${r.contractReview.marked}/-${r.contractReview.cleared}, items +${r.enquiryItem.marked}/-${r.enquiryItem.cleared}`,
+    );
+  } catch (e) {
+    console.warn("[GmdItemCode] current reqt mark failed:", e);
   }
 }
 
