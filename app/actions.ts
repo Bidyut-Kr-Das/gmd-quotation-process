@@ -1691,6 +1691,21 @@ export async function fetchErpItemCodesAction(itemIds: string[]) {
     }
   }
 
+  // Codes may have flipped NO -> YES during the loop above, so re-derive the
+  // CURRENT REQT "N" marks now: a stale mark from the OLD code must not survive
+  // a click that just moved the item to a current code. Best-effort only.
+  try {
+    const { recomputeNotCurrentReqtMarks } = await import(
+      "@/lib/contractReviewCurrentReqt"
+    );
+    const r = await recomputeNotCurrentReqtMarks();
+    console.log(
+      `[fetchErpItemCodes] CURRENT REQT marks after refresh: CR +${r.contractReview.marked}/-${r.contractReview.cleared}, items +${r.enquiryItem.marked}/-${r.enquiryItem.cleared}`,
+    );
+  } catch (e) {
+    console.warn("[fetchErpItemCodes] post-refresh current reqt mark failed:", e);
+  }
+
   if (fetched === 0) {
     let detailedError: string;
     if (failures.length === 1) {
