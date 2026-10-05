@@ -68,7 +68,7 @@ export function ChatMessageList({
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-6 py-10 text-center">
         <div className="rounded-xl border border-border bg-muted/60 p-1.5">
-          <div className="flex size-11 items-center justify-center rounded-lg bg-[#0f62fe]/10 text-[#0f62fe] shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]">
+          <div className="flex size-11 items-center justify-center rounded-lg bg-[#0f62fe]/10 dark:bg-primary/10 text-[#0f62fe] dark:text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-none">
             <Bot className="size-5 stroke-[1.5]" />
           </div>
         </div>
@@ -89,13 +89,13 @@ export function ChatMessageList({
             <button
               key={s.label}
               onClick={() => onPickSuggestion(s.label)}
-              className="group flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5 text-left transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-[#0f62fe]/60 active:scale-[0.98] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="group flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5 text-left transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-[#0f62fe]/60 dark:hover:border-primary/60 active:scale-[0.98] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               <span className="flex items-center gap-2.5">
-                <s.icon className="size-4 stroke-[1.5] text-muted-foreground transition-colors duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:text-[#0f62fe]" />
+                <s.icon className="size-4 stroke-[1.5] text-muted-foreground transition-colors duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:text-[#0f62fe] dark:group-hover:text-primary" />
                 <span className="text-[13px] text-foreground">{s.label}</span>
               </span>
-              <ChevronRight className="size-3.5 stroke-[1.5] text-muted-foreground transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:text-[#0f62fe]" />
+              <ChevronRight className="size-3.5 stroke-[1.5] text-muted-foreground transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:text-[#0f62fe] dark:group-hover:text-primary" />
             </button>
           ))}
         </div>

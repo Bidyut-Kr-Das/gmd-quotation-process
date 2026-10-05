@@ -410,7 +410,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
             <span>Edit Enquiry</span>
           </DropdownMenuItem>
           <DropdownMenuItem
-            className="text-red-600 focus:text-red-600 cursor-pointer"
+            className="text-red-600 dark:text-red-300 focus:text-red-600 dark:focus:text-red-300 cursor-pointer"
             onClick={() => {
               dispatch(openDeleteDialog(item.id));
               setDropdownOpen(false);
@@ -692,9 +692,9 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
                       href={att.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded border border-border p-2 hover:bg-accent transition-colors text-xs font-semibold text-[#0f62fe] dark:text-blue-400 w-full"
+                      className="flex items-center gap-2 rounded border border-border p-2 hover:bg-accent transition-colors text-xs font-semibold text-[#0f62fe] dark:text-blue-300 w-full"
                     >
-                      <FileText className="h-4 w-4 text-[#0f62fe] dark:text-blue-400 stroke-2" />
+                      <FileText className="h-4 w-4 text-[#0f62fe] dark:text-blue-300 stroke-2" />
                       <span className="truncate flex-1">{att.name}</span>
                     </a>
                   ))}
@@ -732,7 +732,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
                 {/* Docket Number */}
                 <div className="space-y-1">
                   <Label htmlFor="edit-docket" className="text-[10px] font-semibold text-muted-foreground">
-                    Docket Number <span className="text-red-500">*</span>
+                    Docket Number <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     id="edit-docket"
@@ -745,7 +745,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
                 {/* Enquiry Date */}
                 <div className="space-y-1">
                   <Label htmlFor="edit-date" className="text-[10px] font-semibold text-muted-foreground">
-                    Enquiry Date <span className="text-red-500">*</span>
+                    Enquiry Date <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     id="edit-date"
@@ -759,7 +759,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
                 {/* Party Name Selector */}
                 <div className="col-span-2 space-y-1">
                   <Label htmlFor="edit-party" className="text-[10px] font-semibold text-muted-foreground">
-                    Party Name <span className="text-red-500">*</span>
+                    Party Name <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     id="edit-party"
@@ -785,7 +785,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
                 {/* Enquiry Type */}
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Enquiry Type <span className="text-red-500">*</span>
+                    Enquiry Type <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={enquiryType}
@@ -802,7 +802,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
                 {/* State */}
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    State <span className="text-red-500">*</span>
+                    State <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={state}
@@ -819,7 +819,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
                 {/* Payment Terms */}
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Payment Terms <span className="text-red-500">*</span>
+                    Payment Terms <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={paymentTerms}
@@ -836,7 +836,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
                 {/* Inspection */}
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Inspection <span className="text-red-500">*</span>
+                    Inspection <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={inspection}
@@ -853,7 +853,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
                 {/* PBG */}
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    PBG <span className="text-red-500">*</span>
+                    PBG <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={pbg}
@@ -870,7 +870,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
                 {/* Utility */}
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Utility <span className="text-red-500">*</span>
+                    Utility <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={utility}
@@ -889,7 +889,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
                 {/* Order Status */}
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Order Status <span className="text-red-500">*</span>
+                    Order Status <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={orderStatus}
@@ -908,7 +908,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
             {/* File attachments */}
             <div className="space-y-1">
               <Label htmlFor="edit-files" className="text-xs font-semibold text-foreground">
-                Update Files (Replaces existing) <span className="text-red-500">*</span>
+                Update Files (Replaces existing) <span className="text-red-500 dark:text-red-300">*</span>
               </Label>
               <Input
                 id="edit-files"
@@ -921,7 +921,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
                 {editFiles.length > 0 ? (
                   <span>Selected: {editFiles.map((f) => f.name).join(", ")}</span>
                 ) : (
-                  <span className="text-red-500 font-semibold">* At least one attachment file is required.</span>
+                  <span className="text-red-500 dark:text-red-300 font-semibold">* At least one attachment file is required.</span>
                 )}
               </div>
             </div>
@@ -932,7 +932,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
               <div className="grid grid-cols-2 gap-2">
                 <div className="col-span-2 space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Item Name as per Party <span className="text-red-500">*</span>
+                    Item Name as per Party <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     type="text"
@@ -944,7 +944,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Quantity <span className="text-red-500">*</span>
+                    Quantity <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     type="number"
@@ -959,7 +959,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Item Type <span className="text-red-500">*</span>
+                    Item Type <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={itemType}
@@ -975,7 +975,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    MOC <span className="text-red-500">*</span>
+                    MOC <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={moc}
@@ -991,7 +991,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Size <span className="text-red-500">*</span>
+                    Size <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={size}
@@ -1007,7 +1007,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    PN Rating <span className="text-red-500">*</span>
+                    PN Rating <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={pnRating}
@@ -1023,7 +1023,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Operation Type <span className="text-red-500">*</span>
+                    Operation Type <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={operationType}
@@ -1039,7 +1039,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Extension <span className="text-red-500">*</span>
+                    Extension <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={extension}
@@ -1055,7 +1055,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Bypass <span className="text-red-500">*</span>
+                    Bypass <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <select
                     value={bypass}
@@ -1071,7 +1071,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Product Cost <span className="text-red-500">*</span>
+                    Product Cost <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     type="number"
@@ -1085,7 +1085,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Cost Ref Code <span className="text-red-500">*</span>
+                    Cost Ref Code <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     type="text"
@@ -1099,7 +1099,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Cost <span className="text-red-500">*</span>
+                    Cost <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     type="number"
@@ -1128,7 +1128,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Stock Status <span className="text-red-500">*</span>
+                    Stock Status <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     type="text"
@@ -1140,7 +1140,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Stock Quantity <span className="text-red-500">*</span>
+                    Stock Quantity <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     type="text"
@@ -1152,7 +1152,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Available Stock <span className="text-red-500">*</span>
+                    Available Stock <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     type="text"
@@ -1164,7 +1164,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Stock Against Contract <span className="text-red-500">*</span>
+                    Stock Against Contract <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     type="text"
@@ -1176,7 +1176,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    Discount (%) <span className="text-red-500">*</span>
+                    Discount (%) <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     type="number"
@@ -1190,7 +1190,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-semibold text-muted-foreground">
-                    VA% <span className="text-red-500">*</span>
+                    VA% <span className="text-red-500 dark:text-red-300">*</span>
                   </Label>
                   <Input
                     type="text"
@@ -1227,7 +1227,7 @@ function ActionsDropdown({ item: itemProp, enquiry, dropdownOptions }: ActionsDr
 
           <div className="py-3 text-sm text-muted-foreground">
             Are you sure you want to delete <span className="font-bold text-foreground">"{item.itemName}"</span>?
-            <p className="mt-2 text-xs text-amber-700 dark:text-amber-500 font-medium">
+            <p className="mt-2 text-xs text-amber-700 dark:text-amber-300 font-medium">
               The enquiry will be kept even if it becomes empty. This action cannot be undone.
             </p>
           </div>

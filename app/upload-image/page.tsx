@@ -115,18 +115,18 @@ export default function UploadImagePage() {
 
         <div className="flex items-center justify-between mt-3 shrink-0 gap-2">
           <p className="text-xs text-muted-foreground">
-            All unique <span className="font-semibold text-[#0a2540]">itemType · operationType</span> combos from enquiry items (one row per distinct RM Type). Rows with a blank RM Type show a dropdown — select a type to create the entry, then upload an image.
+            All unique <span className="font-semibold text-foreground">itemType · operationType</span> combos from enquiry items (one row per distinct RM Type). Rows with a blank RM Type show a dropdown — select a type to create the entry, then upload an image.
           </p>
           <Button
             size="sm"
-            className="gap-1.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white shrink-0"
+            className="gap-1.5 bg-[#0f62fe] dark:bg-primary/85 hover:bg-[#0353e9] dark:hover:bg-primary text-white dark:text-primary-foreground shrink-0"
             onClick={() => setAddOpen(true)}
           >
             <Plus size={14} /> Add Entry
           </Button>
         </div>
 
-        {error && <div className="mt-2 text-sm text-red-600 shrink-0">{error}</div>}
+        {error && <div className="mt-2 text-sm text-red-600 dark:text-red-300 shrink-0">{error}</div>}
 
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden mt-3">
           <UploadImageTable items={items} onUploaded={fetchData} />
@@ -180,7 +180,7 @@ export default function UploadImagePage() {
             <Button variant="outline" onClick={() => setAddOpen(false)} disabled={creating}>
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={creating} className="bg-[#0f62fe] hover:bg-[#0353e9] text-white">
+            <Button onClick={handleCreate} disabled={creating} className="bg-[#0f62fe] dark:bg-primary/85 hover:bg-[#0353e9] dark:hover:bg-primary text-white dark:text-primary-foreground">
               {creating ? (
                 <>
                   <Loader2 size={14} className="animate-spin" /> Creating...

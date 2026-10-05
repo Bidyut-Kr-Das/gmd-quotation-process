@@ -72,7 +72,7 @@ export const ChatBubble = memo(function ChatBubble({
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] whitespace-pre-wrap rounded-lg bg-[#0a2540] px-3 py-2 text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99]">
+        <div className="max-w-[85%] whitespace-pre-wrap rounded-lg bg-[#0a2540] px-3 py-2 text-sm text-white dark:bg-primary/15 dark:text-foreground dark:shadow-none shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99]">
           {text}
         </div>
       </div>
@@ -83,8 +83,8 @@ export const ChatBubble = memo(function ChatBubble({
     <div className="group/bubble flex flex-col items-start">
       <div
         className={cn(
-          "max-w-[85%] min-w-0 rounded-lg border border-border bg-card px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-ring",
-          streaming && "border-[#0f62fe]/50"
+          "max-w-[85%] min-w-0 rounded-lg border border-border bg-card px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-none transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-ring",
+          streaming && "border-[#0f62fe]/50 dark:border-primary/50"
         )}
       >
         {message.parts.filter(isToolUIPart).length > 0 && (
@@ -119,7 +119,7 @@ export const ChatBubble = memo(function ChatBubble({
                     "inline-flex w-fit items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium",
                     failed
                       ? "border border-destructive/30 bg-destructive/10 text-destructive"
-                      : "border border-[#0f62fe]/40 bg-white text-[#0a2540]"
+                      : "border border-[#0f62fe]/40 dark:border-primary/40 bg-card text-foreground"
                   )}
                 >
                   {running ? (
@@ -142,7 +142,7 @@ export const ChatBubble = memo(function ChatBubble({
             {TYPING_DOT_DELAYS.map((d) => (
               <span
                 key={d}
-                className="size-1.5 animate-pulse rounded-xs bg-[#0f62fe]"
+                className="size-1.5 animate-pulse rounded-xs bg-[#0f62fe] dark:bg-primary/85"
                 style={{ animationDelay: `${d}ms` }}
               />
             ))}
@@ -157,7 +157,7 @@ export const ChatBubble = memo(function ChatBubble({
           onClick={handleCopy}
           disabled={!text}
         >
-          {copied ? <Check className="text-emerald-600" /> : <Copy />}
+          {copied ? <Check className="text-emerald-600 dark:text-emerald-300" /> : <Copy />}
         </Button>
         <Button
           variant="ghost"

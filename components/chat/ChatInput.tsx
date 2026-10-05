@@ -72,7 +72,7 @@ export function ChatInput({ streaming, onSend, onStop }: ChatInputProps) {
             size="icon"
             aria-label="Send message"
             disabled={!value.trim()}
-            className="bg-[#0f62fe] text-white transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[#0353e9] active:scale-95 disabled:bg-muted disabled:text-muted-foreground"
+            className="bg-[#0f62fe] dark:bg-primary/85 text-white dark:text-primary-foreground transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[#0353e9] dark:hover:bg-primary active:scale-95 disabled:bg-muted disabled:text-muted-foreground"
           >
             <ArrowUp className="stroke-[2]" />
           </Button>

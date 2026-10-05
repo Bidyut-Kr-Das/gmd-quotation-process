@@ -62,7 +62,7 @@ export default function RegisterPage() {
 
             <Button type="submit" className="w-full" disabled={loading}>{loading ? "Creating..." : "Create account"}</Button>
             <p className="text-center text-xs text-muted-foreground">
-              Have account? <Link href="/login" className="underline text-blue-600">Login</Link>
+              Have account? <Link href="/login" className="underline text-blue-600 dark:text-blue-300">Login</Link>
             </p>
           </form>
         </CardContent>

@@ -17,15 +17,15 @@ import type { SyncKind, SyncOperation } from "@/lib/data-sources";
 const COLUMN_PREVIEW = 8;
 
 const KIND_CLASS: Record<SyncKind, string> = {
-  sync: "bg-[#0f62fe]/10 text-[#0f62fe] border-[#0f62fe]/25",
-  seed: "bg-purple-500/10 text-purple-700 border-purple-500/25",
-  derived: "bg-teal-500/10 text-teal-700 border-teal-500/25",
-  edit: "bg-amber-500/10 text-amber-700 border-amber-500/25",
-  backfill: "bg-sky-500/10 text-sky-700 border-sky-500/25",
-  cleanup: "bg-rose-500/10 text-rose-700 border-rose-500/25",
-  lookup: "bg-slate-500/10 text-slate-700 border-slate-500/25",
-  script: "bg-indigo-500/10 text-indigo-700 border-indigo-500/25",
-  diagnostic: "bg-zinc-500/10 text-zinc-700 border-zinc-500/25",
+  sync: "bg-[#0f62fe]/10 dark:bg-primary/10 text-[#0f62fe] dark:text-primary border-[#0f62fe]/25 dark:border-primary/25",
+  seed: "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/25",
+  derived: "bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25",
+  edit: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25",
+  backfill: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25",
+  cleanup: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/25",
+  lookup: "bg-muted text-muted-foreground border-border",
+  script: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/25",
+  diagnostic: "bg-muted/60 text-muted-foreground border-border",
 };
 
 const TRIGGER_LABEL: Record<SyncOperation["trigger"], string> = {
@@ -63,11 +63,11 @@ function ColumnChips({ op }: { op: SyncOperation }) {
               {column.sheetHeader}
             </span>
             <span className="text-muted-foreground/50">&rarr;</span>
-            <span className="truncate font-mono text-[#0f62fe]">
+            <span className="truncate font-mono text-[#0f62fe] dark:text-primary">
               {column.dbField}
             </span>
             {column.note ? (
-              <span className="text-amber-600" title={column.note}>
+              <span className="text-amber-600 dark:text-amber-300" title={column.note}>
                 *
               </span>
             ) : null}
@@ -79,7 +79,7 @@ function ColumnChips({ op }: { op: SyncOperation }) {
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}
-            className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#0f62fe] hover:underline"
+            className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#0f62fe] dark:text-primary hover:underline"
           >
             {expanded ? (
               <ChevronDown size={10} />
@@ -113,7 +113,7 @@ function OperationRow({ op }: { op: SyncOperation }) {
             {op.dead ? (
               <Badge
                 variant="outline"
-                className="h-4 gap-1 border-rose-500/30 bg-rose-500/10 px-1.5 text-[10px] text-rose-700"
+                className="h-4 gap-1 border-rose-500/30 bg-rose-500/10 px-1.5 text-[10px] text-rose-700 dark:text-rose-300"
               >
                 <AlertTriangle size={9} />
                 no caller
@@ -218,7 +218,7 @@ function OperationRow({ op }: { op: SyncOperation }) {
           <div className="mt-2 flex flex-col gap-1">
             <CopyableCommand command={op.npmCommand} />
             {op.dryRunDefault ? (
-              <span className="text-[10px] text-amber-600">
+              <span className="text-[10px] text-amber-600 dark:text-amber-300">
                 dry-run by default — pass the apply flag to write
               </span>
             ) : null}

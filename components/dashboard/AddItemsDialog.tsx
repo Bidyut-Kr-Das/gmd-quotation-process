@@ -367,7 +367,7 @@ export default function AddItemsDialog({
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-[#0f62fe] hover:bg-[#0353e9] text-white dark:bg-blue-700 dark:hover:bg-blue-800"
+              className="bg-[#0f62fe] hover:bg-[#0353e9] text-white dark:bg-blue-500/80 dark:hover:bg-blue-500"
             >
               {isSubmitting ? "Adding..." : "Add Items"}
             </Button>

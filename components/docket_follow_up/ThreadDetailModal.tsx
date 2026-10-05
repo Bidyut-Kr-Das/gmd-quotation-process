@@ -114,24 +114,24 @@ export default function ThreadDetailModal({
                   </Badge>
                 )}
                 {row.state && (
-                  <Badge variant="secondary" className="text-[11px] font-medium bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 px-2 py-0.5">
+                  <Badge variant="secondary" className="text-[11px] font-medium bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 px-2 py-0.5">
                     {row.state} {row.utility ? `(${row.utility})` : ""}
                   </Badge>
                 )}
                 {row.actionPending ? (
-                  <Badge variant="destructive" className="text-[11px] font-semibold bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30 px-2 py-0.5">
+                  <Badge variant="destructive" className="text-[11px] font-semibold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 px-2 py-0.5">
                     <AlertCircle className="w-3.5 h-3.5 mr-1" />
                     Action Pending (No Email Found)
                   </Badge>
                 ) : (
-                  <Badge className="text-[11px] font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 px-2 py-0.5">
+                  <Badge className="text-[11px] font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-2 py-0.5">
                     <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
                     Email Thread Linked ({row.threadsCount})
                   </Badge>
                 )}
               </div>
               <p className="text-sm font-semibold text-foreground/90 mt-1.5 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+                <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-300 shrink-0" />
                 <span className="font-bold text-base text-foreground">{row.partyName}</span>
               </p>
             </div>
@@ -140,8 +140,8 @@ export default function ThreadDetailModal({
             <div className="flex items-center gap-2.5">
               <div className="hidden sm:flex items-center gap-1.5 bg-background border border-border rounded-xl p-1.5 text-xs shadow-xs">
                 {/* Step 1 Pill */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                  <FileText className="w-3.5 h-3.5 text-blue-600" />
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold bg-blue-50 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300 border border-blue-200 dark:border-blue-500/25">
+                  <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-300" />
                   <span>1. Party Request</span>
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/60" />
@@ -150,11 +150,11 @@ export default function ThreadDetailModal({
                 <div
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold border ${
                     row.quotationSent
-                      ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                      ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25"
                       : "bg-muted text-muted-foreground border-border"
                   }`}
                 >
-                  <Send className="w-3.5 h-3.5 text-emerald-600" />
+                  <Send className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300" />
                   <span>2. Quote {row.quotationSent ? "Sent" : "Pending"}</span>
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/60" />
@@ -163,13 +163,13 @@ export default function ThreadDetailModal({
                 <div
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold border ${
                     row.partyReplyStatus === "REPLY_ARRIVED"
-                      ? "bg-indigo-50 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+                      ? "bg-indigo-50 text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/25"
                       : row.partyReplyStatus === "AWAITING_REPLY"
-                      ? "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                      ? "bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 border-amber-200 dark:border-amber-500/25"
                       : "bg-muted text-muted-foreground border-border"
                   }`}
                 >
-                  <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
+                  <MessageSquare className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-300" />
                   <span>
                     3. {row.partyReplyStatus === "REPLY_ARRIVED" ? "Reply Arrived" : row.partyReplyStatus === "AWAITING_REPLY" ? "Awaiting Reply" : "No Quote"}
                   </span>
@@ -195,7 +195,7 @@ export default function ThreadDetailModal({
               onClick={() => setActiveTab("lifecycle")}
               className={`text-xs font-bold px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
                 activeTab === "lifecycle"
-                  ? "bg-blue-600 text-white shadow-xs"
+                  ? "bg-blue-600 dark:bg-blue-500/25 text-white dark:text-blue-100 shadow-xs"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
@@ -205,7 +205,7 @@ export default function ThreadDetailModal({
               onClick={() => setActiveTab("all_threads")}
               className={`text-xs font-bold px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "all_threads"
-                  ? "bg-blue-600 text-white shadow-xs"
+                  ? "bg-blue-600 dark:bg-blue-500/25 text-white dark:text-blue-100 shadow-xs"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
@@ -234,11 +234,11 @@ export default function ThreadDetailModal({
               {/* ========================================================================= */}
               {/* STAGE 1: REQUEST FROM THE PARTY (Inbound Enquiry) */}
               {/* ========================================================================= */}
-              <div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/20 dark:bg-blue-950/10 flex flex-col overflow-hidden shadow-xs">
+              <div className="rounded-xl border border-blue-200 dark:border-blue-500/20 bg-blue-50/20 dark:bg-blue-500/5 flex flex-col overflow-hidden shadow-xs">
                 {/* Column Header */}
-                <div className="p-3.5 bg-blue-100/70 dark:bg-blue-900/50 border-b border-blue-200 dark:border-blue-900/60 flex items-center justify-between gap-2">
+                <div className="p-3.5 bg-blue-100/70 dark:bg-blue-500/15 border-b border-blue-200 dark:border-blue-500/20 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 dark:bg-blue-500/25 text-white dark:text-blue-100 text-xs font-bold shrink-0">
                       1
                     </span>
                     <span className="font-bold text-xs text-blue-950 dark:text-blue-200 uppercase tracking-wide">
@@ -285,7 +285,7 @@ export default function ThreadDetailModal({
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
                           Party Client Email
                         </span>
-                        <p className="font-mono text-blue-700 dark:text-blue-400 text-[11px] font-semibold break-all">
+                        <p className="font-mono text-blue-700 dark:text-blue-300 text-[11px] font-semibold break-all">
                           {row.partyEmail || "Not identified in mail headers"}
                         </p>
                       </div>
@@ -306,7 +306,7 @@ export default function ThreadDetailModal({
 
                   {/* Specifications & Tender Docs */}
                   {req.initialFiles && req.initialFiles.length > 0 && (
-                    <div className="pt-2 border-t border-blue-200/60 dark:border-blue-900/60">
+                    <div className="pt-2 border-t border-blue-200/60 dark:border-blue-500/20">
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                         Inbound Specifications / Tender Docs ({req.initialFiles.length})
                       </span>
@@ -319,9 +319,9 @@ export default function ThreadDetailModal({
                               href={link}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-1 text-[10.5px] rounded-md bg-background hover:bg-blue-50 text-blue-700 dark:text-blue-300 border border-border hover:border-blue-300 transition-colors"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-[10.5px] rounded-md bg-background hover:bg-blue-50 dark:hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-border hover:border-blue-300 dark:hover:border-blue-500/25 transition-colors"
                             >
-                              <Paperclip className="w-3 h-3 text-blue-600 shrink-0" />
+                              <Paperclip className="w-3 h-3 text-blue-600 dark:text-blue-300 shrink-0" />
                               <span className="truncate max-w-[170px]">{name}</span>
                               <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
                             </a>
@@ -347,22 +347,22 @@ export default function ThreadDetailModal({
               <div
                 className={`rounded-xl border flex flex-col overflow-hidden shadow-xs ${
                   row.quotationSent
-                    ? "border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/20 dark:bg-emerald-950/10"
-                    : "border-amber-200 dark:border-amber-900/60 bg-amber-50/20 dark:bg-amber-950/10"
+                    ? "border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-500/5"
+                    : "border-amber-200 dark:border-amber-500/20 bg-amber-50/20 dark:bg-amber-500/5"
                 }`}
               >
                 {/* Column Header */}
                 <div
                   className={`p-3.5 border-b flex items-center justify-between gap-2 ${
                     row.quotationSent
-                      ? "bg-emerald-100/70 dark:bg-emerald-900/50 border-emerald-200 dark:border-emerald-900/60"
-                      : "bg-amber-100/70 dark:bg-amber-900/50 border-amber-200 dark:border-amber-900/60"
+                      ? "bg-emerald-100/70 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/20"
+                      : "bg-amber-100/70 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/20"
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <span
-                      className={`flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold shrink-0 ${
-                        row.quotationSent ? "bg-emerald-600" : "bg-amber-600"
+                      className={`flex items-center justify-center w-6 h-6 rounded-full text-white dark:text-foreground text-xs font-bold shrink-0 ${
+                        row.quotationSent ? "bg-emerald-600 dark:bg-emerald-500/25" : "bg-amber-600 dark:bg-amber-500/25"
                       }`}
                     >
                       2
@@ -380,12 +380,12 @@ export default function ThreadDetailModal({
 
                   <div className="flex items-center gap-1">
                     {row.quotationSent ? (
-                      <Badge className="bg-emerald-600 text-white font-semibold text-[10px]">
+                      <Badge className="bg-emerald-600 dark:bg-emerald-500/25 text-white dark:text-emerald-100 font-semibold text-[10px]">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
                         Dispatched
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 text-[10px] font-semibold">
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 dark:border-amber-500/25 dark:bg-amber-500/12 dark:text-amber-300 text-[10px] font-semibold">
                         <Clock className="w-3 h-3 mr-1" />
                         Pending
                       </Badge>
@@ -405,7 +405,7 @@ export default function ThreadDetailModal({
                               Dispatched Timestamp
                             </span>
                             <p className="font-semibold text-foreground text-[11px] flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                              <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300" />
                               {row.quotationSentDate
                                 ? new Date(row.quotationSentDate).toLocaleDateString("en-IN", {
                                     day: "2-digit",
@@ -430,9 +430,9 @@ export default function ThreadDetailModal({
 
                         {/* Method & Verification */}
                         {row.quotationMethod && (
-                          <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px]">
+                          <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/25 text-[11px]">
                             <span className="text-emerald-800 dark:text-emerald-300 font-medium">Detection Method:</span>
-                            <span className="font-mono font-bold text-emerald-900 dark:text-emerald-200 px-1.5 py-0.5 rounded bg-white dark:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-700">
+                            <span className="font-mono font-bold text-emerald-900 dark:text-emerald-200 px-1.5 py-0.5 rounded bg-card dark:bg-emerald-500/15 border border-emerald-300 dark:border-emerald-500/30">
                               via {row.quotationMethod}
                             </span>
                           </div>
@@ -460,9 +460,9 @@ export default function ThreadDetailModal({
                         </div>
                       </>
                     ) : (
-                      <div className="p-3 bg-amber-500/10 border border-amber-300/60 dark:border-amber-800 rounded-lg text-amber-900 dark:text-amber-300 space-y-1">
+                      <div className="p-3 bg-amber-500/10 border border-amber-300/60 dark:border-amber-500/25 rounded-lg text-amber-900 dark:text-amber-300 space-y-1">
                         <p className="font-bold text-xs flex items-center gap-1.5">
-                          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                          <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-300 shrink-0" />
                           Quotation Document Pending
                         </p>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
@@ -478,7 +478,7 @@ export default function ThreadDetailModal({
                     <div
                       className={`pt-2 border-t ${
                         docketFilesAreQuotation
-                          ? "border-emerald-200/60 dark:border-emerald-900/60"
+                          ? "border-emerald-200/60 dark:border-emerald-500/20"
                           : "border-border"
                       }`}
                     >
@@ -509,11 +509,11 @@ export default function ThreadDetailModal({
                               rel="noreferrer"
                               className={`inline-flex items-center gap-1 px-2 py-1 text-[10.5px] rounded-md font-semibold border transition-colors ${
                                 isDocketMatch
-                                  ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-200 dark:border-emerald-700"
+                                  ? "bg-emerald-100 hover:bg-emerald-200 dark:hover:bg-emerald-500/20 text-emerald-950 border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-500/30"
                                   : "bg-background hover:bg-muted text-foreground border-border"
                               }`}
                             >
-                              <Paperclip className={`w-3 h-3 shrink-0 ${isDocketMatch ? "text-emerald-700 dark:text-emerald-400" : ""}`} />
+                              <Paperclip className={`w-3 h-3 shrink-0 ${isDocketMatch ? "text-emerald-700 dark:text-emerald-300" : ""}`} />
                               <span className="truncate max-w-[170px]">{name}</span>
                               <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
                             </a>
@@ -522,7 +522,7 @@ export default function ThreadDetailModal({
                               key={i}
                               className={`inline-flex items-center gap-1 px-2 py-1 text-[10.5px] rounded-md border ${
                                 isDocketMatch
-                                  ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+                                  ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25"
                                   : "bg-muted text-muted-foreground border-border"
                               }`}
                             >
@@ -543,9 +543,9 @@ export default function ThreadDetailModal({
               <div
                 className={`rounded-xl border flex flex-col overflow-hidden shadow-xs ${
                   row.partyReplyStatus === "REPLY_ARRIVED"
-                    ? "border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/10"
+                    ? "border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/20 dark:bg-indigo-500/5"
                     : row.partyReplyStatus === "AWAITING_REPLY"
-                    ? "border-amber-200 dark:border-amber-900/60 bg-amber-50/20 dark:bg-amber-950/10"
+                    ? "border-amber-200 dark:border-amber-500/20 bg-amber-50/20 dark:bg-amber-500/5"
                     : "border-border bg-muted/20"
                 }`}
               >
@@ -553,20 +553,20 @@ export default function ThreadDetailModal({
                 <div
                   className={`p-3.5 border-b flex items-center justify-between gap-2 ${
                     row.partyReplyStatus === "REPLY_ARRIVED"
-                      ? "bg-indigo-100/70 dark:bg-indigo-900/50 border-indigo-200 dark:border-indigo-900/60"
+                      ? "bg-indigo-100/70 dark:bg-indigo-500/15 border-indigo-200 dark:border-indigo-500/20"
                       : row.partyReplyStatus === "AWAITING_REPLY"
-                      ? "bg-amber-100/70 dark:bg-amber-900/50 border-amber-200 dark:border-amber-900/60"
+                      ? "bg-amber-100/70 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/20"
                       : "bg-muted/50 border-border"
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <span
-                      className={`flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold shrink-0 ${
+                      className={`flex items-center justify-center w-6 h-6 rounded-full text-white dark:text-foreground text-xs font-bold shrink-0 ${
                         row.partyReplyStatus === "REPLY_ARRIVED"
-                          ? "bg-indigo-600"
+                          ? "bg-indigo-600 dark:bg-indigo-500/25"
                           : row.partyReplyStatus === "AWAITING_REPLY"
-                          ? "bg-amber-600"
-                          : "bg-muted-foreground"
+                          ? "bg-amber-600 dark:bg-amber-500/25"
+                          : "bg-muted-foreground dark:bg-accent"
                       }`}
                     >
                       3
@@ -586,12 +586,12 @@ export default function ThreadDetailModal({
 
                   <div>
                     {row.partyReplyStatus === "REPLY_ARRIVED" ? (
-                      <Badge className="bg-indigo-600 text-white font-semibold text-[10px]">
+                      <Badge className="bg-indigo-600 dark:bg-indigo-500/25 text-white dark:text-indigo-100 font-semibold text-[10px]">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
                         Reply Arrived
                       </Badge>
                     ) : row.partyReplyStatus === "AWAITING_REPLY" ? (
-                      <Badge className="bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 font-semibold text-[10px]">
+                      <Badge className="bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/25 font-semibold text-[10px]">
                         <Clock className="w-3 h-3 mr-1" />
                         Awaiting Reply
                       </Badge>
@@ -614,7 +614,7 @@ export default function ThreadDetailModal({
                               Party Response Timestamp
                             </span>
                             <p className="font-semibold text-foreground text-[11px] flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                              <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-300" />
                               {row.partyReplyDate
                                 ? new Date(row.partyReplyDate).toLocaleDateString("en-IN", {
                                     day: "2-digit",
@@ -631,7 +631,7 @@ export default function ThreadDetailModal({
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
                               Party Sender Address
                             </span>
-                            <p className="font-mono text-indigo-700 dark:text-indigo-400 text-[11px] font-bold break-all">
+                            <p className="font-mono text-indigo-700 dark:text-indigo-300 text-[11px] font-bold break-all">
                               {row.partyReplyEmail || "External Client Address"}
                             </p>
                           </div>
@@ -650,14 +650,14 @@ export default function ThreadDetailModal({
                         )}
                       </>
                     ) : row.partyReplyStatus === "AWAITING_REPLY" ? (
-                      <div className="p-3.5 bg-amber-500/10 border border-amber-300/60 dark:border-amber-800 rounded-lg space-y-2.5">
+                      <div className="p-3.5 bg-amber-500/10 border border-amber-300/60 dark:border-amber-500/25 rounded-lg space-y-2.5">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-xs text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                            <Clock className="w-4 h-4 text-amber-600" />
+                            <Clock className="w-4 h-4 text-amber-600 dark:text-amber-300" />
                             Turnaround Status
                           </span>
                           {row.daysWithoutReply != null && (
-                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200">
+                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-200 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200">
                               {row.daysWithoutReply === 0 ? "Sent today" : `${row.daysWithoutReply}d without reply`}
                             </span>
                           )}
@@ -666,7 +666,7 @@ export default function ThreadDetailModal({
                           Quotation was dispatched to the client. Awaiting formal techno-commercial feedback or purchase order confirmation.
                         </p>
                         {row.daysWithoutReply != null && row.daysWithoutReply > 7 && (
-                          <div className="p-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-300 rounded text-rose-800 dark:text-rose-300 text-[10.5px] font-semibold">
+                          <div className="p-2 bg-rose-50 dark:bg-rose-500/10 border border-rose-300 dark:border-rose-500/25 rounded text-rose-800 dark:text-rose-300 text-[10.5px] font-semibold">
                             ⚠️ Overdue (&gt; 7 Days): Client has not responded for {row.daysWithoutReply} days. Follow-up reminder recommended.
                           </div>
                         )}
@@ -745,7 +745,7 @@ export default function ThreadDetailModal({
                               href={link}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-900 transition-colors"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded bg-blue-50 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 border border-blue-200 dark:border-blue-500/20 transition-colors"
                             >
                               <Paperclip className="w-3 h-3 shrink-0" />
                               <span className="truncate max-w-[200px]">{att}</span>

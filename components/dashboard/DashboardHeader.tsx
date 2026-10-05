@@ -145,7 +145,7 @@ export default function DashboardHeader({
                 title={`Show enquiries with Closure Status '${status}'`}
                 className={`h-7 rounded-md px-3 text-sm font-semibold transition-colors cursor-pointer ${
                   active
-                    ? "bg-[#0f62fe] text-white"
+                    ? "bg-[#0f62fe] dark:bg-blue-500/80 text-white"
                     : "text-muted-foreground hover:bg-accent"
                 }`}
               >
@@ -159,7 +159,7 @@ export default function DashboardHeader({
             title="Show enquiries with blank Closure Status"
             className={`h-7 rounded-md px-3 text-sm font-semibold transition-colors cursor-pointer ${
               notSentActive
-                ? "bg-[#0f62fe] text-white"
+                ? "bg-[#0f62fe] dark:bg-blue-500/80 text-white"
                 : "text-muted-foreground hover:bg-accent"
             }`}
           >
@@ -179,7 +179,7 @@ export default function DashboardHeader({
 
         <Button
           onClick={() => dispatch(openAddItemsDialog())}
-          className="flex h-9 items-center gap-1.5 bg-[#0f62fe] px-4 text-sm font-semibold text-white hover:bg-[#0353e9] dark:bg-blue-700 dark:hover:bg-blue-800"
+          className="flex h-9 items-center gap-1.5 bg-[#0f62fe] px-4 text-sm font-semibold text-white hover:bg-[#0353e9] dark:bg-blue-500/80 dark:hover:bg-blue-500"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 5v14M5 12h14" />
@@ -189,7 +189,7 @@ export default function DashboardHeader({
 
         <Button
           onClick={() => dispatch(openNewEnquiryDialog())}
-          className="flex h-9 items-center gap-1.5 bg-[#0f62fe] px-4 text-sm font-semibold text-white hover:bg-[#0353e9] dark:bg-blue-700 dark:hover:bg-blue-800"
+          className="flex h-9 items-center gap-1.5 bg-[#0f62fe] px-4 text-sm font-semibold text-white hover:bg-[#0353e9] dark:bg-blue-500/80 dark:hover:bg-blue-500"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 5v14M5 12h14" />

@@ -9,7 +9,7 @@ interface PaginationProps {
 }
 
 const btnBase =
-  "bg-white border border-[#e1e6eb] rounded text-[#0a2540] px-2.5 py-1.5 text-xs font-semibold cursor-pointer transition-all hover:border-[#b0b8c0] disabled:opacity-40 disabled:cursor-not-allowed min-w-[32px] text-center";
+  "bg-card border border-border rounded text-foreground px-2.5 py-1.5 text-xs font-semibold cursor-pointer transition-all hover:border-muted-foreground/50 disabled:opacity-40 disabled:cursor-not-allowed min-w-[32px] text-center";
 
 export default function Pagination({
   total,
@@ -47,9 +47,9 @@ export default function Pagination({
   // reduces the row count. The right block keeps a fixed height so the bar does
   // not shrink when the page controls are hidden.
   return (
-    <div className="bg-[#f4f6f8] border-t border-[#e1e6eb] px-4 py-2.5 flex items-center justify-between text-xs">
+    <div className="bg-muted border-t border-border px-4 py-2.5 flex items-center justify-between text-xs">
       <div className="flex items-center gap-2">
-        <span className="text-[#0a2540] font-medium">
+        <span className="text-foreground font-medium">
           {total === 0
             ? "No records"
             : `Showing ${from}–${to} of ${total.toLocaleString()}`}
@@ -57,7 +57,7 @@ export default function Pagination({
         <select
           value={pageSize}
           onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
-          className="bg-white border border-[#e1e6eb] rounded px-2 py-1 text-xs text-[#0a2540] font-semibold outline-none cursor-pointer"
+          className="bg-card border border-border rounded px-2 py-1 text-xs text-foreground font-semibold outline-none cursor-pointer"
         >
           <option value={25}>25</option>
           <option value={50}>50</option>
@@ -86,7 +86,7 @@ export default function Pagination({
               page === "..." ? (
                 <span
                   key={`e${i}`}
-                  className="px-1 text-[#0a2540]/40 font-semibold"
+                  className="px-1 text-muted-foreground/60 font-semibold"
                 >
                   ...
                 </span>
@@ -95,7 +95,7 @@ export default function Pagination({
                   key={page}
                   className={`${btnBase} ${
                     page === currentPage
-                      ? "bg-[#0070f3]! border-[#0070f3]! text-white!"
+                      ? "bg-[#0070f3]! border-[#0070f3]! text-white! dark:bg-primary! dark:border-primary! dark:text-primary-foreground!"
                       : ""
                   }`}
                   onClick={() => onPageChange(page)}

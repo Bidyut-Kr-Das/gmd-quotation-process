@@ -50,7 +50,7 @@ export default function LoginPage() {
             </div>
             <Button type="submit" className="w-full" disabled={loading}>{loading ? "Signing in..." : "Sign in"}</Button>
             <p className="text-center text-xs text-muted-foreground">
-              No account? <Link href="/register" className="underline text-blue-600">Register</Link>
+              No account? <Link href="/register" className="underline text-blue-600 dark:text-blue-300">Register</Link>
             </p>
           </form>
         </CardContent>

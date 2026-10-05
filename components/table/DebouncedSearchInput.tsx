@@ -52,7 +52,7 @@ export default function DebouncedSearchInput({
       onClick={(e) => e.stopPropagation()}
       className={
         className ||
-        "flex-1 min-w-0 text-[10px] border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-1 py-0.5 outline-none placeholder:text-[#0a2540]/30"
+        "flex-1 min-w-0 text-[10px] border border-border rounded bg-background text-[#0a2540] dark:text-foreground px-1 py-0.5 outline-none placeholder:text-[#0a2540]/30 dark:placeholder:text-muted-foreground/60"
       }
     />
   );

@@ -36,6 +36,22 @@
   --text-mono-md--line-height: 20px;
   --text-mono-md--font-weight: 400;
 
+  --radius-sm: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-gutter: 20px;
+  --spacing-container-max: 1440px;
+}
+
+/* Colors live in a non-inline @theme so utilities emit var(--color-*) and .dark can override them. */
+@theme {
   --color-surface-bright: #fbf8ff;
   --color-outline: #737688;
   --color-on-tertiary-fixed-variant: #891e00;
@@ -76,17 +92,47 @@
   --color-on-primary-fixed-variant: #0038b6;
   --color-surface-container: #ededfb;
   --color-on-secondary: #ffffff;
+}
 
-  --radius-sm: 0.25rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-  --radius-full: 9999px;
-
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-gutter: 20px;
-  --spacing-container-max: 1440px;
+.dark {
+  --color-surface-bright: #2a2e3a;
+  --color-outline: #8a90a3;
+  --color-on-tertiary-fixed-variant: #ffb4a3;
+  --color-surface: #191c24;
+  --color-primary-fixed: #2a3a6e;
+  --color-on-error: #3b0a0a;
+  --color-surface-tint: #8fa8f0;
+  --color-secondary-fixed: #2c3a4f;
+  --color-primary-fixed-dim: #3a4c85;
+  --color-surface-container-lowest: #15181f;
+  --color-on-error-container: #ffd2cc;
+  --color-on-primary: #10204a;
+  --color-inverse-on-surface: #262a35;
+  --color-inverse-surface: #e1e3ec;
+  --color-surface-container-low: #1d2029;
+  --color-secondary-container: #2f3d52;
+  --color-on-tertiary: #4a1408;
+  --color-error-container: #5c1d1d;
+  --color-on-surface-variant: #b4b9c8;
+  --color-surface-container-high: #272b36;
+  --color-outline-variant: #3a3f4d;
+  --color-inverse-primary: #2f4fb8;
+  --color-on-primary-fixed: #dde4ff;
+  --color-on-secondary-fixed-variant: #c2d0e4;
+  --color-surface-variant: #2d3140;
+  --color-on-secondary-container: #c8d4e6;
+  --color-on-secondary-fixed: #dbe6f7;
+  --color-surface-container-highest: #2d3140;
+  --color-secondary: #a9b8cf;
+  --color-surface-dim: #15181f;
+  --color-on-background: #e3e5ed;
+  --color-error: #f2a39b;
+  --color-on-primary-container: #dfe5ff;
+  --color-on-surface: #e3e5ed;
+  --color-secondary-fixed-dim: #b7c8e1;
+  --color-primary-container: #3d5fc4;
+  --color-on-tertiary-container: #ffddd5;
+  --color-on-primary-fixed-variant: #b7c4ff;
+  --color-surface-container: #222631;
+  --color-on-secondary: #1c2a3d;
 }

@@ -222,7 +222,7 @@ export default function IndentListingTable({
 
   const sortArrow = (idx: number) =>
     sortIdx === idx ? (
-      <span className="text-[#0f62fe] dark:text-blue-400">{sortAsc ? "↑" : "↓"}</span>
+      <span className="text-[#0f62fe] dark:text-primary">{sortAsc ? "↑" : "↓"}</span>
     ) : null;
 
   const hasActiveFilters = Object.values(filters).some((v) => v.length > 0);
@@ -254,7 +254,7 @@ export default function IndentListingTable({
           )}
         </span>
         {rmCode !== "" && (
-          <span className="text-[10px] font-mono font-medium text-[#0f62fe] dark:text-blue-400">
+          <span className="text-[10px] font-mono font-medium text-[#0f62fe] dark:text-primary">
             {rmCode}
           </span>
         )}
@@ -273,7 +273,7 @@ export default function IndentListingTable({
           <button
             type="button"
             onClick={() => setFilters({})}
-            className="inline-flex shrink-0 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-950/50 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all"
+            className="inline-flex shrink-0 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/12 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all"
           >
             Reset Filters
           </button>
@@ -344,7 +344,7 @@ export default function IndentListingTable({
                     style={{ marginRight: "-3px" }}
                   >
                     <div className="absolute top-0 left-[-4px] w-[14px] h-full" />
-                    <div className="absolute right-[2px] top-0 w-[2px] h-full bg-transparent group-hover:bg-[#0f62fe] group-active:bg-[#0f62fe] dark:group-hover:bg-blue-500 dark:group-active:bg-blue-500 transition-colors" />
+                    <div className="absolute right-[2px] top-0 w-[2px] h-full bg-transparent group-hover:bg-[#0f62fe] dark:group-hover:bg-primary group-active:bg-[#0f62fe] dark:group-active:bg-primary transition-colors" />
                   </div>
                 </th>
               ))}
