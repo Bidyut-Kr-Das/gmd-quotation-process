@@ -48,6 +48,8 @@ export async function syncGmdItemCodes(): Promise<{ count: number }> {
   const operationIdx = colIdx("OPERATION");
   const sizeIdx = colIdx("SIZE");
   const pnGmdIdx = colIdx("PN-GMD");
+  // CURRENT REQT is optional metadata: a master without the column still syncs.
+  const currentReqtIdx = colIdx("CURRENT REQT");
 
   if (itemCodeIdx === -1 || itemTypeIdx === -1 || mocIdx === -1 || operationIdx === -1 || sizeIdx === -1 || pnGmdIdx === -1) {
     throw new Error(`Required columns not found. Found: ${JSON.stringify({ itemCodeIdx, itemTypeIdx, mocIdx, operationIdx, sizeIdx, pnGmdIdx })}`);
@@ -55,6 +57,11 @@ export async function syncGmdItemCodes(): Promise<{ count: number }> {
 
   const dataRows = allRows.slice(1).filter((r) => r.some((c) => c !== null && c !== ""));
   const syncedAt = new Date();
+  const getOptional = (row: unknown[], i: number): string | null => {
+    if (i < 0) return null;
+    const v = row[i];
+    return v != null && v !== "" ? String(v).trim() : null;
+  };
 
   const dbRows = dataRows.map((row) => ({
     itemCode: String(row[itemCodeIdx] ?? "").trim(),
@@ -63,6 +70,7 @@ export async function syncGmdItemCodes(): Promise<{ count: number }> {
     operation: String(row[operationIdx] ?? "").trim(),
     size: String(row[sizeIdx] ?? "").trim(),
     pnGmd: String(row[pnGmdIdx] ?? "").trim(),
+    currentReqt: getOptional(row, currentReqtIdx),
     syncedAt,
   })).filter((r) => r.itemCode && r.itemType && r.moc && r.operation && r.size && r.pnGmd);
 

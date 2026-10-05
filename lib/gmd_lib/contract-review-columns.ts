@@ -71,7 +71,31 @@ export const CONTRACT_REVIEW_HEADERS = [
   // Hidden data carrier. Never rendered: listed in the page's hiddenColumns and
   // only used to drive the "C" chip inside the ITEM_CODE cell.
   "C BATCH",
+  // Hidden data carrier for the "N" chip (item code is NOT in CURRENT REQT).
+  // Appended after C BATCH so existing column indices/widths stay stable.
+  "N BATCH",
 ] as const;
+
+export const N_BATCH_HEADER = "N BATCH";
+export const N_BATCH_VALUE = "N";
+
+/**
+ * Badge definition for the "N" chip that sits beside the item code when the
+ * code is not in CURRENT REQT on the GMD Item Creation Form. Mirrors
+ * `cBatchBadges` but with an amber tone so it reads differently from "C".
+ */
+export function nBatchBadges(onColumn: string) {
+  return [
+    {
+      onColumn,
+      fromColumn: N_BATCH_HEADER,
+      value: N_BATCH_VALUE,
+      label: N_BATCH_VALUE,
+      tone: "amber" as const,
+      title: "Item code is NOT in CURRENT REQT (GMD Item Creation Form)",
+    },
+  ];
+}
 
 /**
  * Default rendered width, in px, for each column on the Contract Review
@@ -512,6 +536,7 @@ export function dbContractReviewToRow(item: {
   productionOrderNumber: string | null;
   diagramUrl: string | null;
   cBatch: string | null;
+  nBatch: string | null;
 }): unknown[] {
   return [
     item.contractNo,
