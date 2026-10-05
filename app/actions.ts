@@ -4193,7 +4193,7 @@ export async function recomputeIndentListingVersionsAction() {
 
     const rmCodeSummary =
       rmCodePlan.updates.length === 0
-        ? "No SLV / SLV METAL indent rows to link."
+        ? "No SLV / SLV METAL / TPAV+SLV indent rows to link."
         : `${rmCodePlan.resolved} linked, ${rmCodePlan.ambiguous} with multiple RM codes, ${rmCodePlan.unmatched} with no RM code.`;
 
     const costCodeRefSummary =

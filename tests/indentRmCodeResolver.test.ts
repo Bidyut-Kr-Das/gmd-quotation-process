@@ -91,6 +91,30 @@ test('SLV maps to METAL TO RUBBER and SLV METAL to METAL TO METAL', () => {
   assert.equal(metal.updates[0].rmCodeV1, 'METAL1')
 })
 
+test('TPAV+SLV resolves like SLV for the same size/PN/slot', () => {
+  // TPAV+SLV's sluice-valve body is a plain SLV, so it shares SLV's L4 component
+  // and must resolve to the same raw material code the SLV row does.
+  const raw = [
+    rm({ erpItemCode: 'V1CODE', l6Std: 'NON-RISING' }),
+    rm({ erpItemCode: 'V3CODE', l6Std: 'RISING' }),
+  ]
+  const slv = planIndentRmCodes(
+    [indent({ item: 'SLV', v1: '1', v3: '1', v3Category: 'Rising' })],
+    raw,
+  )
+  const tpav = planIndentRmCodes(
+    [indent({ item: 'TPAV+SLV', v1: '1', v3: '1', v3Category: 'Rising' })],
+    raw,
+  )
+  assert.equal(tpav.updates.length, 1)
+  assert.deepEqual(
+    [tpav.updates[0].rmCodeV1, tpav.updates[0].rmCodeV3],
+    [slv.updates[0].rmCodeV1, slv.updates[0].rmCodeV3],
+  )
+  assert.equal(tpav.updates[0].rmCodeV1, 'V1CODE')
+  assert.equal(tpav.updates[0].rmCodeV3, 'V3CODE')
+})
+
 test('the PN rating is bucketed on both sides', () => {
   // "PN - 16" on the raw material side must meet "PN-10/16" on the indent side.
   const plan = planIndentRmCodes(
@@ -236,9 +260,9 @@ test('rmCodeRequiredMaterial only constrains on a CS token', () => {
   assert.equal(rmCodeRequiredMaterial(null), null)
 })
 
-test('rows outside SLV and SLV METAL are skipped entirely', () => {
+test('rows outside SLV, SLV METAL and TPAV+SLV are skipped entirely', () => {
   const raw = [rm()]
-  for (const item of ['TPAV+SLV', 'BFV', 'DPCV', 'NRV', null]) {
+  for (const item of ['BFV', 'DPCV', 'NRV', null]) {
     const plan = planIndentRmCodes([indent({ item })], raw)
     assert.equal(plan.updates.length, 0, `expected ${item} to be skipped`)
   }

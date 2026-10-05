@@ -74,13 +74,24 @@ function renderLinksCell(display: string) {
   );
 }
 
-function OrderListCell({ display, poNo }: { display: string; poNo?: string }) {
+function OrderListCell({
+  display,
+  poNo,
+  iconOnly,
+  heading,
+}: {
+  display: string;
+  poNo?: string;
+  iconOnly?: boolean;
+  heading?: string;
+}) {
   const links = useMemo(
     () => display.split(",").map((s) => s.trim()).filter(Boolean).filter(isUrl),
     [display]
   );
   const [open, setOpen] = useState(false);
   if (links.length === 0) {
+    if (iconOnly) return null;
     return <span className="truncate block text-gray-400" title={display}>—</span>;
   }
   const handleCopy = async (url: string) => {
@@ -96,22 +107,36 @@ function OrderListCell({ display, poNo }: { display: string; poNo?: string }) {
       <Button
         variant="outline"
         size="xs"
-        className="h-6 text-[11px] gap-1.5 px-2 font-semibold border-[#0a2540]/15 bg-white hover:bg-[#f4f6f8] text-[#0a2540]"
+        className={
+          iconOnly
+            ? "h-6 shrink-0 px-1.5 font-semibold border-[#0a2540]/15 bg-white hover:bg-[#f4f6f8] text-[#0a2540]"
+            : "h-6 text-[11px] gap-1.5 px-2 font-semibold border-[#0a2540]/15 bg-white hover:bg-[#f4f6f8] text-[#0a2540]"
+        }
         onClick={(e) => {
           e.stopPropagation();
           setOpen(true);
         }}
+        aria-label={
+          links.length === 1
+            ? `View ${links.length} file`
+            : `View ${links.length} files`
+        }
         title={links.join(", ")}
       >
         <Files size={12} className="shrink-0" />
-        {links.length === 1 ? "View File" : `View Files (${links.length})`}
+        {!iconOnly &&
+          (links.length === 1 ? "View File" : `View Files (${links.length})`)}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-130 p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
             <DialogTitle className="text-sm font-bold text-[#0a2540] flex items-center gap-2">
               <FileText size={16} className="text-[#0a2540]/70" />
-              {poNo ? `Attachments — ${poNo}` : `Attachments`}
+              {heading
+                ? `Attachments — ${heading}`
+                : poNo
+                  ? `Attachments — ${poNo}`
+                  : `Attachments`}
               <span className="ml-1 text-xs font-semibold text-[#0a2540]/60">({links.length})</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
@@ -178,12 +203,16 @@ function OrderListCell({ display, poNo }: { display: string; poNo?: string }) {
 function ItemImageCell({
   images,
   code,
+  drawingUrl,
 }: {
   images: ContractReviewImage[];
   code: string;
+  drawingUrl?: string;
 }) {
   const [open, setOpen] = useState(false);
-  if (images.length === 0) {
+  const drawingHref = drawingUrl && isUrl(drawingUrl) ? drawingUrl : "";
+  const hasDrawing = drawingHref !== "";
+  if (images.length === 0 && !hasDrawing) {
     return (
       <span className="truncate block" title={code}>
         {code || "—"}
@@ -203,24 +232,41 @@ function ItemImageCell({
       <span className="truncate" title={code}>
         {code}
       </span>
-      <Button
-        variant="outline"
-        size="xs"
-        className="h-6 shrink-0 px-1.5 font-semibold border-[#0a2540]/15 bg-white hover:bg-[#f4f6f8] text-[#0a2540]"
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen(true);
-        }}
-        aria-label={`View ${images.length} image${images.length === 1 ? "" : "s"} for ${code}`}
-        title={`${images.length} image${images.length === 1 ? "" : "s"}\n${images
-          .map(
-            (i) =>
-              `${i.itemType ?? ""} / ${i.operationType ?? ""} / ${i.rmType ?? ""}`,
-          )
-          .join("\n")}`}
-      >
-        <ImageIcon size={12} className="shrink-0" />
-      </Button>
+      {images.length > 0 && (
+        <Button
+          variant="outline"
+          size="xs"
+          className="h-6 shrink-0 px-1.5 font-semibold border-[#0a2540]/15 bg-white hover:bg-[#f4f6f8] text-[#0a2540]"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen(true);
+          }}
+          aria-label={`View ${images.length} image${images.length === 1 ? "" : "s"} for ${code}`}
+          title={`${images.length} image${images.length === 1 ? "" : "s"}\n${images
+            .map(
+              (i) =>
+                `${i.itemType ?? ""} / ${i.operationType ?? ""} / ${i.rmType ?? ""}`,
+            )
+            .join("\n")}`}
+        >
+          <ImageIcon size={12} className="shrink-0" />
+        </Button>
+      )}
+      {hasDrawing && (
+        <Button
+          variant="outline"
+          size="xs"
+          className="h-6 shrink-0 px-1.5 font-semibold border-[#0a2540]/15 bg-white hover:bg-[#f4f6f8] text-[#0a2540]"
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(drawingHref, "_blank", "noopener,noreferrer");
+          }}
+          aria-label={`View uploaded drawing for ${code}`}
+          title="View uploaded drawing"
+        >
+          <FileText size={12} className="shrink-0" />
+        </Button>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-140 p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
@@ -882,6 +928,24 @@ interface GMDUpdateTableProps {
   dropdownRowCondition?: (header: string, row: unknown[]) => boolean;
   imageButtonColumn?: string;
   itemImagesByCode?: Record<string, ContractReviewImage[]>;
+  /**
+   * Column holding a per-row uploaded drawing URL. When set, the
+   * `imageButtonColumn` cell also renders a document icon beside the item code
+   * that opens the uploaded drawing in a new tab, once one exists.
+   */
+  linkedDrawingColumn?: string;
+  /**
+   * Column holding comma-separated file URLs (e.g. ORDER LIST). Paired with
+   * `linkedFilesIconColumn` to surface those files as an icon next to another
+   * column's value.
+   */
+  linkedFilesColumn?: string;
+  /**
+   * Column whose cell renders a files icon (backed by `linkedFilesColumn`) next
+   * to its value, opening the file-list dialog. Used to show ORDER LIST files
+   * beside the contract number.
+   */
+  linkedFilesIconColumn?: string;
 }
 
 type CellBadge = NonNullable<GMDUpdateTableProps["cellBadges"]>[number];
@@ -964,6 +1028,9 @@ castingRateInputs,
   columnOptionMeta,
   imageButtonColumn,
   itemImagesByCode,
+  linkedDrawingColumn,
+  linkedFilesColumn,
+  linkedFilesIconColumn,
 }: GMDUpdateTableProps) {
   const isControlled = !!filterState;
 
@@ -983,6 +1050,10 @@ castingRateInputs,
   const [localDateRanges, setLocalDateRanges] = useState<
     Record<string, { from: string; to: string; blank?: boolean }>
   >({});
+  const [presenceFilters, setPresenceFilters] = useState<{
+    drawing: boolean;
+    image: boolean;
+  }>({ drawing: false, image: false });
 
   const currentPage = isControlled
     ? filterState!.currentPage
@@ -1260,6 +1331,7 @@ castingRateInputs,
       setLocalDateTo("");
       setLocalDateRanges({});
     }
+    setPresenceFilters({ drawing: false, image: false });
     setCurrentPage(1);
     onReset?.();
   };
@@ -1270,6 +1342,8 @@ castingRateInputs,
     globalSearch.trim() !== "" ||
     dateFrom !== "" ||
     dateTo !== "" ||
+    presenceFilters.drawing ||
+    presenceFilters.image ||
     Object.values(dateRanges).some((r) => r.from || r.to || r.blank);
 
   const showResetFilters = hasActiveFilters || !!externalFiltersActive;
@@ -1410,6 +1484,16 @@ castingRateInputs,
         if (toEnd && date > toEnd) return false;
       }
 
+      if (presenceFilters.drawing && linkedDrawingColumn) {
+        const dIdx = headers.indexOf(linkedDrawingColumn);
+        if (dIdx === -1 || !String(row[dIdx] ?? "").trim()) return false;
+      }
+      if (presenceFilters.image && imageButtonColumn) {
+        const iIdx = headers.indexOf(imageButtonColumn);
+        const code = iIdx !== -1 ? String(row[iIdx] ?? "").trim() : "";
+        if (!code || !(itemImagesByCode?.[code]?.length ?? 0)) return false;
+      }
+
       return true;
     },
     [
@@ -1426,6 +1510,10 @@ castingRateInputs,
       bomIdOptionsById,
       attachmentColumn,
       filterAttachmentColumn,
+      presenceFilters,
+      linkedDrawingColumn,
+      imageButtonColumn,
+      itemImagesByCode,
     ],
   );
 
@@ -1927,11 +2015,30 @@ castingRateInputs,
         cellContent = <OrderListCell display={display} poNo={poVal} />;
       }
     } else if (imageButtonColumn && header === imageButtonColumn) {
+      const drawingIdx = linkedDrawingColumn
+        ? headers.indexOf(linkedDrawingColumn)
+        : -1;
       cellContent = (
         <ItemImageCell
           code={display}
           images={itemImagesByCode?.[display] ?? []}
+          drawingUrl={drawingIdx !== -1 ? String(row[drawingIdx] ?? "") : ""}
         />
+      );
+    } else if (linkedFilesIconColumn && header === linkedFilesIconColumn) {
+      const filesIdx = linkedFilesColumn
+        ? headers.indexOf(linkedFilesColumn)
+        : -1;
+      const files = filesIdx !== -1 ? String(row[filesIdx] ?? "") : "";
+      cellContent = (
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="truncate" title={display}>
+            {display || "—"}
+          </span>
+          {files.trim() !== "" && (
+            <OrderListCell display={files} heading={display} iconOnly />
+          )}
+        </div>
       );
     } else if (display && isUrl(display)) {
       // Single URL case (non-ORDER LIST columns)
@@ -1992,6 +2099,46 @@ castingRateInputs,
     }
     return cellContent;
   };
+
+  // Presence toggles for the image-button column. Rendered both for a standalone
+  // column header and for the same column when it is a child of a collapsed
+  // group (where the group header owns the filter UI).
+  const presenceFilterControls = (
+    <div className="flex flex-col gap-0.5 mt-1.5">
+      <label
+        onClick={(e) => e.stopPropagation()}
+        className="flex items-center gap-1.5 text-[10px] font-medium normal-case tracking-normal text-[#0a2540]/70 cursor-pointer select-none"
+        title="Show only rows with an uploaded drawing"
+      >
+        <input
+          type="checkbox"
+          checked={presenceFilters.drawing}
+          onChange={(e) => {
+            setPresenceFilters((p) => ({ ...p, drawing: e.target.checked }));
+            setCurrentPage(1);
+          }}
+          className="accent-[#0070f3]"
+        />
+        Drawing present
+      </label>
+      <label
+        onClick={(e) => e.stopPropagation()}
+        className="flex items-center gap-1.5 text-[10px] font-medium normal-case tracking-normal text-[#0a2540]/70 cursor-pointer select-none"
+        title="Show only rows with item images"
+      >
+        <input
+          type="checkbox"
+          checked={presenceFilters.image}
+          onChange={(e) => {
+            setPresenceFilters((p) => ({ ...p, image: e.target.checked }));
+            setCurrentPage(1);
+          }}
+          className="accent-[#0070f3]"
+        />
+        Image present
+      </label>
+    </div>
+  );
 
   if (visibleCols.length === 0) {
     return (
@@ -2359,6 +2506,7 @@ castingRateInputs,
                                   </button>
                                 )}
                               </div>
+                              {ch === imageButtonColumn && presenceFilterControls}
                             </div>
                           );
                         })}
@@ -2563,6 +2711,7 @@ castingRateInputs,
                           </div>
                         </div>
                       ))}
+                    {imageButtonColumn === header && presenceFilterControls}
                     {header === "PBG AMOUNT" && pbgAmountSum !== null && (
                       <div className="mt-1 text-[11px] font-semibold text-blue-700">
                         Total :  {"  "}

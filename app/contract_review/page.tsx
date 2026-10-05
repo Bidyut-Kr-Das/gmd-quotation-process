@@ -302,7 +302,10 @@ function matchesSidebar(
   }
   if (exclude !== "pn" && pn.length > 0) {
     const cell = String(row[PN_IDX] ?? "").trim();
-    if (!pn.includes(cell)) return false;
+    const isBlank = cell === "";
+    const matchesBlank = pn.includes("(Blank)") && isBlank;
+    const matchesVal = pn.includes(cell);
+    if (!(matchesBlank || matchesVal)) return false;
   }
   if (exclude !== "mc" && mc.length > 0) {
     const cell = String(row[mcIdx] ?? "").trim();
@@ -1823,31 +1826,50 @@ tileItems,
           "PN RATING",
         ) && matchesRateTile(row, activeRateTile),
     );
-    const opts = groupCount(base, PN_IDX, (row) =>
-      matchesSidebar(
-        row,
-        balBillFilter,
-        statusFilter,
-        clearanceFilter,
-        tileItems,
-        tileSize,
-        [],
-        mcFilter,
-        inspectionFilter,
-        balBillIdx,
-        clearanceIdx,
-        MC_IDX,
-        INSPECTION_IDX,
-        "pn",
-      ),
-    );
+    const counts: Record<string, number> = {};
+    for (const row of base) {
+      if (
+        !matchesSidebar(
+          row,
+          balBillFilter,
+          statusFilter,
+          clearanceFilter,
+          tileItems,
+          tileSize,
+          [],
+          mcFilter,
+          inspectionFilter,
+          balBillIdx,
+          clearanceIdx,
+          MC_IDX,
+          INSPECTION_IDX,
+          "pn",
+        )
+      )
+        continue;
+      const cell = String(row[PN_IDX] ?? "").trim();
+      const key = cell === "" ? "(Blank)" : cell;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    const opts = Object.entries(counts).map(([value, count]) => ({
+      value,
+      count,
+    }));
+    // Always surface (Blank), mirroring CLEARANCE STATUS / MC / Inspection.
+    if (!opts.some((o) => o.value === "(Blank)")) {
+      opts.push({ value: "(Blank)", count: 0 });
+    }
     // Keep selected PN values visible even if count 0 (bidirectional cascading keep-selected)
     for (const s of tilePns) {
-      if (!opts.some((o) => o.value === s)) opts.push({ value: s, count: 0 });
+      if (s !== "(Blank)" && !opts.some((o) => o.value === s)) {
+        opts.push({ value: s, count: 0 });
+      }
     }
-    return opts.sort((a, b) =>
-      a.value.localeCompare(b.value, undefined, { numeric: true }),
-    );
+    return opts.sort((a, b) => {
+      if (a.value === "(Blank)") return 1;
+      if (b.value === "(Blank)") return -1;
+      return a.value.localeCompare(b.value, undefined, { numeric: true });
+    });
   }, [
     allRows,
     headers,
@@ -2197,6 +2219,46 @@ tileSize,
     clearanceIdx,
     ],
   );
+
+  const contractCount = useMemo(() => {
+    const seen = new Set<string>();
+    for (const row of sidebarBaseRows) {
+      if (
+        !matchesSidebar(
+          row,
+          balBillFilter,
+          statusFilter,
+          clearanceFilter,
+          tileItems,
+          tileSize,
+          tilePns,
+          mcFilter,
+          inspectionFilter,
+          balBillIdx,
+          clearanceIdx,
+          MC_IDX,
+          INSPECTION_IDX,
+          undefined,
+        )
+      )
+        continue;
+      const cn = String(row[CONTRACT_NO_IDX] ?? "").trim();
+      if (cn) seen.add(cn);
+    }
+    return seen.size;
+  }, [
+    sidebarBaseRows,
+    balBillFilter,
+    statusFilter,
+    clearanceFilter,
+    tileItems,
+    tileSize,
+    tilePns,
+    mcFilter,
+    inspectionFilter,
+    balBillIdx,
+    clearanceIdx,
+  ]);
 
   const hasTileFilter =
     tileItems.length > 0 ||
@@ -2616,6 +2678,17 @@ tileSize,
             )}
             {rmAvailSyncing ? "Syncing RM AVAIL..." : "Sync RM AVAIL"}
           </button>
+          <div className="border rounded-lg p-3 bg-white/5 border-white/10">
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
+              NUMBER OF CONTRACTS
+            </span>
+            <span className="block text-lg font-bold text-white mt-1">
+              {contractCount}
+            </span>
+            <span className="block text-[10px] font-medium text-white/50 mt-0.5">
+              of {tileRowsCount} rows
+            </span>
+          </div>
           <span className="text-xs font-bold uppercase tracking-wider text-white">
             Filters
           </span>
@@ -3365,7 +3438,9 @@ tileSize,
                   "CLEARANCE STATUS": clearanceOptions.filter(
                     (o) => o !== "(Blank)",
                   ),
-                  "PN RATING": pnOptions.map((o) => o.value),
+                  "PN RATING": pnOptions
+                    .map((o) => o.value)
+                    .filter((v) => v !== "(Blank)"),
                   Item: itemOptions.map((o) => o.value),
                   "MC Received/Pending": mcOptions.filter(
                     (o) => o !== "(Blank)",
@@ -3429,6 +3504,9 @@ tileSize,
                 columnOptionMeta={columnOptionMeta}
                 imageButtonColumn={CONTRACT_REVIEW_HEADERS[ITEM_CODE_IDX]}
                 itemImagesByCode={itemImagesByCode}
+                linkedDrawingColumn={UPLOAD_DIAGRAM_COLUMN}
+                linkedFilesColumn="ORDER LIST"
+                linkedFilesIconColumn="CONTRACT NO"
                 bomIdOptionsById={bomIdOptionsById}
                 onSelectBomId={handleSelectBomId}
                 bomIdCategoryFilter
