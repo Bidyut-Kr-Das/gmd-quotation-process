@@ -303,6 +303,49 @@ model GMDUpdateItem {
   updatedAt         DateTime @updatedAt
 }
 
+model RawMaterial {
+  id                String   @id @default(cuid())
+  erpItemCode       String?  @unique
+  itemNameAuto      String?
+  itemNameDerived   String?
+  l1                String?
+  l2ValveType       String?
+  l3Dia             String?
+  l7Dimension       String?
+  l4Component       String?
+  l5Material        String?
+  l6Std             String?
+  l8ItemCategory    String?
+  um                String?
+  conv1             String?
+  pcsWgt            String?
+  aum               String?
+  availableStock    String?
+  cost              String?
+  usdRateOption     String?
+  hsnCode           String?
+  hsnCodeValidation String?
+  conv2             String?
+  majorMarking      String?
+  newItemStatus     String?
+  currentStatus     String?
+  rmType            String?
+  indianImported    String?
+  bomId             String?
+  transferred       Boolean  @default(false)
+  vendorReference   String?
+  attachmentUrl     String?
+  orderDelivery     String?
+  // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
+  // never rendered as its own column.
+  cBatch            String?
+  syncedAt          DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // @@map("raw_material")
+}
+
 model ContractReview {
   id                               String   @id @default(cuid())
   contractNo                       String
