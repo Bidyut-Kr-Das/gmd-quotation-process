@@ -139,20 +139,20 @@ model EnquiryItem {
 }
 
 model GmdItemCode {
-  id        String   @id @default(cuid())
-  itemCode  String // "Code for The Item" column
-  itemType  String // ITEM TYPE (col 19)
-  moc       String // MOC (col 20)
-  operation String // OPERATION (col 21)
-  size      String // SIZE (col 22)
-  pnGmd     String // PN-GMD (col 24)
+  id          String   @id @default(cuid())
+  itemCode    String // "Code for The Item" column
+  itemType    String // ITEM TYPE (col 19)
+  moc         String // MOC (col 20)
+  operation   String // OPERATION (col 21)
+  size        String // SIZE (col 22)
+  pnGmd       String // PN-GMD (col 24)
   // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
   // never rendered as its own column.
-  cBatch    String?
+  cBatch      String?
   currentReqt String?
-  syncedAt  DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  syncedAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([itemType, moc, operation, size, pnGmd])
 }
@@ -332,36 +332,131 @@ model RawMaterial {
   currentStatus     String?
   rmType            String?
   indianImported    String?
-  bomId             String?
   transferred       Boolean  @default(false)
   vendorReference   String?
   attachmentUrl     String?
   orderDelivery     String?
-  // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
-  // never rendered as its own column.
   cBatch            String?
-  syncedAt          DateTime @default(now())
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
 
-  // @@map("raw_material")
-  bom Bom? @relation(fields: [bomId], references: [id])
+  // BOMs where this RawMaterial is used as a component
+  bomComponents BomItem[]
+
+  syncedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
+model FullItem {
+  id                   String   @id @default(cuid())
+  itemCode             String?  @unique
+  itemName             String?
+  itemScheduleName     String?
+  itemType             String?
+  moc                  String?
+  operation            String?
+  size                 String?
+  no                   String?
+  pnGmd                String?
+  cost                 Decimal?
+  currentReqt          String?
+  merged               String?
+  duplicateMergerCount String?
+  bomNature            String?
+  consumption1         String?
+  consumption2         String?
+  consumption3         String?
 
-// model FullItem {
+  // BOMs belonging to this FullItem
+  boms Bom[] @relation("FullItemBoms")
 
-// }
+  // Where this FullItem itself is used as a BOM component
+  bomComponents BomItem[] @relation("FullItemAsComponent")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
 model Bom {
-  id          String        @id @default(cuid())
-  bomId       String?
-  bomIdType   String?
-  bomItemQty  Int?
-  bomCost     Decimal?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  RawMaterial RawMaterial[]
+  id        String   @id @default(cuid())
+  bomId     String   @unique
+  bomIdType String?
+  bomCost   Decimal?
+
+  // The FullItem this BOM belongs to
+  fullItemId String
+  fullItem   FullItem @relation("FullItemBoms", fields: [fullItemId], references: [id])
+
+  // Materials / FullItems consumed by this BOM
+  components BomItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fullItemId])
+}
+
+model BomItem {
+  id String @id @default(cuid())
+
+  bomId String
+  bom           Bom          @relation(fields: [bomId],references: [id], onDelete: Cascade)
+
+  // If this component is a RawMaterial
+  rawMaterialId String?
+  rawMaterial   RawMaterial? @relation(fields: [rawMaterialId], references: [id])
+
+  // If this component is another FullItem
+  fullItemId String?
+  fullItem   FullItem? @relation("FullItemAsComponent", fields: [fullItemId], references: [id])
+
+  // Component-specific fields
+  quantity Int?
+  cost     Decimal?
+  noUse    String?
+  cBatch   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bomId])
+  @@index([rawMaterialId])
+  @@index([fullItemId])
+}
+
+model VerifyBom {
+  id                   String   @id @default(cuid())
+  bomId                String
+  itemCode             String
+  rmItemCode           String
+  bomIdType            String?
+  bomItemQty           String?
+  noUse                String?
+  cBatch               String?
+  availableStock       String?
+  itemName             String?
+  itemScheduleName     String?
+  rmItemName           String?
+  itemType             String?
+  moc                  String?
+  operation            String?
+  size                 String?
+  no                   String?
+  pnGmd                String?
+  currentReqt          String?
+  merged               String?
+  duplicateMergerCount String?
+  bomNature            String?
+  consumption1         String?
+  consumption2         String?
+  consumption3         String?
+  cost                 String?
+  bomItemQtyCost       String?
+  syncedAt             DateTime @default(now())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([bomId, itemCode, rmItemCode])
+  @@index([itemCode])
 }
 
 model ContractReview {
@@ -441,47 +536,11 @@ model ContractReview {
   // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
   // never rendered as its own column.
   cBatch String?
-  nBatch       String?
+  nBatch String?
 
   syncedAt  DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-model VerifyBom {
-  id                   String   @id @default(cuid())
-  bomId                String
-  itemCode             String
-  rmItemCode           String
-  bomIdType            String?
-  bomItemQty           String?
-  noUse                String?
-  cBatch               String?
-  availableStock       String?
-  itemName             String?
-  itemScheduleName     String?
-  rmItemName           String?
-  itemType             String?
-  moc                  String?
-  operation            String?
-  size                 String?
-  no                   String?
-  pnGmd                String?
-  currentReqt          String?
-  merged               String?
-  duplicateMergerCount String?
-  bomNature            String?
-  consumption1         String?
-  consumption2         String?
-  consumption3         String?
-  cost                 String?
-  bomItemQtyCost       String?
-  syncedAt             DateTime @default(now())
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  @@unique([bomId, itemCode, rmItemCode])
-  @@index([itemCode])
 }
 
 model BisStatus {
