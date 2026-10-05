@@ -48,8 +48,13 @@ export type ScheduledJobError = {
   steps: ScheduledJobResult["steps"];
 };
 
+/**
+ * Thrown when a job is asked to run while an earlier run of the same job is
+ * still in flight. Shared by every scheduled job in this folder, so the
+ * constructor takes any job name rather than one job's union.
+ */
 export class JobAlreadyRunningError extends Error {
-  constructor(job: JobName) {
+  constructor(job: string) {
     super(`Job "${job}" is already running.`);
     this.name = "JobAlreadyRunningError";
   }
