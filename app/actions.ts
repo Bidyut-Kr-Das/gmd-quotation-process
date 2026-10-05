@@ -3179,16 +3179,56 @@ export async function selectGMDUpdateBomIdAction(
     });
     if (!item) return { success: false, error: "Item not found." };
     const value = bomId?.trim() || null;
-    if (value) {
-      const ids = await getDistinctBomIds(item.erpItemCode ?? "");
-      if (!ids.includes(value)) {
-        return { success: false, error: "Selected BOM ID is not in available options." };
+
+    // RM ↔ BOM now lives in BomItem. Unlink only clears rawMaterialId; rows are
+    // never deleted, so a component's quantity/cost/noUse/cBatch survive.
+    if (!value) {
+      await prisma.bomItem.updateMany({
+        where: { rawMaterialId: id },
+        data: { rawMaterialId: null },
+      });
+      return { success: true, data: { id, bomId: null } };
+    }
+
+    const code = (item.erpItemCode ?? "").trim();
+    const bom = await prisma.bom.findFirst({
+      where: {
+        bomId: value,
+        ...(code ? { fullItem: { itemCode: code } } : {}),
+      },
+      select: { id: true },
+    });
+    if (!bom) {
+      return { success: false, error: "Selected BOM ID is not in available options." };
+    }
+
+    // Unlink this RM from any other BOM (keeps those rows).
+    await prisma.bomItem.updateMany({
+      where: { rawMaterialId: id, bomId: { not: bom.id } },
+      data: { rawMaterialId: null },
+    });
+
+    const linked = await prisma.bomItem.findFirst({
+      where: { bomId: bom.id, rawMaterialId: id },
+      select: { id: true },
+    });
+    if (!linked) {
+      // Reuse a freed row for this BOM (preserves its data), else create.
+      const free = await prisma.bomItem.findFirst({
+        where: { bomId: bom.id, rawMaterialId: null, fullItemId: null },
+        select: { id: true },
+      });
+      if (free) {
+        await prisma.bomItem.update({
+          where: { id: free.id },
+          data: { rawMaterialId: id },
+        });
+      } else {
+        await prisma.bomItem.create({
+          data: { bomId: bom.id, rawMaterialId: id },
+        });
       }
     }
-    await prisma.rawMaterial.update({
-      where: { id },
-      data: { bomId: value },
-    });
     return { success: true, data: { id, bomId: value } };
   } catch (error: any) {
     console.error("Error selecting GMD BOM ID:", error);

@@ -33,16 +33,19 @@ async function main() {
   ];
 
   const rawItems = await prisma.rawMaterial.findMany({
-    where: {
-      OR: [
-        { erpItemCode: { in: codes } },
-        { bomId: { in: bomIds } },
-      ],
-    },
+    where: { erpItemCode: { in: codes } },
     select: {
       erpItemCode: true,
-      bomId: true,
       cost: true,
+    },
+  });
+
+  // RM → BOM membership now lives in BomItem; RawMaterial no longer carries bomId.
+  const bomRmRows = await prisma.bomItem.findMany({
+    where: { bom: { bomId: { in: bomIds } }, rawMaterialId: { not: null } },
+    select: {
+      bom: { select: { bomId: true } },
+      rawMaterial: { select: { erpItemCode: true, cost: true } },
     },
   });
 
@@ -52,13 +55,18 @@ async function main() {
   for (const r of rawItems) {
     if (!r.erpItemCode) continue;
     const code = r.erpItemCode.trim().toUpperCase();
-    const bId = (r.bomId ?? "").trim().toUpperCase();
     const costVal = r.cost != null ? r.cost.toString() : "";
 
     if (costVal && !erpCodeCostMap.has(code)) {
       erpCodeCostMap.set(code, costVal);
     }
-    if (bId && costVal) {
+  }
+
+  for (const r of bomRmRows) {
+    const bId = (r.bom?.bomId ?? "").trim().toUpperCase();
+    const code = (r.rawMaterial?.erpItemCode ?? "").trim().toUpperCase();
+    const costVal = r.rawMaterial?.cost != null ? r.rawMaterial.cost.toString() : "";
+    if (bId && code && costVal) {
       const key = `${bId}||${code}`;
       if (!bomAndItemCodeCostMap.has(key)) {
         bomAndItemCodeCostMap.set(key, costVal);
