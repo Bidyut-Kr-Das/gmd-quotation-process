@@ -62,7 +62,7 @@ export async function GET() {
   return NextResponse.json(
     {
       error: "Use POST.",
-      job: "gmd-update",
+      job: "raw-material",
       auth: `x-api-key header (${SYNC_API_KEY_HEADER})`,
     },
     { status: 405, headers: { Allow: "POST" } },
