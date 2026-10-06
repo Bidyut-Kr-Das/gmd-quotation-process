@@ -591,7 +591,7 @@ export default function BomPage() {
             <button
               onClick={handleMetaSync}
               disabled={syncingMeta}
-              className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 rounded px-3 py-1.5 text-[11px] font-semibold text-emerald-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 rounded px-3 py-1.5 text-[11px] font-semibold text-emerald-400 dark:text-emerald-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {syncingMeta ? (
                 <Loader2 size={12} className="animate-spin" />
@@ -605,7 +605,7 @@ export default function BomPage() {
               type="button"
               onClick={handleSyncMissingStock}
               disabled={syncingStock || loading}
-              className="flex items-center gap-1.5 bg-[#38ef7d]/10 hover:bg-[#38ef7d]/20 border border-[#38ef7d]/40 rounded px-3 py-1.5 text-[11px] font-semibold text-[#38ef7d] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="flex items-center gap-1.5 bg-[#38ef7d]/10 hover:bg-[#38ef7d]/20 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 border border-[#38ef7d]/40 dark:border-emerald-400/30 rounded px-3 py-1.5 text-[11px] font-semibold text-[#38ef7d] dark:text-emerald-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               title="Find null available stock in VerifyBom, match with Google Sheet, and backfill available stock"
             >
               {syncingStock ? (
@@ -620,7 +620,7 @@ export default function BomPage() {
               type="button"
               onClick={handleCheckItemNames}
               disabled={syncingItemName || loading}
-              className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/30 rounded px-3 py-1.5 text-[11px] font-semibold text-amber-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/30 rounded px-3 py-1.5 text-[11px] font-semibold text-amber-400 dark:text-amber-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               title="Mark TO_DATE rows from BOM MAST ERP as NO USE + batch C, then fill item names from ITEM MASTER ERP"
             >
               {syncingItemName ? (
@@ -634,7 +634,7 @@ export default function BomPage() {
           }
         />
         {error && (
-          <div className="mt-2 text-sm text-red-600">{error}</div>
+          <div className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</div>
         )}
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4 pr-1 mt-4">
           {/*
@@ -714,7 +714,7 @@ export default function BomPage() {
                       {itemNamePlan.phase1.willMark}
                     </dd>
                     <dt>Already NO USE, will gain C</dt>
-                    <dd className="text-right font-mono text-rose-600 font-semibold">
+                    <dd className="text-right font-mono text-rose-600 dark:text-rose-300 font-semibold">
                       {itemNamePlan.phase1.willAddBatch}
                     </dd>
                     <dt>Already NO USE + C</dt>
@@ -741,10 +741,10 @@ export default function BomPage() {
                     </dd>
                     {itemNamePlan.phase1.samples.staleBatch.length > 0 && (
                       <>
-                        <dt className="text-amber-600">
+                        <dt className="text-amber-600 dark:text-amber-300">
                           C without NO USE (invariant break)
                         </dt>
-                        <dd className="text-right font-mono text-amber-600 font-semibold">
+                        <dd className="text-right font-mono text-amber-600 dark:text-amber-300 font-semibold">
                           {itemNamePlan.phase1.samples.staleBatch.length}
                         </dd>
                       </>
@@ -783,7 +783,7 @@ export default function BomPage() {
                   </dl>
                 </div>
 
-                <p className="text-[11px] text-amber-600 font-semibold">
+                <p className="text-[11px] text-amber-600 dark:text-amber-300 font-semibold">
                   The NO USE mark is one-way — nothing in this app can set it back
                   to USE.
                 </p>
@@ -801,7 +801,7 @@ export default function BomPage() {
               <Button
                 onClick={handleSyncItemNames}
                 disabled={syncingItemName}
-                className="bg-amber-500 hover:bg-amber-600 text-white"
+                className="bg-amber-500 dark:bg-amber-500/25 hover:bg-amber-600 dark:hover:bg-amber-500/35 text-white dark:text-amber-100"
               >
                 {syncingItemName ? (
                   <>

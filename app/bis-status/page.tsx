@@ -155,7 +155,7 @@ export default function BisStatusPage() {
           syncedAt={data?.syncedAt ?? undefined}
         />
         {error && (
-          <div className="mt-2 text-sm text-red-600 shrink-0">{error}</div>
+          <div className="mt-2 text-sm text-red-600 dark:text-red-300 shrink-0">{error}</div>
         )}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden mt-4">
           <GMDUpdateTable

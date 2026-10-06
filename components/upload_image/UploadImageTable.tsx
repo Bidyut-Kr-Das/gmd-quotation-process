@@ -32,12 +32,12 @@ function StatusBadge({ status, hasImage }: { status: string; hasImage: boolean }
   const normalized = hasImage ? "ready" : (status || "pending").toLowerCase();
   const cls =
     normalized === "ready"
-      ? "bg-green-50 text-green-700 border-green-200"
+      ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-300 border-green-200 dark:border-green-500/25"
       : normalized === "failed"
-      ? "bg-red-50 text-red-700 border-red-200"
+      ? "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25"
       : normalized === "generating"
-      ? "bg-amber-50 text-amber-700 border-amber-200"
-      : "bg-slate-50 text-slate-600 border-slate-200";
+      ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/25"
+      : "bg-muted text-muted-foreground border-border";
   const label = hasImage ? "ready" : status || "pending";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cls}`}>
@@ -274,7 +274,7 @@ export default function UploadImageTable({
   };
 
   return (
-    <div className="flex flex-col w-full bg-white border border-[#e1e6eb] rounded-lg shadow-sm overflow-hidden">
+    <div className="flex flex-col w-full bg-card border border-border rounded-lg shadow-sm overflow-hidden">
       <input
         ref={fileInputRef}
         type="file"
@@ -283,8 +283,8 @@ export default function UploadImageTable({
         onChange={handleFileChange}
       />
 
-      <div className="flex items-center justify-between px-4 py-2 border-b border-[#e1e6eb] bg-[#f8f9fa] gap-2">
-        <span className="text-xs font-semibold text-[#0a2540]/60">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/50 gap-2">
+        <span className="text-xs font-semibold text-foreground/60">
           Showing {filtered.length} of {items.length} records · {items.filter((i) => i.hasImage).length} with image · {items.filter((i) => !i.hasImage).length} pending
         </span>
         <div className="flex items-center gap-2">
@@ -293,13 +293,13 @@ export default function UploadImageTable({
               variant="outline"
               size="xs"
               onClick={handleResetFilters}
-              className="h-7 gap-1.5 px-3 text-[11px] font-medium border-[#e1e6eb] bg-white hover:bg-[#f8f9fa] text-[#0a2540]/70 hover:text-[#0a2540]"
+              className="h-7 gap-1.5 px-3 text-[11px] font-medium border-border bg-card hover:bg-muted/60 text-foreground/70 hover:text-foreground"
             >
               <X size={12} /> Reset Filters
             </Button>
           )}
           <div className="relative">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#0a2540]/40" />
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-foreground/40" />
             <input
               value={search}
               onChange={(e) => {
@@ -307,7 +307,7 @@ export default function UploadImageTable({
                 setPage(1);
               }}
               placeholder="Search itemType / operationType / rmType..."
-              className="w-64 pl-8 pr-7 py-1.5 text-xs border border-[#e1e6eb] rounded bg-white text-[#0a2540] outline-none focus:border-[#0070f3] placeholder:text-[#0a2540]/30"
+              className="w-64 pl-8 pr-7 py-1.5 text-xs border border-border rounded bg-card text-foreground outline-none focus:border-[#0070f3] dark:focus:border-primary placeholder:text-foreground/30"
             />
             {search && (
               <button
@@ -315,7 +315,7 @@ export default function UploadImageTable({
                   setSearch("");
                   setPage(1);
                 }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded hover:bg-[#e1e6eb] text-[#0a2540]/50"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded hover:bg-muted text-foreground/50"
               >
                 <X size={12} />
               </button>
@@ -335,9 +335,9 @@ export default function UploadImageTable({
             <col style={{ width: 160 }} />
           </colgroup>
           <thead className="sticky top-0 z-10">
-            <tr className="bg-[#f4f6f8]">
-              <th className="relative px-3 py-2 align-top border-b-2 border-[#e1e6eb] border-r">
-                <div className="text-xs font-bold uppercase tracking-wider text-[#0a2540]">Item Type</div>
+            <tr className="bg-muted">
+              <th className="relative px-3 py-2 align-top border-b-2 border-border border-r">
+                <div className="text-xs font-bold uppercase tracking-wider text-foreground">Item Type</div>
                 <div className="mt-1.5">
                   <MultiSelectFilter
                     label="Item Type"
@@ -353,8 +353,8 @@ export default function UploadImageTable({
                   />
                 </div>
               </th>
-              <th className="relative px-3 py-2 align-top border-b-2 border-[#e1e6eb] border-r">
-                <div className="text-xs font-bold uppercase tracking-wider text-[#0a2540]">Operation Type</div>
+              <th className="relative px-3 py-2 align-top border-b-2 border-border border-r">
+                <div className="text-xs font-bold uppercase tracking-wider text-foreground">Operation Type</div>
                 <div className="mt-1.5">
                   <MultiSelectFilter
                     label="Operation Type"
@@ -370,8 +370,8 @@ export default function UploadImageTable({
                   />
                 </div>
               </th>
-              <th className="relative px-3 py-2 align-top border-b-2 border-[#e1e6eb] border-r">
-                <div className="text-xs font-bold uppercase tracking-wider text-[#0a2540]">RM Type</div>
+              <th className="relative px-3 py-2 align-top border-b-2 border-border border-r">
+                <div className="text-xs font-bold uppercase tracking-wider text-foreground">RM Type</div>
                 <div className="mt-1.5">
                   <MultiSelectFilter
                     label="RM Type"
@@ -388,8 +388,8 @@ export default function UploadImageTable({
                   />
                 </div>
               </th>
-              <th className="relative px-3 py-2 align-top border-b-2 border-[#e1e6eb] border-r">
-                <div className="text-xs font-bold uppercase tracking-wider text-[#0a2540]">Status</div>
+              <th className="relative px-3 py-2 align-top border-b-2 border-border border-r">
+                <div className="text-xs font-bold uppercase tracking-wider text-foreground">Status</div>
                 <div className="mt-1.5">
                   <MultiSelectFilter
                     label="Status"
@@ -405,8 +405,8 @@ export default function UploadImageTable({
                   />
                 </div>
               </th>
-              <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-[#0a2540] border-b-2 border-[#e1e6eb] border-r">Image</th>
-              <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-[#0a2540] border-b-2 border-[#e1e6eb]">Upload</th>
+              <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-foreground border-b-2 border-border border-r">Image</th>
+              <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-foreground border-b-2 border-border">Upload</th>
             </tr>
           </thead>
           <tbody>
@@ -426,21 +426,21 @@ export default function UploadImageTable({
                 const isAssigning = assigningKey === row.imageKey;
                 const isBlank = row.rmTypeBlank;
                 return (
-                  <tr key={row.imageKey} className="hover:bg-gray-50 transition-colors border-b border-[#e1e6eb] last:border-b-0">
-                    <td className="px-3 py-2 text-xs text-[#0a2540] border-r border-[#e1e6eb] truncate" title={row.itemType}>
-                      {row.itemType || <span className="text-gray-400 italic">—</span>}
+                  <tr key={row.imageKey} className="hover:bg-muted/60 transition-colors border-b border-border last:border-b-0">
+                    <td className="px-3 py-2 text-xs text-foreground border-r border-border truncate" title={row.itemType}>
+                      {row.itemType || <span className="text-muted-foreground italic">—</span>}
                     </td>
-                    <td className="px-3 py-2 text-xs text-[#0a2540] border-r border-[#e1e6eb] truncate" title={row.operationType}>
-                      {row.operationType || <span className="text-gray-400 italic">—</span>}
+                    <td className="px-3 py-2 text-xs text-foreground border-r border-border truncate" title={row.operationType}>
+                      {row.operationType || <span className="text-muted-foreground italic">—</span>}
                     </td>
-                    <td className="px-3 py-1 text-xs text-[#0a2540] border-r border-[#e1e6eb]" title={row.rmType}>
+                    <td className="px-3 py-1 text-xs text-foreground border-r border-border" title={row.rmType}>
                       {isBlank ? (
                         <div className="relative">
                           <select
                             value=""
                             disabled={isAssigning}
                             onChange={(e) => handleRmTypeSelect(row, e.target.value)}
-                            className="w-full bg-white border border-[#d0d7de] rounded px-2 py-1 pr-6 text-xs text-[#0a2540] outline-none focus:border-[#0f62fe] focus:ring-1 focus:ring-[#0f62fe]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full bg-card border border-border rounded px-2 py-1 pr-6 text-xs text-foreground outline-none focus:border-[#0f62fe] dark:focus:border-primary focus:ring-1 focus:ring-[#0f62fe]/20 dark:focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <option value="">Select RM Type</option>
                             {RM_TYPE_OPTIONS.map((opt) => (
@@ -450,22 +450,22 @@ export default function UploadImageTable({
                             ))}
                           </select>
                           {isAssigning && (
-                            <Loader2 size={12} className="animate-spin absolute right-1.5 top-1/2 -translate-y-1/2 text-[#0a2540]/50 pointer-events-none" />
+                            <Loader2 size={12} className="animate-spin absolute right-1.5 top-1/2 -translate-y-1/2 text-foreground/50 pointer-events-none" />
                           )}
                         </div>
                       ) : (
                         <span className="truncate block" title={row.rmType}>
-                          {row.rmType || <span className="text-gray-400 italic">—</span>}
+                          {row.rmType || <span className="text-muted-foreground italic">—</span>}
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2 border-r border-[#e1e6eb]">
+                    <td className="px-3 py-2 border-r border-border">
                       <StatusBadge status={row.status} hasImage={hasImage} />
                     </td>
-                    <td className="px-3 py-2 border-r border-[#e1e6eb]">
+                    <td className="px-3 py-2 border-r border-border">
                       {hasImage ? (
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-14 h-14 rounded border border-[#e1e6eb] bg-[#f8f9fa] overflow-hidden flex items-center justify-center shrink-0">
+                          <div className="w-14 h-14 rounded border border-border bg-muted/50 overflow-hidden flex items-center justify-center shrink-0">
                             {thumbnailUrl ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
@@ -477,7 +477,7 @@ export default function UploadImageTable({
                                 }}
                               />
                             ) : (
-                              <ImageIcon size={16} className="text-[#0a2540]/30" />
+                              <ImageIcon size={16} className="text-foreground/30" />
                             )}
                           </div>
                           <div className="flex flex-col min-w-0 gap-0.5">
@@ -486,7 +486,7 @@ export default function UploadImageTable({
                                 href={row.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 underline truncate"
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 underline truncate"
                                 title={row.url}
                                 onClick={(e) => e.stopPropagation()}
                               >
@@ -501,21 +501,21 @@ export default function UploadImageTable({
                           </div>
                         </div>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
+                        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                           <ImageIcon size={14} /> No image
                         </span>
                       )}
                     </td>
                     <td className="px-3 py-2">
                       {isBlank ? (
-                        <span className="text-[11px] text-gray-400 italic" title="Select an RM Type first to enable upload">
+                        <span className="text-[11px] text-muted-foreground italic" title="Select an RM Type first to enable upload">
                           Select RM Type first
                         </span>
                       ) : (
                         <Button
                           variant="outline"
                           size="xs"
-                          className="h-7 gap-1.5 px-2.5 text-[11px] font-semibold border-[#0f62fe]/20 bg-white hover:bg-[#f0f4ff] text-[#0f62fe]"
+                          className="h-7 gap-1.5 px-2.5 text-[11px] font-semibold border-[#0f62fe]/20 dark:border-primary/20 bg-card hover:bg-[#f0f4ff] dark:hover:bg-primary/15 text-[#0f62fe] dark:text-primary"
                           onClick={() => handlePick(row)}
                           disabled={isUploading}
                         >
@@ -539,8 +539,8 @@ export default function UploadImageTable({
         </table>
       </div>
 
-      <div className="flex items-center justify-between px-4 py-2 border-t border-[#e1e6eb] bg-[#f8f9fa]">
-        <span className="text-xs text-[#0a2540]/60">
+      <div className="flex items-center justify-between px-4 py-2 border-t border-border bg-muted/50">
+        <span className="text-xs text-foreground/60">
           Page {currentPage} of {totalPages} · {filtered.length} rows
         </span>
         <div className="flex items-center gap-2">
@@ -552,7 +552,7 @@ export default function UploadImageTable({
           >
             Prev
           </Button>
-          <span className="text-xs font-medium text-[#0a2540]">{currentPage} / {totalPages}</span>
+          <span className="text-xs font-medium text-foreground">{currentPage} / {totalPages}</span>
           <Button
             variant="outline"
             size="xs"

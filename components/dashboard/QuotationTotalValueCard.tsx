@@ -29,7 +29,7 @@ export default function QuotationTotalValueCard({
   className,
 }: QuotationTotalValueCardProps) {
   const cardClassName =
-    "shadow-sm bg-linear-to-br from-slate-50 to-white border-slate-200 shrink-0 w-full sm:w-72 py-1";
+    "shadow-sm bg-linear-to-br from-muted/50 to-card border-border shrink-0 w-full sm:w-72 py-1";
 
   return (
     <div
@@ -39,7 +39,7 @@ export default function QuotationTotalValueCard({
       <Card size="sm" className={cardClassName}>
         <CardHeader className="py-1 pb-0.5">
           <CardTitle className="text-[11px] font-semibold flex items-center gap-1">
-            <IndianRupee className="h-3 w-3 text-emerald-600" />
+            <IndianRupee className="h-3 w-3 text-emerald-600 dark:text-emerald-300" />
             Total Value (incl. GST)
           </CardTitle>
         </CardHeader>
@@ -47,14 +47,14 @@ export default function QuotationTotalValueCard({
           <span className="text-[15px] font-bold tracking-tight text-foreground whitespace-nowrap">
             ₹ {formattedSum}
           </span>
-          <span className="inline-flex items-center rounded-full bg-slate-100 px-1.5 py-0.5 text-[9.5px] font-medium text-muted-foreground whitespace-nowrap">
+          <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[9.5px] font-medium text-muted-foreground whitespace-nowrap">
             {filteredEnquiriesCount} dockets
           </span>
-          <span className="inline-flex items-center rounded-full bg-slate-100 px-1.5 py-0.5 text-[9.5px] font-medium text-muted-foreground whitespace-nowrap">
+          <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[9.5px] font-medium text-muted-foreground whitespace-nowrap">
             {analyticsItemsCount} items
           </span>
           {hasActiveAnalyticsFilters && (
-            <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-1.5 py-0.5 text-[9.5px] font-medium whitespace-nowrap">
+            <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 text-[9.5px] font-medium whitespace-nowrap">
               {activeFilterCount} filters
             </span>
           )}
@@ -65,7 +65,7 @@ export default function QuotationTotalValueCard({
       <Card size="sm" className={cardClassName}>
         <CardHeader className="py-1 pb-0.5">
           <CardTitle className="text-[11px] font-semibold flex items-center gap-1">
-            <IndianRupee className="h-3 w-3 text-slate-500" />
+            <IndianRupee className="h-3 w-3 text-muted-foreground" />
             Total Value (excl. GST)
           </CardTitle>
         </CardHeader>
@@ -80,7 +80,7 @@ export default function QuotationTotalValueCard({
       <Card size="sm" className={cardClassName}>
         <CardHeader className="py-1 pb-0.5">
           <CardTitle className="text-[11px] font-semibold flex items-center gap-1">
-            <IndianRupee className="h-3 w-3 text-amber-600" />
+            <IndianRupee className="h-3 w-3 text-amber-600 dark:text-amber-300" />
             Total Cost
           </CardTitle>
         </CardHeader>
@@ -95,7 +95,7 @@ export default function QuotationTotalValueCard({
       <Card size="sm" className={cardClassName}>
         <CardHeader className="py-1 pb-0.5">
           <CardTitle className="text-[11px] font-semibold flex items-center gap-1">
-            <Percent className="h-3 w-3 text-indigo-600" />
+            <Percent className="h-3 w-3 text-indigo-600 dark:text-indigo-300" />
             Total VA%
           </CardTitle>
         </CardHeader>
@@ -110,7 +110,7 @@ export default function QuotationTotalValueCard({
       <Card size="sm" className={cardClassName}>
         <CardHeader className="py-1 pb-0.5">
           <CardTitle className="text-[11px] font-semibold flex items-center gap-1">
-            <Hash className="h-3 w-3 text-teal-600" />
+            <Hash className="h-3 w-3 text-teal-600 dark:text-teal-300" />
             Total Quantity
           </CardTitle>
         </CardHeader>
@@ -125,7 +125,7 @@ export default function QuotationTotalValueCard({
         {!hasActiveAnalyticsFilters ? (
           <span>All dockets — apply filters to narrow.</span>
         ) : analyticsItemsCount === 0 ? (
-          <span className="text-amber-600">No items match.</span>
+          <span className="text-amber-600 dark:text-amber-300">No items match.</span>
         ) : null}
       </div> */}
     </div>

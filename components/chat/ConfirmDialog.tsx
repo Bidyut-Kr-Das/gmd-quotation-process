@@ -31,7 +31,7 @@ export function ConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-xl border-border bg-card p-0">
         <DialogHeader className="p-4 pb-2">
-          <DialogTitle className="text-sm font-semibold text-[#0a2540]">
+          <DialogTitle className="text-sm font-semibold text-foreground">
             {title}
           </DialogTitle>
           <DialogDescription className="pt-1 text-[13px] leading-5 text-muted-foreground">

@@ -91,7 +91,7 @@ function ChatView({
             <span
               className={cn(
                 "absolute inline-flex size-2 animate-ping rounded-sm",
-                streaming ? "bg-[#0f62fe]/40" : "bg-border"
+                streaming ? "bg-[#0f62fe]/40 dark:bg-primary/40" : "bg-border"
               )}
             />
             <span
@@ -100,7 +100,7 @@ function ChatView({
                 status === "error"
                   ? "bg-destructive"
                   : streaming
-                    ? "bg-[#0f62fe]"
+                    ? "bg-[#0f62fe] dark:bg-primary/85"
                     : "bg-muted-foreground/60"
               )}
             />
@@ -315,7 +315,7 @@ export function ChatPanel({ enabled = true }: { enabled?: boolean }) {
             resetToNewChat();
             setOpen(true);
           }}
-          className="size-10 rounded-lg border border-border bg-card text-[#0a2540] shadow-[0_8px_24px_-8px_rgba(0,0,0,0.2)] transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-[#0f62fe]/60 hover:text-[#0f62fe]"
+          className="size-10 rounded-lg border border-border bg-card text-foreground shadow-[0_8px_24px_-8px_rgba(0,0,0,0.2)] transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-[#0f62fe]/60 dark:hover:border-primary/60 hover:text-[#0f62fe] dark:hover:text-primary"
         >
           <Plus className="size-4.5" />
         </Button>
@@ -327,7 +327,7 @@ export function ChatPanel({ enabled = true }: { enabled?: boolean }) {
             setView("sessions");
             setOpen(true);
           }}
-          className="size-10 rounded-lg border border-border bg-card text-[#0a2540] shadow-[0_8px_24px_-8px_rgba(0,0,0,0.2)] transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-[#0f62fe]/60 hover:text-[#0f62fe]"
+          className="size-10 rounded-lg border border-border bg-card text-foreground shadow-[0_8px_24px_-8px_rgba(0,0,0,0.2)] transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-[#0f62fe]/60 dark:hover:border-primary/60 hover:text-[#0f62fe] dark:hover:text-primary"
         >
           <History className="size-4.5" />
         </Button>
@@ -339,7 +339,7 @@ export function ChatPanel({ enabled = true }: { enabled?: boolean }) {
             setView("memory");
             setOpen(true);
           }}
-          className="size-10 rounded-lg border border-border bg-card text-[#0a2540] shadow-[0_8px_24px_-8px_rgba(0,0,0,0.2)] transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-[#0f62fe]/60 hover:text-[#0f62fe]"
+          className="size-10 rounded-lg border border-border bg-card text-foreground shadow-[0_8px_24px_-8px_rgba(0,0,0,0.2)] transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-[#0f62fe]/60 dark:hover:border-primary/60 hover:text-[#0f62fe] dark:hover:text-primary"
         >
           <BookmarkPlus className="size-4.5" />
         </Button>
@@ -354,7 +354,7 @@ export function ChatPanel({ enabled = true }: { enabled?: boolean }) {
             setView("chat");
             setOpen(true);
           }}
-          className="fixed bottom-6 right-6 z-40 size-14 rounded-full bg-[#0a2540] text-white shadow-[0_8px_32px_rgba(10,37,64,0.35)] transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[#0f62fe] hover:shadow-[0_8px_32px_rgba(15,98,254,0.4)] active:scale-95"
+          className="fixed bottom-6 right-6 z-40 size-14 rounded-full bg-[#0a2540] text-white dark:bg-accent dark:text-foreground dark:hover:text-primary-foreground shadow-[0_8px_32px_rgba(10,37,64,0.35)] transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[#0f62fe] dark:hover:bg-primary hover:shadow-[0_8px_32px_rgba(15,98,254,0.4)] active:scale-95"
         >
           <Sparkles className="size-6" />
         </Button>

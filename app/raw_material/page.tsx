@@ -1162,8 +1162,8 @@ export default function Home() {
             minSize={180}
             maxSize={420}
           >
-            <aside className="h-full w-full bg-[#0a2540] border border-[#1e3d59] rounded-lg shadow-sm p-4 flex flex-col gap-3 overflow-y-auto">
-              <span className="text-xs font-bold uppercase tracking-wider text-white">
+            <aside className="h-full w-full bg-[#0a2540] border border-[#1e3d59] dark:bg-card dark:border-border rounded-lg shadow-sm p-4 flex flex-col gap-3 overflow-y-auto">
+              <span className="text-xs font-bold uppercase tracking-wider text-white dark:text-foreground">
                 STOCK VALUE
               </span>
 
@@ -1174,14 +1174,14 @@ export default function Home() {
                 }
                 className={`w-full text-left bg-white/5 border rounded-lg p-3 transition-all cursor-pointer ${
                   indianImported === "indian"
-                    ? "border-[#38ef7d] bg-white/10"
+                    ? "border-[#38ef7d] dark:border-emerald-400/50 bg-white/10"
                     : "border-white/10 hover:border-white/25"
                 }`}
               >
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
                   Indian
                 </span>
-                <span className="block text-lg font-bold text-white mt-1">
+                <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
                   {fmt(cardStats.indian.sum)}
                 </span>
                 <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -1199,14 +1199,14 @@ export default function Home() {
                 }
                 className={`w-full text-left bg-white/5 border rounded-lg p-3 transition-all cursor-pointer ${
                   indianImported === "imported"
-                    ? "border-[#38ef7d] bg-white/10"
+                    ? "border-[#38ef7d] dark:border-emerald-400/50 bg-white/10"
                     : "border-white/10 hover:border-white/25"
                 }`}
               >
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
                   Imported
                 </span>
-                <span className="block text-lg font-bold text-white mt-1">
+                <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
                   {fmt(cardStats.imported.sum)}
                 </span>
                 <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -1222,14 +1222,14 @@ export default function Home() {
                 }
                 className={`w-full text-left bg-white/5 border rounded-lg p-3 transition-all cursor-pointer ${
                   majorFilter === "major"
-                    ? "border-[#38ef7d] bg-white/10"
+                    ? "border-[#38ef7d] dark:border-emerald-400/50 bg-white/10"
                     : "border-white/10 hover:border-white/25"
                 }`}
               >
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
                   Major
                 </span>
-                <span className="block text-lg font-bold text-white mt-1">
+                <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
                   {fmt(cardStats.major.sum)}
                 </span>
                 <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -1245,14 +1245,14 @@ export default function Home() {
                 }
                 className={`w-full text-left bg-white/5 border rounded-lg p-3 transition-all cursor-pointer ${
                   majorFilter === "minor"
-                    ? "border-[#38ef7d] bg-white/10"
+                    ? "border-[#38ef7d] dark:border-emerald-400/50 bg-white/10"
                     : "border-white/10 hover:border-white/25"
                 }`}
               >
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
                   Minor
                 </span>
-                <span className="block text-lg font-bold text-white mt-1">
+                <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
                   {fmt(cardStats.minor.sum)}
                 </span>
                 <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -1263,7 +1263,7 @@ export default function Home() {
             </aside>
           </ResizablePanel>
 
-          <ResizableHandle withHandle className="mx-2 bg-[#e1e6eb]" />
+          <ResizableHandle withHandle className="mx-2 bg-border" />
 
           <ResizablePanel id="content" minSize="40%">
             <div className="flex h-full flex-col min-h-0 min-w-0">
@@ -1336,7 +1336,7 @@ export default function Home() {
                   />
                 </ResizablePanel>
 
-                <ResizableHandle withHandle className="my-2 bg-[#e1e6eb]" />
+                <ResizableHandle withHandle className="my-2 bg-border" />
 
                 <ResizablePanel
                   id="filtered-items"
@@ -1369,7 +1369,7 @@ export default function Home() {
                   />
                 </ResizablePanel>
 
-                <ResizableHandle withHandle className="my-2 bg-[#e1e6eb]" />
+                <ResizableHandle withHandle className="my-2 bg-border" />
 
                 <ResizablePanel
                   id="transferred-items"
