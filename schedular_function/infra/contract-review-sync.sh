@@ -9,9 +9,13 @@
 # large table rewrite — so it is scheduled at :30 rather than :00 to keep the two
 # jobs from contending.
 #
-# Failure modes, both of which must fail the job:
+# Failure modes, all of which must fail the job:
 #   - Non-200: wget itself exits non-zero, and `set -e` aborts the script.
 #   - 200 whose body reports success=false: caught by the grep below.
+#   - 200 with success=true but a partial failure: rows that failed to write
+#     (`failedWrites`) or a side-effect stage that threw (`warnings`). The
+#     orchestrator only reports success=false when a step THROWS, so without the
+#     counter checks a half-written run would print OK.
 #
 # Env (set in the ofelia container, not committed):
 #   GMD_APP_SERVER      base URL of this app, e.g. http://gmd-quotation-process:4570
@@ -50,6 +54,21 @@ echo "$body"
 
 if echo "$body" | grep -q '"success": *false'; then
   echo "ERROR: contract-review sync reported success=false"
+  exit 1
+fi
+
+# The orchestrator returns success:true unless a step THROWS, so a partial
+# failure still arrives as 200. Rows that failed to write are counted in
+# `failedWrites` (sheet sync and RM AVAIL both nest this under `steps`), and a
+# failed side-effect stage lands in `warnings`. Without these two checks the
+# script would print OK over a half-written table. Same reasoning as the
+# failedTables check in c-batch-sync.sh.
+if echo "$body" | grep -q '"failedWrites": *[1-9]'; then
+  echo "ERROR: contract-review reported row write failures (see body)"
+  exit 1
+fi
+if echo "$body" | grep -q '"warnings":\[[^]]'; then
+  echo "ERROR: contract-review reported warnings (see body)"
   exit 1
 fi
 

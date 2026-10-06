@@ -1,9 +1,5 @@
 /**
- * Ofelia entry point for the Contract Review hourly sync.
- *
- * Runs four steps in order: CONTRACTS + DUMP sheet sync, Enquiry field
- * backfill, RM AVAIL / VerifyBom / physical stock, then the INSPECTION OFFER
- * DUMP offer / inspection / DI union.
+ * Ofelia entry point for the Supply History hourly MASTER sync.
  *
  * Deliberately thin: all logic lives in `@/schedular_function`. This file only
  * does the HTTP concerns — auth, status codes, and shaping the response.
@@ -13,15 +9,15 @@
 // the filesystem to reach Google Sheets.
 export const runtime = "nodejs";
 
-// Heavier than the Raw Material job — it reads two full-column spreadsheet
-// reads and rewrites a large table. Matches `wget -T 1800` in the ofelia script.
+// Matches `wget -T 1800` in the ofelia script. The touch loop alone can run over
+// the whole SupplyHistoryItem table, so this is the longest of the hourly jobs.
 export const maxDuration = 1800;
 
 import { NextResponse } from "next/server";
 import {
   JobAlreadyRunningError,
   requireSyncApiKey,
-  runScheduledContractReview,
+  runScheduledSupplyHistory,
 } from "@/schedular_function";
 
 export async function POST(request: Request) {
@@ -35,7 +31,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await runScheduledContractReview();
+    const result = await runScheduledSupplyHistory();
 
     return NextResponse.json(result);
   } catch (err) {
@@ -47,18 +43,13 @@ export async function POST(request: Request) {
     }
 
     const message = err instanceof Error ? err.message : "Unknown error";
-    console.error(`[scheduler-contract-review] fatal: ${message}`, err);
+    console.error(`[scheduler-supply-history] fatal: ${message}`, err);
 
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: 500 },
-    );
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
 
-// Credential probe. Ofelia only ever POSTs, but authenticating here gives a
-// cheap way to verify the key is valid WITHOUT triggering a full sync, and
-// answers the `GET` a human gets from typing the URL.
+// Credential probe: authenticates without running the sync.
 export async function GET(request: Request) {
   const auth = requireSyncApiKey(request);
   if (!auth.ok) {
@@ -70,17 +61,9 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     success: true,
-    job: "contract-review",
+    job: "supply-history",
     auth: "ok",
-    runs: ["sheetSync", "enquiry", "rmAvail", "icDump"],
+    runs: ["masterSync"],
     note: "POST to run the job.",
-  });
-}
-
-export async function HEAD(request: Request) {
-  const auth = requireSyncApiKey(request);
-  return new NextResponse(null, {
-    status: auth.ok ? 200 : auth.status,
-    headers: { Allow: "GET, POST" },
   });
 }

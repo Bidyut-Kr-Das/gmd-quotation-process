@@ -76,3 +76,35 @@ export {
   type RunContractReviewOptions,
   type ScheduledContractReviewResult,
 } from "./run-contract-review";
+
+export {
+  runSupplyHistorySync,
+  type SupplyHistorySyncResult,
+} from "./supply-history-sync";
+
+export {
+  runScheduledSupplyHistory,
+  type ScheduledSupplyHistoryResult,
+} from "./run-supply-history";
+
+export {
+  runCBatchSync,
+  planCBatchMarks,
+  type CBatchRow,
+  type CBatchPlan,
+  type CBatchSyncOptions,
+  type CBatchSyncResult,
+  type CBatchTableResult,
+} from "./c-batch";
+
+export {
+  runScheduledCBatch,
+  type RunCBatchOptions,
+  type ScheduledCBatchResult,
+} from "./run-c-batch";
+
+export {
+  runIcDumpSync,
+  type IcDumpSyncOptions,
+  type IcDumpSyncResult,
+} from "./contract-review-ic-dump";

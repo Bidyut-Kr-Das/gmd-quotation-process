@@ -257,14 +257,13 @@ const DUMP_COLUMNS = cols(
   ["PARTY NAME", "partyNameDump", "display PARTY NAME + Enquiry join key"],
 );
 
-/** IC DUMP tab -> ContractReview array columns. */
+/** INSPECTION OFFER DUMP tab -> ContractReview array columns. */
 const IC_DUMP_COLUMNS = cols(
-  ["Manufacturing clearance No", "(not stored)", "read but unused"],
-  ["Item Code", "(join key)", "first half of ITEM_CODE||CONTRACT NO"],
-  ["Contract No", "(join key)", "second half of the key"],
-  ["Offer Number", "offerNumber[]", "comma-split, union per key, array replaced"],
-  ["Inspection Number", "inspectionNumber[]", "comma-split, union per key"],
-  ["DI DATE", "diDate[]", "comma-split, union per key"],
+  ["VRNO", "offerNumber[]", "col A; comma-split, unioned, normalized dedupe"],
+  ["ITEM_CODE", "(join key)", "col C; first half of MC NO||ITEM_CODE"],
+  ["CONTRACT_VRNO", "(join key)", "col G; half 2 of the key, stored as ContractReview.mcNo"],
+  ["INSPE_VRNO", "inspectionNumber[]", "col H; comma-split, unioned"],
+  ["DI_DATE", "diDate[]", "col K; comma-split, unioned"],
 );
 
 /** VERIFY BOM tab -> VerifyBom. Only 8 of the 26 headers are read. */
@@ -1314,23 +1313,23 @@ const CONTRACT_REVIEW_SYNC: SyncOperation[] = [
   },
   {
     id: "cr-script-ic-dump",
-    name: "IC DUMP sync",
+    name: "INSPECTION OFFER DUMP sync",
     kind: "sync",
     file: "scripts/sync-ic-dump.ts",
-    line: "7-210",
+    line: "1-330",
     purpose:
-      "Pulls inspection-clearance data from the IC DUMP tab into the three array columns that drive the MC / Inspection / DI states.",
+      "Pulls inspection-clearance data from the INSPECTION OFFER DUMP tab into the three array columns that drive the MC / Inspection / DI states.",
     direction: "sheet-to-db",
     trigger: "manual-script",
     triggerLabel: "npm run ic:sync:apply",
-    sheetTab: "IC DUMP",
-    sheetGid: "402078548",
+    sheetTab: "INSPECTION OFFER DUMP",
+    sheetGid: "148043829",
     sheetRange: "'<tab>'!A:ZZZ",
     headerRow: 1,
     columns: IC_DUMP_COLUMNS,
     dbModels: ["ContractReview"],
     writePolicy:
-      "Join key = Item Code + Contract No. Each cell is comma-split, and multiple sheet rows for one key are unioned. The three array columns are REPLACED wholesale (only when the array actually differs). Batched at 200.",
+      "Join key = MC No (col G) + Item Code (col C). Columns are positional (A/C/G/H/K) and asserted against their expected header names at startup. Each cell is comma-split and multiple sheet rows for one key are unioned. The three array columns are UNIONED into the DB — never shrunk, never cleared, normalized dedupe (case/whitespace-insensitive), existing order and casing preserved. Batched at 200.",
     cadence: "manual",
     npmCommand: "npm run ic:sync",
     dryRunDefault: true,
@@ -3178,14 +3177,6 @@ export const DATA_SOURCES: DataSource[] = [
         resolvedBy: "gid",
         file: "app/api/contract-review/sync/route.ts",
       },
-      {
-        name: "IC DUMP",
-        gid: "402078548",
-        headerRow: 1,
-        range: "A:ZZZ",
-        resolvedBy: "gid",
-        file: "scripts/sync-ic-dump.ts",
-      },
     ],
     sync: CONTRACT_REVIEW_SYNC,
   },
@@ -3235,6 +3226,26 @@ export const DATA_SOURCES: DataSource[] = [
         resolvedBy: "gid",
         note: "separate TO_DATE -> NO USE + batch C flow; drives the /bom page only",
         file: "app/actions.ts:syncBomMastItemNamesAction",
+      },
+    ],
+  },
+  {
+    page: "Contract Review",
+    route: "/contract_review",
+    dashboardName: "Contract Review (INSPECTION OFFER DUMP)",
+    sheetName: "BOM MAST ERP",
+    purpose:
+      "INSPECTION OFFER DUMP. Unions offerNumber / inspectionNumber / diDate into ContractReview, matched on MC No + Item Code. Replaced the old 'IC DUMP' tab in the Contract Review workbook, which had no shared key with the new sheet.",
+    sheetId: BOM_MAST_ERP_ID,
+    tabs: [
+      {
+        name: "INSPECTION OFFER DUMP",
+        gid: "148043829",
+        headerRow: 1,
+        range: "A:ZZZ",
+        resolvedBy: "gid",
+        note: "positional mapping A=VRNO, C=ITEM_CODE, G=CONTRACT_VRNO, H=INSPE_VRNO, K=DI_DATE; asserted against these header names at startup so a shifted column aborts the run",
+        file: "scripts/sync-ic-dump.ts",
       },
     ],
   },

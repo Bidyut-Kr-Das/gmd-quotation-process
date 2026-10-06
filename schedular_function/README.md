@@ -12,14 +12,23 @@ Where an algorithm already existed there, it was copied rather than imported
 
 ## Jobs
 
-| Job | Endpoint | Schedule | Ofelia job name |
-|---|---|---|---|
-| Raw Material sync | `POST /api/scheduler/raw-material` | hourly, `:00` | `raw-material-sync` |
-| Contract Review sync | `POST /api/scheduler/contract-review` | hourly, `:30` | `contract-review-sync` |
+Four hourly jobs, staggered 15 minutes apart so no two heavy ones collide.
 
-The two are offset by 30 minutes on purpose. Both take a full-table read on
-`GMDUpdateItem` / `RawMaterial` / `ContractReview`; running them in the same
-minute makes them contend for the same database.
+| :00 | :15 | :30 | :45 |
+|---|---|---|---|
+| `raw-material` | `supply-history` | `contract-review` | `c-batch` |
+
+| Job | Endpoint | Ofelia job name | Reads |
+|---|---|---|---|
+| Raw Material sync | `POST /api/scheduler/raw-material` | `raw-material-sync` | `GMD UPDATION`, `stock-phys` |
+| Supply History MASTER sync | `POST /api/scheduler/supply-history` | `supply-history-sync` | `MASTER`, GMD Clientwise ORDER LIST |
+| Contract Review sync | `POST /api/scheduler/contract-review` | `contract-review-sync` | `CONTRACTS`, `DUMP`, `stock-phys`, `INSPECTION OFFER DUMP` |
+| C Batch marks | `POST /api/scheduler/c-batch` | `c-batch-sync` | `ITEM MASTER ERP` |
+
+The stagger is deliberate. `raw-material`, `supply-history` and
+`contract-review` each full-table-read the tables the others write. `c-batch`
+runs last and can safely overlap any of them: it writes **only** the `cBatch`
+column, which no other scheduled job touches.
 
 ## `raw-material`
 
@@ -50,24 +59,28 @@ pivot/QUERY result). Nothing here sums anything itself.
 
 ## `contract-review`
 
-Three sequential steps in `run-contract-review.ts`:
+Four sequential steps in `run-contract-review.ts`:
 
 | # | Step | File | What it writes |
 |---|---|---|---|
 | 1 | `runContractReviewSheetSync()` | `contract-review-sync.ts` | `ContractReview` (all mapped sheet columns) + owned side-effects `Enquiry.contractNo` and the not-current-reqt marks |
 | 2 | `runContractReviewEnquirySync()` | `contract-review-enquiry.ts` | `ContractReview.state` / `.utility` / `.projectReference` |
 | 3 | `runContractReviewRmAvailSync()` | `contract-review-rm-avail.ts` | `RawMaterial.availableStock`, `VerifyBom`, `ContractReview.noUse`, `ContractReview.rmPhysicalStock` |
+| 4 | `runIcDumpSync()` | `contract-review-ic-dump.ts` | `ContractReview.offerNumber` / `.inspectionNumber` / `.diDate` |
 
 Step 1 reads `CONTRACTS` (GID 734728893, header row 4) and `DUMP` (GID
 1604813523, header row 1) from `CONTRACT_REVIEW_SPREADSHEET_ID`. Step 3 reads
-`stock-phys` from `GOOGLE_SPREADSHEET_ID`.
+`stock-phys` from `GOOGLE_SPREADSHEET_ID`. Step 4 reads `INSPECTION OFFER DUMP`
+(GID 148043829) from the BOM MAST ERP workbook.
 
 The order is a real dependency chain: step 3's RM AVAIL reads `VerifyBom`, whose
 `itemName` is sourced from `ContractReview.itemName` ordered by `syncedAt desc`
-(`lib/verifyBomLookup.ts:236`), so a stale sheet sync means stale names.
+(`lib/verifyBomLookup.ts:236`), so a stale sheet sync means stale names. Step 4
+joins on the `mcNo` + `itemCode` pair that step 1 populates.
 
 **Nothing in this job runs twice.** The manual SYNC route also performs the
-VerifyBom and RM AVAIL recomputes, but here they are owned by step 3 only.
+VerifyBom and RM AVAIL recomputes, but here they are owned by step 3 only. Step
+4 does not appear in any manual path except its own CLI (`npm run ic:sync`).
 
 ### Step 2 is normally a no-op
 
@@ -110,13 +123,192 @@ Step 3's `noUse` transaction is chunked at 200 with a 20 s timeout. The manual
 version wraps every differing row in one unbounded `$transaction`
 (`app/actions.ts:5260`) — a `P2028` waiting to happen.
 
-### Cost of step 4
+### Cost of RM AVAIL's physical-stock sub-step
 
 `rmPhysicalStock` needs `ContractReview.costCodeRef`, which step 1 **cannot**
 populate: it is absent from `CONTRACTS_SHEET_COLUMNS`, so
 `mapContractReviewRow` never emits it. It is published separately from the
 Indent Listing by `recomputeIndentListingVersionsAction`. Until that has run,
-step 4 resolves nothing and writes `null`.
+that sub-step resolves nothing and writes `null`.
+
+### Step 4 — IC dump (offer / inspection / DI)
+
+`runIcDumpSync()` unions `offerNumber`, `inspectionNumber` and `diDate` onto
+`ContractReview` rows matched on **MC No + Item Code**, from the
+`INSPECTION OFFER DUMP` tab (gid 148043829) of the BOM MAST ERP workbook.
+
+Column mapping is **positional**, because the sheet's header names do not match
+our field names — column A is literally `VRNO` but lands in `offerNumber`:
+
+| Col | Idx | Sheet header | → DB field |
+|---|---|---|---|
+| A | 0 | `VRNO` | `offerNumber[]` |
+| C | 2 | `ITEM_CODE` | `itemCode` (key) |
+| G | 6 | `CONTRACT_VRNO` | `mcNo` (key) |
+| H | 7 | `INSPE_VRNO` | `inspectionNumber[]` |
+| K | 10 | `DI_DATE` | `diDate[]` |
+
+A **fail-fast header guard** asserts each index still carries the expected
+header, so a column inserted or renamed in the sheet aborts the run instead of
+silently writing the wrong data.
+
+#### Union, never shrink
+
+Values are **appended** if an equivalent one is not already present, compared
+after normalisation (trim, collapse whitespace, upper-case) so `id22y-18` and
+`ID22Y-18` are the same value. Existing values are never removed, and the DB's
+own order and casing are preserved.
+
+Two consequences:
+
+- **A blank sheet cell can never clear a stored value** — `db ∪ [] = db`, so
+  this falls out of the union rather than needing a separate guard.
+- If the sheet has fewer comma-values than the DB, the DB array keeps all of
+  them. This is the opposite of the other syncs' replace semantics, and it is
+  deliberate.
+
+It matters beyond tidiness: `offerPendingDone` is DONE iff
+`itemCode + mcNo + offerNumber` are set, and `inspection` is DONE iff
+`offerNumber + inspectionNumber` are set
+(`app/contract_review/page.tsx:1223,1258`). Clearing one of these arrays would
+silently flip a row from DONE back to PENDING.
+
+#### Independent of the manual script — and the duplication that implies
+
+`scripts/sync-ic-dump.ts` is the manual CLI (`npm run ic:sync` /
+`ic:sync:apply`, dry-run by default) and was **deliberately left untouched**.
+This step is an independent port, so the following exist in two places:
+
+- `IC_DUMP_GID`, the five column indices, and `EXPECTED_HEADERS`
+- the fetch → header-guard → match → write flow
+
+The **merge rules are shared**, not duplicated — both sides import
+`lib/gmd_lib/ic-dump-merge.ts`, which is unit-tested.
+
+The header guard catches a column being reordered in the **sheet**, but it
+cannot catch someone editing the indices in only one of the two files. The
+constant block in `contract-review-ic-dump.ts` names the counterpart script and
+its line numbers. **If you change the mapping, change both.** Collapsing these
+into one shared implementation is a reasonable follow-up.
+
+#### Differences from the CLI script
+
+1. **No `--apply` gate** — the scheduled path always writes. `dryRun` is
+   forwarded from the orchestrator for a manual check.
+2. **Per-batch error containment** — each 200-row transaction is caught
+   individually, so one failed batch increments `failedWrites` and the run
+   continues, instead of aborting with the rest unwritten.
+
+Because a failed batch still returns `200` with `success: true`,
+`contract-review-sync.sh` greps for `"failedWrites":[1-9]` as well as
+`"success": *false`.
+
+## `supply-history`
+
+Single step: `runSupplyHistorySync()` in `supply-history-sync.ts`. Reads the
+`MASTER` tab of `SUPPLY_HISTORY_SPREADSHEET_ID` plus
+`buildGmdClientwiseOrderLinkMap()` for ORDER LIST links — **4 Google calls per
+run**. Writes only `SupplyHistoryItem`, joined on
+`normalizeKey(invoiceNo) + "||" + normalizeKey(itemName)`.
+
+This is the heaviest of the four: it full-table-reads `SupplyHistoryItem` and
+stamps `syncedAt` on nearly every row, every hour.
+
+### What changed from the manual route
+
+The write policy is unchanged. Six things around it were changed to make it safe
+on a schedule:
+
+- **The `syncedAt` touch loop is one statement per chunk, not 500.** Every row in
+  a chunk is stamped with the *same* `syncedAt`, so `updateMany` is exactly
+  equivalent to the original's per-row updates. The comment there — "we need same
+  syncedAt" — is the only reason it was never collapsed.
+- **In-sheet duplicate keys are detected.** The join key is normalised but the
+  Postgres `@@unique([invoiceNo, itemName])` is case- and whitespace-sensitive,
+  and only `.trim()` is persisted. Two sheet rows differing only in case share a
+  key, both take the `!existing` branch, and both insert; the next run then
+  orphans one permanently. Now counted as `duplicateInSheet` and skipped.
+- **Rejected writes are counted.** The original counted only fulfilled touches
+  and never logged rejections, so a failed `syncedAt` bump vanished from the
+  report. Now `failedWrites`.
+- **The preload select is derived from `mapSheetRowToDb`** rather than
+  hand-listed, so adding a column cannot silently desync it.
+- **Concurrency is bounded** with `p-limit` at 10; the original fans out 200.
+- **`SUPPLY_HISTORY_SPREADSHEET_ID` is validated up front** instead of letting
+  `undefined` reach Google.
+
+`count = inserted + patched + touched` in the original is meaningless as a
+change metric, because `touched` is every unchanged row. Use `changed`
+(`inserted + patched`).
+
+`GMD_CLIENTWISE_SPREADSHEET_ID` was unset and silently falling back to a
+hard-coded id inside `lib/gmd_lib/contract-order-links.ts`. It is now set
+explicitly in `.env`.
+
+## `c-batch`
+
+Single step: `runCBatchSync()` in `c-batch.ts`. Marks `cBatch = "C"` on every
+row whose item code carries `ITEM_STATUS = "C"` in the `ITEM MASTER ERP` tab
+(gid 253020709) of the BOM MAST ERP workbook.
+
+| Table | Code column(s) |
+|---|---|
+| `RawMaterial` | `erpItemCode` |
+| `ContractReview` | `itemCode` |
+| `SupplyHistoryItem` | `erpItemCode` |
+| `EnquiryItem` | `erpItemCode` **or** `rmItemCode` |
+
+`VerifyBom` is deliberately excluded — `/bom`'s `cBatch` comes from the BOM MAST
+ERP `TO_DATE` flow, a different signal.
+
+**Set-only by design.** Nothing is ever cleared, so a code that flips C → U keeps
+its mark and re-running is idempotent.
+
+This is the only job so far whose logic had to be genuinely *ported* rather than
+delegated: `syncCBatchAction` has all its logic inline in `"use server"`. The
+pure matching is in `planCBatchMarks()`, testable without a database.
+
+### Five bugs fixed
+
+1. **Rows were counted but never written.** The action built its `updateMany`
+   filter from upper-cased codes while the code columns are persisted with the
+   source sheet's casing — and Postgres `IN` is byte-exact. `RawMaterial` is the
+   worst affected because its sync route stores the raw sheet value. Affected
+   rows showed as `+N` in the dialog and were silently never marked, forever.
+   Writes are now keyed on the primary key.
+2. **Already-marked rows were rewritten every run.** The `where` filtered on the
+   code, never on `cBatch`, so `pending > 0` made the loop iterate over *all*
+   matched codes and churn `updatedAt` on all four tables. Only pending rows are
+   written now, which also makes `rowsUpdated` truthful.
+3. **O(n·m) in the `RawMaterial` block** — it used `Array.includes` where the
+   other three correctly used a `Set`. Now a `Set` throughout.
+4. **Duplicate `ITEM_CODE` rows lost their `"C"`.**
+   `readItemMasterErp` guards duplicates on `nameByCode.has(code)`, so when a
+   code's first row has an `ITEM_NAME` but a blank `ITEM_STATUS`, the later
+   duplicate is skipped and its `"C"` is discarded. This job parses the sheet
+   with a `seen` set keyed on the code, reusing the same module's exported
+   `readSheetTabByGid` / `requireColumns` / `cell`, so no sheet-read plumbing is
+   duplicated. `duplicateSheetCodes` is now reported (the action discarded it).
+5. **A table failure hid the others.** All four ran inside one `try`/`catch`
+   that discarded the accumulated `perTable`, so a partial write looked
+   identical to no write. Tables are now attempted independently and failures
+   surface in `failedTables`.
+
+### `RawMaterial`, not `GMDUpdateItem`
+
+The comment in the original says "GMDUpdateItem.erpItemCode" but the code reads
+`prisma.rawMaterial`. The code is right — the UI reads `prisma.rawMaterial`
+(`app/raw_material/api/gmd-update/route.ts:9`). These are **two different
+tables**, and `schedular_function/contract-review-rm-avail.ts` also writes the
+`RawMaterial` one.
+
+### Scaling note
+
+Three of the four code columns have **no index**: `SupplyHistoryItem.erpItemCode`,
+`EnquiryItem.erpItemCode` / `rmItemCode`, and `ContractReview.itemCode`. Only
+`RawMaterial.erpItemCode` is indexed. Selecting by `id` avoids `IN` on those
+columns, so the job is cheaper than the original — but `ContractReview` and
+`EnquiryItem` are still full scans.
 
 ## Write policy
 
@@ -154,7 +346,27 @@ Stock-step edge cases:
 | `VerifyBom.*` | step 3 | only where a value actually differs |
 | `ContractReview.noUse` | step 3 | overwritten |
 | `ContractReview.rmPhysicalStock` | step 3 | overwritten, including to `null` when `costCodeRef` resolves to nothing |
+| `offerNumber` / `inspectionNumber` / `diDate` | step 4 | **union, never shrink** — values are appended, never removed or overwritten. A blank sheet cell adds nothing, so it can never clear a value |
 | deletions | — | none, in any step |
+
+### `supply-history`
+
+| Column | Rule |
+|---|---|
+| `partyMailAddress`, `state`, `utility` | **gap-fill only** — an existing DB value is never overwritten |
+| `orderList` | **monotonic CSV union** — links are only ever added, so a removed attachment stays in the DB |
+| every other mapped column | overwritten when the sheet value is non-blank and differs |
+| blank sheet values, including `-` `--` `—` `–` | **never** overwrite and **never** clear a stored value |
+| `derivedItemType`, `derivedMoc`, `derivedSize` | never touched — populated out of band by `scripts/derive-supply-fields.ts` and the UI |
+| `cBatch` | never touched (owned by the `c-batch` job) |
+| `invoiceNo` / `itemName` | immutable join keys |
+| deletions | none |
+
+### `c-batch`
+
+| Table | Column | Rule |
+|---|---|---|
+| `RawMaterial`, `ContractReview`, `SupplyHistoryItem`, `EnquiryItem` | `cBatch` | set to `"C"` when any code column matches. **Set-only** — never cleared, never overwritten once marked. No other column is touched, and `VerifyBom` is not touched at all. |
 
 ## Auth
 
@@ -285,16 +497,18 @@ still work:
 | `app/api/contract-review/sync/route.ts` | untouched — Contract Review SYNC button |
 | `app/actions.ts` `syncContractReviewEnquiryFieldsAllAction` | untouched — Sync Enquiry Fields button |
 | `app/actions.ts` `syncContractReviewRmAvailAction` | untouched — Sync RM AVAIL button |
+| `scripts/sync-ic-dump.ts` | untouched — `npm run ic:sync` (see *Step 4 — IC dump* for the duplication this implies) |
 
-**No logic was duplicated for `contract-review`.** Both server-action wrappers
+**Contract review steps 2 and 3 duplicate no logic.** Both server-action wrappers
 already delegate entirely to action-free libs
 (`lib/gmd_lib/contract-review-enquiry-backfill.ts`, `lib/verifyBomLookup.ts`,
 `lib/contractPhysicalStock.ts`), so those steps call the libs directly. Only
 step 1 is a genuine port, because that logic lived inside a route handler.
+Step 4 is a deliberate independent port of the CLI script.
 
-For `raw-material`, the catalogue-sync logic and the derived-name algorithm now
-exist in more than one place. **`schedular_function/` is the source of truth for
-scheduled behaviour.** If you change a sheet's columns or the derivation rules,
+For `raw-material` and contract review step 4, logic does now exist in more than
+one place. **`schedular_function/` is the source of truth for scheduled
+behaviour.** If you change a sheet's columns or the derivation/merge rules,
 update this folder as well.
 
 `gmd-update-stock-phys.ts` intentionally fixes three bugs that remain in the
@@ -333,7 +547,7 @@ curl -i -X POST -H "x-api-key: nope" "$BASE/raw-material"
 curl -i -X POST -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/raw-material"
 curl -i -X POST -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/contract-review"
 
-# contract-review only: verify credentials WITHOUT running the sync
+# verify credentials WITHOUT running the job
 curl -i -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/contract-review"
 ```
 

@@ -1,75 +1,18 @@
 /**
- * Builds `GMDUpdateItem.itemNameDerived` from the L-level sheet columns.
+ * Recomputes `RawMaterial.itemNameDerived` from the L-level sheet columns on a
+ * schedule.
  *
- * The algorithm is identical to `updateDerivedItemName` in `app/actions.ts`
- * and `buildDerivedItemName` in `scripts/populate-derived-item-name.ts`. It is
- * duplicated here on purpose rather than imported: `app/actions.ts` is a
- * `"use server"` module and a route handler must not reach into one. Keep this
- * file as the source of truth for scheduled runs; the other two copies back
- * the manual paths and are left untouched.
+ * The algorithm lives in `lib/gmd_lib/derived-item-name.ts` and is shared with
+ * `app/actions.ts` and `scripts/populate-derived-item-name.ts`. It is
+ * re-exported here so scheduled runs keep a single import point.
  */
 
 import pLimit from "p-limit";
 import { prisma } from "@/lib/prisma";
+import { buildDerivedItemName } from "@/lib/gmd_lib/derived-item-name";
 
-/** L-level columns the derived name is assembled from, in join order. */
-export interface DerivedItemNameInput {
-  l8ItemCategory: string | null;
-  l2ValveType: string | null;
-  l3Dia: string | null;
-  l4Component: string | null;
-  l5Material: string | null;
-  l6Std: string | null;
-  l7Dimension: string | null;
-}
-
-export type DerivedItemNameResult = {
-  itemCode: string;
-  itemNameDerived: string;
-};
-
-/**
- * Gearboxes omit the valve-type prefix and are built from component/material/
- * dimension only. Everything else joins the full L8 -> L7 chain.
- */
-export function buildDerivedItemName(item: DerivedItemNameInput): string {
-  const l8 = (item.l8ItemCategory ?? "").trim();
-  const isGearbox = l8.toUpperCase().includes("GEAR BOX");
-
-  const order = isGearbox
-    ? [item.l4Component, item.l5Material, item.l7Dimension]
-    : [
-        item.l8ItemCategory,
-        item.l2ValveType,
-        item.l3Dia,
-        item.l4Component,
-        item.l5Material,
-        item.l6Std,
-        item.l7Dimension,
-      ];
-
-  const seen = new Set<string>();
-  const parts: string[] = [];
-
-  for (const raw of order) {
-    let v = (raw ?? "").trim();
-    if (!v) continue;
-
-    const up = v.toUpperCase();
-    if (up === "TRADING VALVE" || up === "TRADING VALVES") v = "TV";
-    else if (up.includes("GEAR BOX")) v = v.replace(/gear box/gi, "GB");
-
-    // "TRADING VALVE" and "TRADING VALVES" are the same part, so the dedupe
-    // key ignores a trailing plural S.
-    const key = v.toUpperCase().replace(/S$/, "");
-    if (seen.has(key)) continue;
-
-    seen.add(key);
-    parts.push(v);
-  }
-
-  return parts.join("-");
-}
+export { buildDerivedItemName };
+export type { DerivedItemNameInput } from "@/lib/gmd_lib/derived-item-name";
 
 const DERIVE_CHUNK_SIZE = 200;
 

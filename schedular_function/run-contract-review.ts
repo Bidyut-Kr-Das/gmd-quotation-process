@@ -1,9 +1,10 @@
 /**
- * Scheduled job — Contract Review, three steps in order.
+ * Scheduled job — Contract Review, four steps in order.
  *
  *   1. `runContractReviewSheetSync()`     CONTRACTS + DUMP -> ContractReview
  *   2. `runContractReviewEnquirySync()`   Enquiry -> State / Utility / Project Ref
  *   3. `runContractReviewRmAvailSync()`   stock-phys -> VerifyBom -> RM AVAIL -> PHYSICAL STOCK
+ *   4. `runIcDumpSync()`                  INSPECTION OFFER DUMP -> offer / inspection / DI
  *
  * The order is a real dependency chain, not cosmetic:
  *   - 2 depends on 1 for fresh contract rows to match Enquiry against.
@@ -14,17 +15,18 @@
  *     (it is absent from CONTRACTS_SHEET_COLUMNS) and which is published
  *     separately from the Indent Listing by `recomputeIndentListingVersionsAction`.
  *     If that has never run, step 4 resolves nothing and writes null.
+ *   - 4 joins on `mcNo` + `itemCode`, both of which step 1 is what populates.
  *
  * Steps are strictly sequential. A fatal failure aborts the remaining steps
  * rather than running them against a half-updated table.
  *
- * Step 2 is normally a no-op: job 1 already applies the identical backfill
+ * Step 2 is normally a no-op: step 1 already applies the identical backfill
  * (`app/api/contract-review/sync/route.ts:233-234`). It is kept as its own step
  * because it is cheap and independently useful; `steps.enquiry.noOp` makes the
  * redundancy visible instead of silent.
  *
  * Note the work is split so that nothing runs twice per hour: VerifyBom and the
- * RM AVAIL recompute are owned by job 3 only, even though the manual SYNC route
+ * RM AVAIL recompute are owned by step 3 only, even though the manual SYNC route
  * also performs them.
  */
 
@@ -37,6 +39,7 @@ import {
   runContractReviewRmAvailSync,
   type ContractReviewRmAvailResult,
 } from "./contract-review-rm-avail";
+import { runIcDumpSync, type IcDumpSyncResult } from "./contract-review-ic-dump";
 import { JobAlreadyRunningError } from "./run-gmd-update";
 
 export type JobName = "contract-review";
@@ -50,6 +53,7 @@ export type ScheduledContractReviewResult = {
     sheetSync?: ContractReviewSyncResult;
     enquiry?: ContractReviewEnquiryResult;
     rmAvail?: ContractReviewRmAvailResult;
+    icDump?: IcDumpSyncResult;
   };
 };
 
@@ -61,7 +65,7 @@ export type ScheduledContractReviewResult = {
 const inFlight = new Set<JobName>();
 
 export type RunContractReviewOptions = {
-  /** Compute and report without writing. Applies to steps 2 and 3. */
+  /** Compute and report without writing. Applies to steps 2, 3 and 4. */
   dryRun?: boolean;
   concurrency?: number;
 };
@@ -105,13 +109,18 @@ export async function runScheduledContractReview(
     }
     steps.rmAvail = await runContractReviewRmAvailSync(rmAvailOptions);
 
+    // Step 4 — INSPECTION OFFER DUMP -> offer / inspection / DI. Needs the
+    // `mcNo` + `itemCode` pair that step 1 produced.
+    steps.icDump = await runIcDumpSync({ dryRun });
+
     const elapsedMs = Date.now() - startedAtMs;
 
     console.log(
       `[scheduler] ${job} finished in ${elapsedMs}ms — ` +
         `sheet(created=${steps.sheetSync.created}, updated=${steps.sheetSync.updated}, unchanged=${steps.sheetSync.unchanged}) ` +
         `enquiry(changed=${steps.enquiry.changed}) ` +
-        `rmAvail(stock=${steps.rmAvail.stockUpdated}, noUse=${steps.rmAvail.rmAvailUpdated}, physical=${steps.rmAvail.physicalStockUpdated})`,
+        `rmAvail(stock=${steps.rmAvail.stockUpdated}, noUse=${steps.rmAvail.rmAvailUpdated}, physical=${steps.rmAvail.physicalStockUpdated}) ` +
+        `icDump(matched=${steps.icDump.matched}, updated=${steps.icDump.rowsToUpdate}, written=${steps.icDump.written})`,
     );
     console.log(`########## [SCHEDULER] ${job} done ##########\n`);
 

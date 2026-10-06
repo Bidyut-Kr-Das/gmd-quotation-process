@@ -2,10 +2,13 @@
 # Usage: raw-material-sync.sh  -- POSTs to $GMD_APP_SERVER/api/scheduler/raw-material/
 # Runs the Raw Material sync: GMD UPDATION catalogue, then stock-phys physical stock.
 #
-# Failure modes, both of which must fail the job:
+# Failure modes, all of which must fail the job:
 #   - Non-200: wget itself exits non-zero, and `set -e` aborts the script.
 #   - 200 whose body reports success=false (e.g. a step failed but the route
 #     still answered 200): caught by the grep below.
+#   - 200 with success=true but rows that failed to write: the orchestrator only
+#     reports success=false when a step THROWS, so `failedWrites` is checked
+#     separately.
 #
 # Env (set in the ofelia container, not committed):
 #   GMD_APP_SERVER      base URL of this app, e.g. http://gmd-quotation-process:4570
@@ -33,6 +36,16 @@ echo "$body"
 
 if echo "$body" | grep -q '"success": *false'; then
   echo "ERROR: raw-material sync reported success=false"
+  exit 1
+fi
+
+# The orchestrator returns success:true unless a step THROWS, so rows that
+# failed to write still arrive as 200 and are only visible in the step counters
+# (catalogue and stock both nest `failedWrites` under `steps`). Fail the job on
+# any of them rather than printing OK over a half-written table. Same reasoning
+# as the failedTables check in c-batch-sync.sh.
+if echo "$body" | grep -q '"failedWrites": *[1-9]'; then
+  echo "ERROR: raw-material reported row write failures (see body)"
   exit 1
 fi
 
