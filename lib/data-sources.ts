@@ -1042,8 +1042,8 @@ const CONTRACT_REVIEW_SYNC: SyncOperation[] = [
     purpose:
       "The main Contract Review sync: joins the CONTRACTS tab against the DUMP tab and diffs the result into ContractReview.",
     direction: "sheet-to-db",
-    trigger: "api-only",
-    triggerLabel: "POST /api/contract-review/sync — the page's Sync button is commented out (page.tsx:3293-3316)",
+    trigger: "button",
+    triggerLabel: "Sync Contract Review button (sidebar) -> POST /api/contract-review/sync",
     sheetTab: "CONTRACTS + DUMP",
     sheetGid: "734728893 (CONTRACTS), 1604813523 (DUMP)",
     sheetRange: "'<tab>'!A:ZZZ",

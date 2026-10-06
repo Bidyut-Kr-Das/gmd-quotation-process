@@ -656,17 +656,31 @@ export default function ContractReviewPage() {
   }, []);
 
   const handleSync = useCallback(async () => {
+    if (
+      !confirm(
+        "Sync CONTRACTS + DUMP from the sheet into Contract Review? This writes to ContractReview and runs the RM AVAIL / Enquiry side effects.",
+      )
+    )
+      return;
     setSyncing(true);
     setError(null);
+    const toastId = toast.loading("Syncing Contract Review from CONTRACTS + DUMP...");
     try {
       const res = await fetch("/api/contract-review/sync", { method: "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? `Sync failed (${res.status})`);
       }
+      const summary = await res.json().catch(() => ({}));
+      toast.success(
+        `Synced: ${summary.created ?? 0} created, ${summary.updated ?? 0} updated, ${summary.unchanged ?? 0} unchanged`,
+        { id: toastId },
+      );
       await fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sync failed");
+      const message = err instanceof Error ? err.message : "Sync failed";
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setSyncing(false);
     }
@@ -2679,6 +2693,20 @@ tileSize,
     <main className="flex-1 min-h-0 flex flex-col bg-background overflow-hidden">
       <div className="flex-1 flex p-6 min-h-0 gap-4">
         <aside className="w-64 shrink-0 self-stretch min-h-0 max-h-full overflow-y-auto overscroll-contain bg-[#0a2540] dark:bg-card border border-[#1e3d59] dark:border-border rounded-lg shadow-sm p-4 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent hover:scrollbar-thumb-white/30 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-track]:bg-transparent pr-3">
+          <button
+            type="button"
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center justify-center gap-1.5 bg-[#38ef7d]/10 dark:bg-emerald-500/10 hover:bg-[#38ef7d]/20 dark:hover:bg-emerald-500/20 border border-[#38ef7d]/40 dark:border-emerald-500/30 rounded px-3 py-2 text-[11px] font-semibold text-[#38ef7d] dark:text-emerald-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Sync CONTRACTS + DUMP from the sheet into Contract Review"
+          >
+            {syncing ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <RefreshCw size={12} />
+            )}
+            {syncing ? "Syncing..." : "Sync Contract Review"}
+          </button>
           <button
             type="button"
             onClick={handleRmAvailSync}
