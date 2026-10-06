@@ -3,12 +3,23 @@ import DashboardContainer from "./DashboardContainer";
 import { prisma } from "@/lib/prisma";
 import { getActiveLookupValuesByType } from "@/lib/lookup";
 import { getBatchDistinctBomIds, getNoUseBomIdSet } from "@/lib/verifyBomLookup";
+import { syncClosureStatuses } from "@/lib/closureStatusSync";
+import { getFiscalPrefix, nextDocketSerials } from "@/lib/docketNumber";
 
 // The dashboard reads live data on every request. It used to be dynamic implicitly because
 // it awaited searchParams for ?search=; search is client-side now, so say it explicitly.
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  // Derive closureStatus from the thread evidence before the rows are read so the
+  // dashboard shows it: "Sent" for evidenced dockets, "Pending" for mail-less
+  // ones. Only blank values are filled; failures must not block the dashboard.
+  const { sentDockets, pendingDockets } = await syncClosureStatuses()
+    .catch((error) => {
+      console.warn("[Page] closure status sync failed:", error);
+      return { sentDockets: [] as string[], pendingDockets: [] as string[] };
+    });
+
   // Fetch every enquiry once. Search, filtering and pagination all run client-side inside
   // the table, so searching no longer re-runs this query or re-hydrates the store.
   const rawEnquiries = await prisma.enquiry.findMany({
@@ -74,38 +85,16 @@ export default async function Page() {
   });
 
   // Find the latest docket number in the database to auto-populate the next one
-  const getFiscalYear = (date: Date) => {
-    const month = date.getMonth(); // 0-indexed, April is 3
-    const year = date.getFullYear();
-    const startYear = month >= 3 ? year : year - 1;
-    const endYearStr = String(startYear + 1).slice(-2);
-    return `${startYear}-${endYearStr}`;
-  };
-
-  const currentFiscalYear = getFiscalYear(new Date());
-  const fiscalPrefix = `GMD/${currentFiscalYear}/`;
-
+  const fiscalPrefix = getFiscalPrefix(new Date());
   const enquiriesInFiscal = await prisma.enquiry.findMany({
-    where: {
-      docketNumber: {
-        startsWith: fiscalPrefix,
-      },
-    },
-    select: {
-      docketNumber: true,
-    },
+    where: { docketNumber: { startsWith: fiscalPrefix } },
+    select: { docketNumber: true },
   });
-
-  let nextSerial = 1;
-  if (enquiriesInFiscal.length > 0) {
-    const serials = enquiriesInFiscal.map((e) => {
-      const parts = e.docketNumber.split("/");
-      const lastPart = parts[parts.length - 1];
-      return parseInt(lastPart) || 0;
-    });
-    nextSerial = Math.max(...serials) + 1;
-  }
-  const nextDocketNumber = `${fiscalPrefix}${nextSerial}`;
+  const [nextDocketNumber] = nextDocketSerials(
+    enquiriesInFiscal.map((e) => e.docketNumber),
+    1,
+    new Date(),
+  );
 
   const lookup = await getActiveLookupValuesByType();
 
@@ -143,6 +132,8 @@ export default async function Page() {
             dropdownOptions={dropdownOptions}
             nextDocketNumber={nextDocketNumber}
             enquiriesList={enquiries}
+            autoSentDockets={sentDockets}
+            autoPendingDockets={pendingDockets}
           />
         </Suspense>
       </main>

@@ -83,6 +83,8 @@ Rules for ITEM TYPE:
 Rules for MOC:
 - Detect MOC whenever possible from material abbreviations.
 - CI=Cast Iron, DI=Ductile Iron, CS/Carbon Steel, SS/SS304/SS316=Stainless Steel, WCB=Cast Steel, Bronze, Brass, PVC, HDPE, etc.
+- The MOC is the BODY / base material of the item. A resilient or EPDM seat, a rubber gasket, a sealing ring, an o-ring, a diaphragm or a liner is NOT the MOC. Never return "RUBBER" for a metal valve just because its seat is resilient or rubber-seated.
+- Only choose RUBBER/LEATHER/WOODEN when the item itself is made of that material (e.g. a rubber expansion joint, a rubber gasket, a leather washer).
 - If the item name does not specify material, return "unknown".
 
 Rules for SIZE:

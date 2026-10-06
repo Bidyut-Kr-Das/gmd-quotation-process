@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { applySlvFamilySums } from "@/lib/indentListingFamilySum";
+import { getMergedIndentListing } from "@/lib/indentListingRead";
 
 export const INDENT_LISTING_HEADERS = [
   "ITEM NAME",
@@ -24,49 +23,10 @@ export const INDENT_LISTING_HEADERS = [
 
 export async function GET() {
   try {
-    const items = await prisma.indentListing.findMany({
-      orderBy: { item: "asc" },
-    });
-
-    const lastSynced =
-      items.length > 0
-        ? items.reduce(
-            (latest: Date, item) =>
-              item.syncedAt > latest ? item.syncedAt : latest,
-            items[0].syncedAt,
-          )
-        : null;
-
-    const rows = applySlvFamilySums(
-      items.map((item) => [
-        item.item,
-        item.size,
-        item.pnRating,
-        item.mcReceivedPending,
-        item.totalBalBillAgCont != null
-          ? String(item.totalBalBillAgCont)
-          : null,
-        item.v1,
-        item.v2,
-        item.v3,
-        item.v4,
-        item.v1Category,
-        item.v2Category,
-        item.v3Category,
-        item.v4Category,
-        item.rmCodeV1,
-        item.rmCodeV2,
-        item.rmCodeV3,
-        item.rmCodeV4,
-      ]),
-    );
-
+    const data = await getMergedIndentListing();
     return NextResponse.json({
       headers: INDENT_LISTING_HEADERS,
-      rows,
-      ids: items.map((i) => i.id),
-      totalRows: rows.length,
-      syncedAt: lastSynced?.toISOString() ?? null,
+      ...data,
     });
   } catch (error) {
     return NextResponse.json(

@@ -13,10 +13,12 @@ import {
   Paperclip,
   CheckCircle2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import DocketFollowUpTable from "@/components/docket_follow_up/DocketFollowUpTable";
 import PendingDocketsTable, { PendingDocketRow } from "@/components/docket_follow_up/PendingDocketsTable";
+import { createPendingDocketsAction } from "@/app/actions";
 
 interface SummaryData {
   totalEnquiries: number;
@@ -105,6 +107,41 @@ export default function DocketFollowUpPage() {
     }
   };
 
+  const [creatingDockets, setCreatingDockets] = useState(false);
+  const handleCreatePendingDockets = async () => {
+    setCreatingDockets(true);
+    const toastId = toast.loading("Checking pendingDocket threads...");
+    try {
+      const dry = await createPendingDocketsAction({ dryRun: true });
+      if (!dry.success) throw new Error(dry.error);
+      const count = dry.data.created;
+      if (count === 0) {
+        toast.info("No pendingDocket = true threads to convert.", { id: toastId });
+        return;
+      }
+      if (
+        !confirm(
+          `Create ${count} new docket(s) with auto-generated numbers, party names and blank items?`,
+        )
+      ) {
+        toast.dismiss(toastId);
+        return;
+      }
+      toast.loading(`Creating ${count} docket(s)...`, { id: toastId });
+      const res = await createPendingDocketsAction({ dryRun: false });
+      if (!res.success) throw new Error(res.error);
+      toast.success(
+        `Created ${res.data.created} docket(s)${res.data.skipped ? `, ${res.data.skipped} failed` : ""}.`,
+        { id: toastId, duration: 9000 },
+      );
+      await Promise.all([fetchPendingData(), fetchPortalData()]);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create pending dockets", { id: toastId });
+    } finally {
+      setCreatingDockets(false);
+    }
+  };
+
   const isCurrentLoading = activeTab === "PORTAL_DOCKETS" ? loading : pendingLoading;
 
   return (
@@ -156,6 +193,18 @@ export default function DocketFollowUpPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {activeTab === "PENDING_DOCKETS" && (
+              <Button
+                size="sm"
+                onClick={handleCreatePendingDockets}
+                disabled={creatingDockets || isCurrentLoading}
+                className="h-7 px-2.5 text-xs font-medium cursor-pointer"
+                title="Create dockets for every thread flagged pendingDocket = true"
+              >
+                <Layers className={`w-3 h-3 mr-1 ${creatingDockets ? "animate-spin" : ""}`} />
+                {creatingDockets ? "Creating..." : "Create Pending Dockets"}
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"

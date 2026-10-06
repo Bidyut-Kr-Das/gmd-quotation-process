@@ -172,3 +172,54 @@ test('full scenario: butterfly valve item classifies correctly', () => {
   assert.equal(matchItemType(itemName), 'BUTTERFLY VALVE')
   assert.equal(matchMoc(itemName), 'DUCTILE IRON/CAST IRON')
 })
+
+test('air valve family maps to TPAV', () => {
+  assert.equal(matchItemType('DI AIR VALVE 50mm,PN10'), 'TPAV')
+  assert.equal(matchItemType('Air Valve 80 mm'), 'TPAV')
+  assert.equal(matchItemType('AIR RELEASE VALVE 80MM'), 'TPAV')
+  assert.equal(matchItemType('kinetic air valve 20mm'), 'TPAV')
+  assert.equal(matchItemType('kinetic double orifice type air valve 50mm'), 'TPAV')
+  assert.equal(
+    matchItemType('AIR VALVE WITH ISOLATION SLUICE VALVE NOMINAL DIA (MM)80PN 16'),
+    'TPAV',
+  )
+  assert.equal(matchItemType('Tamper Proof Air Valve With Isolation Sluice Valve'), 'TPAV')
+})
+
+test('air cushion valve stays its own category', () => {
+  assert.equal(
+    matchItemType('Air Cushion Valve with Cast Iron Body 200 MM Size'),
+    'AIR CUSHION VALVE',
+  )
+})
+
+test('air valve word boundary does not match repair valve', () => {
+  assert.notEqual(matchItemType('Repair Valve 50mm'), 'TPAV')
+})
+
+test('correctItemType forces TPAV for any air-valve name with a wrong stored type', () => {
+  // Tamper-proof air valve is stored as a sluice valve: replace with TPAV.
+  assert.equal(
+    correctItemType('Tampered Proof Air Valve 50mm', 'SLUICE VALVE-RESILIENT-NON-RISING'),
+    'TPAV',
+  )
+  assert.equal(correctItemType('AIR VALVE 50mm', 'AIR VALVE'), 'TPAV')
+  assert.equal(correctItemType('Air Release Valve 80mm', 'AIR VALVE'), 'TPAV')
+  assert.equal(correctItemType('kinetic air valve 20mm', 'SLUICE VALVE-METAL-RISING'), 'TPAV')
+  assert.equal(
+    correctItemType(
+      'AIR VALVE WITH ISOLATION SLUICE VALVE NOMINAL DIA (MM)80PN 16',
+      'SLUICE VALVE-METAL-RISING',
+    ),
+    'TPAV',
+  )
+  // Nothing to correct.
+  assert.equal(correctItemType('Air Valve 80mm', 'TPAV'), null)
+  // Air cushion valve stays its own category.
+  assert.equal(
+    correctItemType('Air Cushion Valve with Cast Iron Body 200 MM Size', 'AIR CUSHION VALVE'),
+    null,
+  )
+  // Not an air valve.
+  assert.equal(correctItemType('Repair Valve 50mm', 'SLUICE VALVE-RESILIENT-NON-RISING'), null)
+})

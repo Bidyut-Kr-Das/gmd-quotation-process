@@ -51,7 +51,9 @@
     "rmtype:common": "tsx scripts/backfill-rmtype-common.ts",
     "rmtype:common:apply": "tsx scripts/backfill-rmtype-common.ts --apply",
     "email:backfill": "tsx scripts/backfill-enquiry-email-addresses.ts",
-    "email:backfill:apply": "tsx scripts/backfill-enquiry-email-addresses.ts --apply"
+    "email:backfill:apply": "tsx scripts/backfill-enquiry-email-addresses.ts --apply",
+    "bom:fix-stale": "tsx scripts/fix-stale-bom-ids.ts",
+    "bom:fix-stale:apply": "tsx scripts/fix-stale-bom-ids.ts --apply"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",

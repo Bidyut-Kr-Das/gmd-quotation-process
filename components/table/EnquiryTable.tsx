@@ -20,6 +20,7 @@ import { useSession } from "next-auth/react";
 import { oneClickAccess, FROZEN_ITEM_FIELD_SET, isEnquiryFrozen } from "@/lib/oneClickAccess";
 import { importExcelData, autoFillBlanks, updateVaPercent } from "@/lib/enquiriesSlice";
 import { validateVaPercent } from "@/lib/vaValidation";
+import { createPendingDocketsAction } from "@/app/actions";
 import { parseAndValidateContractNumbers } from "@/lib/contractValidation";
 import { makeImageKey } from "@/lib/imageKey";
 import { RM_TYPE_OPTIONS } from "@/lib/gmd_lib/sheet-columns";
@@ -33,6 +34,8 @@ import { formatIndianNumber, cleanNumberInput, hasNumberChanged } from "@/lib/fo
 
 interface EnquiryTableProps {
   dropdownOptions: DropdownOptions;
+  autoSentDockets?: string[];
+  autoPendingDockets?: string[];
 }
 
 // Helper to extract company name and branch
@@ -336,12 +339,14 @@ function ItemCodeCell({ item }: { item?: EnquiryItemData }) {
   );
 }
 
-export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
+export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPendingDockets }: EnquiryTableProps) {
   const { data: session } = useSession();
   const role = (session?.user as any)?.role as string | undefined;
   const canEditApm = role === "admin" || role === "developer";
   const dispatch = useAppDispatch();
   const enquiries = useAppSelector(selectAllEnquiries);
+  const autoSentSet = useMemo(() => new Set(autoSentDockets ?? []), [autoSentDockets]);
+  const autoPendingSet = useMemo(() => new Set(autoPendingDockets ?? []), [autoPendingDockets]);
   const allItems = useAppSelector(selectAllItems);
   const filters = useAppSelector((s) => s.filters);
   const { currentPage, pageSize } = useAppSelector((s) => s.pagination);
@@ -396,6 +401,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
   const [crRateStatus, setCrRateStatus] = useState<"idle" | "running">("idle");
   const [pdCostValStatus, setPdCostValStatus] = useState<"idle" | "running">("idle");
   const [syncStockStatus, setSyncStockStatus] = useState<"idle" | "running">("idle");
+  const [createDocketsStatus, setCreateDocketsStatus] = useState<"idle" | "running">("idle");
   // Bulk delete selection: per enquiry constraint, filtered scope, persisted across pagination
   const [selectedEnquiryId, setSelectedEnquiryId] = useState<string | null>(null);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
@@ -1659,7 +1665,14 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
       return true;
     });
 
-    if (!matchesItems) return false;
+    // Header-only "pending" dockets (no items) have nothing to match item
+    // filters against. Keep them visible in the default view, but hide them once
+    // a filter is narrowing the list.
+    if (!enquiry.items || enquiry.items.length === 0) {
+      if (hasActiveFilters) return false;
+    } else if (!matchesItems) {
+      return false;
+    }
 
     // 25. Attachment
     if (filters.attachment) {
@@ -1671,7 +1684,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
     }
 
     return true;
-  }), [enquiries, filters, filterProjectReference, globalSearch, getItemImage]);
+  }), [enquiries, filters, filterProjectReference, globalSearch, getItemImage, hasActiveFilters]);
 
   const getSortValue = useCallback((enquiry: EnquiryData, field: string): string | number | Date | null | undefined => {
     if (field === "contractNo") {
@@ -2277,6 +2290,36 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
     }
   }
 
+  const handleCreatePendingDockets = async () => {
+    setCreateDocketsStatus("running")
+    const toastId = toast.loading("Checking pendingDocket threads...")
+    try {
+      const dry = await createPendingDocketsAction({ dryRun: true })
+      if (!dry.success) throw new Error(dry.error)
+      const count = dry.data.created
+      if (count === 0) {
+        toast.info("No pendingDocket = true threads to convert.", { id: toastId })
+        return
+      }
+      if (!confirm(`Create ${count} new docket(s) with auto-generated numbers, party names and blank items?`)) {
+        toast.dismiss(toastId)
+        return
+      }
+      toast.loading(`Creating ${count} docket(s)...`, { id: toastId })
+      const res = await createPendingDocketsAction({ dryRun: false })
+      if (!res.success) throw new Error(res.error)
+      toast.success(
+        `Created ${res.data.created} docket(s)${res.data.skipped ? `, ${res.data.skipped} failed` : ""}. Reloading...`,
+        { id: toastId, duration: 9000 },
+      )
+      setTimeout(() => window.location.reload(), 1200)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to create pending dockets", { id: toastId })
+    } finally {
+      setCreateDocketsStatus("idle")
+    }
+  }
+
   const TOTAL_COLUMNS = 40;
   const SELECT_COL_WIDTH = 44;
   const getColWidth = (idx: number) => columnWidths[idx] ?? DEFAULT_COLUMN_WIDTHS[idx] ?? 120;
@@ -2403,6 +2446,17 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
           >
             <PackageCheck className={`h-3.5 w-3.5 text-amber-700 dark:text-amber-300 stroke-2 ${syncStockStatus === "running" ? "animate-spin" : ""}`} />
             {syncStockStatus === "running" ? "Syncing Stock..." : "Sync Available Stock"}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCreatePendingDockets}
+            disabled={createDocketsStatus === "running"}
+            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
+            title="Create header-only dockets for every DocketQuotationThread flagged pendingDocket = true"
+          >
+            <Plus className={`h-3.5 w-3.5 text-rose-700 dark:text-rose-300 stroke-2 ${createDocketsStatus === "running" ? "animate-spin" : ""}`} />
+            {createDocketsStatus === "running" ? "Creating..." : "Create Pending Dockets"}
           </button>
         </div>
       </div>
@@ -3911,6 +3965,14 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                         <span className="hover:underline cursor-pointer truncate">
                           {enquiry.docketNumber}
                         </span>
+                        {(!enquiry.items || enquiry.items.length === 0) && (
+                          <span
+                            className="ml-1 px-1.5 py-0.5 text-[9px] font-semibold bg-amber-50 text-amber-700 rounded-full border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/25 shrink-0"
+                            title="Auto-created pending docket - add items to complete it"
+                          >
+                            Pending - no items
+                          </span>
+                        )}
                         {hasMultiple && !isExpanded && (
                           <span className="ml-1 px-1.5 py-0.5 text-[9px] font-medium bg-blue-50 text-blue-600 rounded-full border border-blue-100 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/25 shrink-0">
                             +{displayItems.length - 1} more items
@@ -4252,7 +4314,20 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                       <select
                         value={enquiry.closureStatus || ""}
                         onChange={(e) => handleEnquiryFieldChange(enquiry.id, "closureStatus", e.target.value)}
-                        className={cellSelectClass}
+                        className={cn(
+                          cellSelectClass,
+                          enquiry.closureStatus === "Sent" && autoSentSet.has(enquiry.docketNumber) &&
+                            "text-blue-600 font-semibold bg-blue-50/60 dark:bg-blue-950/30",
+                          enquiry.closureStatus === "Pending" && autoPendingSet.has(enquiry.docketNumber) &&
+                            "text-amber-600 font-semibold bg-amber-50/60 dark:bg-amber-950/30"
+                        )}
+                        title={
+                          enquiry.closureStatus === "Sent" && autoSentSet.has(enquiry.docketNumber)
+                            ? "Auto-detected from thread attachments/OCR"
+                            : enquiry.closureStatus === "Pending" && autoPendingSet.has(enquiry.docketNumber)
+                              ? "No email found for this docket"
+                              : undefined
+                        }
                       >
                         <option value="">-</option>
                         {dropdownOptions.closureStatuses.map((opt) => (
