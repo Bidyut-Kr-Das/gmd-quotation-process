@@ -33,6 +33,8 @@ import { formatIndianNumber, cleanNumberInput, hasNumberChanged } from "@/lib/fo
 
 interface EnquiryTableProps {
   dropdownOptions: DropdownOptions;
+  autoSentDockets?: string[];
+  autoPendingDockets?: string[];
 }
 
 // Helper to extract company name and branch
@@ -336,12 +338,14 @@ function ItemCodeCell({ item }: { item?: EnquiryItemData }) {
   );
 }
 
-export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
+export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPendingDockets }: EnquiryTableProps) {
   const { data: session } = useSession();
   const role = (session?.user as any)?.role as string | undefined;
   const canEditApm = role === "admin" || role === "developer";
   const dispatch = useAppDispatch();
   const enquiries = useAppSelector(selectAllEnquiries);
+  const autoSentSet = useMemo(() => new Set(autoSentDockets ?? []), [autoSentDockets]);
+  const autoPendingSet = useMemo(() => new Set(autoPendingDockets ?? []), [autoPendingDockets]);
   const allItems = useAppSelector(selectAllItems);
   const filters = useAppSelector((s) => s.filters);
   const { currentPage, pageSize } = useAppSelector((s) => s.pagination);
@@ -4252,7 +4256,20 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                       <select
                         value={enquiry.closureStatus || ""}
                         onChange={(e) => handleEnquiryFieldChange(enquiry.id, "closureStatus", e.target.value)}
-                        className={cellSelectClass}
+                        className={cn(
+                          cellSelectClass,
+                          enquiry.closureStatus === "Sent" && autoSentSet.has(enquiry.docketNumber) &&
+                            "text-blue-600 font-semibold bg-blue-50/60 dark:bg-blue-950/30",
+                          enquiry.closureStatus === "Pending" && autoPendingSet.has(enquiry.docketNumber) &&
+                            "text-amber-600 font-semibold bg-amber-50/60 dark:bg-amber-950/30"
+                        )}
+                        title={
+                          enquiry.closureStatus === "Sent" && autoSentSet.has(enquiry.docketNumber)
+                            ? "Auto-detected from thread attachments/OCR"
+                            : enquiry.closureStatus === "Pending" && autoPendingSet.has(enquiry.docketNumber)
+                              ? "No email found for this docket"
+                              : undefined
+                        }
                       >
                         <option value="">-</option>
                         {dropdownOptions.closureStatuses.map((opt) => (

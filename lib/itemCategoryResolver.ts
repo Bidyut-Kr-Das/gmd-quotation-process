@@ -7,6 +7,7 @@ import { ALLOWED_EXTENSIONS, EXTENSION_DEFAULT } from './extensionPatterns';
 import { extractExtensionFromItemName } from './extensionMatcher';
 import { detectBypass } from './bypassDetector';
 import { hasBypassMention } from './bypassMatcher';
+import { guardInventedMoc } from './mocGuard';
 
 const VALIDATION_ENABLED = process.env.AI_VALIDATION_ENABLED !== 'false';
 
@@ -125,6 +126,18 @@ export async function resolveItemCategory(params: {
       }
     }
   }
+
+  // The AI can mistake a resilient/EPDM seat (or a rubber gasket/seal) for the
+  // body material. Drop such an invented component MOC: sluice valves fall back
+  // to DUCTILE IRON/CAST IRON, everything else is left blank.
+  const guardedMoc = guardInventedMoc({
+    moc: result.moc,
+    mocSource: result.mocSource,
+    itemName,
+    itemType: result.itemType,
+  })
+  result.moc = guardedMoc.moc
+  result.mocSource = guardedMoc.mocSource
 
   // Business rule: SLUICE VALVE or BUTTERFLY VALVE with size > 350mm → GB
   const hasSlutceOrBfv = result.itemType
