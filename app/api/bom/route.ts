@@ -20,6 +20,22 @@ export async function GET() {
       orderBy: { syncedAt: "desc" },
     });
 
+    // BOM COST is the BOM total written onto every BomItem of the BOM by the
+    // cost triggers (see prisma/seed.sql): a BOM's cost is the sum of its
+    // components, and all BomItems of a BOM carry that same total. Take the
+    // value directly per BOM ID instead of summing the rows.
+    const bomItems = await prisma.bomItem.findMany({
+      select: { cost: true, bom: { select: { bomId: true } } },
+    });
+    const bomCostMap = new Map<string, number>();
+    for (const bi of bomItems) {
+      if (bi.cost == null) continue;
+      const bId = bi.bom.bomId.trim();
+      const c = Number(bi.cost);
+      const prev = bomCostMap.get(bId);
+      bomCostMap.set(bId, prev === undefined ? c : Math.max(prev, c));
+    }
+
     const lastSynced =
       items.length > 0
         ? items.reduce(
@@ -38,7 +54,7 @@ export async function GET() {
         (liveStock !== undefined && liveStock !== "" ? liveStock : null) ??
         item.availableStock ??
         "";
-      return dbVerifyBomToRow({
+      const row = dbVerifyBomToRow({
         ...item,
         noUse: item.noUse ?? "",
         availableStock,
@@ -54,10 +70,16 @@ export async function GET() {
           ? (present(item.itemName) ?? itemNameMap.get(item.itemCode) ?? null)
           : null,
       });
+      const key = item.bomId.trim();
+      const total = bomCostMap.get(key);
+      return [
+        ...row,
+        total === undefined ? "" : String(Math.round(total * 100) / 100),
+      ];
     });
 
     return NextResponse.json({
-      headers: VERIFY_BOM_HEADERS,
+      headers: [...VERIFY_BOM_HEADERS, "BOM COST"],
       rows,
       ids: items.map((i) => i.id),
       totalRows: rows.length,
