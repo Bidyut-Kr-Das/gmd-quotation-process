@@ -19,6 +19,8 @@ import { createEnquiry } from "@/lib/enquiriesSlice";
 import { parseClipboardText } from "@/lib/pasteParser";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { closeNewEnquiryDialog } from "@/lib/dialogsSlice";
+import { useSession } from "next-auth/react";
+import { clearDraft, isDraftEmpty, parseDraft, readDraftRaw, saveDraft, type NewEnquiryDraft } from "@/lib/newEnquiryDraft";
 
 interface NewEnquiryDialogProps {
   nextDocketNumber: string;
@@ -54,6 +56,30 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+const today = () => new Date().toISOString().split("T")[0];
+
+const emptyItem = () => ({
+  itemName: "",
+  quantity: "",
+  itemType: "",
+  moc: "",
+  size: "",
+  pnRating: "",
+  operationType: "",
+  extension: "",
+  bypass: "",
+  productCost: "",
+  costRefCode: "",
+  cost: "",
+  stockStatus: "",
+  stockQuantity: "",
+  availableStock: "",
+  stockAgainstContract: "",
+  discount: "",
+});
+
+type EnquiryItemForm = ReturnType<typeof emptyItem>;
+
 export default function NewEnquiryDialog({
   nextDocketNumber,
   dropdownOptions,
@@ -71,10 +97,8 @@ export default function NewEnquiryDialog({
   const [partyName, setPartyName] = useState("");
   const [partySearch, setPartySearch] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [enquiryDate, setEnquiryDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
-  
+  const [enquiryDate, setEnquiryDate] = useState(today);
+
   // Enquiry-level metadata states
   const [enquiryType, setEnquiryType] = useState("");
   const [state, setState] = useState("");
@@ -88,72 +112,77 @@ export default function NewEnquiryDialog({
   // File uploader state
   const [files, setFiles] = useState<{ name: string; size: number; type: string }[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  // Bumped to remount the file input, which is the only way to clear its selection
+  const [fileInputKey, setFileInputKey] = useState(0);
 
   // Expanded items state containing all fields
-  const [items, setItems] = useState<{
-    itemName: string;
-    quantity: string;
-    itemType: string;
-    moc: string;
-    size: string;
-    pnRating: string;
-    operationType: string;
-    extension: string;
-    bypass: string;
-    productCost: string;
-    costRefCode: string;
-    cost: string;
-    stockStatus: string;
-    stockQuantity: string;
-    availableStock: string;
-    stockAgainstContract: string;
-    discount: string;
-  }[]>([
-    {
-      itemName: "",
-      quantity: "",
-      itemType: "",
-      moc: "",
-      size: "",
-      pnRating: "",
-      operationType: "",
-      extension: "",
-      bypass: "",
-      productCost: "",
-      costRefCode: "",
-      cost: "",
-      stockStatus: "",
-      stockQuantity: "",
-      availableStock: "",
-      stockAgainstContract: "",
-      discount: "",
-    },
-  ]);
+  const [items, setItems] = useState<EnquiryItemForm[]>([emptyItem()]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // localStorage draft: restored once the session is known (and again if the user changes),
+  // then saved on every change. `draftOwner` undefined = not hydrated yet.
+  const { data: session, status: sessionStatus } = useSession();
+  const userId = session?.user?.id ?? null;
+  const [draftOwner, setDraftOwner] = useState<string | null | undefined>(undefined);
+  const [restoredDraft, setRestoredDraft] = useState<{ savedAt: number; fileNames: string[] } | null>(null);
+
+  // Fill every persisted field from `draft`, or blank them all when null
+  const applyDraft = (draft: NewEnquiryDraft | null) => {
+    setPartyName(draft?.partyName ?? "");
+    setPartySearch("");
+    setEnquiryDate(draft?.enquiryDate || today());
+    setEnquiryType(draft?.enquiryType ?? "");
+    setState(draft?.state ?? "");
+    setPaymentTerms(draft?.paymentTerms ?? "");
+    setInspection(draft?.inspection ?? "");
+    setPbg(draft?.pbg ?? "");
+    setUtility(draft?.utility ?? "");
+    setOrderStatus(draft?.orderStatus ?? "");
+    setFiles([]);
+    setSelectedFiles([]);
+    setFileInputKey((k) => k + 1);
+    setItems(draft ? draft.items.map((i) => ({ ...emptyItem(), ...i })) : [emptyItem()]);
+    setRestoredDraft(draft ? { savedAt: draft.savedAt, fileNames: draft.fileNames ?? [] } : null);
+  };
+
+  // Hydrate during render (React's "adjust state on change" pattern), not in an effect.
+  // Session status is "loading" on the server and first client render, so no hydration mismatch.
+  if (sessionStatus !== "loading" && draftOwner !== userId) {
+    const raw = readDraftRaw();
+    const draft = parseDraft(raw, userId);
+    // First load: only touch the form when there is a draft. User switched: always wipe the previous user's input.
+    if (draft || draftOwner !== undefined) applyDraft(draft);
+    if (!draft && raw) clearDraft(); // stale, foreign, corrupt or empty
+    setDraftOwner(userId);
+  }
+
+  React.useEffect(() => {
+    if (draftOwner === undefined || draftOwner !== userId) return;
+    const timer = setTimeout(() => {
+      const fields = { partyName, enquiryType, state, paymentTerms, inspection, pbg, utility, orderStatus, items };
+      if (isDraftEmpty(fields)) {
+        clearDraft();
+        return;
+      }
+      saveDraft({
+        v: 1,
+        savedAt: Date.now(),
+        userId,
+        enquiryDate,
+        fileNames: files.map((f) => f.name),
+        ...fields,
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [draftOwner, userId, partyName, enquiryDate, enquiryType, state, paymentTerms, inspection, pbg, utility, orderStatus, items, files]);
+
+  const resetForm = () => {
+    applyDraft(null);
+    clearDraft();
+  };
+
   const handleAddItemRow = () => {
-    setItems([
-      ...items,
-      {
-        itemName: "",
-        quantity: "",
-        itemType: "",
-        moc: "",
-        size: "",
-        pnRating: "",
-        operationType: "",
-        extension: "",
-        bypass: "",
-        productCost: "",
-        costRefCode: "",
-        cost: "",
-        stockStatus: "",
-        stockQuantity: "",
-        availableStock: "",
-        stockAgainstContract: "",
-        discount: "",
-      },
-    ]);
+    setItems([...items, emptyItem()]);
   };
 
   const handleRemoveItemRow = (index: number) => {
@@ -164,11 +193,11 @@ export default function NewEnquiryDialog({
 
   const handleItemChange = (
     index: number,
-    field: keyof typeof items[0],
+    field: keyof EnquiryItemForm,
     value: string
   ) => {
     const newItems = [...items];
-    newItems[index][field] = value;
+    newItems[index] = { ...newItems[index], [field]: value };
     setItems(newItems);
   };
 
@@ -195,23 +224,9 @@ export default function NewEnquiryDialog({
         };
       } else {
         newItems.push({
+          ...emptyItem(),
           itemName: parsedItem.itemName,
           quantity: parsedItem.quantity.toString(),
-          itemType: "",
-          moc: "",
-          size: "",
-          pnRating: "",
-          operationType: "",
-          extension: "",
-          bypass: "",
-          productCost: "",
-          costRefCode: "",
-          cost: "",
-          stockStatus: "",
-          stockQuantity: "",
-          availableStock: "",
-          stockAgainstContract: "",
-          discount: "",
         });
       }
       currentIdx++;
@@ -319,38 +334,7 @@ export default function NewEnquiryDialog({
           })),
         })).unwrap();
 
-        // Reset state
-        setPartyName("");
-        setEnquiryType("");
-        setState("");
-        setPaymentTerms("");
-        setInspection("");
-        setPbg("");
-        setUtility("");
-        setOrderStatus("");
-        setFiles([]);
-        setSelectedFiles([]);
-        setItems([
-          {
-            itemName: "",
-            quantity: "",
-            itemType: "",
-            moc: "",
-            size: "",
-            pnRating: "",
-            operationType: "",
-            extension: "",
-            bypass: "",
-            productCost: "",
-            costRefCode: "",
-            cost: "",
-            stockStatus: "",
-            stockQuantity: "",
-            availableStock: "",
-            stockAgainstContract: "",
-            discount: "",
-          },
-        ]);
+        resetForm();
       })(),
       {
         loading: "Uploading attachments & saving new enquiry...",
@@ -381,6 +365,19 @@ export default function NewEnquiryDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          {restoredDraft && (
+            <div role="status" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground space-y-0.5">
+              <div>
+                Restored unsaved draft from {new Date(restoredDraft.savedAt).toLocaleString()}. Check the Enquiry Date before submitting.
+              </div>
+              {restoredDraft.fileNames.length > 0 && files.length === 0 && (
+                <div className="text-muted-foreground">
+                  Re-select attachments: {restoredDraft.fileNames.join(", ")}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Section: Docket Info */}
           <div className="bg-muted/30 p-3 rounded-lg border border-border space-y-3">
             <span className="text-xs font-bold text-foreground">Enquiry Main Information</span>
@@ -617,6 +614,7 @@ export default function NewEnquiryDialog({
               Upload Files <span className="text-red-500">*</span>
             </Label>
             <Input
+              key={fileInputKey}
               id="files"
               type="file"
               multiple
@@ -704,6 +702,9 @@ export default function NewEnquiryDialog({
             <DialogClose render={<Button type="button" variant="outline" size="sm" />}>
               Cancel
             </DialogClose>
+            <Button type="button" variant="outline" size="sm" onClick={resetForm}>
+              Reset Form
+            </Button>
             <Button type="submit" size="sm" disabled={isSubmitting}>
               {isSubmitting ? "Creating..." : "Create Enquiry"}
             </Button>

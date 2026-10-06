@@ -33,7 +33,7 @@ export default async function LookupOptionsAdminPage() {
         </div>
         <Link
           href="/"
-          className="inline-flex h-9 items-center gap-1.5 bg-[#0f62fe] px-4 text-sm font-semibold text-white hover:bg-[#0353e9] dark:bg-blue-700 dark:hover:bg-blue-800 rounded-md"
+          className="inline-flex h-9 items-center gap-1.5 bg-[#0f62fe] dark:bg-primary/85 px-4 text-sm font-semibold text-white dark:text-primary-foreground hover:bg-[#0353e9] dark:hover:bg-primary rounded-md"
         >
           Back to Quotation Process
         </Link>

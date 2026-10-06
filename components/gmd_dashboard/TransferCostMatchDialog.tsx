@@ -83,9 +83,9 @@ export default function TransferCostMatchDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
-          <DialogTitle className="text-sm font-bold text-[#0a2540] flex items-center gap-2">
-            <IndianRupee size={16} className="text-[#0a2540]/70" />
+        <DialogHeader className="px-5 pt-4 pb-3 border-b border-border bg-muted">
+          <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+            <IndianRupee size={16} className="text-foreground/70" />
             Cost Match — Review
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
@@ -94,9 +94,9 @@ export default function TransferCostMatchDialog({
               : `Match ${Math.min(index + 1, total)} of ${total} — apply cost to matching New Items`}
           </DialogDescription>
           {!done && total > 0 && (
-            <div className="mt-2 h-1 w-full rounded bg-[#e1e6eb] overflow-hidden">
+            <div className="mt-2 h-1 w-full rounded bg-border overflow-hidden">
               <div
-                className="h-full bg-[#0f62fe] transition-all"
+                className="h-full bg-[#0f62fe] dark:bg-primary transition-all"
                 style={{ width: `${((index + (done ? 1 : 0)) / total) * 100}%` }}
               />
             </div>
@@ -105,8 +105,8 @@ export default function TransferCostMatchDialog({
 
         {done || !proposal ? (
           <div className="px-5 py-8 flex flex-col items-center gap-3 text-center">
-            <CheckCircle2 size={36} className="text-emerald-600" />
-            <div className="text-sm font-bold text-[#0a2540]">
+            <CheckCircle2 size={36} className="text-emerald-600 dark:text-emerald-300" />
+            <div className="text-sm font-bold text-foreground">
               {appliedCount > 0
                 ? `Applied to ${appliedCount} match${appliedCount === 1 ? "" : "es"}`
                 : "No matches applied"}
@@ -127,20 +127,20 @@ export default function TransferCostMatchDialog({
           <>
             <div className="max-h-[62vh] overflow-y-auto px-5 py-4 flex flex-col gap-4">
               {/* Source */}
-              <div className="rounded-lg border border-[#e1e6eb] bg-white">
-                <div className="px-3 py-2 border-b border-[#e1e6eb] bg-[#f8f9fa] text-[10px] font-bold uppercase tracking-wider text-[#0a2540]/60">
+              <div className="rounded-lg border border-border bg-card">
+                <div className="px-3 py-2 border-b border-border bg-muted text-[10px] font-bold uppercase tracking-wider text-foreground/60">
                   Source — Transferred Row
                 </div>
                 <div className="px-3 py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-xs font-bold text-[#0a2540] truncate">
+                    <div className="text-xs font-bold text-foreground truncate">
                       {proposal.transferredErpCode || "(no ERP code)"}
                     </div>
                     <div className="text-[11px] text-muted-foreground">
                       Cost will be applied to the matched New Items
                     </div>
                   </div>
-                  <div className="shrink-0 flex items-center gap-1 text-lg font-bold text-emerald-700">
+                  <div className="shrink-0 flex items-center gap-1 text-lg font-bold text-emerald-700 dark:text-emerald-300">
                     <IndianRupee size={16} />
                     {proposal.cost}
                   </div>
@@ -148,17 +148,17 @@ export default function TransferCostMatchDialog({
               </div>
 
               {/* Tuple */}
-              <div className="rounded-lg border border-[#e1e6eb] bg-white">
-                <div className="px-3 py-2 border-b border-[#e1e6eb] bg-[#f8f9fa] text-[10px] font-bold uppercase tracking-wider text-[#0a2540]/60">
+              <div className="rounded-lg border border-border bg-card">
+                <div className="px-3 py-2 border-b border-border bg-muted text-[10px] font-bold uppercase tracking-wider text-foreground/60">
                   Unique L1 – L8
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 px-3 py-3">
                   {TUPLE_FIELDS.map(({ key, label }) => (
                     <div key={key} className="flex items-baseline gap-2 min-w-0">
-                      <span className="shrink-0 text-[10px] font-semibold uppercase text-[#0a2540]/50 w-[110px]">
+                      <span className="shrink-0 text-[10px] font-semibold uppercase text-foreground/50 w-[110px]">
                         {label}
                       </span>
-                      <span className="text-xs text-[#0a2540] truncate" title={proposal.tuple[key]}>
+                      <span className="text-xs text-foreground truncate" title={proposal.tuple[key]}>
                         {proposal.tuple[key] || "—"}
                       </span>
                     </div>
@@ -167,17 +167,17 @@ export default function TransferCostMatchDialog({
               </div>
 
               {/* Matches */}
-              <div className="rounded-lg border border-[#e1e6eb] bg-white">
-                <div className="px-3 py-2 border-b border-[#e1e6eb] bg-[#f8f9fa] flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#0a2540]/60">
+              <div className="rounded-lg border border-border bg-card">
+                <div className="px-3 py-2 border-b border-border bg-muted flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
                     Matches in New Items
                   </span>
-                  <span className="text-[10px] font-semibold text-[#0a2540]/70">
+                  <span className="text-[10px] font-semibold text-foreground/70">
                     {proposal.matchedNewItems.length} match
                     {proposal.matchedNewItems.length === 1 ? "" : "es"}
                   </span>
                 </div>
-                <div className="divide-y divide-[#e1e6eb]">
+                <div className="divide-y divide-border">
                   {proposal.matchedNewItems.map((m) => {
                     const target = proposal.targetIds.includes(m.id);
                     return (
@@ -189,22 +189,22 @@ export default function TransferCostMatchDialog({
                           <span
                             className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${
                               isIndian(m.indianImported)
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-amber-100 text-amber-700"
+                                ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                : "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300"
                             }`}
                           >
                             {m.indianImported || "—"}
                           </span>
-                          <span className="text-xs text-[#0a2540] truncate" title={m.erpItemCode}>
+                          <span className="text-xs text-foreground truncate" title={m.erpItemCode}>
                             {m.erpItemCode || "(no ERP code)"}
                           </span>
                         </div>
                         {target ? (
-                          <span className="shrink-0 text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                          <span className="shrink-0 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
                             <ArrowRight size={11} /> update
                           </span>
                         ) : (
-                          <span className="shrink-0 text-[10px] font-semibold text-[#0a2540]/40">
+                          <span className="shrink-0 text-[10px] font-semibold text-foreground/40">
                             skip
                           </span>
                         )}
@@ -213,7 +213,7 @@ export default function TransferCostMatchDialog({
                   })}
                 </div>
                 {proposal.matchedNewItems.length > 1 && (
-                  <div className="px-3 py-2 border-t border-[#e1e6eb] bg-amber-50 text-[10px] font-semibold text-amber-800">
+                  <div className="px-3 py-2 border-t border-border bg-amber-50 dark:bg-amber-500/10 text-[10px] font-semibold text-amber-800 dark:text-amber-300">
                     Multiple matches found — only the Indian item
                     {proposal.targetIds.length === 1 ? "" : "s"} ({proposal.targetIds.length} of{" "}
                     {proposal.matchedNewItems.length}) will be updated.
@@ -222,7 +222,7 @@ export default function TransferCostMatchDialog({
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-[#e1e6eb]">
+            <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-border">
               <div className="text-[11px] text-muted-foreground">
                 Applying moves this row out of Transferred and clears its L1–L8.
               </div>

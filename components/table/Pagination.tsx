@@ -130,7 +130,7 @@ export default function Pagination({
               variant={isActive ? "default" : "ghost"}
               className={`h-8 w-8 text-xs font-semibold rounded p-0 ${
                 isActive
-                  ? "bg-[#0f62fe] text-white hover:bg-[#0353e9] dark:bg-blue-700 dark:hover:bg-blue-800"
+                  ? "bg-[#0f62fe] text-white hover:bg-[#0353e9] dark:bg-blue-500/80 dark:hover:bg-blue-500"
                   : "text-foreground hover:bg-muted"
               }`}
             >

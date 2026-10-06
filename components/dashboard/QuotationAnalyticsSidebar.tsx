@@ -234,7 +234,7 @@ export default function QuotationAnalyticsSidebar({
           <button
             type="button"
             onClick={clearAll}
-            className="text-[11px] font-medium text-blue-600 hover:underline cursor-pointer flex items-center gap-1"
+            className="text-[11px] font-medium text-blue-600 dark:text-blue-300 hover:underline cursor-pointer flex items-center gap-1"
           >
             <X className="h-3 w-3" />
             Clear all
@@ -354,7 +354,7 @@ export default function QuotationAnalyticsSidebar({
             <CardTitle className="text-[12px] font-semibold flex items-center gap-1.5">
               <span>State</span>
               {selectedStates.length > 0 && (
-                <span className="inline-flex items-center justify-center rounded-full bg-[#0f62fe] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                <span className="inline-flex items-center justify-center rounded-full bg-[#0f62fe] dark:bg-blue-500/80 px-1.5 py-0.5 text-[10px] font-bold text-white">
                   {selectedStates.length}
                 </span>
               )}
@@ -365,7 +365,7 @@ export default function QuotationAnalyticsSidebar({
             <button
               type="button"
               onClick={() => onStatesChange([])}
-              className="text-[11px] font-medium text-blue-600 hover:underline cursor-pointer"
+              className="text-[11px] font-medium text-blue-600 dark:text-blue-300 hover:underline cursor-pointer"
             >
               Clear state
             </button>
@@ -407,9 +407,9 @@ export default function QuotationAnalyticsSidebar({
                   title={`${st} (${count} enquiries)`}
                   className={`flex items-center justify-between gap-1 p-2 rounded-md border text-left transition-all cursor-pointer ${
                     isSelected
-                      ? "bg-blue-50 border-[#0f62fe] text-[#0f62fe] dark:bg-blue-950/40 dark:border-blue-500 dark:text-blue-300 font-semibold shadow-xs"
+                      ? "bg-blue-50 border-[#0f62fe] text-[#0f62fe] dark:bg-blue-500/10 dark:border-blue-500 dark:text-blue-300 font-semibold shadow-xs"
                       : isAvailable
-                      ? "bg-background border-border text-foreground hover:bg-muted/70 hover:border-slate-300"
+                      ? "bg-background border-border text-foreground hover:bg-muted/70 hover:border-muted-foreground/40"
                       : "bg-muted/20 border-border/50 text-muted-foreground/50 opacity-40 cursor-not-allowed"
                   }`}
                 >
@@ -419,7 +419,7 @@ export default function QuotationAnalyticsSidebar({
                   <span
                     className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${
                       isSelected
-                        ? "bg-blue-200 text-blue-900 dark:bg-blue-800 dark:text-blue-100"
+                        ? "bg-blue-200 text-blue-900 dark:bg-blue-500/25 dark:text-blue-200"
                         : "bg-muted text-muted-foreground"
                     }`}
                   >

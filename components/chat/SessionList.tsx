@@ -66,7 +66,7 @@ export function SessionList({
       {sessions.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
           <div className="rounded-xl border border-border bg-muted/60 p-1.5">
-            <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]">
+            <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-none">
               <History className="size-4.5 stroke-[1.5]" />
             </div>
           </div>
@@ -96,7 +96,7 @@ export function SessionList({
               >
                 <span
                   className={cn(
-                    "absolute inset-y-0 left-0 w-0.5 bg-[#0f62fe] transition-opacity duration-200",
+                    "absolute inset-y-0 left-0 w-0.5 bg-[#0f62fe] dark:bg-primary/85 transition-opacity duration-200",
                     active ? "opacity-100" : "opacity-0"
                   )}
                 />
@@ -113,7 +113,7 @@ export function SessionList({
                       {" · "}
                       {s.messageCount} messages
                       {active && (
-                        <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-[#0f62fe]">
+                        <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-[#0f62fe] dark:text-primary">
                           Active
                         </span>
                       )}
