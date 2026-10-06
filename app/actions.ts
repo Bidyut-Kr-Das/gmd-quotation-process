@@ -13,6 +13,7 @@ import { fetchBomRows, buildRmCostMap, DIRECT_M2M, getBomEntry, getCachedBomRows
 import { update2to1CostForItems, buildRawMaterialsCostMap, clear2to1BomCache } from "@/lib/gmd2to1CostLookup";
 import { getDistinctBomIds, getBomRmAvailBatch, resolveContractReviewBomIdsFromActuator, computeContractReviewRmAvail, getNoUseBomIdSet, normalizeActuatorPart, clearVerifyBomCache } from "@/lib/verifyBomLookup";
 import { splitCsvLinks } from "@/lib/gmd_lib/contract-order-links";
+import { buildDerivedItemName } from "@/lib/gmd_lib/derived-item-name";
 import { getUsdInrRate } from "@/lib/gmd_lib/exchangeRate";
 import { getRmStockMap, getRmTypeMap, syncDirectM2MAvailableStock } from "@/lib/directM2MStockLookup";
 import { computeDeliverySchedule, syncDeliveryScheduleForItem } from "@/lib/deliverySchedule";
@@ -3099,23 +3100,58 @@ export async function saveActuatorWithRmCodeAction(
   }
 }
 
+/** L-fields whose change affects the derived item name. */
+const DERIVED_SOURCE_FIELDS = new Set([
+  "l2ValveType",
+  "l3Dia",
+  "l4Component",
+  "l5Material",
+  "l6Std",
+  "l7Dimension",
+  "l8ItemCategory",
+]);
+
 export async function updateGMDUpdateFieldAction(
   id: string,
   field: string,
   value: string | null,
 ) {
   "use server";
-  const data =
+  const data: Record<string, unknown> =
     field === "cost"
       ? { [field]: value == null || value.trim() === "" ? null : value }
       : { [field]: value };
+
+  // Keep the derived name in step with the L-fields it is built from.
+  if (DERIVED_SOURCE_FIELDS.has(field)) {
+    const current = await prisma.rawMaterial.findUnique({
+      where: { id },
+      select: {
+        l8ItemCategory: true,
+        l2ValveType: true,
+        l3Dia: true,
+        l4Component: true,
+        l5Material: true,
+        l6Std: true,
+        l7Dimension: true,
+      },
+    });
+    if (current) {
+      data.itemNameDerived =
+        buildDerivedItemName({ ...current, [field]: value }) || null;
+    }
+  }
+
   const updated = await prisma.rawMaterial.update({
     where: { id },
     data,
   });
-  console.log(`Updated GMDUpdateItem: ${id}, Field: ${field}, Value: ${value}, ${updated}`);
-  console.dir(updated, { depth: Infinity });
-  return { id, field, value };
+  return {
+    id,
+    field,
+    value,
+    itemNameDerived: updated.itemNameDerived,
+  };
 }
 
 export async function updateDerivedItemName(itemCode: string) {
@@ -3126,36 +3162,7 @@ export async function updateDerivedItemName(itemCode: string) {
     });
     if (!item) return { success: false, error: "Item not found." };
 
-    const l8 = (item.l8ItemCategory ?? "").trim();
-    const isGearbox = l8.toUpperCase().includes("GEAR BOX");
-
-    const order = isGearbox
-      ? [item.l4Component, item.l5Material, item.l7Dimension]
-      : [
-          item.l8ItemCategory,
-          item.l2ValveType,
-          item.l3Dia,
-          item.l4Component,
-          item.l5Material,
-          item.l6Std,
-          item.l7Dimension,
-        ];
-
-    const seen = new Set<string>();
-    const parts: string[] = [];
-    for (const raw of order) {
-      let v = (raw ?? "").trim();
-      if (!v) continue;
-      const up = v.toUpperCase();
-      if (up === "TRADING VALVE" || up === "TRADING VALVES") v = "TV";
-      else if (up.includes("GEAR BOX")) v = v.replace(/gear box/gi, "GB");
-      const key = v.toUpperCase().replace(/S$/, "");
-      if (seen.has(key)) continue;
-      seen.add(key);
-      parts.push(v);
-    }
-
-    const itemNameDerived = parts.join("-");
+    const itemNameDerived = buildDerivedItemName(item) || null;
     await prisma.rawMaterial.update({
       where: { id: item.id },
       data: { itemNameDerived },

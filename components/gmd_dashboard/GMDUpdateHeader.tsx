@@ -35,14 +35,14 @@ export default function GMDUpdateHeader({
   actions,
 }: GMDUpdateHeaderProps) {
   return (
-    <div className="bg-[#0a2540] px-6 py-3 border-b border-[#1e3d59] flex items-center justify-between">
+    <div className="bg-[#0a2540] dark:bg-card px-6 py-3 border-b border-[#1e3d59] dark:border-border flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-white">{title}</h2>
-        <span className="bg-[#1e3d59] text-[#38ef7d] text-[11px] font-semibold px-3 py-1 rounded-full">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-white dark:text-foreground">{title}</h2>
+        <span className="bg-[#1e3d59] text-[#38ef7d] dark:bg-emerald-500/10 dark:text-emerald-300 text-[11px] font-semibold px-3 py-1 rounded-full">
           {totalRows} items
         </span>
         {syncedAt !== undefined && (
-          <span className="text-[11px] text-white/50 font-medium">
+          <span className="text-[11px] text-white/50 dark:text-muted-foreground font-medium">
             Last synced: {formatSyncTime(syncedAt)}
           </span>
         )}
@@ -53,7 +53,7 @@ export default function GMDUpdateHeader({
             <button
               onClick={onSync}
               disabled={syncing}
-              className="flex items-center gap-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-400/30 rounded px-3 py-1.5 text-[11px] font-semibold text-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-400/30 rounded px-3 py-1.5 text-[11px] font-semibold text-blue-400 dark:text-blue-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {syncing ? (
                 <Loader2 size={12} className="animate-spin" />

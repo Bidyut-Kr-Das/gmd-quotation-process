@@ -1,46 +1,6 @@
 import "dotenv/config";
 import { prisma } from "../lib/prisma";
-
-function buildDerivedItemName(item: {
-  l8ItemCategory: string | null;
-  l2ValveType: string | null;
-  l3Dia: string | null;
-  l4Component: string | null;
-  l5Material: string | null;
-  l6Std: string | null;
-  l7Dimension: string | null;
-}): string {
-  const l8 = (item.l8ItemCategory ?? "").trim();
-  const isGearbox = l8.toUpperCase().includes("GEAR BOX");
-
-  const order = isGearbox
-    ? [item.l4Component, item.l5Material, item.l7Dimension]
-    : [
-        item.l8ItemCategory,
-        item.l2ValveType,
-        item.l3Dia,
-        item.l4Component,
-        item.l5Material,
-        item.l6Std,
-        item.l7Dimension,
-      ];
-
-  const seen = new Set<string>();
-  const parts: string[] = [];
-  for (const raw of order) {
-    let v = (raw ?? "").trim();
-    if (!v) continue;
-    const up = v.toUpperCase();
-    if (up === "TRADING VALVE" || up === "TRADING VALVES") v = "TV";
-    else if (up.includes("GEAR BOX")) v = v.replace(/gear box/gi, "GB");
-    const key = v.toUpperCase().replace(/S$/, "");
-    if (seen.has(key)) continue;
-    seen.add(key);
-    parts.push(v);
-  }
-
-  return parts.join("-");
-}
+import { buildDerivedItemName } from "../lib/gmd_lib/derived-item-name";
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");

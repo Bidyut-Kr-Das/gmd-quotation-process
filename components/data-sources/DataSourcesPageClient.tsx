@@ -66,7 +66,7 @@ function SheetCell({
         target="_blank"
         rel="noopener noreferrer"
         onClick={(event) => event.stopPropagation()}
-        className="inline-flex items-center gap-1 text-[13px] text-[#0f62fe] hover:underline"
+        className="inline-flex items-center gap-1 text-[13px] text-[#0f62fe] dark:text-primary hover:underline"
       >
         <span className="max-w-60 truncate font-mono text-xs">{sheetId}</span>
         <ExternalLink className="h-3 w-3 shrink-0" />
@@ -132,7 +132,7 @@ function TabCell({ source }: { source: DataSource }) {
 function EnvWarning({ source, envMissing }: DataSourceRow) {
   if (!envMissing) return null;
   return (
-    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600">
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-300">
       <AlertTriangle size={11} />
       {source.envVar} is not set in .env — its sync will fail
     </span>
@@ -189,10 +189,10 @@ export default function DataSourcesPageClient({
       {" "}
       <main className="flex min-h-0 flex-1 w-full flex-col overflow-hidden px-4 py-4">
         <Card className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 py-4">
-          <CardHeader className="flex-row items-center justify-between gap-4 shrink-0 rounded-t-xl bg-[#0a2540] px-5 py-4 text-white">
+          <CardHeader className="flex-row items-center justify-between gap-4 shrink-0 rounded-t-xl bg-[#0a2540] px-5 py-4 text-white dark:bg-muted dark:text-foreground">
             <div className="flex flex-col gap-1">
-              <CardTitle className="text-white text-lg">Data Sources</CardTitle>
-              <span className="text-xs text-blue-100/80">
+              <CardTitle className="text-white dark:text-foreground text-lg">Data Sources</CardTitle>
+              <span className="text-xs text-blue-100/80 dark:text-muted-foreground">
                 {rows.length} sources · {syncSources} with sync logic ·{" "}
                 {syncCount} operations
                 {deadCount > 0 ? ` · ${deadCount} with no caller` : ""}.
@@ -204,7 +204,7 @@ export default function DataSourcesPageClient({
               <button
                 type="button"
                 onClick={toggleAll}
-                className="flex items-center gap-1.5 rounded border border-white/25 px-3 py-1.5 text-[11px] font-semibold text-white transition-all hover:bg-white/10"
+                className="flex items-center gap-1.5 rounded border border-white/25 dark:border-border px-3 py-1.5 text-[11px] font-semibold text-white dark:text-foreground transition-all hover:bg-white/10 dark:hover:bg-accent"
               >
                 {allExpanded ? (
                   <ChevronDown size={12} />
@@ -287,7 +287,7 @@ export default function DataSourcesPageClient({
                                 <Link
                                   href={source.route}
                                   onClick={(event) => event.stopPropagation()}
-                                  className="text-[#0f62fe] hover:underline"
+                                  className="text-[#0f62fe] dark:text-primary hover:underline"
                                 >
                                   {source.page}
                                 </Link>

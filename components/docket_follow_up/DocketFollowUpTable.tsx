@@ -120,12 +120,12 @@ function getPartyInitials(partyName: string): string {
 function getAvatarColor(initials: string): string {
   const charCode = (initials.charCodeAt(0) || 0) + (initials.charCodeAt(1) || 0);
   const colors = [
-    "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800",
-    "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800",
-    "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800",
-    "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800",
-    "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800",
-    "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800",
+    "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/12 dark:text-blue-300 dark:border-blue-500/25",
+    "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/12 dark:text-indigo-300 dark:border-indigo-500/25",
+    "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/12 dark:text-sky-300 dark:border-sky-500/25",
+    "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/12 dark:text-emerald-300 dark:border-emerald-500/25",
+    "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/12 dark:text-amber-300 dark:border-amber-500/25",
+    "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/12 dark:text-rose-300 dark:border-rose-500/25",
   ];
   return colors[charCode % colors.length];
 }
@@ -695,8 +695,8 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
             }}
             className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer border flex items-center gap-1 ${
               selectedActionStatuses.includes("PENDING")
-                ? "bg-rose-600 text-white border-rose-600"
-                : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900"
+                ? "bg-rose-600 dark:bg-rose-500/25 text-white dark:text-rose-100 border-rose-600 dark:border-rose-500/40"
+                : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:hover:bg-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20"
             }`}
           >
             <AlertCircle className="w-3 h-3" />
@@ -711,8 +711,8 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
             }}
             className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer border flex items-center gap-1 ${
               selectedActionStatuses.includes("ACTIVE")
-                ? "bg-blue-600 text-white border-blue-600"
-                : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900"
+                ? "bg-blue-600 dark:bg-blue-500/25 text-white dark:text-blue-100 border-blue-600 dark:border-blue-500/40"
+                : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:hover:bg-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20"
             }`}
           >
             <Mail className="w-3 h-3" />
@@ -727,8 +727,8 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
             }}
             className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer border flex items-center gap-1 ${
               selectedQuoteStatuses.includes("SENT")
-                ? "bg-emerald-600 text-white border-emerald-600"
-                : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900"
+                ? "bg-emerald-600 dark:bg-emerald-500/25 text-white dark:text-emerald-100 border-emerald-600 dark:border-emerald-500/40"
+                : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20"
             }`}
           >
             <CheckCircle2 className="w-3 h-3" />
@@ -743,8 +743,8 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
             }}
             className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer border flex items-center gap-1 ${
               selectedQuoteStatuses.includes("NOT_SENT")
-                ? "bg-amber-600 text-white border-amber-600"
-                : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900"
+                ? "bg-amber-600 dark:bg-amber-500/25 text-white dark:text-amber-100 border-amber-600 dark:border-amber-500/40"
+                : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 dark:hover:bg-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20"
             }`}
           >
             <Clock className="w-3 h-3" />
@@ -759,8 +759,8 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
             }}
             className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer border flex items-center gap-1 ${
               selectedReplyStatuses.includes("ARRIVED")
-                ? "bg-indigo-600 text-white border-indigo-600"
-                : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-900"
+                ? "bg-indigo-600 dark:bg-indigo-500/25 text-white dark:text-indigo-100 border-indigo-600 dark:border-indigo-500/40"
+                : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20"
             }`}
           >
             <Send className="w-3 h-3" />
@@ -775,8 +775,8 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
             }}
             className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer border flex items-center gap-1 ${
               selectedReplyStatuses.includes("AWAITING")
-                ? "bg-amber-600 text-white border-amber-600"
-                : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900"
+                ? "bg-amber-600 dark:bg-amber-500/25 text-white dark:text-amber-100 border-amber-600 dark:border-amber-500/40"
+                : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:hover:bg-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20"
             }`}
           >
             <Clock className="w-3 h-3" />
@@ -791,8 +791,8 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
             }}
             className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer border flex items-center gap-1 ${
               selectedReplyStatuses.includes("OVERDUE")
-                ? "bg-red-600 text-white border-red-600"
-                : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900"
+                ? "bg-red-600 dark:bg-red-500/25 text-white dark:text-red-100 border-red-600 dark:border-red-500/40"
+                : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:hover:bg-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/20"
             }`}
           >
             <AlertCircle className="w-3 h-3" />
@@ -809,7 +809,7 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
             onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
             className={`h-7 px-2.5 text-xs font-semibold cursor-pointer ${
               showAdvancedFilters || hasActiveFilters
-                ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
+                ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-500/12 dark:text-blue-300 dark:border-blue-500/25"
                 : ""
             }`}
           >
@@ -822,7 +822,7 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
             variant="outline"
             size="sm"
             onClick={handleExportExcel}
-            className="h-7 px-2.5 text-xs font-semibold bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800 cursor-pointer"
+            className="h-7 px-2.5 text-xs font-semibold bg-sky-50 hover:bg-sky-100 dark:hover:bg-sky-500/20 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/25 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 mr-1" />
             Export
@@ -835,13 +835,13 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
         <div className="p-3 bg-muted/30 rounded-lg border border-border space-y-2.5 shrink-0 text-xs transition-all">
           <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
             <span className="font-bold text-foreground flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-blue-600" />
+              <Filter className="w-3.5 h-3.5 text-blue-600 dark:text-blue-300" />
               Multiple Filter Criteria (Click to select multiple options)
             </span>
             {hasActiveFilters && (
               <button
                 onClick={clearAllFilters}
-                className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 dark:text-rose-400 flex items-center gap-1 cursor-pointer"
+                className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 dark:hover:text-rose-200 dark:text-rose-300 flex items-center gap-1 cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
                 Clear All Filters
@@ -1005,12 +1005,12 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
           {activeFilterList.map((f) => (
             <span
               key={f.key}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-2xs"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300 border border-blue-200 dark:border-blue-500/25 shadow-2xs"
             >
               <span>{f.label}</span>
               <button
                 onClick={f.clear}
-                className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 cursor-pointer"
+                className="hover:bg-blue-200 dark:hover:bg-blue-500/20 rounded-full p-0.5 cursor-pointer"
               >
                 <X className="w-2.5 h-2.5" />
               </button>
@@ -1018,7 +1018,7 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
           ))}
           <button
             onClick={clearAllFilters}
-            className="text-[10.5px] font-semibold text-rose-600 hover:underline ml-1 cursor-pointer"
+            className="text-[10.5px] font-semibold text-rose-600 dark:text-rose-300 hover:underline ml-1 cursor-pointer"
           >
             Clear all
           </button>
@@ -1327,9 +1327,9 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                   const isSelected = selectedIds.has(r.enquiryId);
 
                   const rowBg = r.actionPending
-                    ? "bg-[#fee2e2]/50 hover:bg-[#fee2e2]/70 dark:bg-red-950/25 dark:hover:bg-red-950/40"
+                    ? "bg-[#fee2e2]/50 hover:bg-[#fee2e2]/70 dark:bg-red-500/8 dark:hover:bg-red-500/10"
                     : isSelected
-                    ? "bg-blue-50/70 hover:bg-blue-50 dark:bg-blue-950/30"
+                    ? "bg-blue-50/70 hover:bg-blue-50 dark:hover:bg-blue-500/20 dark:bg-blue-500/10"
                     : "hover:bg-muted/40";
 
                   return (
@@ -1358,7 +1358,7 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                       </td>
 
                       {/* Docket No */}
-                      <td className="py-2.5 px-2.5 border-r border-b border-border whitespace-nowrap font-bold text-[#0353e9] hover:underline cursor-pointer">
+                      <td className="py-2.5 px-2.5 border-r border-b border-border whitespace-nowrap font-bold text-[#0353e9] dark:text-primary hover:underline cursor-pointer">
                         <span onClick={() => setSelectedRow(r)}>{r.docketNumber}</span>
                       </td>
 
@@ -1410,13 +1410,13 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                       {/* Action Status Badge */}
                       <td className="py-2.5 px-2.5 border-r border-b border-border whitespace-nowrap">
                         {r.actionPending ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300/60">
-                            <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300 border border-rose-300/60 dark:border-rose-500/25">
+                            <AlertCircle className="w-3 h-3 text-rose-600 dark:text-rose-300 shrink-0" />
                             Action Pending
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/60">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-500/25">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-300 shrink-0" />
                             Email Found ({r.threadsCount})
                           </span>
                         )}
@@ -1427,8 +1427,8 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                         {r.quotationSent ? (
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-1.5">
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300 shrink-0" />
                                 Quote Sent
                               </span>
                               {r.quotationMethod && (
@@ -1462,8 +1462,8 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                       <td className="py-2.5 px-2.5 border-r border-b border-border whitespace-nowrap">
                         {r.partyReplyStatus === "REPLY_ARRIVED" ? (
                           <div className="flex flex-col gap-0.5">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 dark:text-blue-400">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-300 shrink-0" />
                               Reply Arrived
                             </span>
                             {r.partyReplyDate && (
@@ -1486,16 +1486,16 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                           </div>
                         ) : r.partyReplyStatus === "AWAITING_REPLY" ? (
                           <div className="flex flex-col gap-0.5">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
-                              <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                              <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
                               Awaiting Reply
                             </span>
                             {r.daysWithoutReply != null && (
                               <span
                                 className={`text-[10px] font-medium ${
                                   r.daysWithoutReply > 7
-                                    ? "text-rose-600 dark:text-rose-400 font-bold"
-                                    : "text-amber-700 dark:text-amber-400"
+                                    ? "text-rose-600 dark:text-rose-300 font-bold"
+                                    : "text-amber-700 dark:text-amber-300"
                                 }`}
                               >
                                 {r.daysWithoutReply === 0 ? "Sent today" : `${r.daysWithoutReply}d without reply`}
@@ -1521,10 +1521,10 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                                     href={link}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:underline border border-blue-200 transition-colors cursor-pointer"
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-semibold bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-500/20 hover:underline border border-blue-200 dark:border-blue-500/25 transition-colors cursor-pointer"
                                     title={fn}
                                   >
-                                    <Paperclip className="w-3 h-3 text-blue-600 shrink-0" />
+                                    <Paperclip className="w-3 h-3 text-blue-600 dark:text-blue-300 shrink-0" />
                                     <span className="truncate max-w-[130px]">{fn}</span>
                                     <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
                                   </a>
@@ -1533,7 +1533,7 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-muted text-foreground border border-border"
                                     title={fn}
                                   >
-                                    <Paperclip className="w-3 h-3 text-blue-600 shrink-0" />
+                                    <Paperclip className="w-3 h-3 text-blue-600 dark:text-blue-300 shrink-0" />
                                     <span className="truncate max-w-[130px]">{fn}</span>
                                   </span>
                                 );
@@ -1542,10 +1542,10 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                               <button
                                 type="button"
                                 onClick={() => setSelectedRow(r)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-800 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-800 hover:bg-blue-100 dark:hover:bg-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300 border border-blue-200 dark:border-blue-500/25 transition-colors cursor-pointer"
                                 title="Click to view all attachments"
                               >
-                                <Paperclip className="w-3 h-3 text-blue-600 shrink-0" />
+                                <Paperclip className="w-3 h-3 text-blue-600 dark:text-blue-300 shrink-0" />
                                 <span>{r.fileNames.length} Files ↗</span>
                                 <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
                               </button>
@@ -1563,19 +1563,19 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                                     href={link}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 hover:underline border border-amber-200 transition-colors cursor-pointer"
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20 hover:underline border border-amber-200 dark:border-amber-500/25 transition-colors cursor-pointer"
                                     title={fn}
                                   >
-                                    <FileText className="w-3 h-3 text-amber-600 shrink-0" />
+                                    <FileText className="w-3 h-3 text-amber-600 dark:text-amber-300 shrink-0" />
                                     <span className="truncate max-w-[130px]">Spec Doc</span>
                                     <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
                                   </a>
                                 ) : (
                                   <span
-                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-amber-50 text-amber-700 border border-amber-200"
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/25"
                                     title={fn}
                                   >
-                                    <FileText className="w-3 h-3 text-amber-600 shrink-0" />
+                                    <FileText className="w-3 h-3 text-amber-600 dark:text-amber-300 shrink-0" />
                                     <span className="truncate max-w-[130px]">Spec Doc</span>
                                   </span>
                                 );
@@ -1584,10 +1584,10 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                               <button
                                 type="button"
                                 onClick={() => setSelectedRow(r)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 hover:bg-amber-100 dark:hover:bg-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-200 dark:border-amber-500/25 transition-colors cursor-pointer"
                                 title="Click to view spec documents"
                               >
-                                <FileText className="w-3 h-3 text-amber-600 shrink-0" />
+                                <FileText className="w-3 h-3 text-amber-600 dark:text-amber-300 shrink-0" />
                                 <span>{r.fileNames.length} Spec Docs ↗</span>
                               </button>
                             )}
@@ -1601,7 +1601,7 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                       <td className="py-2.5 px-2.5 border-r border-b border-border whitespace-nowrap">
                         {r.partyEmail ? (
                           <span
-                            className="text-blue-700 dark:text-blue-400 font-mono text-[10.5px] truncate max-w-[150px] block"
+                            className="text-blue-700 dark:text-blue-300 font-mono text-[10.5px] truncate max-w-[150px] block"
                             title={r.partyEmail}
                           >
                             {r.partyEmail}
@@ -1617,10 +1617,10 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                           <span
                             className={`inline-block px-2 py-0.5 rounded font-mono font-bold text-[10.5px] ${
                               r.lastCommunicationDays <= 3
-                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300"
                                 : r.lastCommunicationDays <= 7
-                                ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                                : "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300"
+                                ? "bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300"
+                                : "bg-rose-100 text-rose-800 dark:bg-rose-500/10 dark:text-rose-300"
                             }`}
                           >
                             {r.lastCommunicationDays === 0
@@ -1654,7 +1654,7 @@ export default function DocketFollowUpTable({ rows }: DocketFollowUpTableProps) 
                           variant="ghost"
                           size="sm"
                           onClick={() => setSelectedRow(r)}
-                          className="h-7 w-7 p-0 rounded-md hover:bg-blue-50 text-blue-600 dark:hover:bg-blue-950/50 dark:text-blue-400 cursor-pointer"
+                          className="h-7 w-7 p-0 rounded-md hover:bg-blue-50 text-blue-600 dark:hover:bg-blue-500/12 dark:text-blue-300 cursor-pointer"
                           title="View 3-Stage Lifecycle Details"
                         >
                           <Eye className="w-3.5 h-3.5" />
