@@ -617,7 +617,7 @@ const RAW_MATERIAL_SYNC: SyncOperation[] = [
       ["(not a column)", "cBatch"],
     ),
     writePolicy:
-      "UPDATE-ALL-EXCEPT on a per-row basis. updateGMDUpdateFieldAction has no field allow-list — it spreads { [field]: value } straight into prisma.gMDUpdateItem.update, so any column name sent by the client is writable. applyTransferCostMatchAction additionally CLEARS L1-L8 on the source row.",
+      "UPDATE-ALL-EXCEPT on a per-row basis. updateGMDUpdateFieldAction has no field allow-list — it spreads { [field]: value } straight into prisma.rawMaterial.update, so any column name sent by the client is writable. applyTransferCostMatchAction additionally CLEARS L1-L8 on the source row.",
     cadence: "on-demand",
   },
   {

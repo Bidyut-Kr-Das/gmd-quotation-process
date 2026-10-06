@@ -82,7 +82,16 @@ export async function GET() {
         bomIdsByCode.get((item.erpItemCode ?? "").trim()) ?? [];
     }
 
-    const syncedAt = items.length > 0 ? items[0].syncedAt : null;
+    // Newest sync wins. rows are ordered by createdAt for display, so the first
+    // row is NOT necessarily the most recently synced one (skipped/closed rows
+    // are never re-stamped).
+    const syncedAt =
+      items.length > 0
+        ? items.reduce(
+            (max, i) => (i.syncedAt > max ? i.syncedAt : max),
+            items[0].syncedAt,
+          )
+        : null;
     const headers = [...CANONICAL_COLUMNS.slice(0, 2), "ITEM NAME (derived)", ...CANONICAL_COLUMNS.slice(2), "BOM ID", "Vendor Reference", "Attachment", C_BATCH_HEADER];
     const rows = items.map((i) => {
       const r = dbItemToRow({

@@ -8,12 +8,13 @@ import GMDUpdateSkeleton from "../../components/gmd_dashboard/skeletons/GMDUpdat
 import { toast } from "sonner";
 import { updateSupplyHistoryFieldAction } from "@/app/actions";
 import { SUPPLY_HEADER_TO_DB_FIELD } from "@/lib/gmd_lib/supply-history-columns";
-import { C_BATCH_HEADER, cBatchBadges } from "@/lib/gmd_lib/verify-bom-columns";
+import { C_BATCH_HEADER, cBatchBadges, cBatchFilter } from "@/lib/gmd_lib/verify-bom-columns";
 import { INDIAN_STATES } from "@/lib/supplyStateResolver";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import {
   setColumnFilter,
   setMultiFilter,
+  setBatchFilter,
   setDateFrom,
   setDateTo,
   setGlobalSearch,
@@ -30,6 +31,9 @@ interface SupplyHistoryData {
   syncedAt: string | null;
   utilityOptions?: string[];
 }
+
+// Stable descriptor list so GMDUpdateTable's row predicate keeps a stable dep.
+const SUPPLY_HISTORY_BATCH_FILTERS = [cBatchFilter()];
 
 export default function SupplyHistoryPage() {
   const [data, setData] = useState<SupplyHistoryData | null>(null);
@@ -127,6 +131,7 @@ export default function SupplyHistoryPage() {
   const filterActions = useMemo(() => ({
     onColumnFilter: (header: string, value: string) => dispatch(setColumnFilter({ header, value })),
     onMultiFilter: (header: string, values: string[]) => dispatch(setMultiFilter({ header, values })),
+    onBatchFilter: (key: string, value: boolean) => dispatch(setBatchFilter({ key, value })),
     onDateFrom: (val: string) => dispatch(setDateFrom(val)),
     onDateTo: (val: string) => dispatch(setDateTo(val)),
     onGlobalSearch: (val: string) => dispatch(setGlobalSearch(val)),
@@ -187,6 +192,8 @@ export default function SupplyHistoryPage() {
             uniqueKeyColumns={["INVOICE NO", "item name"]}
             hiddenColumns={[C_BATCH_HEADER]}
             cellBadges={cBatchBadges("ERP ITEM CODE")}
+            batchFilterHeader="ERP ITEM CODE"
+            batchPresenceFilters={SUPPLY_HISTORY_BATCH_FILTERS}
             filterState={filterState}
             filterActions={filterActions}
             fullHeight

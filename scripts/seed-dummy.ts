@@ -103,8 +103,8 @@ async function main() {
     l3Dia: pick(SIZES, i), l4Component: "BODY", l5Material: pick(MOCS, i), um: "NOS", availableStock: String(10 * i),
     hsnCode: "84818030", currentStatus: "Active", rmType: "COMMON", indianImported: i % 2 ? "Indian" : "Imported",
   });
-  if ((await prisma.gMDUpdateItem.count()) === 0)
-    await prisma.gMDUpdateItem.createMany({ data: range().map((i) => ({ ...gmdRow(i), cost: String(400 * i), newItemStatus: "New" })) });
+  if ((await prisma.rawMaterial.count()) === 0)
+    await prisma.rawMaterial.createMany({ data: range().map((i) => ({ ...gmdRow(i), cost: String(400 * i), newItemStatus: "New" })) });
   await prisma.rawMaterial.createMany({ skipDuplicates: true, data: range().map((i) => ({ ...gmdRow(i), cost: 400 * i })) });
 
   await prisma.fullItem.createMany({

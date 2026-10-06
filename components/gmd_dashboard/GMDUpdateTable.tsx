@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { ChevronUp, ChevronDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check } from "lucide-react";
+import { ChevronUp, ChevronDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check, Highlighter } from "lucide-react";
 import GMDUpdateStatusBadge from "./GMDUpdateStatusBadge";
 import type { ContractReviewImage } from "@/lib/gmd_lib/contract-review-image-lookup";
 import {
@@ -593,6 +593,8 @@ const EMPTY_DATE_RANGES: Record<
   { from: string; to: string; blank?: boolean }
 > = {};
 
+const EMPTY_BATCH_FILTERS: Record<string, boolean> = {};
+
 const DATE_SORT_HEADERS = new Set(["Date", "expiryDate", "PBG VALID TILL", "PBG CLAIM TILL"]);
 function isDateHeader(header: string): boolean {
   if (DATE_SORT_HEADERS.has(header)) return true;
@@ -828,8 +830,36 @@ interface GMDUpdateTableProps {
     label: string;
     title?: string;
     /** Chip colour. Defaults to rose so existing single-badge callers are unchanged. */
-    tone?: "rose" | "amber" | "slate";
+    tone?: "rose" | "amber" | "yellow" | "slate";
   }[];
+  /**
+   * Header (normally the item-code column) whose filter area renders the
+   * `batchPresenceFilters` checkboxes.
+   */
+  batchFilterHeader?: string;
+  /**
+   * Checkbox presence filters rendered beside "Drawing present" / "Image
+   * present". Each one keeps only the rows whose hidden `column` equals
+   * `value`. Mirrors `cellBadges` so a page declares the chip and the filter
+   * from the same flag.
+   */
+  batchPresenceFilters?: {
+    key: string;
+    label: string;
+    column: string;
+    value: string;
+    title?: string;
+  }[];
+  /**
+   * Renders a toolbar toggle that highlights the cells of two columns when
+   * their trimmed, case-sensitive values differ. Used by the Verify BOM table
+   * to compare ITEM NAME vs NEW ITEM NAME.
+   */
+  diffHighlight?: {
+    columns: [string, string];
+    label?: string;
+    tone?: "rose" | "amber" | "yellow";
+  };
   groupByColumn?: string;
   mergeColumns?: string[];
   mergeTypeColumn?: string;
@@ -856,6 +886,7 @@ interface GMDUpdateTableProps {
   filterState?: {
     columnFilters: Record<string, string>;
     multiFilters: Record<string, string[]>;
+    batchFilters?: Record<string, boolean>;
     dateFrom?: string;
     dateTo?: string;
     dateRanges?: Record<string, { from: string; to: string; blank?: boolean }>;
@@ -866,6 +897,7 @@ interface GMDUpdateTableProps {
   filterActions?: {
     onColumnFilter: (header: string, value: string) => void;
     onMultiFilter: (header: string, values: string[]) => void;
+    onBatchFilter?: (key: string, value: boolean) => void;
     onDateFrom?: (val: string) => void;
     onDateTo?: (val: string) => void;
     onDateRange?: (header: string, from: string, to: string) => void;
@@ -1046,6 +1078,9 @@ castingRateInputs,
   linkedDrawingColumn,
   linkedFilesColumn,
   linkedFilesIconColumn,
+  batchFilterHeader,
+  batchPresenceFilters,
+  diffHighlight,
 }: GMDUpdateTableProps) {
   const isControlled = !!filterState;
 
@@ -1069,6 +1104,10 @@ castingRateInputs,
     drawing: boolean;
     image: boolean;
   }>({ drawing: false, image: false });
+  const [localBatchFilters, setLocalBatchFilters] = useState<
+    Record<string, boolean>
+  >({});
+  const [highlightDiff, setHighlightDiff] = useState(false);
 
   const currentPage = isControlled
     ? filterState!.currentPage
@@ -1083,6 +1122,9 @@ castingRateInputs,
   const multiFilters = isControlled
     ? filterState!.multiFilters
     : localMultiFilters;
+  const batchFilters = isControlled
+    ? (filterState!.batchFilters ?? EMPTY_BATCH_FILTERS)
+    : localBatchFilters;
   const dateFrom = isControlled
     ? (filterState!.dateFrom ?? "")
     : localDateFrom;
@@ -1137,6 +1179,23 @@ castingRateInputs,
     [filterActions, setCurrentPage],
   );
 
+  const setBatchFilter = useCallback(
+    (key: string, value: boolean) => {
+      if (filterActions?.onBatchFilter) {
+        filterActions.onBatchFilter(key, value);
+      } else {
+        setLocalBatchFilters((prev) => {
+          const next = { ...prev };
+          if (value) next[key] = true;
+          else delete next[key];
+          return next;
+        });
+      }
+      setCurrentPage(1);
+    },
+    [filterActions, setCurrentPage],
+  );
+
   const DATE_FILTER_CANDIDATES = useMemo(() => new Set(["Date", "expiryDate", "DATE OF CONTRACT", "LC DATE/RTGS DATE", "LAST DATE OF SHIPMENT/DATE OF LC"]), []);
   const dateColIdx = useMemo(() => {
     for (const cand of DATE_FILTER_CANDIDATES) {
@@ -1148,6 +1207,25 @@ castingRateInputs,
     return fallback;
   }, [headers, DATE_FILTER_CANDIDATES]);
   const isDateFilterHeader = useCallback((header: string) => DATE_FILTER_CANDIDATES.has(header), [DATE_FILTER_CANDIDATES]);
+
+  // "Highlight Name Diff" support: compare two columns (trimmed, case
+  // sensitive) and tint both cells of any row/group where they differ.
+  const [diffColA, diffColB] = diffHighlight?.columns ?? ["", ""];
+  const diffIdxA = diffHighlight ? headers.indexOf(diffColA) : -1;
+  const diffIdxB = diffHighlight ? headers.indexOf(diffColB) : -1;
+  const diffActive = highlightDiff && diffIdxA !== -1 && diffIdxB !== -1;
+  const rowDiffers = useCallback(
+    (row: unknown[]): boolean =>
+      diffActive &&
+      String(row[diffIdxA] ?? "").trim() !== String(row[diffIdxB] ?? "").trim(),
+    [diffActive, diffIdxA, diffIdxB],
+  );
+  const isDiffCol = useCallback(
+    (header: string): boolean =>
+      diffActive && (header === diffColA || header === diffColB),
+    [diffActive, diffColA, diffColB],
+  );
+
   const hiddenSet = useMemo(
     () => new Set(hiddenColumns ?? []),
     [hiddenColumns],
@@ -1341,6 +1419,7 @@ castingRateInputs,
     else {
       setLocalColumnFilters({});
       setLocalMultiFilters({});
+      setLocalBatchFilters({});
       setLocalGlobalSearch("");
       setLocalDateFrom("");
       setLocalDateTo("");
@@ -1354,6 +1433,7 @@ castingRateInputs,
   const hasActiveFilters =
     Object.values(columnFilters).some((v) => v && v !== "All") ||
     Object.values(multiFilters).some((v) => v.length > 0) ||
+    Object.values(batchFilters).some(Boolean) ||
     globalSearch.trim() !== "" ||
     dateFrom !== "" ||
     dateTo !== "" ||
@@ -1508,6 +1588,12 @@ castingRateInputs,
         const code = iIdx !== -1 ? String(row[iIdx] ?? "").trim() : "";
         if (!code || !(itemImagesByCode?.[code]?.length ?? 0)) return false;
       }
+      for (const bf of batchPresenceFilters ?? []) {
+        if (!batchFilters[bf.key]) continue;
+        const bIdx = headers.indexOf(bf.column);
+        if (bIdx === -1 || String(row[bIdx] ?? "").trim() !== bf.value)
+          return false;
+      }
 
       return true;
     },
@@ -1516,6 +1602,7 @@ castingRateInputs,
       rowSearchCache,
       columnFilters,
       multiFilters,
+      batchFilters,
       headers,
       dateRanges,
       dateColIdx,
@@ -1529,6 +1616,7 @@ castingRateInputs,
       linkedDrawingColumn,
       imageButtonColumn,
       itemImagesByCode,
+      batchPresenceFilters,
     ],
   );
 
@@ -2160,6 +2248,31 @@ castingRateInputs,
     </div>
   );
 
+  // Checkbox presence filters for batch flags (C / N). Rendered in the
+  // item-code header (`batchFilterHeader`) the same way drawing/image are
+  // rendered in the image-button column, including inside a collapsed group.
+  const batchPresenceControls =
+    batchPresenceFilters && batchPresenceFilters.length > 0 ? (
+      <div className="flex flex-col gap-0.5 mt-1.5">
+        {batchPresenceFilters.map((bf) => (
+          <label
+            key={bf.key}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 text-[10px] font-medium normal-case tracking-normal text-foreground/70 cursor-pointer select-none"
+            title={bf.title}
+          >
+            <input
+              type="checkbox"
+              checked={!!batchFilters[bf.key]}
+              onChange={(e) => setBatchFilter(bf.key, e.target.checked)}
+              className="accent-[#0070f3] dark:accent-primary"
+            />
+            {bf.label}
+          </label>
+        ))}
+      </div>
+    ) : null;
+
   if (visibleCols.length === 0) {
     return (
       <div className="flex items-center justify-center py-20 text-xs text-muted-foreground">
@@ -2355,6 +2468,28 @@ castingRateInputs,
               Reset Filters
             </button>
           )}
+          {diffHighlight && diffIdxA !== -1 && diffIdxB !== -1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setHighlightDiff((v) => !v);
+              }}
+              className={`flex items-center gap-1 text-xs font-semibold px-2 py-1.5 rounded border transition-colors ${
+                highlightDiff
+                  ? diffHighlight.tone === "amber"
+                    ? "bg-amber-500/15 border-amber-400/40 text-amber-700 dark:text-amber-300"
+                    : diffHighlight.tone === "yellow"
+                      ? "bg-yellow-500/15 border-yellow-400/40 text-yellow-700 dark:text-yellow-300"
+                      : "bg-rose-500/15 border-rose-400/40 text-rose-700 dark:text-rose-300"
+                  : "border-border text-foreground/70 hover:text-foreground hover:bg-card/80"
+              }`}
+              title={`Highlight ${diffColA} vs ${diffColB} (trimmed, case-sensitive)`}
+            >
+              <Highlighter size={12} />
+              {diffHighlight.label ?? "Highlight Name Diff"}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleExportToExcel}
@@ -2534,6 +2669,10 @@ castingRateInputs,
                         group.children.some(
                           (c) => c.header === imageButtonColumn,
                         ) && presenceFilterControls}
+                      {batchFilterHeader &&
+                        group.children.some(
+                          (c) => c.header === batchFilterHeader,
+                        ) && batchPresenceControls}
 
                       <div
                         onMouseDown={(e) => handleResizeStart(idx, e)}
@@ -2735,6 +2874,7 @@ castingRateInputs,
                         </div>
                       ))}
                     {imageButtonColumn === header && presenceFilterControls}
+                    {batchFilterHeader === header && batchPresenceControls}
                     {header === "PBG AMOUNT" && pbgAmountSum !== null && (
                       <div className="mt-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
                         Total :  {"  "}
@@ -2919,6 +3059,14 @@ castingRateInputs,
                         }${
                           isCellEditable || isPnBlankDropdown || groupIsEditable
                             ? " bg-amber-50 dark:bg-[color-mix(in_oklch,var(--card),var(--color-amber-500)_10%)]"
+                            : ""
+                        }${
+                          isDiffCol(header) && rowDiffers(row)
+                            ? diffHighlight?.tone === "amber"
+                              ? " bg-amber-200/60 dark:bg-amber-500/25"
+                              : diffHighlight?.tone === "yellow"
+                                ? " bg-yellow-200/70 dark:bg-yellow-500/25"
+                                : " bg-rose-100 dark:bg-rose-500/20"
                             : ""
                         }`}
                         style={

@@ -99,7 +99,7 @@ Defined in `lib/gmd_lib/sheet-columns.ts:3` — **order matters, names are case/
    - `prisma.$transaction([createMany data:dbItems])` — **note:** `deleteMany` is *commented out* in current route (`route.ts` leaves old rows), so sync **appends**, may create duplicates if run twice without unique constraint. Unlike GMD Item Code sync which wipes. (Check `app/raw_material/api/gmd-update/sync/route.ts` comment.)
 
 5. **GET for display** `app/raw_material/api/gmd-update/route.ts`:
-   - `prisma.gMDUpdateItem.findMany(orderBy createdAt asc)`
+   - `prisma.rawMaterial.findMany(orderBy createdAt asc)`
    - `headers = CANONICAL_COLUMNS`, `rows = dbItemToRow`, `ids`, `syncedAt = items[0].syncedAt`
 
 ## 5. What You See on the Page
@@ -115,7 +115,7 @@ Defined in `lib/gmd_lib/sheet-columns.ts:3` — **order matters, names are case/
   - `processedItems.filter(newItemStatus && != "-")` — `title="Filtered Items"`
 - Both tables: `GMDUpdateTable` with `uniqueKeyColumns=["ERP ITEM CODE"]`, `categoryOptions` merged, `filterState` from `gmdUpdateSlice`, pagination.
 
-**Inline Edit:** Click cell in editable column → `thunk updateGMDUpdateFieldAction(id,field,value)` → `app/actions.ts:1048 updateGMDUpdateFieldAction` generic `prisma.gMDUpdateItem.update({[field]: value})` `L1055`, then Redux `gmdUpdateSlice` updates entity, shows toast.
+**Inline Edit:** Click cell in editable column → `thunk updateGMDUpdateFieldAction(id,field,value)` → `app/actions.ts:1048 updateGMDUpdateFieldAction` generic `prisma.rawMaterial.update({[field]: value})` `L1055`, then Redux `gmdUpdateSlice` updates entity, shows toast.
 
 ## 6. Business Logic Tips
 
