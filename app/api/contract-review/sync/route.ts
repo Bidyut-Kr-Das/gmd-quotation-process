@@ -61,6 +61,9 @@ const SKIP_FIELDS = new Set([
   "diagramVerdict",
   "cBatch",
   "nBatch",
+  // Owned by the ITEM MASTER ERP item-name sync; the sheet's ITEM_NAME must
+  // not overwrite it.
+  "itemName",
 ]);
 
 export async function POST() {

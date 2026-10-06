@@ -1,16 +1,19 @@
 /**
- * Scheduled job — Contract Review, four steps in order.
+ * Scheduled job — Contract Review, five steps in order.
  *
- *   1. `runContractReviewSheetSync()`     CONTRACTS + DUMP -> ContractReview
- *   2. `runContractReviewEnquirySync()`   Enquiry -> State / Utility / Project Ref
- *   3. `runContractReviewRmAvailSync()`   stock-phys -> VerifyBom -> RM AVAIL -> PHYSICAL STOCK
- *   4. `runIcDumpSync()`                  INSPECTION OFFER DUMP -> offer / inspection / DI
+ *   1.  `runContractReviewSheetSync()`     CONTRACTS + DUMP -> ContractReview
+ *   1b. `runContractReviewItemNameSync()`  ITEM MASTER ERP -> ContractReview.itemName
+ *   2.  `runContractReviewEnquirySync()`   Enquiry -> State / Utility / Project Ref
+ *   3.  `runContractReviewRmAvailSync()`   stock-phys -> VerifyBom -> RM AVAIL -> PHYSICAL STOCK
+ *   4.  `runIcDumpSync()`                  INSPECTION OFFER DUMP -> offer / inspection / DI
  *
  * The order is a real dependency chain, not cosmetic:
  *   - 2 depends on 1 for fresh contract rows to match Enquiry against.
  *   - 3 step 3 reads VerifyBom, whose `itemName` is sourced from
  *     `ContractReview.itemName` ordered by `syncedAt desc`
- *     (`lib/verifyBomLookup.ts:236`), so a stale sheet sync means stale names.
+ *     (`lib/verifyBomLookup.ts:236`), so 1b runs before 3 to make the ITEM
+ *     MASTER name available. `ContractReview.itemName` is in the sheet sync's
+ *     SKIP_FIELDS, so only 1b writes it.
  *   - 3 step 4 needs `ContractReview.costCodeRef`, which job 1 cannot populate
  *     (it is absent from CONTRACTS_SHEET_COLUMNS) and which is published
  *     separately from the Indent Listing by `recomputeIndentListingVersionsAction`.
@@ -31,6 +34,7 @@
  */
 
 import { runContractReviewSheetSync, type ContractReviewSyncResult } from "./contract-review-sync";
+import { runContractReviewItemNameSync, type ItemNameSyncResult } from "./item-name-sync";
 import {
   runContractReviewEnquirySync,
   type ContractReviewEnquiryResult,
@@ -51,6 +55,7 @@ export type ScheduledContractReviewResult = {
   elapsedMs: number;
   steps: {
     sheetSync?: ContractReviewSyncResult;
+    itemNames?: ItemNameSyncResult;
     enquiry?: ContractReviewEnquiryResult;
     rmAvail?: ContractReviewRmAvailResult;
     icDump?: IcDumpSyncResult;
@@ -99,6 +104,10 @@ export async function runScheduledContractReview(
     // Step 1 — sheet sync. A throw here skips both remaining steps.
     steps.sheetSync = await runContractReviewSheetSync();
 
+    // Step 1b — item names from ITEM MASTER ERP. Runs before RM AVAIL, which
+    // sources VerifyBom.itemName from ContractReview.itemName.
+    steps.itemNames = await runContractReviewItemNameSync();
+
     // Step 2 — enquiry fields.
     steps.enquiry = await runContractReviewEnquirySync({ dryRun });
 
@@ -118,6 +127,7 @@ export async function runScheduledContractReview(
     console.log(
       `[scheduler] ${job} finished in ${elapsedMs}ms — ` +
         `sheet(created=${steps.sheetSync.created}, updated=${steps.sheetSync.updated}, unchanged=${steps.sheetSync.unchanged}) ` +
+        `itemNames(updated=${steps.itemNames.updated}, unmatched=${steps.itemNames.unmatched}) ` +
         `enquiry(changed=${steps.enquiry.changed}) ` +
         `rmAvail(stock=${steps.rmAvail.stockUpdated}, noUse=${steps.rmAvail.rmAvailUpdated}, physical=${steps.rmAvail.physicalStockUpdated}) ` +
         `icDump(matched=${steps.icDump.matched}, updated=${steps.icDump.rowsToUpdate}, written=${steps.icDump.written})`,
