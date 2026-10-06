@@ -167,8 +167,19 @@ const gmdUpdateSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase(updateGMDUpdateField.fulfilled, (state, action) => {
-      const { id, field, value } = action.payload;
-      adapter.updateOne(state, { id, changes: { [field]: field === "cost" ? (value == null || value === "" ? null : Number(value)) : value } });
+      const { id, field, value, itemNameDerived } = action.payload;
+      const changes: Record<string, unknown> = {
+        [field]:
+          field === "cost"
+            ? value == null || value === ""
+              ? null
+              : Number(value)
+            : value,
+      };
+      if (itemNameDerived !== undefined) {
+        changes.itemNameDerived = itemNameDerived;
+      }
+      adapter.updateOne(state, { id, changes });
     });
     builder.addCase(updateGMDUsdCost.fulfilled, (state, action) => {
       const { id, usdCost, cost } = action.payload;

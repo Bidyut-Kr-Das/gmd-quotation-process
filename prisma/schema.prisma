@@ -651,6 +651,8 @@ model DocketQuotationThread {
   company       String?   @db.VarChar(100)
   codeword      String?   @db.VarChar(100)
   userLabels    Json?     @map("user_labels")
+  pendingDocket Boolean?
+  partyName     String?
   msgCount      Int       @default(1) @map("msg_count")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)

@@ -656,17 +656,31 @@ export default function ContractReviewPage() {
   }, []);
 
   const handleSync = useCallback(async () => {
+    if (
+      !confirm(
+        "Sync CONTRACTS + DUMP from the sheet into Contract Review? This writes to ContractReview and runs the RM AVAIL / Enquiry side effects.",
+      )
+    )
+      return;
     setSyncing(true);
     setError(null);
+    const toastId = toast.loading("Syncing Contract Review from CONTRACTS + DUMP...");
     try {
       const res = await fetch("/api/contract-review/sync", { method: "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? `Sync failed (${res.status})`);
       }
+      const summary = await res.json().catch(() => ({}));
+      toast.success(
+        `Synced: ${summary.created ?? 0} created, ${summary.updated ?? 0} updated, ${summary.unchanged ?? 0} unchanged`,
+        { id: toastId },
+      );
       await fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sync failed");
+      const message = err instanceof Error ? err.message : "Sync failed";
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setSyncing(false);
     }
@@ -2678,12 +2692,26 @@ tileSize,
   return (
     <main className="flex-1 min-h-0 flex flex-col bg-background overflow-hidden">
       <div className="flex-1 flex p-6 min-h-0 gap-4">
-        <aside className="w-64 shrink-0 self-stretch min-h-0 max-h-full overflow-y-auto overscroll-contain bg-[#0a2540] border border-[#1e3d59] rounded-lg shadow-sm p-4 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent hover:scrollbar-thumb-white/30 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-track]:bg-transparent pr-3">
+        <aside className="w-64 shrink-0 self-stretch min-h-0 max-h-full overflow-y-auto overscroll-contain bg-[#0a2540] dark:bg-card border border-[#1e3d59] dark:border-border rounded-lg shadow-sm p-4 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent hover:scrollbar-thumb-white/30 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-track]:bg-transparent pr-3">
+          <button
+            type="button"
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center justify-center gap-1.5 bg-[#38ef7d]/10 dark:bg-emerald-500/10 hover:bg-[#38ef7d]/20 dark:hover:bg-emerald-500/20 border border-[#38ef7d]/40 dark:border-emerald-500/30 rounded px-3 py-2 text-[11px] font-semibold text-[#38ef7d] dark:text-emerald-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Sync CONTRACTS + DUMP from the sheet into Contract Review"
+          >
+            {syncing ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <RefreshCw size={12} />
+            )}
+            {syncing ? "Syncing..." : "Sync Contract Review"}
+          </button>
           <button
             type="button"
             onClick={handleRmAvailSync}
             disabled={rmAvailSyncing}
-            className="flex items-center justify-center gap-1.5 bg-[#38ef7d]/10 hover:bg-[#38ef7d]/20 border border-[#38ef7d]/40 rounded px-3 py-2 text-[11px] font-semibold text-[#38ef7d] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-1.5 bg-[#38ef7d]/10 dark:bg-emerald-500/10 hover:bg-[#38ef7d]/20 dark:hover:bg-emerald-500/20 border border-[#38ef7d]/40 dark:border-emerald-500/30 rounded px-3 py-2 text-[11px] font-semibold text-[#38ef7d] dark:text-emerald-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             title="Refresh stock from stock-phys, recompute VerifyBom, update RM AVAIL and PHYSICAL STOCK"
           >
             {rmAvailSyncing ? (
@@ -2697,14 +2725,14 @@ tileSize,
             <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
               NUMBER OF CONTRACTS
             </span>
-            <span className="block text-lg font-bold text-white mt-1">
+            <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
               {contractCount}
             </span>
             <span className="block text-[10px] font-medium text-white/50 mt-0.5">
               of {tileRowsCount} rows
             </span>
           </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-white">
+          <span className="text-xs font-bold uppercase tracking-wider text-white dark:text-foreground">
             Filters
           </span>
           {/* <div className="flex flex-col gap-1.5">
@@ -2716,7 +2744,7 @@ tileSize,
               onChange={(e) =>
                 setBalBillFilter(e.target.value as BalBillFilter)
               }
-              className="w-full text-xs border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-2 py-1.5 outline-none cursor-pointer"
+              className="w-full text-xs border border-border rounded bg-background text-[#0a2540] dark:text-foreground px-2 py-1.5 outline-none cursor-pointer"
             >
               <option value="all">All ({balBillCounts.all})</option>
               <option value="yes">Yes (0) ({balBillCounts.yes})</option>
@@ -2730,7 +2758,7 @@ tileSize,
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full text-xs border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-2 py-1.5 outline-none cursor-pointer"
+              className="w-full text-xs border border-border rounded bg-background text-[#0a2540] dark:text-foreground px-2 py-1.5 outline-none cursor-pointer"
             >
               <option value="all">All ({statusCounts.all})</option>
               {statusOptions.map((opt) => (
@@ -2748,20 +2776,20 @@ tileSize,
               <button
                 type="button"
                 onClick={() => setClearanceOpen((v) => !v)}
-                className="w-full text-xs border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-2 py-1.5 text-left outline-none cursor-pointer flex items-center justify-between gap-1"
+                className="w-full text-xs border border-border rounded bg-background text-[#0a2540] dark:text-foreground px-2 py-1.5 text-left outline-none cursor-pointer flex items-center justify-between gap-1"
               >
                 <span className="truncate">
                   {clearanceFilter.length === 0
                     ? `All (${clearanceCounts.all ?? 0})`
                     : `${clearanceFilter.length} selected`}
                 </span>
-                <span className="text-[10px] text-[#0a2540]/60 shrink-0">
+                <span className="text-[10px] text-[#0a2540]/60 dark:text-muted-foreground shrink-0">
                   {clearanceOpen ? "▲" : "▼"}
                 </span>
               </button>
               {clearanceOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-[#e1e6eb] rounded shadow-lg overflow-hidden">
-                  <div className="flex justify-between items-center px-2 py-1.5 text-[10px] border-b border-[#e1e6eb] bg-[#f8f9fa]">
+                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-popover border border-border rounded shadow-lg overflow-hidden">
+                  <div className="flex justify-between items-center px-2 py-1.5 text-[10px] border-b border-border bg-muted/50">
                     <button
                       type="button"
                       onClick={() =>
@@ -2769,7 +2797,7 @@ tileSize,
                           ...clearanceOptions,
                         ])
                       }
-                      className="text-blue-600 font-bold hover:underline cursor-pointer"
+                      className="text-blue-600 dark:text-blue-300 font-bold hover:underline cursor-pointer"
                     >
                       Select All
                     </button>
@@ -2778,7 +2806,7 @@ tileSize,
                       onClick={() =>
                         filterActions.onMultiFilter("CLEARANCE STATUS", [])
                       }
-                      className="text-red-600 font-semibold hover:underline cursor-pointer"
+                      className="text-red-600 dark:text-red-300 font-semibold hover:underline cursor-pointer"
                     >
                       Clear
                     </button>
@@ -2792,7 +2820,7 @@ tileSize,
                       clearanceOptions.map((opt) => (
                         <label
                           key={opt}
-                          className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-50 cursor-pointer text-[11px] text-[#0a2540]"
+                          className="flex items-center gap-1.5 px-2 py-1 hover:bg-muted/60 cursor-pointer text-[11px] text-[#0a2540] dark:text-foreground"
                         >
                           <input
                             type="checkbox"
@@ -2808,11 +2836,11 @@ tileSize,
                             className="accent-blue-600 shrink-0"
                           />
                           <span
-                            className={`truncate flex-1 ${opt === "(Blank)" ? "italic text-gray-400" : ""}`}
+                            className={`truncate flex-1 ${opt === "(Blank)" ? "italic text-muted-foreground" : ""}`}
                           >
                             {opt}
                           </span>
-                          <span className="text-[10px] text-[#0a2540]/50 shrink-0">
+                          <span className="text-[10px] text-[#0a2540]/50 dark:text-muted-foreground shrink-0">
                             ({clearanceCounts[opt] ?? 0})
                           </span>
                         </label>
@@ -2824,7 +2852,7 @@ tileSize,
             </div>
           </div>
 
-          <span className="text-xs font-bold uppercase tracking-wider text-white mt-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-white dark:text-foreground mt-2">
             Breakdown
           </span>
 
@@ -2836,36 +2864,36 @@ tileSize,
               <button
                 type="button"
                 onClick={() => setItemOpen((v) => !v)}
-                className="w-full text-xs border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-2 py-1.5 text-left outline-none cursor-pointer flex items-center justify-between gap-1"
+                className="w-full text-xs border border-border rounded bg-background text-[#0a2540] dark:text-foreground px-2 py-1.5 text-left outline-none cursor-pointer flex items-center justify-between gap-1"
               >
                 <span className="truncate">
                   {tileItems.length === 0
                     ? `All (${fmt(tileAllCounts.itemBalBill)})`
                     : `${tileItems.length} selected`}
                 </span>
-                <span className="text-[10px] text-[#0a2540]/60 shrink-0">
+                <span className="text-[10px] text-[#0a2540]/60 dark:text-muted-foreground shrink-0">
                   {itemOpen ? "▲" : "▼"}
                 </span>
               </button>
               {itemOpen && (
                 <div
                   ref={itemMenuRef}
-                  className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-[#e1e6eb] rounded shadow-lg overflow-hidden"
+                  className="absolute left-0 right-0 top-full mt-1 z-50 bg-popover border border-border rounded shadow-lg overflow-hidden"
                 >
-                  <div className="flex justify-between items-center px-2 py-1.5 text-[10px] border-b border-[#e1e6eb] bg-[#f8f9fa]">
+                  <div className="flex justify-between items-center px-2 py-1.5 text-[10px] border-b border-border bg-muted/50">
                     <button
                       type="button"
                       onClick={() =>
                         setTileItems(itemOptions.map((o) => o.value))
                       }
-                      className="text-blue-600 font-bold hover:underline cursor-pointer"
+                      className="text-blue-600 dark:text-blue-300 font-bold hover:underline cursor-pointer"
                     >
                       Select All
                     </button>
                     <button
                       type="button"
                       onClick={() => setTileItems([])}
-                      className="text-red-600 font-semibold hover:underline cursor-pointer"
+                      className="text-red-600 dark:text-red-300 font-semibold hover:underline cursor-pointer"
                     >
                       Clear
                     </button>
@@ -2879,7 +2907,7 @@ tileSize,
                       itemOptions.map((o) => (
                         <label
                           key={o.value}
-                          className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-50 cursor-pointer text-[11px] text-[#0a2540]"
+                          className="flex items-center gap-1.5 px-2 py-1 hover:bg-muted/60 cursor-pointer text-[11px] text-[#0a2540] dark:text-foreground"
                         >
                           <input
                             type="checkbox"
@@ -2894,7 +2922,7 @@ tileSize,
                             className="accent-blue-600 shrink-0"
                           />
                           <span className="truncate flex-1">{o.value}</span>
-                          <span className="text-[10px] text-[#0a2540]/60 font-mono shrink-0">
+                          <span className="text-[10px] text-[#0a2540]/60 dark:text-muted-foreground font-mono shrink-0">
                             ({fmt(o.sum ?? 0)})
                           </span>
                         </label>
@@ -2913,7 +2941,7 @@ tileSize,
             <select
               value={tileSize}
               onChange={(e) => setTileSize(e.target.value)}
-              className="w-full text-xs border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-2 py-1.5 outline-none cursor-pointer"
+              className="w-full text-xs border border-border rounded bg-background text-[#0a2540] dark:text-foreground px-2 py-1.5 outline-none cursor-pointer"
             >
               <option value="">All ({tileAllCounts.size})</option>
               {sizeOptions.map((o) => (
@@ -2932,23 +2960,23 @@ tileSize,
               <button
                 type="button"
                 onClick={() => setPnOpen((v) => !v)}
-                className="w-full text-xs border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-2 py-1.5 text-left outline-none cursor-pointer flex items-center justify-between gap-1"
+                className="w-full text-xs border border-border rounded bg-background text-[#0a2540] dark:text-foreground px-2 py-1.5 text-left outline-none cursor-pointer flex items-center justify-between gap-1"
               >
                 <span className="truncate">
                   {tilePns.length === 0
                     ? `All (${tileAllCounts.pn})`
                     : `${tilePns.length} selected`}
                 </span>
-                <span className="text-[10px] text-[#0a2540]/60 shrink-0">
+                <span className="text-[10px] text-[#0a2540]/60 dark:text-muted-foreground shrink-0">
                   {pnOpen ? "▲" : "▼"}
                 </span>
               </button>
               {pnOpen && (
                 <div
                   ref={pnMenuRef}
-                  className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-[#e1e6eb] rounded shadow-lg overflow-hidden"
+                  className="absolute left-0 right-0 top-full mt-1 z-50 bg-popover border border-border rounded shadow-lg overflow-hidden"
                 >
-                  <div className="flex justify-between items-center px-2 py-1.5 text-[10px] border-b border-[#e1e6eb] bg-[#f8f9fa]">
+                  <div className="flex justify-between items-center px-2 py-1.5 text-[10px] border-b border-border bg-muted/50">
                     <button
                       type="button"
                       onClick={() =>
@@ -2957,14 +2985,14 @@ tileSize,
                           pnOptions.map((o) => o.value),
                         )
                       }
-                      className="text-blue-600 font-bold hover:underline cursor-pointer"
+                      className="text-blue-600 dark:text-blue-300 font-bold hover:underline cursor-pointer"
                     >
                       Select All
                     </button>
                     <button
                       type="button"
                       onClick={() => filterActions.onMultiFilter("PN RATING", [])}
-                      className="text-red-600 font-semibold hover:underline cursor-pointer"
+                      className="text-red-600 dark:text-red-300 font-semibold hover:underline cursor-pointer"
                     >
                       Clear
                     </button>
@@ -2978,7 +3006,7 @@ tileSize,
                       pnOptions.map((o) => (
                         <label
                           key={o.value}
-                          className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-50 cursor-pointer text-[11px] text-[#0a2540]"
+                          className="flex items-center gap-1.5 px-2 py-1 hover:bg-muted/60 cursor-pointer text-[11px] text-[#0a2540] dark:text-foreground"
                         >
                           <input
                             type="checkbox"
@@ -2994,7 +3022,7 @@ tileSize,
                             className="accent-blue-600 shrink-0"
                           />
                           <span className="truncate flex-1">{o.value}</span>
-                          <span className="text-[10px] text-[#0a2540]/50 shrink-0">
+                          <span className="text-[10px] text-[#0a2540]/50 dark:text-muted-foreground shrink-0">
                             ({o.count})
                           </span>
                         </label>
@@ -3013,23 +3041,23 @@ tileSize,
               <button
                 type="button"
                 onClick={() => setMcOpen((v) => !v)}
-                className="w-full text-xs border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-2 py-1.5 text-left outline-none cursor-pointer flex items-center justify-between gap-1"
+                className="w-full text-xs border border-border rounded bg-background text-[#0a2540] dark:text-foreground px-2 py-1.5 text-left outline-none cursor-pointer flex items-center justify-between gap-1"
               >
                 <span className="truncate">
                   {mcFilter.length === 0
                     ? `All (${mcCounts.all ?? 0})`
                     : `${mcFilter.length} selected`}
                 </span>
-                <span className="text-[10px] text-[#0a2540]/60 shrink-0">
+                <span className="text-[10px] text-[#0a2540]/60 dark:text-muted-foreground shrink-0">
                   {mcOpen ? "▲" : "▼"}
                 </span>
               </button>
               {mcOpen && (
                 <div
                   ref={mcMenuRef}
-                  className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-[#e1e6eb] rounded shadow-lg overflow-hidden"
+                  className="absolute left-0 right-0 top-full mt-1 z-50 bg-popover border border-border rounded shadow-lg overflow-hidden"
                 >
-                  <div className="flex justify-between items-center px-2 py-1.5 text-[10px] border-b border-[#e1e6eb] bg-[#f8f9fa]">
+                  <div className="flex justify-between items-center px-2 py-1.5 text-[10px] border-b border-border bg-muted/50">
                     <button
                       type="button"
                       onClick={() =>
@@ -3038,7 +3066,7 @@ tileSize,
                           mcOptions.map((o) => o),
                         )
                       }
-                      className="text-blue-600 font-bold hover:underline cursor-pointer"
+                      className="text-blue-600 dark:text-blue-300 font-bold hover:underline cursor-pointer"
                     >
                       Select All
                     </button>
@@ -3047,7 +3075,7 @@ tileSize,
                       onClick={() =>
                         filterActions.onMultiFilter("MC Received/Pending", [])
                       }
-                      className="text-red-600 font-semibold hover:underline cursor-pointer"
+                      className="text-red-600 dark:text-red-300 font-semibold hover:underline cursor-pointer"
                     >
                       Clear
                     </button>
@@ -3061,7 +3089,7 @@ tileSize,
                       mcOptions.map((o) => (
                         <label
                           key={o}
-                          className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-50 cursor-pointer text-[11px] text-[#0a2540]"
+                          className="flex items-center gap-1.5 px-2 py-1 hover:bg-muted/60 cursor-pointer text-[11px] text-[#0a2540] dark:text-foreground"
                         >
                           <input
                             type="checkbox"
@@ -3077,11 +3105,11 @@ tileSize,
                             className="accent-blue-600 shrink-0"
                           />
                           <span
-                            className={`truncate flex-1 ${o === "(Blank)" ? "italic text-gray-400" : ""}`}
+                            className={`truncate flex-1 ${o === "(Blank)" ? "italic text-muted-foreground" : ""}`}
                           >
                             {o}
                           </span>
-                          <span className="text-[10px] text-[#0a2540]/50 shrink-0">
+                          <span className="text-[10px] text-[#0a2540]/50 dark:text-muted-foreground shrink-0">
                             ({mcCounts[o] ?? 0})
                           </span>
                         </label>
@@ -3100,23 +3128,23 @@ tileSize,
               <button
                 type="button"
                 onClick={() => setInspectionOpen((v) => !v)}
-                className="w-full text-xs border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-2 py-1.5 text-left outline-none cursor-pointer flex items-center justify-between gap-1"
+                className="w-full text-xs border border-border rounded bg-background text-[#0a2540] dark:text-foreground px-2 py-1.5 text-left outline-none cursor-pointer flex items-center justify-between gap-1"
               >
                 <span className="truncate">
                   {inspectionFilter.length === 0
                     ? `All (${inspectionCounts.all ?? 0})`
                     : `${inspectionFilter.length} selected`}
                 </span>
-                <span className="text-[10px] text-[#0a2540]/60 shrink-0">
+                <span className="text-[10px] text-[#0a2540]/60 dark:text-muted-foreground shrink-0">
                   {inspectionOpen ? "▲" : "▼"}
                 </span>
               </button>
               {inspectionOpen && (
                 <div
                   ref={inspectionMenuRef}
-                  className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-[#e1e6eb] rounded shadow-lg overflow-hidden"
+                  className="absolute left-0 right-0 top-full mt-1 z-50 bg-popover border border-border rounded shadow-lg overflow-hidden"
                 >
-                  <div className="flex justify-between items-center px-2 py-1.5 text-[10px] border-b border-[#e1e6eb] bg-[#f8f9fa]">
+                  <div className="flex justify-between items-center px-2 py-1.5 text-[10px] border-b border-border bg-muted/50">
                     <button
                       type="button"
                       onClick={() =>
@@ -3125,14 +3153,14 @@ tileSize,
                           inspectionOptions.map((o) => o),
                         )
                       }
-                      className="text-blue-600 font-bold hover:underline cursor-pointer"
+                      className="text-blue-600 dark:text-blue-300 font-bold hover:underline cursor-pointer"
                     >
                       Select All
                     </button>
                     <button
                       type="button"
                       onClick={() => filterActions.onMultiFilter("Inspection", [])}
-                      className="text-red-600 font-semibold hover:underline cursor-pointer"
+                      className="text-red-600 dark:text-red-300 font-semibold hover:underline cursor-pointer"
                     >
                       Clear
                     </button>
@@ -3146,7 +3174,7 @@ tileSize,
                       inspectionOptions.map((o) => (
                         <label
                           key={o}
-                          className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-50 cursor-pointer text-[11px] text-[#0a2540]"
+                          className="flex items-center gap-1.5 px-2 py-1 hover:bg-muted/60 cursor-pointer text-[11px] text-[#0a2540] dark:text-foreground"
                         >
                           <input
                             type="checkbox"
@@ -3162,11 +3190,11 @@ tileSize,
                             className="accent-blue-600 shrink-0"
                           />
                           <span
-                            className={`truncate flex-1 ${o === "(Blank)" ? "italic text-gray-400" : ""}`}
+                            className={`truncate flex-1 ${o === "(Blank)" ? "italic text-muted-foreground" : ""}`}
                           >
                             {o}
                           </span>
-                          <span className="text-[10px] text-[#0a2540]/50 shrink-0">
+                          <span className="text-[10px] text-[#0a2540]/50 dark:text-muted-foreground shrink-0">
                             ({inspectionCounts[o] ?? 0})
                           </span>
                         </label>
@@ -3182,14 +3210,14 @@ tileSize,
             onClick={() => handleRateTileClick("rateXOrderQty")}
             className={`w-full text-left border rounded-lg p-3 transition-all cursor-pointer ${
               activeRateTile === "rateXOrderQty"
-                ? "bg-white/10 border-[#38ef7d]"
+                ? "bg-white/10 border-[#38ef7d] dark:border-emerald-400/50"
                 : "bg-white/5 border-white/10 hover:border-white/25"
             }`}
           >
             <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
               RATE × ORDER QTY
             </span>
-            <span className="block text-lg font-bold text-white mt-1">
+            <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
               {fmt(rateOrderQty.sum)}
             </span>
             <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -3202,14 +3230,14 @@ tileSize,
             onClick={() => handleRateTileClick("rateXBalBillAgCont")}
             className={`w-full text-left border rounded-lg p-3 transition-all cursor-pointer ${
               activeRateTile === "rateXBalBillAgCont"
-                ? "bg-white/10 border-[#38ef7d]"
+                ? "bg-white/10 border-[#38ef7d] dark:border-emerald-400/50"
                 : "bg-white/5 border-white/10 hover:border-white/25"
             }`}
           >
             <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
               RATE × BAL BILL AG CONT
             </span>
-            <span className="block text-lg font-bold text-white mt-1">
+            <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
               {fmt(rateBalBillCont.sum)}
             </span>
             <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -3222,14 +3250,14 @@ tileSize,
             onClick={() => handleRateTileClick("balBillAgContSum")}
             className={`w-full text-left border rounded-lg p-3 transition-all cursor-pointer ${
               activeRateTile === "balBillAgContSum"
-                ? "bg-white/10 border-[#38ef7d]"
+                ? "bg-white/10 border-[#38ef7d] dark:border-emerald-400/50"
                 : "bg-white/5 border-white/10 hover:border-white/25"
             }`}
           >
             <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
               QUANTITY
             </span>
-            <span className="block text-lg font-bold text-white mt-1">
+            <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
               {fmt(balBillAgContTotal.sum)}
             </span>
             <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -3242,14 +3270,14 @@ tileSize,
             onClick={() => handleRateTileClick("rateXMcQty")}
             className={`w-full text-left border rounded-lg p-3 transition-all cursor-pointer ${
               activeRateTile === "rateXMcQty"
-                ? "bg-white/10 border-[#38ef7d]"
+                ? "bg-white/10 border-[#38ef7d] dark:border-emerald-400/50"
                 : "bg-white/5 border-white/10 hover:border-white/25"
             }`}
           >
             <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
               RATE × MC QTY
             </span>
-            <span className="block text-lg font-bold text-white mt-1">
+            <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
               {fmt(rateMcCont.sum)}
             </span>
             <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -3262,7 +3290,7 @@ tileSize,
             onClick={() => handleRateTileClick("rateXBalDiQty")}
             className={`w-full text-left border rounded-lg p-3 transition-all cursor-pointer ${
               activeRateTile === "rateXBalDiQty"
-                ? "bg-white/10 border-[#38ef7d]"
+                ? "bg-white/10 border-[#38ef7d] dark:border-emerald-400/50"
                 : "bg-white/5 border-white/10 hover:border-white/25"
             }`}
           >
@@ -3272,7 +3300,7 @@ tileSize,
             <span className="block text-[10px] font-semibold text-white/40">
               (DI QTY - BILLED QTY)
             </span>
-            <span className="block text-lg font-bold text-white mt-1">
+            <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
               {fmt(rateBalDiQty.sum)}
             </span>
             <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -3285,7 +3313,7 @@ tileSize,
             onClick={() => handleRateTileClick("rateXBalMcQty")}
             className={`w-full text-left border rounded-lg p-3 transition-all cursor-pointer ${
               activeRateTile === "rateXBalMcQty"
-                ? "bg-white/10 border-[#38ef7d]"
+                ? "bg-white/10 border-[#38ef7d] dark:border-emerald-400/50"
                 : "bg-white/5 border-white/10 hover:border-white/25"
             }`}
           >
@@ -3295,7 +3323,7 @@ tileSize,
             <span className="block text-[10px] font-semibold text-white/40">
               (MC QTY - DI QTY)
             </span>
-            <span className="block text-lg font-bold text-white mt-1">
+            <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
               {fmt(rateBalMspQty.sum)}
             </span>
             <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -3308,14 +3336,14 @@ tileSize,
             onClick={() => handleRateTileClick("totalCostExcGst")}
             className={`w-full text-left border rounded-lg p-3 transition-all cursor-pointer ${
               activeRateTile === "totalCostExcGst"
-                ? "bg-white/10 border-[#38ef7d]"
+                ? "bg-white/10 border-[#38ef7d] dark:border-emerald-400/50"
                 : "bg-white/5 border-white/10 hover:border-white/25"
             }`}
           >
             <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
               TOTAL COST (EXC GST)
             </span>
-            <span className="block text-lg font-bold text-white mt-1">
+            <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
               {fmt(totalCostExcGst.sum)}
             </span>
             <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -3328,14 +3356,14 @@ tileSize,
             onClick={() => handleRateTileClick("totalCostIncGst")}
             className={`w-full text-left border rounded-lg p-3 transition-all cursor-pointer ${
               activeRateTile === "totalCostIncGst"
-                ? "bg-white/10 border-[#38ef7d]"
+                ? "bg-white/10 border-[#38ef7d] dark:border-emerald-400/50"
                 : "bg-white/5 border-white/10 hover:border-white/25"
             }`}
           >
             <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
               TOTAL COST (INC GST)
             </span>
-            <span className="block text-lg font-bold text-white mt-1">
+            <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
               {fmt(totalCostIncGst.sum)}
             </span>
             <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -3348,14 +3376,14 @@ tileSize,
             onClick={() => handleRateTileClick("totalVaPct")}
             className={`w-full text-left border rounded-lg p-3 transition-all cursor-pointer ${
               activeRateTile === "totalVaPct"
-                ? "bg-white/10 border-[#38ef7d]"
+                ? "bg-white/10 border-[#38ef7d] dark:border-emerald-400/50"
                 : "bg-white/5 border-white/10 hover:border-white/25"
             }`}
           >
             <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
               TOTAL VA %
             </span>
-            <span className="block text-lg font-bold text-white mt-1">
+            <span className="block text-lg font-bold text-white dark:text-foreground mt-1">
               {fmt(totalVaPct.sum)}%
             </span>
             <span className="block text-[10px] font-medium text-white/50 mt-0.5">
@@ -3375,7 +3403,7 @@ tileSize,
                 type="button"
                 onClick={handleEnquirySync}
                 disabled={enquirySyncing}
-                className="flex items-center gap-1.5 bg-[#38ef7d]/10 hover:bg-[#38ef7d]/20 border border-[#38ef7d]/40 rounded px-3 py-1.5 text-[11px] font-semibold text-[#38ef7d] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 bg-[#38ef7d]/10 dark:bg-emerald-500/10 hover:bg-[#38ef7d]/20 dark:hover:bg-emerald-500/20 border border-[#38ef7d]/40 dark:border-emerald-500/30 rounded px-3 py-1.5 text-[11px] font-semibold text-[#38ef7d] dark:text-emerald-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Backfill State / Utility / Project Reference from Enquiry"
               >
                 {enquirySyncing ? (
@@ -3387,7 +3415,7 @@ tileSize,
               </button>
             }
           />
-          {error && <div className="mt-2 text-sm text-red-600">{error}</div>} */}
+          {error && <div className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</div>} */}
           <ResizablePanelGroup
             orientation="vertical"
             id="contract-review-vertical"
@@ -3396,7 +3424,7 @@ tileSize,
             className="flex-1 min-h-0 "
           >
             <ResizablePanel id="graph" defaultSize="20" minSize="12" maxSize="24">
-              <div className="h-full overflow-hidden rounded-lg border border-[#1e3d59] bg-[#0a2540]">
+              <div className="h-full overflow-hidden rounded-lg border border-[#1e3d59] dark:border-border bg-[#0a2540] dark:bg-card">
                 <FlowDiagram
                   trees={CONTRACT_REVIEW_TREES}
                   counts={graphCounts}
@@ -3406,7 +3434,7 @@ tileSize,
                 />
               </div>
             </ResizablePanel>
-            <ResizableHandle withHandle className="my-2 bg-[#e1e6eb]" />
+            <ResizableHandle withHandle className="my-2 bg-border" />
             <ResizablePanel id="table" defaultSize="68" minSize="25">
               <GMDUpdateTable
                 headers={headers}

@@ -251,7 +251,7 @@ async function main() {
         `[sync] OK. ${r.count} data row(s) in the sheet -> ${await prisma.gmdItemCode.count()} unique 5-field combination(s) stored.`
       );
       console.log(
-        "[sync] NOTE: the sheet holds more rows than unique combinations, so skipDuplicates means the FIRST row for a repeated combination wins."
+        "[sync] NOTE: the sheet holds more rows than unique 5-field combinations. For a repeated combination a CURRENT REQT = YES row wins (the first YES in sheet order); with no YES row, the first row wins."
       );
     } catch (e) {
       console.log(`[sync] FAILED: ${(e as Error).message}`);

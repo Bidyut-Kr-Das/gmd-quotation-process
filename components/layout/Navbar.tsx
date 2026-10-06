@@ -3,104 +3,59 @@ import Image from "next/image";
 import { Bell } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@/auth";
-import { LogoutButton } from "./LogoutButton";
 import { ChatPanel } from "@/components/chat/ChatPanel";
-import ActiveNavLink from "./ActiveNavLink";
+import NavMenu from "./NavMenu";
+import { UserMenu } from "./UserMenu";
+import { ThemeToggle } from "./ThemeToggle";
 
 export default async function Navbar() {
   const session = await auth();
   const role = (session?.user as any)?.role as string | undefined;
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-background px-6 py-3">
-      <div className="flex h-10 items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5">
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+      <div className="flex h-14 items-center justify-between gap-4 px-4 lg:px-6">
+        <div className="flex min-w-0 items-center gap-2 lg:gap-5">
+          <Link href="/" className="shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Image
               src="/logo.jpg"
               alt="Dalui Logo"
               width={32}
               height={32}
               priority
-              className="h-8 w-auto rounded object-contain bg-background p-0.5"
+              className="h-8 w-auto rounded bg-background object-contain p-0.5"
             />
-         
-          </div>
-          <ActiveNavLink href="/">
-            Quotation Process
-          </ActiveNavLink>
-          
-          <ActiveNavLink href="/raw_material">
-            Raw Material
-          </ActiveNavLink>
-          <ActiveNavLink href="/supply_history">
-            Supply History
-          </ActiveNavLink>
-          <ActiveNavLink href="/contract_review">
-            Contract Review
-          </ActiveNavLink>
-          <ActiveNavLink href="/indent_listing">
-            Indent Checking
-          </ActiveNavLink>
-          <ActiveNavLink href="/bom">
-             FG BOM
-          </ActiveNavLink>
-          <ActiveNavLink href="/bis-status">
-            BIS Status
-          </ActiveNavLink>
-          <ActiveNavLink href="/docket_follow_up">
-            Docket Follow Up
-          </ActiveNavLink>
-          <ActiveNavLink href="/upload-image">
-            Upload Image
-          </ActiveNavLink>
-          <Link
-            href="http://192.168.1.190:6012/" target="_blank"
-            className="inline-flex h-9 items-center gap-1.5 bg-[#0353e9] px-4 text-sm font-semibold text-white hover:bg-[#034ad0] dark:bg-blue-700 dark:hover:bg-blue-800 rounded-md"
-          >
-            GEM BID & RA
           </Link>
-          <Link
-            href="https://gmd-tender-dashboard.vercel.app/tenders" target="_blank"
-            className="inline-flex h-9 items-center gap-1.5 bg-[#0353e9] px-4 text-sm font-semibold text-white hover:bg-[#034ad0] dark:bg-blue-700 dark:hover:bg-blue-800 rounded-md"
-          >
-            Tenders
-          </Link>
-          <ActiveNavLink href="/data-sources">
-            Data Sources
-          </ActiveNavLink>
-          <ActiveNavLink
-            href="/admin/lookup-options"
-            className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-800"
-          >
-            Admin
-          </ActiveNavLink>
+          <NavMenu />
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            {session ? (
-              <>
-                <span className="text-xs font-medium px-2 py-1 rounded bg-muted border text-foreground">
-                  {session.user?.email} {role ? `· ${role}` : ""}
-                </span>
-                <LogoutButton />
-              </>
-            ) : (
-              <>
-                <Link href="/login" className="inline-flex h-8 items-center px-3 text-sm font-semibold rounded-md border bg-white hover:bg-muted">Login</Link>
-                <Link href="/register" className="inline-flex h-8 items-center px-3 text-sm font-semibold rounded-md bg-emerald-600 text-white hover:bg-emerald-700">Register</Link>
-              </>
-            )}
-            <button className="relative p-1 text-muted-foreground hover:text-foreground">
-              <Bell className="h-5 w-5 stroke-[1.75]" />
-              <span className="absolute top-1 right-1 flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-              </span>
-            </button>
-            <ChatPanel enabled={!!session && (role === "admin" || role === "developer")} />
-          </div>
-
+        <div className="flex shrink-0 items-center gap-1.5">
+          <ThemeToggle />
+          <button
+            type="button"
+            aria-label="Notifications"
+            className="relative inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Bell className="h-[18px] w-[18px] stroke-[1.75]" />
+            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+            </span>
+          </button>
+          <ChatPanel enabled={!!session && (role === "admin" || role === "developer")} />
+          {session?.user?.email ? (
+            <div className="ml-1.5 border-l border-border pl-3">
+              <UserMenu email={session.user.email} name={session.user.name} role={role} />
+            </div>
+          ) : (
+            <div className="ml-1.5 flex items-center gap-1.5 border-l border-border pl-3">
+              <Link href="/login" className="inline-flex h-8 items-center rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
+                Login
+              </Link>
+              <Link href="/register" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:opacity-90">
+                Register
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>

@@ -59,7 +59,7 @@ function renderLinksCell(display: string) {
               href={part}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline text-blue-600 hover:text-blue-800"
+              className="underline text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200"
               onClick={(e) => e.stopPropagation()}
             >
               {part}
@@ -92,7 +92,7 @@ function OrderListCell({
   const [open, setOpen] = useState(false);
   if (links.length === 0) {
     if (iconOnly) return null;
-    return <span className="truncate block text-gray-400" title={display}>—</span>;
+    return <span className="truncate block text-muted-foreground" title={display}>—</span>;
   }
   const handleCopy = async (url: string) => {
     try {
@@ -109,8 +109,8 @@ function OrderListCell({
         size="xs"
         className={
           iconOnly
-            ? "h-6 shrink-0 px-1.5 font-semibold border-[#0a2540]/15 bg-white hover:bg-[#f4f6f8] text-[#0a2540]"
-            : "h-6 text-[11px] gap-1.5 px-2 font-semibold border-[#0a2540]/15 bg-white hover:bg-[#f4f6f8] text-[#0a2540]"
+            ? "h-6 shrink-0 px-1.5 font-semibold border-border bg-card hover:bg-muted/60 text-foreground"
+            : "h-6 text-[11px] gap-1.5 px-2 font-semibold border-border bg-card hover:bg-muted/60 text-foreground"
         }
         onClick={(e) => {
           e.stopPropagation();
@@ -129,21 +129,21 @@ function OrderListCell({
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-130 p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
-            <DialogTitle className="text-sm font-bold text-[#0a2540] flex items-center gap-2">
-              <FileText size={16} className="text-[#0a2540]/70" />
+          <DialogHeader className="px-4 pt-4 pb-3 border-b border-border bg-muted">
+            <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+              <FileText size={16} className="text-foreground/70" />
               {heading
                 ? `Attachments — ${heading}`
                 : poNo
                   ? `Attachments — ${poNo}`
                   : `Attachments`}
-              <span className="ml-1 text-xs font-semibold text-[#0a2540]/60">({links.length})</span>
+              <span className="ml-1 text-xs font-semibold text-foreground/60">({links.length})</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
               {links.length === 1 ? "1 file linked to this PO" : `${links.length} files linked to this PO`} from GMD Clientwise
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto divide-y divide-[#e1e6eb]">
+          <div className="max-h-[60vh] overflow-y-auto divide-y divide-border">
             {links.map((url, idx) => {
               const shortId = (() => {
                 try {
@@ -155,14 +155,14 @@ function OrderListCell({
                 }
               })();
               return (
-                <div key={`${url}-${idx}`} className="flex items-center gap-3 px-4 py-3 hover:bg-[#f8f9fa] transition-colors">
-                  <div className="shrink-0 w-8 h-8 rounded bg-[#eef2f7] border border-[#e1e6eb] flex items-center justify-center text-[#0a2540]/70">
+                <div key={`${url}-${idx}`} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/60 transition-colors">
+                  <div className="shrink-0 w-8 h-8 rounded bg-muted border border-border flex items-center justify-center text-foreground/70">
                     <FileText size={14} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-[#0a2540]">File {idx + 1}</div>
+                    <div className="text-xs font-semibold text-foreground">File {idx + 1}</div>
                     <div className="text-[11px] text-muted-foreground truncate" title={url}>{shortId}</div>
-                    <div className="text-[10px] text-[#0a2540]/50 truncate" title={url}>{url}</div>
+                    <div className="text-[10px] text-foreground/50 truncate" title={url}>{url}</div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <Button
@@ -236,7 +236,7 @@ function ItemImageCell({
         <Button
           variant="outline"
           size="xs"
-          className="h-6 shrink-0 px-1.5 font-semibold border-[#0a2540]/15 bg-white hover:bg-[#f4f6f8] text-[#0a2540]"
+          className="h-6 shrink-0 px-1.5 font-semibold border-border bg-card hover:bg-muted/60 text-foreground"
           onClick={(e) => {
             e.stopPropagation();
             setOpen(true);
@@ -256,7 +256,7 @@ function ItemImageCell({
         <Button
           variant="outline"
           size="xs"
-          className="h-6 shrink-0 px-1.5 font-semibold border-[#0a2540]/15 bg-white hover:bg-[#f4f6f8] text-[#0a2540]"
+          className="h-6 shrink-0 px-1.5 font-semibold border-border bg-card hover:bg-muted/60 text-foreground"
           onClick={(e) => {
             e.stopPropagation();
             window.open(drawingHref, "_blank", "noopener,noreferrer");
@@ -269,11 +269,11 @@ function ItemImageCell({
       )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-140 p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
-            <DialogTitle className="text-sm font-bold text-[#0a2540] flex items-center gap-2">
-              <ImageIcon size={16} className="text-[#0a2540]/70" />
+          <DialogHeader className="px-4 pt-4 pb-3 border-b border-border bg-muted">
+            <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+              <ImageIcon size={16} className="text-foreground/70" />
               Images — {code}
-              <span className="ml-1 text-xs font-semibold text-[#0a2540]/60">
+              <span className="ml-1 text-xs font-semibold text-foreground/60">
                 ({images.length})
               </span>
             </DialogTitle>
@@ -281,7 +281,7 @@ function ItemImageCell({
               Item images linked to this item code from Quotation Process
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto divide-y divide-[#e1e6eb]">
+          <div className="max-h-[60vh] overflow-y-auto divide-y divide-border">
             {images.map((image, idx) => {
               const href =
                 image.url ??
@@ -299,9 +299,9 @@ function ItemImageCell({
               return (
                 <div
                   key={`${image.imageKey}-${idx}`}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-[#f8f9fa] transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-muted/60 transition-colors"
                 >
-                  <div className="shrink-0 w-10 h-10 rounded border border-[#e1e6eb] bg-[#eef2f7] overflow-hidden flex items-center justify-center">
+                  <div className="shrink-0 w-10 h-10 rounded border border-border bg-muted overflow-hidden flex items-center justify-center">
                     {image.driveFileId ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -313,18 +313,18 @@ function ItemImageCell({
                         }}
                       />
                     ) : (
-                      <ImageIcon size={14} className="text-[#0a2540]/50" />
+                      <ImageIcon size={14} className="text-foreground/50" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div
-                      className="text-xs font-semibold text-[#0a2540] truncate"
+                      className="text-xs font-semibold text-foreground truncate"
                       title={combo}
                     >
                       {combo || "Unlabelled image"}
                     </div>
                     <div
-                      className="text-[10px] text-[#0a2540]/50 truncate"
+                      className="text-[10px] text-foreground/50 truncate"
                       title={image.imageKey}
                     >
                       {image.imageKey}
@@ -401,16 +401,16 @@ function AttachmentCell({
 
   const verdictBoxClass = (active: boolean, tone: "emerald" | "rose") => {
     if (verdictDisabled) {
-      return "flex h-[22px] w-[22px] items-center justify-center rounded-[4px] border border-[#e1e6eb] bg-[#f4f6f8] text-[#c2c9d0] cursor-not-allowed";
+      return "flex h-[22px] w-[22px] items-center justify-center rounded-[4px] border border-border bg-muted text-muted-foreground/60 cursor-not-allowed";
     }
     if (active) {
       return tone === "emerald"
-        ? "flex h-[22px] w-[22px] items-center justify-center rounded-[4px] border border-emerald-500 bg-emerald-500 text-white cursor-pointer transition-colors hover:bg-emerald-600"
-        : "flex h-[22px] w-[22px] items-center justify-center rounded-[4px] border border-rose-500 bg-rose-500 text-white cursor-pointer transition-colors hover:bg-rose-600";
+        ? "flex h-[22px] w-[22px] items-center justify-center rounded-[4px] border border-emerald-500 bg-emerald-500 dark:bg-emerald-500/80 text-white cursor-pointer transition-colors hover:bg-emerald-600 dark:hover:bg-emerald-500"
+        : "flex h-[22px] w-[22px] items-center justify-center rounded-[4px] border border-rose-500 bg-rose-500 dark:bg-rose-500/80 text-white cursor-pointer transition-colors hover:bg-rose-600 dark:hover:bg-rose-500";
     }
     return tone === "emerald"
-      ? "flex h-[22px] w-[22px] items-center justify-center rounded-[4px] border border-emerald-200 bg-emerald-50 text-emerald-600 cursor-pointer transition-colors hover:bg-emerald-100"
-      : "flex h-[22px] w-[22px] items-center justify-center rounded-[4px] border border-rose-200 bg-rose-50 text-rose-600 cursor-pointer transition-colors hover:bg-rose-100";
+      ? "flex h-[22px] w-[22px] items-center justify-center rounded-[4px] border border-emerald-200 dark:border-emerald-500/25 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 cursor-pointer transition-colors hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
+      : "flex h-[22px] w-[22px] items-center justify-center rounded-[4px] border border-rose-200 dark:border-rose-500/25 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-300 cursor-pointer transition-colors hover:bg-rose-100 dark:hover:bg-rose-500/20";
   };
 
   return (
@@ -435,7 +435,7 @@ function AttachmentCell({
               e.stopPropagation();
               setOpen(true);
             }}
-            className={`${buttonClass} border-[#0a2540]/15 bg-white text-[#0a2540] hover:bg-[#f4f6f8]`}
+            className={`${buttonClass} border-border bg-card text-foreground hover:bg-muted/60`}
             title="Preview attachment"
           >
             <Eye size={12} />
@@ -447,7 +447,7 @@ function AttachmentCell({
               e.stopPropagation();
               fileRef.current?.click();
             }}
-            className={`${buttonClass} border-[#e1e6eb] bg-white text-[#0a2540]/70 hover:bg-[#f4f6f8]`}
+            className={`${buttonClass} border-border bg-card text-foreground/70 hover:bg-muted/60`}
             title="Replace attachment"
           >
             <Upload size={11} />
@@ -458,7 +458,7 @@ function AttachmentCell({
               e.stopPropagation();
               onClear();
             }}
-            className={`${buttonClass} border-rose-200 bg-white text-rose-600 hover:bg-rose-50`}
+            className={`${buttonClass} border-rose-200 dark:border-rose-500/25 bg-card text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/20`}
             title="Remove attachment"
           >
             <Trash2 size={11} />
@@ -471,7 +471,7 @@ function AttachmentCell({
             e.stopPropagation();
             fileRef.current?.click();
           }}
-          className={`${buttonClass} border-[#0a2540]/15 bg-white text-[#0a2540] hover:bg-[#f4f6f8]`}
+          className={`${buttonClass} border-border bg-card text-foreground hover:bg-muted/60`}
           title="Upload PDF or image"
         >
           <Paperclip size={12} />
@@ -480,16 +480,16 @@ function AttachmentCell({
       )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-180 p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
-            <DialogTitle className="text-sm font-bold text-[#0a2540] flex items-center gap-2">
-              <FileText size={16} className="text-[#0a2540]/70" />
+          <DialogHeader className="px-4 pt-4 pb-3 border-b border-border bg-muted">
+            <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+              <FileText size={16} className="text-foreground/70" />
               Attachment Preview
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
               {isPdf ? "PDF document" : "Image"} stored in the S3 bucket
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[70vh] overflow-auto bg-[#f4f6f8]">
+          <div className="max-h-[70vh] overflow-auto bg-muted">
             {isPdf ? (
               <iframe
                 src={url}
@@ -505,7 +505,7 @@ function AttachmentCell({
               />
             )}
           </div>
-          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-[#e1e6eb]">
+          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
             <Button
               variant="ghost"
               size="xs"
@@ -716,36 +716,36 @@ function MultiSelect({
           e.stopPropagation();
           setOpen(!open);
         }}
-        className="w-full text-[10px] border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-1 py-0.5 text-left outline-none cursor-pointer truncate"
+        className="w-full text-[10px] border border-border rounded bg-card text-foreground px-1 py-0.5 text-left outline-none cursor-pointer truncate"
       >
         {selected.length ? `${selected.length} selected` : "All"}
       </button>
       {open && (
         <div
-          className={`absolute top-full left-0 z-50 mt-1 bg-white border border-[#e1e6eb] rounded shadow-lg ${
+          className={`absolute top-full left-0 z-50 mt-1 bg-card border border-border rounded shadow-lg ${
             optionMeta ? "min-w-64 max-w-104" : "w-48"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex justify-between items-center px-1 py-1.5 text-[10px] border-b border-[#e1e6eb]">
+          <div className="flex justify-between items-center px-1 py-1.5 text-[10px] border-b border-border">
             <button
               type="button"
               onClick={() => onChange([...options])}
-              className="text-blue-600 font-bold hover:underline cursor-pointer"
+              className="text-blue-600 dark:text-blue-300 font-bold hover:underline cursor-pointer"
             >
               Select All
             </button>
             <button
               type="button"
               onClick={() => onChange([])}
-              className="text-red-600 font-semibold hover:underline cursor-pointer"
+              className="text-red-600 dark:text-red-300 font-semibold hover:underline cursor-pointer"
             >
               Clear
             </button>
           </div>
           <div className="max-h-48 overflow-y-auto">
             {!hideBlank && (
-              <label className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-50 cursor-pointer text-[10px]">
+              <label className="flex items-center gap-1.5 px-2 py-1 hover:bg-muted/60 cursor-pointer text-[10px]">
                 <input
                   type="checkbox"
                   checked={selected.includes("(Blank)")}
@@ -755,9 +755,9 @@ function MultiSelect({
                       : [...selected, "(Blank)"];
                     onChange(next);
                   }}
-                  className="accent-blue-600"
+                  className="accent-blue-600 dark:accent-primary"
                 />
-                <span className="italic text-gray-400">(Blank)</span>
+                <span className="italic text-muted-foreground">(Blank)</span>
               </label>
             )}
             {options.map((opt) => {
@@ -765,7 +765,7 @@ function MultiSelect({
               return (
                 <label
                   key={opt}
-                  className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-50 cursor-pointer text-[10px]"
+                  className="flex items-center gap-1.5 px-2 py-1 hover:bg-muted/60 cursor-pointer text-[10px]"
                 >
                   <input
                     type="checkbox"
@@ -776,16 +776,16 @@ function MultiSelect({
                         : [...selected, opt];
                       onChange(next);
                     }}
-                    className="accent-blue-600"
+                    className="accent-blue-600 dark:accent-primary"
                   />
                   <span className="flex-1 min-w-0 leading-tight">
                     <span className="block truncate font-medium">{opt}</span>
                     {meta && (
                       <>
-                        <span className="block text-[9px] text-[#0a2540]/60 truncate">
+                        <span className="block text-[9px] text-foreground/60 truncate">
                           {meta.partyName || "—"}
                         </span>
-                        <span className="block text-[9px] text-[#0a2540]/80">
+                        <span className="block text-[9px] text-foreground/80">
                           {meta.count} · {meta.sumLabel}
                         </span>
                       </>
@@ -955,11 +955,11 @@ type CellBadge = NonNullable<GMDUpdateTableProps["cellBadges"]>[number];
 function cellBadgeClass(tone: CellBadge["tone"]): string {
   switch (tone) {
     case "amber":
-      return "bg-amber-500 text-white";
+      return "bg-amber-500 dark:bg-amber-500/80 text-white";
     case "slate":
-      return "bg-slate-500 text-white";
+      return "bg-slate-500 text-white dark:bg-accent dark:text-foreground";
     default:
-      return "bg-rose-600 text-white";
+      return "bg-rose-600 dark:bg-rose-500/80 text-white";
   }
 }
 
@@ -1809,7 +1809,7 @@ castingRateInputs,
       const options = bomIdOptionsById?.[id] ?? [];
       if (options.length === 0) {
         cellContent = (
-          <span className="truncate block italic text-gray-400">
+          <span className="truncate block italic text-muted-foreground">
             No BOM exists
           </span>
         );
@@ -1840,34 +1840,34 @@ castingRateInputs,
     } else if (header === "RM AVAIL") {
       if (display === "SA") {
         cellContent = (
-          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-bold">
+          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-600 dark:bg-emerald-500/80 text-white text-[10px] font-bold">
             SA
           </span>
         );
       } else if (display === "Not available") {
         cellContent = (
-          <span className="inline-flex items-center px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold">
+          <span className="inline-flex items-center px-2 py-0.5 rounded bg-rose-600 dark:bg-rose-500/80 text-white text-[10px] font-bold">
             Not available
           </span>
         );
       } else {
-        cellContent = <span className="truncate block text-gray-400">—</span>;
+        cellContent = <span className="truncate block text-muted-foreground">—</span>;
       }
     } else if (header === "NO USE" || header === "USE/NO USE") {
       if (display === "USE") {
         cellContent = (
-          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-bold">
+          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-600 dark:bg-emerald-500/80 text-white text-[10px] font-bold">
             USE
           </span>
         );
       } else if (display === "NO USE") {
         cellContent = (
-          <span className="inline-flex items-center px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold">
+          <span className="inline-flex items-center px-2 py-0.5 rounded bg-rose-600 dark:bg-rose-500/80 text-white text-[10px] font-bold">
             NO USE
           </span>
         );
       } else {
-        cellContent = <span className="truncate block text-gray-400">—</span>;
+        cellContent = <span className="truncate block text-muted-foreground">—</span>;
       }
     } else if (isCellEditable) {
       if (header === "USD cost") {
@@ -1929,8 +1929,8 @@ castingRateInputs,
               }}
               className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer transition-all ${
                 isYes
-                  ? "bg-emerald-500 text-white "
-                  : "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
+                  ? "bg-emerald-500 dark:bg-emerald-500/80 text-white "
+                  : "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/25 dark:hover:bg-emerald-500/20"
               }`}
             >
               Yes
@@ -1943,8 +1943,8 @@ castingRateInputs,
               }}
               className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer transition-all ${
                 isNo
-                  ? "bg-rose-500 text-white "
-                  : "bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800 dark:hover:bg-rose-950/50"
+                  ? "bg-rose-500 dark:bg-rose-500/80 text-white "
+                  : "bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/25 dark:hover:bg-rose-500/20"
               }`}
             >
               No
@@ -2021,7 +2021,7 @@ castingRateInputs,
     } else if (header === "ORDER LIST") {
       if (!display) {
         cellContent = (
-          <span className="truncate block text-gray-400">—</span>
+          <span className="truncate block text-muted-foreground">—</span>
         );
       } else {
         const poIdx = headers.indexOf("PARTY Order No.");
@@ -2064,8 +2064,8 @@ castingRateInputs,
           rel="noopener noreferrer"
           className={
             wrapCells
-              ? `block break-all ${scrollable ? WRAPPED_CELL_BOX : ""} underline text-blue-600 hover:text-blue-800`
-              : "truncate block underline text-blue-600 hover:text-blue-800"
+              ? `block break-all ${scrollable ? WRAPPED_CELL_BOX : ""} underline text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200`
+              : "truncate block underline text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200"
           }
           title={display}
         >
@@ -2127,7 +2127,7 @@ castingRateInputs,
     <div className="flex flex-col gap-0.5 mt-1.5">
       <label
         onClick={(e) => e.stopPropagation()}
-        className="flex items-center gap-1.5 text-[10px] font-medium normal-case tracking-normal text-[#0a2540]/70 cursor-pointer select-none"
+        className="flex items-center gap-1.5 text-[10px] font-medium normal-case tracking-normal text-foreground/70 cursor-pointer select-none"
         title="Show only rows with an uploaded drawing"
       >
         <input
@@ -2137,13 +2137,13 @@ castingRateInputs,
             setPresenceFilters((p) => ({ ...p, drawing: e.target.checked }));
             setCurrentPage(1);
           }}
-          className="accent-[#0070f3]"
+          className="accent-[#0070f3] dark:accent-primary"
         />
         Drawing present
       </label>
       <label
         onClick={(e) => e.stopPropagation()}
-        className="flex items-center gap-1.5 text-[10px] font-medium normal-case tracking-normal text-[#0a2540]/70 cursor-pointer select-none"
+        className="flex items-center gap-1.5 text-[10px] font-medium normal-case tracking-normal text-foreground/70 cursor-pointer select-none"
         title="Show only rows with item images"
       >
         <input
@@ -2153,7 +2153,7 @@ castingRateInputs,
             setPresenceFilters((p) => ({ ...p, image: e.target.checked }));
             setCurrentPage(1);
           }}
-          className="accent-[#0070f3]"
+          className="accent-[#0070f3] dark:accent-primary"
         />
         Image present
       </label>
@@ -2169,20 +2169,20 @@ castingRateInputs,
   }
 
   return (
-    <div className={`flex flex-col w-full max-w-full min-w-0 bg-white border border-[#e1e6eb] rounded-lg shadow-sm ${fullHeight ? "flex-1 min-h-0 overflow-hidden h-full" : ""}`}>
+    <div className={`flex flex-col w-full max-w-full min-w-0 bg-card border border-border rounded-lg shadow-sm ${fullHeight ? "flex-1 min-h-0 overflow-hidden h-full" : ""}`}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-[#e1e6eb] bg-[#f8f9fa]">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted">
         <div className="flex items-center gap-2">
           {title && (
             <span className="text-xs font-bold uppercase tracking-wider text-">
               {title}
             </span>
           )}
-          <span className="text-xs font-semibold text-[#0a2540]/60">
+          <span className="text-xs font-semibold text-foreground/60">
             Showing {filteredRows.length} of {rows.length} records
           </span>
           {usdInrRate != null && (
-            <span className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-white border border-[#e1e6eb] rounded px-2 py-0.5">
+            <span className="flex items-center gap-1 text-xs font-semibold text-green-700 dark:text-green-300 bg-card border border-border rounded px-2 py-0.5">
               1 USD = ₹{usdInrRate.toFixed(2)}
               {onRefreshRate && (
                 <button
@@ -2190,7 +2190,7 @@ castingRateInputs,
                     e.stopPropagation();
                     onRefreshRate();
                   }}
-                  className="text-[#0070f3] hover:text-[#0a2540] underline"
+                  className="text-[#0070f3] dark:text-primary hover:text-foreground underline"
                   title="Refresh rate"
                 >
                   refresh
@@ -2199,23 +2199,23 @@ castingRateInputs,
             </span>
           )}
           {castingRateInputs && castingRateInputs.length > 0 && (
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-black">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
               <span className="text-[10px] uppercase tracking-wider">
                 Cast Rates
               </span>
               {castingRateInputs.map(({ key, label, value, onChange }) => (
                 <label
                   key={key}
-                  className="flex items-center gap-1 bg-white border border-[#e1e6eb] rounded px-1.5 py-0.5 cursor-text"
+                  className="flex items-center gap-1 bg-card border border-border rounded px-1.5 py-0.5 cursor-text"
                 >
-                  <span className="text-[9px] text-black/80">{label}</span>
+                  <span className="text-[9px] text-foreground/80">{label}</span>
                   <input
                     type="text"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
                     placeholder="0"
-                    className="w-14 text-[10px] bg-transparent outline-none text-black placeholder:text-[#0a2540]/70"
+                    className="w-14 text-[10px] bg-transparent outline-none text-foreground placeholder:text-foreground/70"
                   />
                 </label>
               ))}
@@ -2246,7 +2246,7 @@ castingRateInputs,
                 }}
                 onClick={(e) => e.stopPropagation()}
                 placeholder="Paste ERP item code..."
-                className="w-52 px-2 py-1.5 text-xs border border-[#e1e6eb] rounded bg-white text-[#0a2540] outline-none focus:border-[#0070f3] placeholder:text-[#0a2540]/30"
+                className="w-52 px-2 py-1.5 text-xs border border-border rounded bg-card text-foreground outline-none focus:border-[#0070f3] dark:focus:border-primary placeholder:text-foreground/30"
                 title="Paste ERP item code(s) — matching rows move from Filtered Items to this table"
               />
               <button
@@ -2255,7 +2255,7 @@ castingRateInputs,
                   e.stopPropagation();
                   pasteErpCodes.onAdd();
                 }}
-                className="flex items-center gap-1 text-xs font-semibold text-[#0f62fe] hover:text-[#0a2540] px-2 py-1.5 rounded hover:bg-white/80 border border-[#e1e6eb]"
+                className="flex items-center gap-1 text-xs font-semibold text-[#0f62fe] dark:text-primary hover:text-foreground px-2 py-1.5 rounded hover:bg-card/80 border border-border"
               >
                 Add
               </button>
@@ -2266,7 +2266,7 @@ castingRateInputs,
                     e.stopPropagation();
                     onClearMoved();
                   }}
-                  className="flex items-center gap-1 text-xs font-semibold text-red-800 hover:text-[#0a2540] px-2 py-1.5 rounded hover:bg-white/80 border border-[#e1e6eb]"
+                  className="flex items-center gap-1 text-xs font-semibold text-red-800 dark:text-red-300 hover:text-foreground px-2 py-1.5 rounded hover:bg-card/80 border border-border"
                   title="Move all rows back to Filtered Items"
                 >
                   <RotateCcw size={12} />
@@ -2294,7 +2294,7 @@ castingRateInputs,
                   e.stopPropagation();
                   importFileRef.current?.click();
                 }}
-                className="flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-[#0a2540] px-2 py-1.5 rounded hover:bg-white/80 border border-[#e1e6eb]"
+                className="flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:text-foreground px-2 py-1.5 rounded hover:bg-card/80 border border-border"
                 title="Import Excel to fill transferred rows"
               >
                 <Upload size={12} />
@@ -2309,7 +2309,7 @@ castingRateInputs,
                 e.stopPropagation();
                 onMatchCosts();
               }}
-              className="flex items-center gap-1 text-xs font-semibold text-[#0f62fe] hover:text-[#0a2540] px-2 py-1.5 rounded hover:bg-white/80 border border-[#e1e6eb]"
+              className="flex items-center gap-1 text-xs font-semibold text-[#0f62fe] dark:text-primary hover:text-foreground px-2 py-1.5 rounded hover:bg-card/80 border border-border"
               title="Match transferred rows (full L1-L8) to New Items and apply their cost"
             >
               <FileText size={12} />
@@ -2319,7 +2319,7 @@ castingRateInputs,
           <div className="relative">
             <Search
               size={13}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#0a2540]/40"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-foreground/40"
             />
             <DebouncedSearchInput
               value={globalSearch}
@@ -2329,7 +2329,7 @@ castingRateInputs,
                 setCurrentPage(1);
               }}
               placeholder="Search all columns..."
-              className="w-60 pl-8 pr-7 py-1.5 text-xs border border-[#e1e6eb] rounded bg-white text-[#0a2540] outline-none focus:border-[#0070f3] placeholder:text-[#0a2540]/30"
+              className="w-60 pl-8 pr-7 py-1.5 text-xs border border-border rounded bg-card text-foreground outline-none focus:border-[#0070f3] dark:focus:border-primary placeholder:text-foreground/30"
             />
             {globalSearch && (
               <button
@@ -2339,7 +2339,7 @@ castingRateInputs,
                   else setLocalGlobalSearch("");
                   setCurrentPage(1);
                 }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-[#e1e6eb] text-[#0a2540]/50 hover:text-[#0a2540] transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-accent text-foreground/50 hover:text-foreground transition-colors"
                 title="Clear search"
               >
                 <X size={12} />
@@ -2349,7 +2349,7 @@ castingRateInputs,
           {showResetFilters && (
             <button
               onClick={handleResetFilters}
-              className="flex items-center gap-1 text-xs font-semibold text-red-800 hover:text-[#0a2540] transition-colors px-2 py-1.5 rounded hover:bg-white/80 border border-[#e1e6eb]"
+              className="flex items-center gap-1 text-xs font-semibold text-red-800 dark:text-red-300 hover:text-foreground transition-colors px-2 py-1.5 rounded hover:bg-card/80 border border-border"
             >
               <RotateCcw size={12} />
               Reset Filters
@@ -2358,7 +2358,7 @@ castingRateInputs,
           <button
             type="button"
             onClick={handleExportToExcel}
-            className="flex items-center gap-1 text-xs font-semibold text-[#0f62fe] hover:text-[#0a2540] transition-colors px-2 py-1.5 rounded hover:bg-white/80 border border-[#e1e6eb]"
+            className="flex items-center gap-1 text-xs font-semibold text-[#0f62fe] dark:text-primary hover:text-foreground transition-colors px-2 py-1.5 rounded hover:bg-card/80 border border-border"
           >
             <Download size={12} />
             Export Excel
@@ -2389,7 +2389,7 @@ castingRateInputs,
             {onDeleteRow && <col style={{ width: "84px" }} />}
           </colgroup>
           <thead className="sticky top-0 z-20">
-            <tr className="bg-[#f4f6f8]">
+            <tr className="bg-muted">
               {visibleCols.map((col, visIdx) => {
                 const { header, idx, group } = col;
                 const isSorted = sortColumn === idx;
@@ -2424,9 +2424,9 @@ castingRateInputs,
                   return (
                     <th
                       key={idx}
-                      className={`relative bg-[#f4f6f8] text-[#0a2540] text-xs font-bold uppercase tracking-wider px-2.5 py-2 text-left border-b-2 border-[#e1e6eb] border-r last:border-r-0 select-none align-top${
+                      className={`relative bg-muted text-foreground text-xs font-bold uppercase tracking-wider px-2.5 py-2 text-left border-b-2 border-border border-r last:border-r-0 select-none align-top${
                         frozenLeft !== undefined ? " sticky z-20" : ""
-                      }${groupIsEditable ? " bg-amber-50/50" : ""}`}
+                      }${groupIsEditable ? " bg-amber-50/50 dark:bg-[color-mix(in_oklch,var(--muted),var(--color-amber-500)_10%)]" : ""}`}
                       style={
                         frozenLeft !== undefined ? { left: frozenLeft } : undefined
                       }
@@ -2439,7 +2439,7 @@ castingRateInputs,
                             {group.label}
                           </span>
                           {activeCount > 0 && (
-                            <span className="inline-flex items-center justify-center h-4 px-1.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700">
+                            <span className="inline-flex items-center justify-center h-4 px-1.5 rounded-full text-[9px] font-bold bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300">
                               {activeCount}
                             </span>
                           )}
@@ -2448,7 +2448,7 @@ castingRateInputs,
                           <button
                             type="button"
                             onClick={clearGroup}
-                            className="inline-flex items-center gap-0.5 text-[9px] font-medium text-[#0a2540]/60 hover:text-red-500 transition-colors"
+                            className="inline-flex items-center gap-0.5 text-[9px] font-medium text-foreground/60 hover:text-red-500 dark:hover:text-red-200 transition-colors"
                             title={`Clear ${group.label} filters`}
                           >
                             <X size={10} />
@@ -2480,7 +2480,7 @@ castingRateInputs,
                                         dateRanges[ch]?.to ?? (dateTo || ""),
                                       )
                                     }
-                                    className="flex-1 min-w-0 text-[10px] border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-1 py-0.5 outline-none"
+                                    className="flex-1 min-w-0 text-[10px] border border-border rounded bg-card text-foreground px-1 py-0.5 outline-none"
                                   />
                                   <input
                                     type="date"
@@ -2492,7 +2492,7 @@ castingRateInputs,
                                         e.target.value,
                                       )
                                     }
-                                    className="flex-1 min-w-0 text-[10px] border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-1 py-0.5 outline-none"
+                                    className="flex-1 min-w-0 text-[10px] border border-border rounded bg-card text-foreground px-1 py-0.5 outline-none"
                                   />
                                 </div>
                               ) : (
@@ -2519,7 +2519,7 @@ castingRateInputs,
                                         setDateRange(ch, "", "");
                                       setDateBlank(ch, false);
                                     }}
-                                    className="shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-[#e1e6eb] text-[#0a2540]/50 hover:text-[#0a2540] transition-colors"
+                                    className="shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-accent text-foreground/50 hover:text-foreground transition-colors"
                                     title={`Clear ${ch} filter`}
                                   >
                                     <X size={10} />
@@ -2541,7 +2541,7 @@ castingRateInputs,
                         style={{ marginRight: "-3px" }}
                       >
                         <div className="absolute top-0 -left-1 w-3.5 h-full" />
-                        <div className="absolute right-0.5 top-0 w-0.5 h-full bg-transparent group-hover:bg-[#0070f3] group-active:bg-[#0070f3] transition-colors" />
+                        <div className="absolute right-0.5 top-0 w-0.5 h-full bg-transparent group-hover:bg-[#0070f3] group-active:bg-[#0070f3] dark:group-hover:bg-primary dark:group-active:bg-primary transition-colors" />
                       </div>
                     </th>
                   );
@@ -2550,14 +2550,14 @@ castingRateInputs,
                 return (
                   <th
                     key={idx}
-                    className={`relative bg-[#f4f6f8] text-[#0a2540] text-xs font-bold uppercase tracking-wider px-3 py-2 text-left border-b-2 border-[#e1e6eb] border-r  last:border-r-0 select-none align-top${
+                    className={`relative bg-muted text-foreground text-xs font-bold uppercase tracking-wider px-3 py-2 text-left border-b-2 border-border border-r  last:border-r-0 select-none align-top${
                       frozenLeft !== undefined ? " sticky z-20" : ""
                     }${
                       editable &&
                       (!editableColumns ||
                         editableColumns.includes(header) ||
                         blankOnlyEditableColumns?.includes(header))
-                        ? " bg-amber-50/50"
+                        ? " bg-amber-50/50 dark:bg-[color-mix(in_oklch,var(--muted),var(--color-amber-500)_10%)]"
                         : ""
                     }`}
                     style={
@@ -2572,7 +2572,7 @@ castingRateInputs,
                         {header}
                       </span>
                       {isSorted && (
-                        <span className="shrink-0 text-[10px] text-[#0a2540]">
+                        <span className="shrink-0 text-[10px] text-foreground">
                           {sortDirection === "asc" ? (
                             <ChevronUp size={10} />
                           ) : (
@@ -2606,7 +2606,7 @@ castingRateInputs,
                                 )
                               }
                               onClick={(e) => e.stopPropagation()}
-                              className="flex-1 min-w-0 text-[10px] border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-1 py-0.5 outline-none"
+                              className="flex-1 min-w-0 text-[10px] border border-border rounded bg-card text-foreground px-1 py-0.5 outline-none"
                             />
                             <input
                               type="date"
@@ -2622,13 +2622,13 @@ castingRateInputs,
                                 )
                               }
                               onClick={(e) => e.stopPropagation()}
-                              className="flex-1 min-w-0 text-[10px] border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-1 py-0.5 outline-none"
+                              className="flex-1 min-w-0 text-[10px] border border-border rounded bg-card text-foreground px-1 py-0.5 outline-none"
                             />
                           </div>
                           {header === "DATE OF CONTRACT" && (
                             <label
                               onClick={(e) => e.stopPropagation()}
-                              className="flex items-center gap-1.5 text-[10px] text-[#0a2540]/70 cursor-pointer select-none"
+                              className="flex items-center gap-1.5 text-[10px] text-foreground/70 cursor-pointer select-none"
                               title="Show only rows with no date of contract"
                             >
                               <input
@@ -2637,7 +2637,7 @@ castingRateInputs,
                                 onChange={(e) =>
                                   setDateBlank(header, e.target.checked)
                                 }
-                                className="accent-[#0070f3]"
+                                className="accent-[#0070f3] dark:accent-primary"
                               />
                               Blanks
                             </label>
@@ -2662,7 +2662,7 @@ castingRateInputs,
                                   handleColumnFilter(header, "");
                                   setDateRange(header, "", "");
                                 }}
-                                className="shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-[#e1e6eb] text-[#0a2540]/50 hover:text-[#0a2540] transition-colors"
+                                className="shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-accent text-foreground/50 hover:text-foreground transition-colors"
                                 title="Clear filter"
                               >
                                 <X size={10} />
@@ -2679,7 +2679,7 @@ castingRateInputs,
                               handleColumnFilter("BOM ID", e.target.value);
                             }}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full text-[10px] border border-[#e1e6eb] rounded bg-white text-[#0a2540] px-1 py-0.5 outline-none cursor-pointer"
+                            className="w-full text-[10px] border border-border rounded bg-card text-foreground px-1 py-0.5 outline-none cursor-pointer"
                             title="Filter by BOM ID availability"
                           >
                             <option value="All">All</option>
@@ -2725,7 +2725,7 @@ castingRateInputs,
                                   e.stopPropagation();
                                   handleColumnFilter(header, "");
                                 }}
-                                className="shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-[#e1e6eb] text-[#0a2540]/50 hover:text-[#0a2540] transition-colors"
+                                className="shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-accent text-foreground/50 hover:text-foreground transition-colors"
                                 title="Clear filter"
                               >
                                 <X size={10} />
@@ -2736,7 +2736,7 @@ castingRateInputs,
                       ))}
                     {imageButtonColumn === header && presenceFilterControls}
                     {header === "PBG AMOUNT" && pbgAmountSum !== null && (
-                      <div className="mt-1 text-[11px] font-semibold text-blue-700">
+                      <div className="mt-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
                         Total :  {"  "}
                         {pbgAmountSum.toLocaleString("en-IN", {
                           maximumFractionDigits: 1,
@@ -2750,13 +2750,13 @@ castingRateInputs,
                       style={{ marginRight: "-3px" }}
                     >
                       <div className="absolute top-0 -left-1 w-3.5 h-full" />
-                      <div className="absolute right-0.5 top-0 w-0.5 h-full bg-transparent group-hover:bg-[#0070f3] group-active:bg-[#0070f3] transition-colors" />
+                      <div className="absolute right-0.5 top-0 w-0.5 h-full bg-transparent group-hover:bg-[#0070f3] group-active:bg-[#0070f3] dark:group-hover:bg-primary dark:group-active:bg-primary transition-colors" />
                     </div>
                   </th>
                 );
               })}
               {onDeleteRow && (
-                <th className="relative bg-[#f4f6f8] text-[#0a2540] text-xs font-bold uppercase tracking-wider px-3 py-2 text-center border-b-2 border-[#e1e6eb] select-none align-top">
+                <th className="relative bg-muted text-foreground text-xs font-bold uppercase tracking-wider px-3 py-2 text-center border-b-2 border-border select-none align-top">
                   Delete
                 </th>
               )}
@@ -2776,8 +2776,8 @@ castingRateInputs,
               paginatedWithIds.map(({ row, id }, idx) => (
                 <tr
                   key={id ?? idx}
-                  className={`transition-colors hover:bg-gray-50 cursor-pointer ${
-                    selectedIndex === idx ? "bg-blue-50" : ""
+                  className={`transition-colors hover:bg-muted/60 cursor-pointer ${
+                    selectedIndex === idx ? "bg-blue-50 dark:bg-blue-500/10" : ""
                   }`}
                   onClick={() => onSelect(idx)}
                 >
@@ -2867,7 +2867,7 @@ castingRateInputs,
                               <div
                                 key={child.header}
                                 title={child.header}
-                                className="shrink-0 min-w-0 text-xs text-[#0a2540]"
+                                className="shrink-0 min-w-0 text-xs text-foreground"
                               >
                                 {childContent}
                               </div>
@@ -2877,17 +2877,17 @@ castingRateInputs,
                             <div
                               key={child.header}
                               title={child.header}
-                              className={`flex items-center gap-1 min-w-0 rounded border border-[#e1e6eb] bg-white px-1.5 py-0.5 hover:border-[#c9d2da] transition-colors${
+                              className={`flex items-center gap-1 min-w-0 rounded border border-border bg-card px-1.5 py-0.5 hover:border-muted-foreground/50 transition-colors${
                                 // The group container is a capped column flex box
                                 // once wrapCells is on; without this a child could be
                                 // squashed to fit the cap instead of scrolling.
                                 wrapCells ? " shrink-0" : ""
                               }`}
                             >
-                              <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-[#0a2540]/55">
+                              <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-foreground/55">
                                 {child.label ?? child.header}
                               </span>
-                              <span className="flex-1 min-w-0 text-xs text-[#0a2540]">
+                              <span className="flex-1 min-w-0 text-xs text-foreground">
                                 {childContent}
                               </span>
                             </div>
@@ -2912,13 +2912,13 @@ castingRateInputs,
                       <td
                         key={cellIdx}
                         rowSpan={mergedSpan}
-                        className={`${group ? "px-2" : "px-3"} py-2 text-xs border-b border-[#e1e6eb] border-r  last:border-r-0${
+                        className={`${group ? "px-2" : "px-3"} py-2 text-xs border-b border-border border-r  last:border-r-0${
                           wrapCells ? " align-top" : ""
                         }${
-                          frozenLeft !== undefined ? " sticky z-10 bg-white" : ""
+                          frozenLeft !== undefined ? " sticky z-10 bg-card" : ""
                         }${
                           isCellEditable || isPnBlankDropdown || groupIsEditable
-                            ? " bg-amber-50"
+                            ? " bg-amber-50 dark:bg-[color-mix(in_oklch,var(--card),var(--color-amber-500)_10%)]"
                             : ""
                         }`}
                         style={
@@ -2930,14 +2930,14 @@ castingRateInputs,
                     );
                   })}
                   {onDeleteRow && (
-                    <td className="px-2 py-2 text-xs border-b border-[#e1e6eb] text-center bg-white">
+                    <td className="px-2 py-2 text-xs border-b border-border text-center bg-card">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setConfirmDeleteId(id);
                         }}
-                        className="inline-flex items-center justify-center w-7 h-7 rounded border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
+                        className="inline-flex items-center justify-center w-7 h-7 rounded border border-rose-200 dark:border-rose-500/25 bg-card text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/20 hover:text-rose-700 dark:hover:text-rose-200 transition-colors cursor-pointer"
                         title="Delete row"
                       >
                         <Trash2 size={13} />
@@ -2960,9 +2960,9 @@ castingRateInputs,
       {onDeleteRow && (
         <Dialog open={!!confirmDeleteId} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>
           <DialogContent className="sm:max-w-105 p-0 gap-0 overflow-hidden">
-            <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1e6eb] bg-[#f8f9fa]">
-              <DialogTitle className="text-sm font-bold text-[#0a2540] flex items-center gap-2">
-                <Trash2 size={16} className="text-rose-600" />
+            <DialogHeader className="px-4 pt-4 pb-3 border-b border-border bg-muted">
+              <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Trash2 size={16} className="text-rose-600 dark:text-rose-300" />
                 Delete transferred row?
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
@@ -2978,7 +2978,7 @@ castingRateInputs,
               <Button
                 variant="destructive"
                 size="sm"
-                className="bg-rose-600 hover:bg-rose-700 text-white"
+                className="bg-rose-600 dark:bg-rose-500/80 hover:bg-rose-700 dark:hover:bg-rose-500 text-white"
                 onClick={async () => {
                   if (!confirmDeleteId) return;
                   const targetId = confirmDeleteId;

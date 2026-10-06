@@ -3,12 +3,22 @@ import DashboardContainer from "./DashboardContainer";
 import { prisma } from "@/lib/prisma";
 import { getActiveLookupValuesByType } from "@/lib/lookup";
 import { getBatchDistinctBomIds, getNoUseBomIdSet } from "@/lib/verifyBomLookup";
+import { syncClosureStatuses } from "@/lib/closureStatusSync";
 
 // The dashboard reads live data on every request. It used to be dynamic implicitly because
 // it awaited searchParams for ?search=; search is client-side now, so say it explicitly.
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  // Derive closureStatus from the thread evidence before the rows are read so the
+  // dashboard shows it: "Sent" for evidenced dockets, "Pending" for mail-less
+  // ones. Only blank values are filled; failures must not block the dashboard.
+  const { sentDockets, pendingDockets } = await syncClosureStatuses()
+    .catch((error) => {
+      console.warn("[Page] closure status sync failed:", error);
+      return { sentDockets: [] as string[], pendingDockets: [] as string[] };
+    });
+
   // Fetch every enquiry once. Search, filtering and pagination all run client-side inside
   // the table, so searching no longer re-runs this query or re-hydrates the store.
   const rawEnquiries = await prisma.enquiry.findMany({
@@ -143,6 +153,8 @@ export default async function Page() {
             dropdownOptions={dropdownOptions}
             nextDocketNumber={nextDocketNumber}
             enquiriesList={enquiries}
+            autoSentDockets={sentDockets}
+            autoPendingDockets={pendingDockets}
           />
         </Suspense>
       </main>

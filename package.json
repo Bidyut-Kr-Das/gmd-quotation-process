@@ -32,6 +32,8 @@
     "cr:cleanup-invalid-boms:apply": "tsx scripts/remove-invalid-contract-review-boms.ts --write",
     "cr:mark-not-current": "tsx scripts/mark-not-current-reqt.ts",
     "cr:mark-not-current:apply": "tsx scripts/mark-not-current-reqt.ts --apply",
+    "uploads:clean-offlist": "tsx scripts/remove-offlist-upload-images.ts",
+    "uploads:clean-offlist:apply": "tsx scripts/remove-offlist-upload-images.ts --apply",
     "bom:stock:dry-run": "tsx scripts/dry-run-verify-bom-missing-stock.ts",
     "bom:stock:apply": "tsx scripts/dry-run-verify-bom-missing-stock.ts --apply",
     "bom:cost:derive": "tsx scripts/backfill-verify-bom-cost.ts",

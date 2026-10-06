@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { matchItemType, matchMoc, ITEM_TYPE_PATTERNS, MOC_PATTERNS } from '../lib/itemTypePatterns.js'
+import { matchItemType, matchMoc, ITEM_TYPE_PATTERNS, MOC_PATTERNS, correctItemType } from '../lib/itemTypePatterns.js'
 
 test('matchItemType detects butterfly valve', () => {
   assert.equal(matchItemType('D.I. Double Flanged Butter Fly Valve 1800mm PN16'), 'BUTTERFLY VALVE')
@@ -37,6 +37,24 @@ test('matchItemType detects globe valve', () => {
 
 test('matchItemType detects check valve', () => {
   assert.equal(matchItemType('Non Return Valve 100mm'), 'CHECK VALVE')
+})
+
+test('matchItemType prioritises DPCV over check valve for dual plate names', () => {
+  assert.equal(matchItemType('Dual Plate Check Valve 100mm'), 'DPCV')
+  assert.equal(matchItemType('DUAL-PLATE CHECK VALVE'), 'DPCV')
+  assert.equal(matchItemType('Dualplate check valve DN80'), 'DPCV')
+  assert.equal(matchItemType('Dual Plate Non Return Valve'), 'DPCV')
+  assert.equal(matchItemType('DPCV 100mm'), 'DPCV')
+})
+
+test('correctItemType fixes a CHECK VALVE stored for a dual plate name', () => {
+  assert.equal(correctItemType('Dual Plate Check Valve 100mm', 'CHECK VALVE'), 'DPCV')
+  assert.equal(correctItemType('Dual-Plate Check Valve', 'check valve'), 'DPCV')
+  // Nothing to correct.
+  assert.equal(correctItemType('Non Return Valve 100mm', 'CHECK VALVE'), null)
+  assert.equal(correctItemType('Dual Plate Check Valve', 'DPCV'), null)
+  assert.equal(correctItemType('Dual Plate Check Valve', null), null)
+  assert.equal(correctItemType('Random text', 'CHECK VALVE'), null)
 })
 
 test('matchItemType detects companion flange', () => {
@@ -153,4 +171,55 @@ test('full scenario: butterfly valve item classifies correctly', () => {
   const itemName = 'D.I. Double Flanged Butter Fly Valve 1800mm PN16'
   assert.equal(matchItemType(itemName), 'BUTTERFLY VALVE')
   assert.equal(matchMoc(itemName), 'DUCTILE IRON/CAST IRON')
+})
+
+test('air valve family maps to TPAV', () => {
+  assert.equal(matchItemType('DI AIR VALVE 50mm,PN10'), 'TPAV')
+  assert.equal(matchItemType('Air Valve 80 mm'), 'TPAV')
+  assert.equal(matchItemType('AIR RELEASE VALVE 80MM'), 'TPAV')
+  assert.equal(matchItemType('kinetic air valve 20mm'), 'TPAV')
+  assert.equal(matchItemType('kinetic double orifice type air valve 50mm'), 'TPAV')
+  assert.equal(
+    matchItemType('AIR VALVE WITH ISOLATION SLUICE VALVE NOMINAL DIA (MM)80PN 16'),
+    'TPAV',
+  )
+  assert.equal(matchItemType('Tamper Proof Air Valve With Isolation Sluice Valve'), 'TPAV')
+})
+
+test('air cushion valve stays its own category', () => {
+  assert.equal(
+    matchItemType('Air Cushion Valve with Cast Iron Body 200 MM Size'),
+    'AIR CUSHION VALVE',
+  )
+})
+
+test('air valve word boundary does not match repair valve', () => {
+  assert.notEqual(matchItemType('Repair Valve 50mm'), 'TPAV')
+})
+
+test('correctItemType forces TPAV for any air-valve name with a wrong stored type', () => {
+  // Tamper-proof air valve is stored as a sluice valve: replace with TPAV.
+  assert.equal(
+    correctItemType('Tampered Proof Air Valve 50mm', 'SLUICE VALVE-RESILIENT-NON-RISING'),
+    'TPAV',
+  )
+  assert.equal(correctItemType('AIR VALVE 50mm', 'AIR VALVE'), 'TPAV')
+  assert.equal(correctItemType('Air Release Valve 80mm', 'AIR VALVE'), 'TPAV')
+  assert.equal(correctItemType('kinetic air valve 20mm', 'SLUICE VALVE-METAL-RISING'), 'TPAV')
+  assert.equal(
+    correctItemType(
+      'AIR VALVE WITH ISOLATION SLUICE VALVE NOMINAL DIA (MM)80PN 16',
+      'SLUICE VALVE-METAL-RISING',
+    ),
+    'TPAV',
+  )
+  // Nothing to correct.
+  assert.equal(correctItemType('Air Valve 80mm', 'TPAV'), null)
+  // Air cushion valve stays its own category.
+  assert.equal(
+    correctItemType('Air Cushion Valve with Cast Iron Body 200 MM Size', 'AIR CUSHION VALVE'),
+    null,
+  )
+  // Not an air valve.
+  assert.equal(correctItemType('Repair Valve 50mm', 'SLUICE VALVE-RESILIENT-NON-RISING'), null)
 })

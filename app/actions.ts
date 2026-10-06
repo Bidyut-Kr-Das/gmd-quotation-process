@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { uploadFileToDrive } from "@/lib/gdrive";
 import { recalculateItem, recalculateEnquiryItems, serializeItem, serializeEnquiry, autoDetectItemType, autoDetectMoc, getItemNameMerge } from "@/lib/costCalculator";
 import { resolveItemCategory } from "@/lib/itemCategoryResolver";
+import { correctItemType } from "@/lib/itemTypePatterns";
 import { extractSizeFromItemName } from "@/lib/sizeExtractor";
 import { roundUp } from "@/lib/rounding";
 import { validateVaPercent, getDefaultVaPercent } from "@/lib/vaValidation";
@@ -12,6 +13,7 @@ import { fetchBomRows, buildRmCostMap, DIRECT_M2M, getBomEntry, getCachedBomRows
 import { update2to1CostForItems, buildRawMaterialsCostMap, clear2to1BomCache } from "@/lib/gmd2to1CostLookup";
 import { getDistinctBomIds, getBomRmAvailBatch, resolveContractReviewBomIdsFromActuator, computeContractReviewRmAvail, getNoUseBomIdSet, normalizeActuatorPart, clearVerifyBomCache } from "@/lib/verifyBomLookup";
 import { splitCsvLinks } from "@/lib/gmd_lib/contract-order-links";
+import { buildDerivedItemName } from "@/lib/gmd_lib/derived-item-name";
 import { getUsdInrRate } from "@/lib/gmd_lib/exchangeRate";
 import { getRmStockMap, getRmTypeMap, syncDirectM2MAvailableStock } from "@/lib/directM2MStockLookup";
 import { computeDeliverySchedule, syncDeliveryScheduleForItem } from "@/lib/deliverySchedule";
@@ -1690,6 +1692,21 @@ export async function fetchErpItemCodesAction(itemIds: string[]) {
     }
   }
 
+  // Codes may have flipped NO -> YES during the loop above, so re-derive the
+  // CURRENT REQT "N" marks now: a stale mark from the OLD code must not survive
+  // a click that just moved the item to a current code. Best-effort only.
+  try {
+    const { recomputeNotCurrentReqtMarks } = await import(
+      "@/lib/contractReviewCurrentReqt"
+    );
+    const r = await recomputeNotCurrentReqtMarks();
+    console.log(
+      `[fetchErpItemCodes] CURRENT REQT marks after refresh: CR +${r.contractReview.marked}/-${r.contractReview.cleared}, items +${r.enquiryItem.marked}/-${r.enquiryItem.cleared}`,
+    );
+  } catch (e) {
+    console.warn("[fetchErpItemCodes] post-refresh current reqt mark failed:", e);
+  }
+
   if (fetched === 0) {
     let detailedError: string;
     if (failures.length === 1) {
@@ -2137,30 +2154,55 @@ export async function autoFillBlanksAction(itemIds: string[]) {
       const item = items[i]
       process.stdout.write(`\r[${i + 1}/${items.length}] ${item.itemName.substring(0, 60).padEnd(60)}`)
 
-      const resolved = await resolveItemCategory({ itemName: item.itemName })
+      const hasBlank =
+        !item.itemType ||
+        !item.moc ||
+        !item.size ||
+        item.size === "Not detectable" ||
+        item.size === "Not mentioned/cant detect size" ||
+        !item.operationType ||
+        !item.extension ||
+        item.extension === "-" ||
+        !item.bypass ||
+        item.bypass === "-"
+      // Keyword-only correction runs even when nothing is blank, so skip the
+      // AI-backed resolveItemCategory for pure-correction rows to save tokens.
+      const resolved = hasBlank ? await resolveItemCategory({ itemName: item.itemName }) : null
       const updates: any = {}
-      if (!item.itemType && resolved.itemType) {
-        updates.itemType = resolved.itemType
-        updates.itemTypeSource = resolved.itemTypeSource
+      if (!item.itemType) {
+        if (resolved?.itemType) {
+          updates.itemType = resolved.itemType
+          updates.itemTypeSource = resolved.itemTypeSource
+        }
+      } else {
+        // Fix a known-wrong item type, e.g. "Dual Plate Check Valve" stored as
+        // CHECK VALVE should become DPCV.
+        const corrected = correctItemType(item.itemName, item.itemType)
+        if (corrected) {
+          updates.itemType = corrected
+          updates.itemTypeSource = "keyword"
+        }
       }
-      if (!item.moc && resolved.moc) {
-        updates.moc = resolved.moc
-        updates.mocSource = resolved.mocSource
-      }
-      if ((!item.size || item.size === "Not detectable" || item.size === "Not mentioned/cant detect size") && resolved.size && resolved.size !== "Not detectable") {
-        updates.size = resolved.size
-      }
-      if (resolved.pnRating) {
-        updates.pnRating = resolved.pnRating
-      }
-      if (!item.operationType && resolved.operationType) {
-        updates.operationType = resolved.operationType
-      }
-      if ((!item.extension || item.extension === "-") && resolved.extension) {
-        updates.extension = resolved.extension
-      }
-      if ((!item.bypass || item.bypass === "-") && resolved.bypass && resolved.bypass !== "-") {
-        updates.bypass = resolved.bypass
+      if (resolved) {
+        if (!item.moc && resolved.moc) {
+          updates.moc = resolved.moc
+          updates.mocSource = resolved.mocSource
+        }
+        if ((!item.size || item.size === "Not detectable" || item.size === "Not mentioned/cant detect size") && resolved.size && resolved.size !== "Not detectable") {
+          updates.size = resolved.size
+        }
+        if (resolved.pnRating) {
+          updates.pnRating = resolved.pnRating
+        }
+        if (!item.operationType && resolved.operationType) {
+          updates.operationType = resolved.operationType
+        }
+        if ((!item.extension || item.extension === "-") && resolved.extension) {
+          updates.extension = resolved.extension
+        }
+        if ((!item.bypass || item.bypass === "-") && resolved.bypass && resolved.bypass !== "-") {
+          updates.bypass = resolved.bypass
+        }
       }
       if (Object.keys(updates).length > 0) {
         await prisma.enquiryItem.update({ where: { id: item.id }, data: updates })
@@ -3058,23 +3100,58 @@ export async function saveActuatorWithRmCodeAction(
   }
 }
 
+/** L-fields whose change affects the derived item name. */
+const DERIVED_SOURCE_FIELDS = new Set([
+  "l2ValveType",
+  "l3Dia",
+  "l4Component",
+  "l5Material",
+  "l6Std",
+  "l7Dimension",
+  "l8ItemCategory",
+]);
+
 export async function updateGMDUpdateFieldAction(
   id: string,
   field: string,
   value: string | null,
 ) {
   "use server";
-  const data =
+  const data: Record<string, unknown> =
     field === "cost"
       ? { [field]: value == null || value.trim() === "" ? null : value }
       : { [field]: value };
+
+  // Keep the derived name in step with the L-fields it is built from.
+  if (DERIVED_SOURCE_FIELDS.has(field)) {
+    const current = await prisma.rawMaterial.findUnique({
+      where: { id },
+      select: {
+        l8ItemCategory: true,
+        l2ValveType: true,
+        l3Dia: true,
+        l4Component: true,
+        l5Material: true,
+        l6Std: true,
+        l7Dimension: true,
+      },
+    });
+    if (current) {
+      data.itemNameDerived =
+        buildDerivedItemName({ ...current, [field]: value }) || null;
+    }
+  }
+
   const updated = await prisma.rawMaterial.update({
     where: { id },
     data,
   });
-  console.log(`Updated GMDUpdateItem: ${id}, Field: ${field}, Value: ${value}, ${updated}`);
-  console.dir(updated, { depth: Infinity });
-  return { id, field, value };
+  return {
+    id,
+    field,
+    value,
+    itemNameDerived: updated.itemNameDerived,
+  };
 }
 
 export async function updateDerivedItemName(itemCode: string) {
@@ -3085,36 +3162,7 @@ export async function updateDerivedItemName(itemCode: string) {
     });
     if (!item) return { success: false, error: "Item not found." };
 
-    const l8 = (item.l8ItemCategory ?? "").trim();
-    const isGearbox = l8.toUpperCase().includes("GEAR BOX");
-
-    const order = isGearbox
-      ? [item.l4Component, item.l5Material, item.l7Dimension]
-      : [
-          item.l8ItemCategory,
-          item.l2ValveType,
-          item.l3Dia,
-          item.l4Component,
-          item.l5Material,
-          item.l6Std,
-          item.l7Dimension,
-        ];
-
-    const seen = new Set<string>();
-    const parts: string[] = [];
-    for (const raw of order) {
-      let v = (raw ?? "").trim();
-      if (!v) continue;
-      const up = v.toUpperCase();
-      if (up === "TRADING VALVE" || up === "TRADING VALVES") v = "TV";
-      else if (up.includes("GEAR BOX")) v = v.replace(/gear box/gi, "GB");
-      const key = v.toUpperCase().replace(/S$/, "");
-      if (seen.has(key)) continue;
-      seen.add(key);
-      parts.push(v);
-    }
-
-    const itemNameDerived = parts.join("-");
+    const itemNameDerived = buildDerivedItemName(item) || null;
     await prisma.rawMaterial.update({
       where: { id: item.id },
       data: { itemNameDerived },

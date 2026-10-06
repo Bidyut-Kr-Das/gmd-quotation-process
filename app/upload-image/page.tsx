@@ -8,6 +8,13 @@ import UploadImageTable, { UploadImageComboRow } from "@/components/upload_image
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -15,6 +22,7 @@ import { createGeneratedImageAction } from "@/app/actions";
 
 export default function UploadImagePage() {
   const [items, setItems] = useState<UploadImageComboRow[]>([]);
+  const [itemTypeOptions, setItemTypeOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +42,7 @@ export default function UploadImagePage() {
       }
       const json = await res.json();
       setItems(json.items ?? []);
+      setItemTypeOptions(json.itemTypeOptions ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -106,18 +115,18 @@ export default function UploadImagePage() {
 
         <div className="flex items-center justify-between mt-3 shrink-0 gap-2">
           <p className="text-xs text-muted-foreground">
-            All unique <span className="font-semibold text-[#0a2540]">itemType · operationType</span> combos from enquiry items (one row per distinct RM Type). Rows with a blank RM Type show a dropdown — select a type to create the entry, then upload an image.
+            All unique <span className="font-semibold text-foreground">itemType · operationType</span> combos from enquiry items (one row per distinct RM Type). Rows with a blank RM Type show a dropdown — select a type to create the entry, then upload an image.
           </p>
           <Button
             size="sm"
-            className="gap-1.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white shrink-0"
+            className="gap-1.5 bg-[#0f62fe] dark:bg-primary/85 hover:bg-[#0353e9] dark:hover:bg-primary text-white dark:text-primary-foreground shrink-0"
             onClick={() => setAddOpen(true)}
           >
             <Plus size={14} /> Add Entry
           </Button>
         </div>
 
-        {error && <div className="mt-2 text-sm text-red-600 shrink-0">{error}</div>}
+        {error && <div className="mt-2 text-sm text-red-600 dark:text-red-300 shrink-0">{error}</div>}
 
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden mt-3">
           <UploadImageTable items={items} onUploaded={fetchData} />
@@ -135,12 +144,18 @@ export default function UploadImagePage() {
           <div className="grid gap-3 py-1">
             <div className="grid gap-1.5">
               <Label htmlFor="add-itemType">Item Type *</Label>
-              <Input
-                id="add-itemType"
-                placeholder="e.g. Ball Valve"
-                value={itemType}
-                onChange={(e) => setItemType(e.target.value)}
-              />
+              <Select value={itemType} onValueChange={(v) => setItemType(v ?? "")}>
+                <SelectTrigger id="add-itemType">
+                  <SelectValue placeholder="Select item type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {itemTypeOptions.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="add-operationType">Operation Type *</Label>
@@ -165,7 +180,7 @@ export default function UploadImagePage() {
             <Button variant="outline" onClick={() => setAddOpen(false)} disabled={creating}>
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={creating} className="bg-[#0f62fe] hover:bg-[#0353e9] text-white">
+            <Button onClick={handleCreate} disabled={creating} className="bg-[#0f62fe] dark:bg-primary/85 hover:bg-[#0353e9] dark:hover:bg-primary text-white dark:text-primary-foreground">
               {creating ? (
                 <>
                   <Loader2 size={14} className="animate-spin" /> Creating...

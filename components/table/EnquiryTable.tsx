@@ -25,6 +25,7 @@ import { makeImageKey } from "@/lib/imageKey";
 import { RM_TYPE_OPTIONS } from "@/lib/gmd_lib/sheet-columns";
 import { C_BATCH_VALUE } from "@/lib/gmd_lib/verify-bom-columns";
 import { N_BATCH_VALUE } from "@/lib/gmd_lib/contract-review-columns";
+import { correctItemType } from "@/lib/itemTypePatterns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,8 @@ import { formatIndianNumber, cleanNumberInput, hasNumberChanged } from "@/lib/fo
 
 interface EnquiryTableProps {
   dropdownOptions: DropdownOptions;
+  autoSentDockets?: string[];
+  autoPendingDockets?: string[];
 }
 
 // Helper to extract company name and branch
@@ -237,7 +240,7 @@ function OthersInlineMultiSelect({
             })}
             <div className="flex justify-between pt-1 border-t border-border mt-1">
               <button type="button" onClick={() => { onChange([]); setOpen(false); }} className="text-[10px] text-muted-foreground hover:underline">Clear</button>
-              <button type="button" onClick={() => setOpen(false)} className="text-[10px] text-blue-600 font-bold hover:underline">Done</button>
+              <button type="button" onClick={() => setOpen(false)} className="text-[10px] text-blue-600 dark:text-blue-300 font-bold hover:underline">Done</button>
             </div>
           </div>
         </>
@@ -280,7 +283,7 @@ function ItemImageCells({
                   href={image.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 underline shrink-0"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 underline shrink-0"
                 >
                   View <ExternalLink size={10} />
                 </a>
@@ -315,14 +318,14 @@ function ItemCodeCell({ item }: { item?: EnquiryItemData }) {
       {item.nBatch === N_BATCH_VALUE ? (
         <span
           title={`${item.erpItemCode || ""} - NOT in CURRENT REQT on the GMD Item Creation Form`}
-          className="block text-[10px] font-semibold italic text-amber-700 dark:text-amber-400 p-1 truncate"
+          className="block text-[10px] font-semibold italic text-amber-700 dark:text-amber-300 p-1 truncate"
         >
           Deleted as Current Reqt = No
         </span>
       ) : item.cBatch === C_BATCH_VALUE ? (
         <span
           title={`${item.erpItemCode || ""} - closed in ITEM MASTER ERP (ITEM_STATUS = C)`}
-          className="block text-[10px] font-semibold italic text-rose-700 dark:text-rose-400 p-1 truncate"
+          className="block text-[10px] font-semibold italic text-rose-700 dark:text-rose-300 p-1 truncate"
         >
           Deleted as Closed
         </span>
@@ -335,12 +338,14 @@ function ItemCodeCell({ item }: { item?: EnquiryItemData }) {
   );
 }
 
-export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
+export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPendingDockets }: EnquiryTableProps) {
   const { data: session } = useSession();
   const role = (session?.user as any)?.role as string | undefined;
   const canEditApm = role === "admin" || role === "developer";
   const dispatch = useAppDispatch();
   const enquiries = useAppSelector(selectAllEnquiries);
+  const autoSentSet = useMemo(() => new Set(autoSentDockets ?? []), [autoSentDockets]);
+  const autoPendingSet = useMemo(() => new Set(autoPendingDockets ?? []), [autoPendingDockets]);
   const allItems = useAppSelector(selectAllItems);
   const filters = useAppSelector((s) => s.filters);
   const { currentPage, pageSize } = useAppSelector((s) => s.pagination);
@@ -1091,9 +1096,9 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
       >
         {isSorted ? (
           sortDirection === "asc" ? (
-            <span className="text-[8px] text-[#0f62fe] dark:text-blue-400 font-bold leading-none">▲</span>
+            <span className="text-[8px] text-[#0f62fe] dark:text-blue-300 font-bold leading-none">▲</span>
           ) : (
-            <span className="text-[8px] text-[#0f62fe] dark:text-blue-400 font-bold leading-none">▼</span>
+            <span className="text-[8px] text-[#0f62fe] dark:text-blue-300 font-bold leading-none">▼</span>
           )
         ) : (
           <span className="text-[8px] text-muted-foreground leading-none">▼</span>
@@ -1969,15 +1974,24 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
         !i.bypass ||
         i.bypass === "-"
     )
-    console.log(`[Client] autoFillBlanks: ${blankItems.length} items with blanks out of ${matchedItems.length} matched`);
-    if (blankItems.length === 0) {
-      toast.info("No blank fields to fill.")
+    // Items whose stored item type is wrong for the name (e.g. "Dual Plate Check
+    // Valve" kept as CHECK VALVE) are corrected too, even with no blanks.
+    const correctableItems = matchedItems.filter(
+      (i: EnquiryItemData) => correctItemType(i.itemName, i.itemType) !== null
+    )
+    const itemsToProcess = [
+      ...blankItems,
+      ...correctableItems.filter((c) => !blankItems.some((b) => b.id === c.id)),
+    ]
+    console.log(`[Client] autoFillBlanks: ${itemsToProcess.length} items (${blankItems.length} with blanks, ${correctableItems.length} wrong item type) out of ${matchedItems.length} matched`);
+    if (itemsToProcess.length === 0) {
+      toast.info("No blank fields or item types to fix.")
       return
     }
-    if (!confirm(`Auto-fill ${blankItems.length} items (itemType, MOC, Size, Operation Type, Extension, Bypass)? This uses AI tokens for complex cases.`)) return
+    if (!confirm(`Auto-fill blanks / fix item types for ${itemsToProcess.length} items? This uses AI tokens for complex cases.`)) return
 
     setAutoFillStatus("running")
-    await dispatch(autoFillBlanks(blankItems.map((i: EnquiryItemData) => i.id))).unwrap()
+    await dispatch(autoFillBlanks(itemsToProcess.map((i: EnquiryItemData) => i.id))).unwrap()
     setAutoFillStatus("idle")
     toast.success(`Auto-fill complete.`)
   }
@@ -2038,7 +2052,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
             <div className="mt-1 space-y-1 text-[11px] leading-relaxed opacity-90 max-h-48 overflow-y-auto whitespace-pre-line">
               {result.failures.map((f: any, idx: number) => (
                 <div key={idx}>
-                  <span className="font-medium text-amber-700 dark:text-amber-400">• {f.itemName.slice(0, 35)}:</span>{" "}
+                  <span className="font-medium text-amber-700 dark:text-amber-300">• {f.itemName.slice(0, 35)}:</span>{" "}
                   <span>{f.reason}</span>
                 </div>
               ))}
@@ -2296,9 +2310,9 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
             <button
               type="button"
               onClick={handleResetAllFilters}
-              className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-950/50 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all  shrink-0"
+              className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all  shrink-0"
             >
-              <svg className="h-3.5 w-3.5 text-rose-700 dark:text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg className="h-3.5 w-3.5 text-rose-700 dark:text-rose-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10" />
               </svg>
               Reset Filters
@@ -2320,9 +2334,9 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
           <button
             type="button"
             onClick={handleExportToExcel}
-            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-[#0f62fe] hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all  shrink-0"
+            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-[#0f62fe] hover:bg-blue-100 dark:border-blue-500/25 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all  shrink-0"
           >
-            <Download className="h-3.5 w-3.5 text-[#0f62fe] dark:text-blue-400 stroke-2" />
+            <Download className="h-3.5 w-3.5 text-[#0f62fe] dark:text-blue-300 stroke-2" />
             Export Excel
           </button>
 
@@ -2337,9 +2351,9 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
             <button
               type="button"
               onClick={() => document.getElementById("excel-import-file")?.click()}
-              className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/50 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all  shrink-0"
+              className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all  shrink-0"
             >
-              <Upload className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400 stroke-2" />
+              <Upload className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300 stroke-2" />
               Import Excel
             </button>
           </div>
@@ -2348,9 +2362,9 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
             type="button"
             onClick={handleAutoFillBlanks}
             disabled={autoFillStatus === "running"}
-            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950/30 dark:text-purple-400 dark:hover:bg-purple-950/50 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
+            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-500/25 dark:bg-purple-500/10 dark:text-purple-300 dark:hover:bg-purple-500/20 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
           >
-            <Sparkles className="h-3.5 w-3.5 text-purple-700 dark:text-purple-400 stroke-2" />
+            <Sparkles className="h-3.5 w-3.5 text-purple-700 dark:text-purple-300 stroke-2" />
             {autoFillStatus === "running" ? "Filling..." : "Auto-Fill Blanks"}
           </button>
 
@@ -2358,9 +2372,9 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
             type="button"
             onClick={handleFetchItemCodes}
             disabled={fetchCodesStatus === "running"}
-            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
+            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-500/25 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-blue-700 dark:text-blue-400 stroke-2 ${fetchCodesStatus === "running" ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 text-blue-700 dark:text-blue-300 stroke-2 ${fetchCodesStatus === "running" ? "animate-spin" : ""}`} />
             {fetchCodesStatus === "running" ? "Refreshing..." : "Fetch Item Codes"}
           </button>
 
@@ -2368,9 +2382,9 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
             type="button"
             onClick={handleUpdateAllBomCosts}
             disabled={updateCostStatus === "running"}
-            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 dark:border-teal-800 dark:bg-teal-950/30 dark:text-teal-400 dark:hover:bg-teal-950/50 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
+            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 dark:border-teal-500/25 dark:bg-teal-500/10 dark:text-teal-300 dark:hover:bg-teal-500/20 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
           >
-            <DollarSign className={`h-3.5 w-3.5 text-teal-700 dark:text-teal-400 stroke-2 ${updateCostStatus === "running" ? "animate-spin" : ""}`} />
+            <DollarSign className={`h-3.5 w-3.5 text-teal-700 dark:text-teal-300 stroke-2 ${updateCostStatus === "running" ? "animate-spin" : ""}`} />
             {updateCostStatus === "running" ? "Updating..." : "Update BOM Costs"}
           </button>
 
@@ -2378,9 +2392,9 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
             type="button"
             onClick={handleFetchContractReviewRates}
             disabled={crRateStatus === "running"}
-            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-400 dark:hover:bg-violet-950/50 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
+            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-500/25 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-violet-700 dark:text-violet-400 stroke-2 ${crRateStatus === "running" ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 text-violet-700 dark:text-violet-300 stroke-2 ${crRateStatus === "running" ? "animate-spin" : ""}`} />
             {crRateStatus === "running" ? "Fetching..." : "Fetch CR Rates"}
           </button>
 
@@ -2388,10 +2402,10 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
             type="button"
             onClick={handleSyncAvailableStock}
             disabled={syncStockStatus === "running" || updateCostStatus === "running"}
-            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400 dark:hover:bg-amber-950/50 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
+            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
             title="Backfill availableStock and RM Type for all items with an RM code from Raw Materials (GMDUpdateItem)"
           >
-            <PackageCheck className={`h-3.5 w-3.5 text-amber-700 dark:text-amber-400 stroke-2 ${syncStockStatus === "running" ? "animate-spin" : ""}`} />
+            <PackageCheck className={`h-3.5 w-3.5 text-amber-700 dark:text-amber-300 stroke-2 ${syncStockStatus === "running" ? "animate-spin" : ""}`} />
             {syncStockStatus === "running" ? "Syncing Stock..." : "Sync Available Stock"}
           </button>
         </div>
@@ -2565,7 +2579,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="truncate">State / Utility</span>
                   {activeStateUtilityFilterCount > 0 && (
-                    <span className="inline-flex items-center justify-center h-4 px-1.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
+                    <span className="inline-flex items-center justify-center h-4 px-1.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
                       {activeStateUtilityFilterCount}
                     </span>
                   )}
@@ -2574,7 +2588,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   <button
                     type="button"
                     onClick={handleClearStateUtilityFilters}
-                    className="inline-flex items-center gap-0.5 text-[9px] font-medium text-muted-foreground hover:text-red-500 dark:hover:text-red-400 cursor-pointer transition-colors normal-case"
+                    className="inline-flex items-center gap-0.5 text-[9px] font-medium text-muted-foreground hover:text-red-500 dark:hover:text-red-200 cursor-pointer transition-colors normal-case"
                     title="Clear State / Utility filters"
                   >
                     <X className="h-2.5 w-2.5" />
@@ -2598,7 +2612,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.state.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="start"
                 />
@@ -2616,7 +2630,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.utility.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="end"
                 />
@@ -2638,7 +2652,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="truncate">Payment / PBG / Insp</span>
                   {activePaymentTermsFilterCount > 0 && (
-                    <span className="inline-flex items-center justify-center h-4 px-1.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
+                    <span className="inline-flex items-center justify-center h-4 px-1.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
                       {activePaymentTermsFilterCount}
                     </span>
                   )}
@@ -2647,7 +2661,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   <button
                     type="button"
                     onClick={handleClearPaymentTermsFilters}
-                    className="inline-flex items-center gap-0.5 text-[9px] font-medium text-muted-foreground hover:text-red-500 dark:hover:text-red-400 cursor-pointer transition-colors normal-case"
+                    className="inline-flex items-center gap-0.5 text-[9px] font-medium text-muted-foreground hover:text-red-500 dark:hover:text-red-200 cursor-pointer transition-colors normal-case"
                     title="Clear Payment / PBG / Inspection filters"
                   >
                     <X className="h-2.5 w-2.5" />
@@ -2671,7 +2685,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.paymentTerms.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="start"
                 />
@@ -2689,7 +2703,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.pbg.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="center"
                 />
@@ -2707,7 +2721,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.inspection.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="end"
                 />
@@ -2876,7 +2890,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span>Details</span>
                   {activeDetailsFilterCount > 0 && (
-                    <span className="inline-flex items-center justify-center h-4 px-1.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
+                    <span className="inline-flex items-center justify-center h-4 px-1.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
                       {activeDetailsFilterCount}
                     </span>
                   )}
@@ -2885,7 +2899,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   <button
                     type="button"
                     onClick={handleClearDetailsFilters}
-                    className="inline-flex items-center gap-0.5 text-[9px] font-medium text-muted-foreground hover:text-red-500 dark:hover:text-red-400 cursor-pointer transition-colors normal-case"
+                    className="inline-flex items-center gap-0.5 text-[9px] font-medium text-muted-foreground hover:text-red-500 dark:hover:text-red-200 cursor-pointer transition-colors normal-case"
                     title="Clear all details filters"
                   >
                     <X className="h-2.5 w-2.5" />
@@ -2909,7 +2923,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.itemType.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="start"
                 />
@@ -2927,7 +2941,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.moc.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="start"
                 />
@@ -2945,7 +2959,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.size.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="center"
                 />
@@ -2963,7 +2977,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.pnRating.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="end"
                 />
@@ -2981,7 +2995,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.operationType.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="start"
                 />
@@ -2999,7 +3013,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.extension.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="start"
                 />
@@ -3017,7 +3031,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.bypass.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="center"
                 />
@@ -3035,7 +3049,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     (filters.others || []).length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="end"
                 />
@@ -3053,7 +3067,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   className={cn(
                     "h-6 px-1.5 py-0 text-[9px] font-normal leading-none",
                     filters.rmType.length > 0 &&
-                      "border-blue-500 bg-blue-50/80 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold"
+                      "border-blue-500 dark:border-blue-400/50 bg-blue-50/80 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 font-semibold"
                   )}
                   align="start"
                 />
@@ -3635,7 +3649,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   type="button"
                   onClick={() => handleBulkValidation("Yes")}
                   disabled={bulkValidationRunning !== null}
-                  className="px-1.5 py-1 text-[9px] font-bold rounded border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 cursor-pointer"
+                  className="px-1.5 py-1 text-[9px] font-bold rounded border border-emerald-200 dark:border-emerald-500/25 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 disabled:opacity-50 cursor-pointer"
                   title="Set all filtered items (all pages) to Yes"
                 >
                   {bulkValidationRunning === "Yes" ? "..." : "All Yes"}
@@ -3644,7 +3658,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   type="button"
                   onClick={() => handleBulkValidation("No")}
                   disabled={bulkValidationRunning !== null}
-                  className="px-1.5 py-1 text-[9px] font-bold rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:opacity-50 cursor-pointer"
+                  className="px-1.5 py-1 text-[9px] font-bold rounded border border-rose-200 dark:border-rose-500/25 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-50 cursor-pointer"
                   title="Set all filtered items (all pages) to No"
                 >
                   {bulkValidationRunning === "No" ? "..." : "All No"}
@@ -3741,7 +3755,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   type="button"
                   onClick={() => handleBulkApm("Yes")}
                   disabled={bulkApmRunning !== null || !canEditApm}
-                  className="px-1.5 py-1 text-[9px] font-bold rounded border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                  className="px-1.5 py-1 text-[9px] font-bold rounded border border-emerald-200 dark:border-emerald-500/25 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                   title={canEditApm ? "Set all filtered enquiries (all pages) to Yes" : "Admin only"}
                 >
                   {bulkApmRunning === "Yes" ? "..." : "All Yes"}
@@ -3750,7 +3764,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                   type="button"
                   onClick={() => handleBulkApm("No")}
                   disabled={bulkApmRunning !== null || !canEditApm}
-                  className="px-1.5 py-1 text-[9px] font-bold rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                  className="px-1.5 py-1 text-[9px] font-bold rounded border border-rose-200 dark:border-rose-500/25 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                   title={canEditApm ? "Set all filtered enquiries (all pages) to No" : "Admin only"}
                 >
                   {bulkApmRunning === "No" ? "..." : "All No"}
@@ -3845,22 +3859,22 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
               const isFrozen = isEnquiryFrozen((enquiry as any).apm, (enquiry as any).offerPdfGeneratedAt);
 
               // Setup custom brand avatar styles
-              let badgeBg = "bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800";
+              let badgeBg = "bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/25";
               if (initials === "RE") {
-                badgeBg = "bg-indigo-50 text-indigo-600 border border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800";
+                badgeBg = "bg-indigo-50 text-indigo-600 border border-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/25";
               } else if (initials === "AD") {
-                badgeBg = "bg-sky-50 text-sky-600 border border-sky-100 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-800";
+                badgeBg = "bg-sky-50 text-sky-600 border border-sky-100 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/25";
               } else if (initials === "LT") {
-                badgeBg = "bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800";
+                badgeBg = "bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/25";
               } else if (initials === "JS") {
-                badgeBg = "bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800";
+                badgeBg = "bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/25";
               }
 
                return (
                 <React.Fragment key={enquiry.id}>
                   {/* Main Docket / First Item Row */}
                   <tr
-                    className={`transition-colors ${firstItem && invalidVaItemIds.has(firstItem.id) ? "bg-red-100 dark:bg-red-950/40" : "hover:bg-muted/20"}`}>
+                    className={`transition-colors ${firstItem && invalidVaItemIds.has(firstItem.id) ? "bg-red-100 dark:bg-red-500/15" : "hover:bg-muted/20"}`}>
                     {/* Select checkbox for first item */}
                     <td className="py-3.5 px-2 text-center border-r border-b border-border">
                       {firstItem ? (
@@ -3868,7 +3882,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                           type="checkbox"
                           checked={isItemSelected(firstItem.id)}
                           onChange={() => toggleItemSelection(enquiry.id, firstItem.id)}
-                          className="h-3.5 w-3.5 rounded border-border text-[#0f62fe] focus:ring-blue-500 cursor-pointer"
+                          className="h-3.5 w-3.5 rounded border-border text-[#0f62fe] dark:text-blue-300 focus:ring-blue-500 cursor-pointer"
                           title={isItemSelected(firstItem.id) ? "Deselect item" : "Select item"}
                         />
                       ) : null}
@@ -3883,7 +3897,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     </td>
 
                     {/* Docket No with expand arrow if applicable */}
-                    <td className="py-3.5 px-4 text-xs font-semibold text-[#0f62fe] dark:text-blue-400 border-r border-b border-border last:border-r-0">
+                    <td className="py-3.5 px-4 text-xs font-semibold text-[#0f62fe] dark:text-blue-300 border-r border-b border-border last:border-r-0">
                       <div className="flex items-center flex-wrap gap-1">
                         {hasMultiple && (
                           <button
@@ -3902,7 +3916,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                           {enquiry.docketNumber}
                         </span>
                         {hasMultiple && !isExpanded && (
-                          <span className="ml-1 px-1.5 py-0.5 text-[9px] font-medium bg-blue-50 text-blue-600 rounded-full border border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800 shrink-0">
+                          <span className="ml-1 px-1.5 py-0.5 text-[9px] font-medium bg-blue-50 text-blue-600 rounded-full border border-blue-100 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/25 shrink-0">
                             +{displayItems.length - 1} more items
                           </span>
                         )}
@@ -3925,11 +3939,11 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                         )}
                         {isThisEnquiryActive && selectedCount > 0 && (
                           <span className="inline-flex items-center gap-1">
-                            <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-400">{selectedCount} selected</span>
+                            <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300">{selectedCount} selected</span>
                             <button
                               type="button"
                               onClick={() => setBulkConfirmOpen(true)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400 cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:hover:bg-rose-500/20 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300 cursor-pointer"
                             >
                               <Trash2 className="h-3 w-3" />
                               Delete ({selectedCount})
@@ -4021,7 +4035,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                               type="button"
                               onClick={() => setAddingContractFor(enquiry.id)}
                               title="Manually add contract number"
-                              className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-1 text-[10px] font-semibold rounded border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer"
+                              className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-1 text-[10px] font-semibold rounded border border-blue-200 dark:border-blue-500/25 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-500/20 cursor-pointer"
                             >
                               <Plus className="h-3 w-3" /> Add
                             </button>
@@ -4056,7 +4070,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                                 if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                                 if (e.key === "Escape") setAddingContractFor(null);
                               }}
-                              className="w-full uppercase bg-background border border-blue-200 text-[10px] text-foreground outline-none p-1.5 rounded focus:ring-1 focus:ring-blue-500 placeholder:text-muted-foreground placeholder:normal-case"
+                              className="w-full uppercase bg-background border border-blue-200 dark:border-blue-500/25 text-[10px] text-foreground outline-none p-1.5 rounded focus:ring-1 focus:ring-blue-500 placeholder:text-muted-foreground placeholder:normal-case"
                             />
                           )}
                         </div>
@@ -4242,7 +4256,20 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                       <select
                         value={enquiry.closureStatus || ""}
                         onChange={(e) => handleEnquiryFieldChange(enquiry.id, "closureStatus", e.target.value)}
-                        className={cellSelectClass}
+                        className={cn(
+                          cellSelectClass,
+                          enquiry.closureStatus === "Sent" && autoSentSet.has(enquiry.docketNumber) &&
+                            "text-blue-600 font-semibold bg-blue-50/60 dark:bg-blue-950/30",
+                          enquiry.closureStatus === "Pending" && autoPendingSet.has(enquiry.docketNumber) &&
+                            "text-amber-600 font-semibold bg-amber-50/60 dark:bg-amber-950/30"
+                        )}
+                        title={
+                          enquiry.closureStatus === "Sent" && autoSentSet.has(enquiry.docketNumber)
+                            ? "Auto-detected from thread attachments/OCR"
+                            : enquiry.closureStatus === "Pending" && autoPendingSet.has(enquiry.docketNumber)
+                              ? "No email found for this docket"
+                              : undefined
+                        }
                       >
                         <option value="">-</option>
                         {dropdownOptions.closureStatuses.map((opt) => (
@@ -4450,7 +4477,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     </td>
 
                     {/* First Item Quantity */}
-                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                       {firstItem ? (
                         <input
                           key={firstItem.id + "-quantity-" + (firstItem.quantity || "")}
@@ -4511,7 +4538,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     </td>
 
                     {/* First Item Product Cost */}
-                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                       {firstItem ? (
                         <input
                           key={firstItem.id + "-productCost-" + (firstItem.productCost !== null && firstItem.productCost !== undefined ? Number(firstItem.productCost).toString() : "")}
@@ -4535,7 +4562,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     </td>
 
                     {/* First Item Cost Ref Code */}
-                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                       {firstItem ? (
                         <input
                           key={firstItem.id + "-costRefCode-" + (firstItem.costRefCode || "")}
@@ -4558,7 +4585,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     </td>
 
                     {/* First Item Cost */}
-                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                       {firstItem ? (
                         <input
                           key={firstItem.id + "-cost-" + (firstItem.cost !== null && firstItem.cost !== undefined ? Number(firstItem.cost).toString() : "")}
@@ -4670,7 +4697,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     </td>
 
                     {/* First Item Discount */}
-                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                       {firstItem ? (
                         <input
                           key={firstItem.id + "-discount-" + (firstItem.discount !== null && firstItem.discount !== undefined ? Number(firstItem.discount).toString() : "")}
@@ -4693,7 +4720,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     </td>
 
                     {/* First Item VA% */}
-                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 font-semibold ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 font-semibold ${isFrozen ? "bg-muted" : ""}`}>
                       {firstItem ? (
                         <input
                           key={firstItem.id + "-vaPercent-" + (firstItem.vaPercent !== null ? `${firstItem.vaPercent}%` : "")}
@@ -4718,7 +4745,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     </td>
 
                     {/* First Item Quoted Rate */}
-                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                       {firstItem ? (
                         <input
                           key={firstItem.id + "-" + (firstItem.quotedRate || "")}
@@ -4744,14 +4771,14 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
 
                     {/* First Item CR Rate (Contract Review Rate — read-only) */}
                     <td className="py-2 px-2 border-r border-b border-border last:border-r-0">
-                      <span className="block text-xs text-violet-700 dark:text-violet-400 p-1 font-medium text-right">
+                      <span className="block text-xs text-violet-700 dark:text-violet-300 p-1 font-medium text-right">
                         {formatIndianNumber(firstItem?.contractReviewRate) || "-"}
                       </span>
                     </td>
 
                     {/* First Item PD Cost Validation (read-only) */}
                     <td className="py-2 px-2 border-r border-b border-border last:border-r-0">
-                      <span className="block text-xs text-blue-700 dark:text-blue-400 p-1 font-medium text-right">
+                      <span className="block text-xs text-blue-700 dark:text-blue-300 p-1 font-medium text-right">
                         {firstItem ? getPdCostValidation(firstItem) || "-" : "-"}
                       </span>
                     </td>
@@ -4771,7 +4798,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     </td>
 
                     {/* First Item Total Value */}
-                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                       {firstItem ? (
                         <input
                           key={firstItem.id + "-totalValue-" + (firstItem.totalValue || "")}
@@ -4795,7 +4822,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     </td>
 
                     {/* First Item Itemwise Total Value */}
-                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                    <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                       {firstItem ? (
                         <input
                           key={firstItem.id + "-itemWiseTotalValue-" + (firstItem.itemWiseTotalValue || "")}
@@ -4827,8 +4854,8 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                             onClick={() => handleItemFieldChange(firstItem.id, "validation", firstItem.validation === "Yes" ? "" : "Yes")}
                             className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer transition-all ${
                               firstItem.validation === "Yes"
-                                ? "bg-emerald-500 text-white "
-                                : "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
+                                ? "bg-emerald-500 dark:bg-emerald-500/80 text-white "
+                                : "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/25 dark:hover:bg-emerald-500/20"
                             }`}
                           >
                             Yes
@@ -4838,8 +4865,8 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                             onClick={() => handleItemFieldChange(firstItem.id, "validation", firstItem.validation === "No" ? "" : "No")}
                             className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer transition-all ${
                               firstItem.validation === "No"
-                                ? "bg-rose-500 text-white "
-                                : "bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800 dark:hover:bg-rose-950/50"
+                                ? "bg-rose-500 dark:bg-rose-500/80 text-white "
+                                : "bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/25 dark:hover:bg-rose-500/20"
                             }`}
                           >
                             No
@@ -4862,9 +4889,9 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 title={att.name}
-                                className="flex items-start gap-1.5 text-xs font-semibold text-[#0f62fe] dark:text-blue-400 hover:underline wrap-break-word whitespace-normal leading-normal break-all min-w-0"
+                                className="flex items-start gap-1.5 text-xs font-semibold text-[#0f62fe] dark:text-blue-300 hover:underline wrap-break-word whitespace-normal leading-normal break-all min-w-0"
                               >
-                                <FileText className="h-3.5 w-3.5 text-[#0f62fe] dark:text-blue-400 stroke-2 shrink-0 mt-0.5" />
+                                <FileText className="h-3.5 w-3.5 text-[#0f62fe] dark:text-blue-300 stroke-2 shrink-0 mt-0.5" />
                                 <span className="wrap-break-word whitespace-normal break-all min-w-0">{att.name}</span>
                               </a>
                             ))
@@ -4875,7 +4902,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                         <button
                           type="button"
                           onClick={() => attachInputRefs.current[enquiry.id]?.click()}
-                          className="inline-flex items-center gap-0.5 self-start shrink-0 text-[10px] font-semibold text-[#0f62fe] dark:text-blue-400 hover:underline cursor-pointer"
+                          className="inline-flex items-center gap-0.5 self-start shrink-0 text-[10px] font-semibold text-[#0f62fe] dark:text-blue-300 hover:underline cursor-pointer"
                         >
                           <Plus className="h-3 w-3 stroke-[2.5]" />
                           Add
@@ -4920,8 +4947,8 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                           onClick={() => canEditApm && handleEnquiryFieldChange(enquiry.id, "apm", (enquiry as any).apm === "Yes" ? "" : "Yes")}
                           className={`px-2.5 py-1 text-[10px] font-bold rounded transition-all ${!canEditApm ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${
                             (enquiry as any).apm === "Yes"
-                              ? "bg-emerald-500 text-white "
-                              : "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
+                              ? "bg-emerald-500 dark:bg-emerald-500/80 text-white "
+                              : "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/25 dark:hover:bg-emerald-500/20"
                           }`}
                         >
                           Yes
@@ -4933,8 +4960,8 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                           onClick={() => canEditApm && handleEnquiryFieldChange(enquiry.id, "apm", (enquiry as any).apm === "No" ? "" : "No")}
                           className={`px-2.5 py-1 text-[10px] font-bold rounded transition-all ${!canEditApm ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${
                             (enquiry as any).apm === "No"
-                              ? "bg-rose-500 text-white "
-                              : "bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800 dark:hover:bg-rose-950/50"
+                              ? "bg-rose-500 dark:bg-rose-500/80 text-white "
+                              : "bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/25 dark:hover:bg-rose-500/20"
                           }`}
                         >
                           No
@@ -4966,7 +4993,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                     displayItems.slice(1).map((item: EnquiryItemData, idx: number) => (
                       <tr
                         key={item.id}
-                        className={`transition-colors ${invalidVaItemIds.has(item.id) ? "bg-red-100 dark:bg-red-950/40" : "bg-muted/10 hover:bg-muted/20"}`}
+                        className={`transition-colors ${invalidVaItemIds.has(item.id) ? "bg-red-100 dark:bg-red-500/15" : "bg-muted/10 hover:bg-muted/20"}`}
                       >
                         {/* Select checkbox for this item + empty cells for docket info alignment */}
                         <td className="py-3 px-2 text-center border-r border-b border-border">
@@ -4974,7 +5001,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                             type="checkbox"
                             checked={isItemSelected(item.id)}
                             onChange={() => toggleItemSelection(enquiry.id, item.id)}
-                            className="h-3.5 w-3.5 rounded border-border text-[#0f62fe] focus:ring-blue-500 cursor-pointer"
+                            className="h-3.5 w-3.5 rounded border-border text-[#0f62fe] dark:text-blue-300 focus:ring-blue-500 cursor-pointer"
                             title={isItemSelected(item.id) ? "Deselect item" : "Select item"}
                           />
                         </td>
@@ -5160,7 +5187,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                         </td>
 
                         {/* Additional Item Quantity */}
-                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                           <input
                             key={item.id + "-quantity-" + (item.quantity || "")}
                             type="text"
@@ -5217,7 +5244,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                         </td>
 
                         {/* Product Cost */}
-                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                           <input
                             key={item.id + "-productCost-" + (item.productCost !== null && item.productCost !== undefined ? Number(item.productCost).toString() : "")}
                             type="text"
@@ -5239,7 +5266,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                       </td>
 
                       {/* Cost Ref Code */}
-                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                           <input
                             key={item.id + "-costRefCode-" + (item.costRefCode || "")}
                             type="text"
@@ -5260,7 +5287,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                       </td>
 
                       {/* Cost */}
-                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                           <input
                             key={item.id + "-cost-" + (item.cost !== null && item.cost !== undefined ? Number(item.cost).toString() : "")}
                             type="text"
@@ -5362,7 +5389,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                       </td>
 
                       {/* Discount */}
-                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                           <input
                             key={item.id + "-discount-" + (item.discount !== null && item.discount !== undefined ? Number(item.discount).toString() : "")}
                             type="text"
@@ -5383,7 +5410,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                       </td>
 
                       {/* VA% */}
-                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 font-semibold ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 font-semibold ${isFrozen ? "bg-muted" : ""}`}>
                           <input
                             key={item.id + "-vaPercent-" + (item.vaPercent !== null ? `${item.vaPercent}%` : "")}
                             type="text"
@@ -5406,7 +5433,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                       </td>
 
                       {/* Quoted Rate */}
-                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                           <input
                             key={item.id + "-" + (item.quotedRate || "")}
                             type="text"
@@ -5430,14 +5457,14 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
 
                       {/* CR Rate (Contract Review Rate — read-only) */}
                         <td className="py-2 px-2 border-r border-b border-border last:border-r-0">
-                          <span className="block text-xs text-violet-700 dark:text-violet-400 p-1 font-medium text-right">
+                          <span className="block text-xs text-violet-700 dark:text-violet-300 p-1 font-medium text-right">
                             {formatIndianNumber(item.contractReviewRate) || "-"}
                           </span>
                         </td>
 
                       {/* PD Cost Validation (read-only) */}
                         <td className="py-2 px-2 border-r border-b border-border last:border-r-0">
-                          <span className="block text-xs text-blue-700 dark:text-blue-400 p-1 font-medium text-right">
+                          <span className="block text-xs text-blue-700 dark:text-blue-300 p-1 font-medium text-right">
                             {getPdCostValidation(item) || "-"}
                           </span>
                         </td>
@@ -5455,7 +5482,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                         </td>
 
                         {/* Total Value */}
-                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                           <input
                             key={item.id + "-totalValue-" + (item.totalValue || "")}
                             type="text"
@@ -5477,7 +5504,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                       </td>
 
                       {/* Itemwise Total Value */}
-                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-zinc-100 dark:bg-zinc-900/40" : ""}`}>
+                        <td className={`py-2 px-2 border-r border-b border-border last:border-r-0 ${isFrozen ? "bg-muted" : ""}`}>
                           <input
                             key={item.id + "-itemWiseTotalValue-" + (item.itemWiseTotalValue || "")}
                             type="text"
@@ -5506,8 +5533,8 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                               onClick={() => handleItemFieldChange(item.id, "validation", item.validation === "Yes" ? "" : "Yes")}
                               className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer transition-all ${
                                 item.validation === "Yes"
-                                  ? "bg-emerald-500 text-white "
-                                  : "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
+                                  ? "bg-emerald-500 dark:bg-emerald-500/80 text-white "
+                                  : "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/25 dark:hover:bg-emerald-500/20"
                               }`}
                             >
                               Yes
@@ -5517,8 +5544,8 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                               onClick={() => handleItemFieldChange(item.id, "validation", item.validation === "No" ? "" : "No")}
                               className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer transition-all ${
                                 item.validation === "No"
-                                  ? "bg-rose-500 text-white "
-                                  : "bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800 dark:hover:bg-rose-950/50"
+                                  ? "bg-rose-500 dark:bg-rose-500/80 text-white "
+                                  : "bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/25 dark:hover:bg-rose-500/20"
                               }`}
                             >
                               No
@@ -5570,7 +5597,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
     </div>
 
     {filteredEnquiries.length > 0 && (
-      <div className="shrink-0 border-t border-border bg-white dark:bg-background">
+      <div className="shrink-0 border-t border-border bg-card">
         <Pagination
           currentPage={currentPage}
           totalCount={filteredEnquiries.length}
@@ -5617,11 +5644,11 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
                 </div>
               )}
               {willEmptyEnquiry ? (
-                <p className="text-xs text-amber-700 dark:text-amber-600 font-medium bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded p-2">
+                <p className="text-xs text-amber-700 dark:text-amber-300 font-medium bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 rounded p-2">
                   Note: This will remove all items from enquiry "{selEnquiry?.docketNumber}". The enquiry will remain with 0 items and you can add items later. This cannot be undone.
                 </p>
               ) : (
-                <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                <p className="text-xs text-amber-700 dark:text-amber-300 font-medium">
                   {allFilteredForEnquiry.length !== selItems.length ? `Note: ${allFilteredForEnquiry.length} filtered items in this enquiry, ${selItems.length} selected.` : null}
                   {" "}This action cannot be undone.
                 </p>
@@ -5658,7 +5685,7 @@ export default function EnquiryTable({ dropdownOptions }: EnquiryTableProps) {
           <p className="text-sm text-muted-foreground">
             Clear <span className="font-bold text-foreground">{clearQrPending?.withQr ?? 0}</span> Quoted Rate(s) from <span className="font-bold text-foreground">{clearQrPending?.total ?? 0}</span> filtered item(s) across all pages?
           </p>
-          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded p-2">
+          <p className="text-xs text-amber-700 dark:text-amber-300 font-medium bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 rounded p-2">
             This will delete <span className="font-semibold">Quotation Rate, QR incl. GST, Total Value</span> and <span className="font-semibold">Itemwise Total</span> from the database for filtered items only. <span className="font-semibold">VA% will be kept</span>. This cannot be undone without re-entering rates.
           </p>
           {(() => {
@@ -5796,7 +5823,7 @@ function OfferPdfCell({ enquiry }: { enquiry: EnquiryData }) {
     const isNo = apm === "No";
     return (
       <div className="flex flex-col items-center gap-1 py-1" title={access.reason || ""}>
-        <span className={`text-[9px] font-bold px-2 py-1 rounded border ${isFrozen ? "bg-zinc-100 text-zinc-600 border-zinc-300 dark:bg-zinc-900 dark:text-zinc-400" : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400"}`}>
+        <span className={`text-[9px] font-bold px-2 py-1 rounded border ${isFrozen ? "bg-muted text-muted-foreground border-border" : "bg-rose-50 text-rose-700 border-rose-200 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300"}`}>
           {isFrozen ? "Frozen" : isNo ? "Disabled (APM No)" : access.reason}
         </span>
         {isFrozen && generatedAt && <span className="text-[8px] text-muted-foreground">{new Date(generatedAt as any).toLocaleString()}</span>}
@@ -5813,12 +5840,12 @@ function OfferPdfCell({ enquiry }: { enquiry: EnquiryData }) {
           onClick={async () => { await handleGenerate(); // refresh enquiry so frozen state shows without reload
             try { const { updateEnquiryField } = await import("@/lib/enquiriesSlice"); // trigger refetch via page refresh not ideal; optimistic: reload enquiries
             } catch {} }}
-          className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-[#0f62fe] border border-blue-200 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/30 dark:hover:bg-blue-950/50 rounded cursor-pointer transition-all whitespace-nowrap"
+          className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-[#0f62fe] border border-blue-200 bg-blue-50 hover:bg-blue-100 dark:text-blue-300 dark:border-blue-500/25 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 rounded cursor-pointer transition-all whitespace-nowrap"
         >
           <FileText className="h-3.5 w-3.5 stroke-[2.5]" />
           Generate PDF
         </button>
-        {apm === "Yes" && !generatedAt && <span className="text-[8px] text-amber-600 font-medium">One-time only</span>}
+        {apm === "Yes" && !generatedAt && <span className="text-[8px] text-amber-600 dark:text-amber-300 font-medium">One-time only</span>}
         {(!apm || apm === "") && <span className="text-[8px] text-muted-foreground">Unlimited (APM empty)</span>}
       </div>
     );
@@ -5836,11 +5863,11 @@ function OfferPdfCell({ enquiry }: { enquiry: EnquiryData }) {
   if (status === "error") {
     return (
       <div className="flex flex-col items-center justify-center gap-1 py-1">
-        <span className="text-[9px] text-red-500 font-medium truncate max-w-[100px]" title={errorMessage}>{errorMessage}</span>
+        <span className="text-[9px] text-red-500 dark:text-red-300 font-medium truncate max-w-[100px]" title={errorMessage}>{errorMessage}</span>
         <button
           type="button"
           onClick={handleGenerate}
-          className="text-[9px] text-blue-600 font-bold hover:underline cursor-pointer"
+          className="text-[9px] text-blue-600 dark:text-blue-300 font-bold hover:underline cursor-pointer"
         >
           Retry
         </button>

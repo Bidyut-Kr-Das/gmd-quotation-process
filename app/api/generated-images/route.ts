@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { makeImageKey } from "@/lib/imageKey";
+import { getActiveItemTypeValues, normalizeItemType } from "@/lib/lookup";
 
 export async function GET() {
   try {
+    // 0) Allowed item types: the ITEM_TYPE Lookup Options are the single source
+    //    of truth. Anything else is hidden here (and cleaned by the one-time
+    //    script), so this dashboard only ever shows valid types.
+    const itemTypeOptions = await getActiveItemTypeValues();
+    const allowedItemTypes = new Set(itemTypeOptions.map(normalizeItemType));
+    const isAllowed = (itemType: string | null | undefined): boolean =>
+      allowedItemTypes.has(normalizeItemType(itemType));
+
     // 1) Fetch all EnquiryItem rows with itemType/operationType present (rmType may be blank)
     const rows = await prisma.enquiryItem.findMany({
       select: { itemType: true, operationType: true, rmType: true },
@@ -19,6 +28,7 @@ export async function GET() {
       const itemType = r.itemType?.trim();
       const operationType = r.operationType?.trim();
       if (!itemType || !operationType) continue;
+      if (!isAllowed(itemType)) continue;
       const rmType = r.rmType?.trim() ?? "";
       // pairKey normalized like makeImageKey(itemType, operationType, "") -> itemType__operationType__
       const pairKey = makeImageKey(itemType, operationType, "");
@@ -94,20 +104,19 @@ export async function GET() {
     }
 
     // 4) Include any GeneratedImage orphans (imageKey not present in EnquiryItem combos)
-    //    so manually added rows are never hidden
+    //    so manually added rows are never hidden. Off-list item types are dropped.
     for (const g of generatedImages) {
+      if (!isAllowed(g.itemType)) continue;
       if (!comboMap.has(g.imageKey)) {
         const itemType = (g.itemType || "").trim();
         const operationType = (g.operationType || "").trim();
         const rmType = (g.rmType || "").trim();
-        if (!comboMap.has(g.imageKey)) {
-          comboMap.set(g.imageKey, {
-            itemType: itemType || g.itemType || "(unknown)",
-            operationType: operationType || g.operationType || "(unknown)",
-            rmType: rmType || g.rmType || "(unknown)",
-            rmTypeBlank: !rmType,
-          });
-        }
+        comboMap.set(g.imageKey, {
+          itemType,
+          operationType,
+          rmType,
+          rmTypeBlank: !rmType,
+        });
       }
     }
 
@@ -140,6 +149,7 @@ export async function GET() {
 
     return NextResponse.json({
       items,
+      itemTypeOptions,
       totalRows: items.length,
       totalWithImage: items.filter((i) => i.hasImage).length,
       totalPending: items.filter((i) => !i.hasImage).length,

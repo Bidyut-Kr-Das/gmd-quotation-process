@@ -17,6 +17,8 @@ interface DashboardContainerProps {
   dropdownOptions: DropdownOptions;
   nextDocketNumber: string;
   enquiriesList: { id: string; docketNumber: string; partyName: string }[];
+  autoSentDockets?: string[];
+  autoPendingDockets?: string[];
 }
 
 function extractUniqueStringValues(arr: any[], key: string): string[] {
@@ -37,6 +39,8 @@ export default function DashboardContainer({
   dropdownOptions,
   nextDocketNumber,
   enquiriesList,
+  autoSentDockets,
+  autoPendingDockets,
 }: DashboardContainerProps) {
   const dispatch = useAppDispatch();
   const storeEnquiries = useAppSelector(selectAllEnquiries);
@@ -263,9 +267,11 @@ export default function DashboardContainer({
             dropdownOptions={mergedDropdownOptions}
           />
         </div>
-        <div className="bg-white rounded-lg border border-slate-100 overflow-hidden shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden">
           <EnquiryTable
             dropdownOptions={mergedDropdownOptions}
+            autoSentDockets={autoSentDockets}
+            autoPendingDockets={autoPendingDockets}
           />
         </div>
       </div>

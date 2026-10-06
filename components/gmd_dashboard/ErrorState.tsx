@@ -15,7 +15,7 @@ export default function ErrorState({ message, onRetry }: ErrorStateProps) {
         {onRetry && (
           <button
             onClick={onRetry}
-            className="px-md py-2 bg-primary text-white rounded-lg font-label-md font-bold hover:shadow-lg transition-all active:scale-95"
+            className="px-md py-2 bg-primary text-primary-foreground rounded-lg font-label-md font-bold hover:shadow-lg transition-all active:scale-95"
           >
             Retry
           </button>
