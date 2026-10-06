@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { prisma } from "@/lib/prisma";
 import { uploadFileToDrive } from "@/lib/gdrive";
@@ -22,6 +22,8 @@ import { makeImageKey } from "@/lib/imageKey";
 import { parseAndValidateProdOrderNumber } from "@/lib/contractValidation";
 import { matchPnRating } from "@/lib/pnRatingMatcher";
 import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
+import { getFiscalPrefix, nextDocketSerials } from "@/lib/docketNumber";
+import { buildEmailPartyMap, resolvePartyForThread } from "@/lib/pendingDocketMaterializer";
 import {
   uploadToS3,
   deleteFromS3,
@@ -936,7 +938,7 @@ export async function syncEnquiryEmailAddressesAction() {
   try {
     const result = await syncEnquiryEmailAddresses({ onlyBlank: true, dryRun: false });
     console.log(
-      `[Server] syncEnquiryEmailAddresses scanned=${result.scanned} updated=${result.updated} skipped=${result.skipped}`
+      `[Server] syncEnquiryEmailAddresses scanned=${result.scanned} updated=${result.updated} skipped=${result.skipped} matchedByParty=${result.matchedByParty}`
     );
     return {
       success: true as const,
@@ -945,12 +947,145 @@ export async function syncEnquiryEmailAddressesAction() {
         updated: result.updated,
         skipped: result.skipped,
         threadCount: result.threadCount,
+        partyCount: result.partyCount,
+        matchedByParty: result.matchedByParty,
         enquiries: result.proposals.map((p) => ({ id: p.id, emailAddress: p.emailAddress })),
       },
     };
   } catch (error: any) {
     console.error("Error syncing enquiry email addresses:", error);
     return { success: false as const, error: error.message || "Failed to sync email addresses." };
+  }
+}
+
+export interface PendingDocketCreated {
+  docketNumber: string;
+  partyName: string;
+  threadId: string;
+  source: "email" | "partyName" | "subCategory" | "unknown";
+}
+
+/**
+ * Materializes dockets for `DocketQuotationThread` rows flagged
+ * `pendingDocket = true`. For each thread it creates a header-only `Enquiry`
+ * (no items) with an auto-generated docket number, resolving the party name by
+ * matching the thread's external emails against previous dockets (falling back
+ * to the thread's `sub_category`, then "Unknown"), then stamps the thread with
+ * the new docket number and clears `pendingDocket`.
+ *
+ * Manual trigger only. Idempotent: a stamped thread leaves the pending set.
+ */
+export async function createPendingDocketsAction(options?: { dryRun?: boolean }) {
+  try {
+    const dryRun = options?.dryRun ?? false;
+
+    const pending = await prisma.docketQuotationThread.findMany({
+      where: { pendingDocket: true, docketNo: null },
+      orderBy: { date: "asc" },
+      select: {
+        id: true,
+        threadId: true,
+        subCategory: true,
+        partyName: true,
+        sender: true,
+        toDetails: true,
+        ccDetails: true,
+        date: true,
+      },
+    });
+
+    if (pending.length === 0) {
+      return { success: true as const, data: { created: 0, skipped: 0, dryRun, dockets: [] as PendingDocketCreated[] } };
+    }
+
+    const fiscalPrefix = getFiscalPrefix(new Date());
+    const [enquiries, assignedThreads, fiscalRows] = await Promise.all([
+      prisma.enquiry.findMany({ select: { emailAddress: true, partyName: true } }),
+      prisma.docketQuotationThread.findMany({
+        where: { docketNo: { not: null } },
+        select: { subCategory: true, partyName: true, sender: true, toDetails: true, ccDetails: true },
+      }),
+      prisma.enquiry.findMany({
+        where: { docketNumber: { startsWith: fiscalPrefix } },
+        select: { docketNumber: true },
+      }),
+    ]);
+
+    const emailPartyMap = buildEmailPartyMap({ enquiries, assignedThreads });
+    const docketNumbers = nextDocketSerials(
+      fiscalRows.map((r) => r.docketNumber),
+      pending.length,
+      new Date(),
+    );
+
+    const plan = pending.map((thread, index) => {
+      const resolved = resolvePartyForThread(thread, emailPartyMap);
+      return {
+        threadId: thread.threadId,
+        threadRowId: thread.id,
+        date: thread.date,
+        docketNumber: docketNumbers[index],
+        partyName: resolved.partyName,
+        source: resolved.source,
+      };
+    });
+
+    if (dryRun) {
+      return {
+        success: true as const,
+        data: {
+          created: plan.length,
+          skipped: 0,
+          dryRun,
+          dockets: plan.map((p) => ({
+            docketNumber: p.docketNumber,
+            partyName: p.partyName,
+            threadId: p.threadId,
+            source: p.source,
+          })) as PendingDocketCreated[],
+        },
+      };
+    }
+
+    const created: PendingDocketCreated[] = [];
+    for (const p of plan) {
+      try {
+        await prisma.$transaction([
+          prisma.enquiry.create({
+            data: {
+              docketNumber: p.docketNumber,
+              partyName: p.partyName,
+              enquiryDate: p.date ?? new Date(),
+            },
+          }),
+          prisma.docketQuotationThread.update({
+            where: { id: p.threadRowId },
+            data: { docketNo: p.docketNumber, pendingDocket: false },
+          }),
+        ]);
+        created.push({
+          docketNumber: p.docketNumber,
+          partyName: p.partyName,
+          threadId: p.threadId,
+          source: p.source,
+        });
+      } catch (e) {
+        console.error(`[createPendingDockets] failed for thread ${p.threadId}:`, e);
+      }
+    }
+
+    console.log(
+      `[createPendingDockets] pending=${pending.length} created=${created.length} skipped=${plan.length - created.length}`,
+    );
+
+    return {
+      success: true as const,
+      data: { created: created.length, skipped: plan.length - created.length, dryRun, dockets: created },
+    };
+  } catch (error: unknown) {
+    console.error("Error creating pending dockets:", error);
+    const message = error instanceof Error ? error.message : "Failed to create pending dockets.";
+    return { success: false as const, error: message };
   }
 }
 
@@ -1272,22 +1407,67 @@ export async function updateItemFieldAction(
             },
             fresh.erpItemCode
           );
-          // If code actually changed, sync availableBomIds (always) and maybe update productCost when null
+          // If code actually changed, sync availableBomIds and re-align/clear stale bomId
           if (recomputed.changed) {
             const afterCode = await prisma.enquiryItem.findUnique({
               where: { id: itemId },
-              select: { productCost: true, erpItemCode: true, availableBomIds: true },
+              select: { productCost: true, erpItemCode: true, availableBomIds: true, bomId: true },
             });
-            // Sync availableBomIds even if productCost not null
+            let validCandidates: string[] = [];
             if (afterCode?.erpItemCode) {
-              await syncAvailableBomIds(itemId, afterCode.erpItemCode);
+              validCandidates = await syncAvailableBomIds(itemId, afterCode.erpItemCode);
             } else {
               await syncAvailableBomIds(itemId, null);
             }
-            const refreshedAfterSync = await prisma.enquiryItem.findUnique({ where: { id: itemId }, select: { productCost: true, erpItemCode: true } });
-            if (refreshedAfterSync?.erpItemCode && refreshedAfterSync.productCost === null) {
-              await maybeUpdateProductCostFromNewCode(itemId, refreshedAfterSync.erpItemCode, refreshedAfterSync.productCost);
+
+            const currentBomId = afterCode?.bomId;
+            const isStaleBom = currentBomId && !validCandidates.includes(currentBomId);
+
+            if (isStaleBom || !currentBomId) {
+              if (validCandidates.length === 1 && afterCode?.erpItemCode) {
+                const candidateBom = validCandidates[0];
+                const vbRow = await prisma.verifyBom.findFirst({
+                  where: { itemCode: afterCode.erpItemCode, bomId: candidateBom },
+                  select: { bomId: true, rmItemCode: true, bomIdType: true },
+                });
+                if (vbRow?.rmItemCode) {
+                  const bomType = vbRow.bomIdType || DIRECT_M2M;
+                  const dataToUpdate: any = { bomId: vbRow.bomId, rmItemCode: vbRow.rmItemCode, bomType };
+                  const rmTypeMap = await getRmTypeMap([vbRow.rmItemCode]);
+                  const rmTypeVal = rmTypeMap.get(vbRow.rmItemCode);
+                  if (rmTypeVal !== undefined) dataToUpdate.rmType = rmTypeVal;
+                  if (bomType === DIRECT_M2M) {
+                    const stockMap = await getRmStockMap([vbRow.rmItemCode]);
+                    const stock = stockMap.get(vbRow.rmItemCode);
+                    if (stock !== undefined) dataToUpdate.availableStock = stock;
+                  }
+                  await prisma.enquiryItem.update({ where: { id: itemId }, data: dataToUpdate });
+
+                  // Re-derive cost for the new raw material
+                  const rawMap = await buildRawMaterialsCostMap([vbRow.rmItemCode]);
+                  let cost = rawMap.get(vbRow.rmItemCode);
+                  if (cost === undefined) {
+                    const supplyMap = await buildRmCostMap([vbRow.rmItemCode]);
+                    cost = supplyMap.get(vbRow.rmItemCode);
+                  }
+                  if (cost !== undefined && cost !== null) {
+                    await recalculateItem(itemId, { productCost: cost });
+                  }
+                }
+              } else {
+                // 0 or >1 candidates: clear stale BOM linkage so dropdown or blank shows
+                await prisma.enquiryItem.update({
+                  where: { id: itemId },
+                  data: { bomId: null, bomType: null, rmItemCode: null, rmType: null, availableStock: null },
+                });
+              }
+            } else {
+              const refreshedAfterSync = await prisma.enquiryItem.findUnique({ where: { id: itemId }, select: { productCost: true, erpItemCode: true } });
+              if (refreshedAfterSync?.erpItemCode && refreshedAfterSync.productCost === null) {
+                await maybeUpdateProductCostFromNewCode(itemId, refreshedAfterSync.erpItemCode, refreshedAfterSync.productCost);
+              }
             }
+
             // Refresh updatedItem to return latest
             const latest = await prisma.enquiryItem.findUnique({ where: { id: itemId } });
             if (latest) updatedItem = serializeItem(latest);
@@ -1295,6 +1475,68 @@ export async function updateItemFieldAction(
         }
       } catch (e) {
         console.warn(`[updateItemField] auto-recompute code failed for ${itemId}:`, e);
+      }
+    }
+
+    // Auto-sync availableBomIds and re-align bomId if erpItemCode was updated directly
+    if (field === "erpItemCode" && updatedItem) {
+      try {
+        const itemCodeVal = parsedVal ? String(parsedVal).trim() : null;
+        let validCandidates: string[] = [];
+        if (itemCodeVal) {
+          validCandidates = await syncAvailableBomIds(itemId, itemCodeVal);
+        } else {
+          await syncAvailableBomIds(itemId, null);
+        }
+
+        const freshItem = await prisma.enquiryItem.findUnique({
+          where: { id: itemId },
+          select: { bomId: true },
+        });
+        const currentBomId = freshItem?.bomId;
+        const isStaleBom = currentBomId && !validCandidates.includes(currentBomId);
+
+        if (isStaleBom || !currentBomId) {
+          if (validCandidates.length === 1 && itemCodeVal) {
+            const candidateBom = validCandidates[0];
+            const vbRow = await prisma.verifyBom.findFirst({
+              where: { itemCode: itemCodeVal, bomId: candidateBom },
+              select: { bomId: true, rmItemCode: true, bomIdType: true },
+            });
+            if (vbRow?.rmItemCode) {
+              const bomType = vbRow.bomIdType || DIRECT_M2M;
+              const dataToUpdate: any = { bomId: vbRow.bomId, rmItemCode: vbRow.rmItemCode, bomType };
+              const rmTypeMap = await getRmTypeMap([vbRow.rmItemCode]);
+              const rmTypeVal = rmTypeMap.get(vbRow.rmItemCode);
+              if (rmTypeVal !== undefined) dataToUpdate.rmType = rmTypeVal;
+              if (bomType === DIRECT_M2M) {
+                const stockMap = await getRmStockMap([vbRow.rmItemCode]);
+                const stock = stockMap.get(vbRow.rmItemCode);
+                if (stock !== undefined) dataToUpdate.availableStock = stock;
+              }
+              await prisma.enquiryItem.update({ where: { id: itemId }, data: dataToUpdate });
+
+              const rawMap = await buildRawMaterialsCostMap([vbRow.rmItemCode]);
+              let cost = rawMap.get(vbRow.rmItemCode);
+              if (cost === undefined) {
+                const supplyMap = await buildRmCostMap([vbRow.rmItemCode]);
+                cost = supplyMap.get(vbRow.rmItemCode);
+              }
+              if (cost !== undefined && cost !== null) {
+                await recalculateItem(itemId, { productCost: cost });
+              }
+            }
+          } else {
+            await prisma.enquiryItem.update({
+              where: { id: itemId },
+              data: { bomId: null, bomType: null, rmItemCode: null, rmType: null, availableStock: null },
+            });
+          }
+        }
+        const latest = await prisma.enquiryItem.findUnique({ where: { id: itemId } });
+        if (latest) updatedItem = serializeItem(latest);
+      } catch (e) {
+        console.warn(`[updateItemField] erpItemCode bom sync failed for ${itemId}:`, e);
       }
     }
 
