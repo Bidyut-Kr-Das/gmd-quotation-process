@@ -25,8 +25,8 @@ import {
   Tag,
   Building2,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@gmd/ui/components/badge";
+import { Button } from "@gmd/ui/components/button";
 import ThreadDetailModal from "./ThreadDetailModal";
 import * as XLSX from "xlsx";
 import { MultiFilterDropdown, FilterOption } from "./MultiFilterDropdown";

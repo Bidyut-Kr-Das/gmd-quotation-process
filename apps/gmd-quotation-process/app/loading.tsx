@@ -1,5 +1,5 @@
 import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@gmd/ui/components/skeleton";
 
 export default function Loading() {
   return (

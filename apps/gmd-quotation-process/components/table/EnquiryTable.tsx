@@ -27,8 +27,8 @@ import { C_BATCH_VALUE } from "@/lib/gmd_lib/verify-bom-columns";
 import { N_BATCH_VALUE } from "@/lib/gmd_lib/contract-review-columns";
 import { correctItemType } from "@/lib/itemTypePatterns";
 import { isInternalEmail } from "@/lib/enquiryEmailParty";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@gmd/ui/components/dialog";
+import { Button } from "@gmd/ui/components/button";
 import { cn } from "@/lib/utils";
 import { formatIndianNumber, cleanNumberInput, hasNumberChanged } from "@/lib/formatCurrency";
 

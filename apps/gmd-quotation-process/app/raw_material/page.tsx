@@ -47,7 +47,7 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@/components/ui/resizable";
+} from "@gmd/ui/components/resizable";
 import { useDefaultLayout } from "react-resizable-panels";
 
 const layoutStorage = {

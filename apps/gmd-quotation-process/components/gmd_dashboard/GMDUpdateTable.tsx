@@ -28,9 +28,9 @@ import Pagination from "./Pagination";
 import { useAppDispatch } from "@/lib/hooks";
 import { updateGMDUpdateField, updateGMDUsdCost } from "@/lib/gmdUpdateSlice";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import DatePicker from "@/components/ui/date-picker";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@gmd/ui/components/dialog";
+import { Button } from "@gmd/ui/components/button";
+import DatePicker from "@gmd/ui/components/date-picker";
 
 function isUrl(text: string): boolean {
   try {

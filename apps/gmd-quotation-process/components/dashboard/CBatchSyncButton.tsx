@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Loader2, Tags } from "lucide-react";
 import { toast } from "sonner";
 import { syncCBatchAction } from "@/app/actions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@gmd/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@gmd/ui/components/dialog";
 
 type TableResult = {
   table: string;

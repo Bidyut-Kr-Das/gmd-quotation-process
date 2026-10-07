@@ -3,7 +3,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Search, PanelLeftOpen, PanelLeftClose, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Button } from "@gmd/ui/components/button";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { openAddItemsDialog, openNewEnquiryDialog } from "@/lib/dialogsSlice";
 import { setFilter } from "@/lib/filtersSlice";

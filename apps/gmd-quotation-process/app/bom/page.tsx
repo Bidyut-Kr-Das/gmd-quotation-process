@@ -17,7 +17,7 @@ import {
   recomputeVerifyBomBomQtyCostBatchAction,
 } from "@/app/actions";
 import { VERIFY_BOM_HEADER_TO_DB_FIELD, cBatchBadges } from "@/lib/gmd_lib/verify-bom-columns";
-import { Button } from "@/components/ui/button";
+import { Button } from "@gmd/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@gmd/ui/components/dialog";
 
 type ItemNamePlan = {
   phase1: {

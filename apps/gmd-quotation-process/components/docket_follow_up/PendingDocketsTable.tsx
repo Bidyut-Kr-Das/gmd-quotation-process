@@ -24,7 +24,7 @@ import {
   Calendar,
   Layers,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@gmd/ui/components/button";
 import { MultiFilterDropdown, FilterOption } from "./MultiFilterDropdown";
 
 export interface PendingDocketRow {

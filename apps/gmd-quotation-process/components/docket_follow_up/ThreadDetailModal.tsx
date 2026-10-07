@@ -7,8 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
+} from "@gmd/ui/components/dialog";
+import { Badge } from "@gmd/ui/components/badge";
 import {
   ExternalLink,
   Paperclip,

@@ -13,8 +13,8 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+} from "@gmd/ui/components/card";
+import { Badge } from "@gmd/ui/components/badge";
 import CBatchSyncButton from "@/components/dashboard/CBatchSyncButton";
 import OperationDetailTable from "@/components/data-sources/OperationDetailTable";
 import {
@@ -24,7 +24,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from "@/components/ui/table";
+} from "@gmd/ui/components/table";
 import { sheetEditUrl, type DataSource } from "@/lib/data-sources";
 import { cn } from "@/lib/utils";
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@gmd/ui/components/badge";
 import {
   Table,
   TableBody,
@@ -10,7 +10,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@gmd/ui/components/table";
 import CopyableCommand from "./CopyableCommand";
 import type { SyncKind, SyncOperation } from "@/lib/data-sources";
 

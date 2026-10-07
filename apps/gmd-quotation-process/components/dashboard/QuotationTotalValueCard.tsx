@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@gmd/ui/components/card";
 import { Hash, IndianRupee, Percent } from "lucide-react";
 
 interface QuotationTotalValueCardProps {

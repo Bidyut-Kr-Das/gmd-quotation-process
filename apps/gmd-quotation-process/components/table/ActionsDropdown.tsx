@@ -8,7 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@gmd/ui/components/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -16,10 +16,10 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@gmd/ui/components/dialog";
+import { Button } from "@gmd/ui/components/button";
+import { Input } from "@gmd/ui/components/input";
+import { Label } from "@gmd/ui/components/label";
 import { updateEnquiryItem, deleteEnquiryItem } from "@/lib/enquiriesSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { openViewDialog, closeViewDialog, openEditDialog, closeEditDialog, openDeleteDialog, closeDeleteDialog } from "@/lib/dialogsSlice";

@@ -7,7 +7,7 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from "@/components/ui/popover";
+} from "@gmd/ui/components/popover";
 
 export const BLANK = "__blank__";
 export const AVAILABLE = "__available__";

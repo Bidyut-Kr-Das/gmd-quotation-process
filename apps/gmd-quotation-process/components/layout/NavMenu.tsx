@@ -10,8 +10,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+} from "@gmd/ui/components/dropdown-menu";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@gmd/ui/components/sheet";
 import { NAV, isActive, isGroup, type NavLink } from "./nav-items";
 
 const TAB =

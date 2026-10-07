@@ -11,10 +11,10 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@gmd/ui/components/dialog";
+import { Button } from "@gmd/ui/components/button";
+import { Input } from "@gmd/ui/components/input";
+import { Label } from "@gmd/ui/components/label";
 import { createEnquiry } from "@/lib/enquiriesSlice";
 import { parseClipboardText } from "@/lib/pasteParser";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";

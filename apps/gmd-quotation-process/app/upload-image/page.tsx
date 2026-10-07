@@ -5,17 +5,17 @@ import GMDUpdateHeader from "@/components/gmd_dashboard/GMDUpdateHeader";
 import GMDUpdateSkeleton from "@/components/gmd_dashboard/skeletons/GMDUpdateSkeleton";
 import ErrorState from "@/components/gmd_dashboard/ErrorState";
 import UploadImageTable, { UploadImageComboRow } from "@/components/upload_image/UploadImageTable";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@gmd/ui/components/button";
+import { Input } from "@gmd/ui/components/input";
+import { Label } from "@gmd/ui/components/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+} from "@gmd/ui/components/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@gmd/ui/components/dialog";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { createGeneratedImageAction } from "@/app/actions";

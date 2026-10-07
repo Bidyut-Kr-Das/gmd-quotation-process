@@ -13,11 +13,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@gmd/ui/components/button";
 import {
   Sheet,
   SheetContent,
-} from "@/components/ui/sheet";
+} from "@gmd/ui/components/sheet";
 import { ChatMessageList } from "./ChatMessageList";
 import { ChatInput } from "./ChatInput";
 import { SessionList, type ChatSessionMeta } from "./SessionList";

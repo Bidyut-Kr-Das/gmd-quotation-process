@@ -4,22 +4,22 @@ import * as React from "react"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 
-import { cn } from "@/lib/utils"
-import { parseGmdDate } from "@/lib/gmd_lib/dateParse"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { cn } from "../lib/utils"
+import { parseGmdDate } from "../lib/dateParse"
+import { Button } from "./button"
+import { Calendar } from "./calendar"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "./popover"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "./select"
 
 // Delegates to the shared parser so this editor, GMDUpdateTable and the Contract
 // Review page agree. The shared version also rejects bare numeric strings, which

@@ -14,8 +14,8 @@ import {
   CheckCircle2,
   Zap,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@gmd/ui/components/button";
+import { Card, CardContent } from "@gmd/ui/components/card";
 import DocketFollowUpTable from "@/components/docket_follow_up/DocketFollowUpTable";
 import PendingDocketsTable, { PendingDocketRow } from "@/components/docket_follow_up/PendingDocketsTable";
 

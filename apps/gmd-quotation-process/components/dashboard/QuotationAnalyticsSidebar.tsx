@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { selectAllEnquiries } from "@/lib/enquiriesSlice";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@gmd/ui/components/card";
 import MultiSelectFilter from "@/components/table/MultiSelectFilter";
 import { X, Filter, Search, Check } from "lucide-react";
 import { enquiryPassesFilters, itemPassesFilters } from "@/lib/filterUtils";

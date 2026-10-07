@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ArrowUp, Square } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@gmd/ui/components/button";
 
 interface ChatInputProps {
   streaming: boolean;

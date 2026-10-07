@@ -13,7 +13,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@gmd/ui/components/dropdown-menu";
 
 export function UserMenu({ email, name, role }: { email: string; name?: string | null; role?: string }) {
   const router = useRouter();
