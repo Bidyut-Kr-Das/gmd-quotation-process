@@ -20,7 +20,6 @@ import { useSession } from "next-auth/react";
 import { oneClickAccess, FROZEN_ITEM_FIELD_SET, isEnquiryFrozen } from "@/lib/oneClickAccess";
 import { importExcelData, autoFillBlanks, updateVaPercent } from "@/lib/enquiriesSlice";
 import { validateVaPercent } from "@/lib/vaValidation";
-import { createPendingDocketsAction } from "@/app/actions";
 import { parseAndValidateContractNumbers } from "@/lib/contractValidation";
 import { makeImageKey } from "@/lib/imageKey";
 import { RM_TYPE_OPTIONS } from "@/lib/gmd_lib/sheet-columns";
@@ -402,7 +401,6 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   const [crRateStatus, setCrRateStatus] = useState<"idle" | "running">("idle");
   const [pdCostValStatus, setPdCostValStatus] = useState<"idle" | "running">("idle");
   const [syncStockStatus, setSyncStockStatus] = useState<"idle" | "running">("idle");
-  const [createDocketsStatus, setCreateDocketsStatus] = useState<"idle" | "running">("idle");
   // Docket No header filter: show only pending dockets (auto-created, no items yet).
   const [pendingOnly, setPendingOnly] = useState(false);
   // Bulk delete selection: per enquiry constraint, filtered scope, persisted across pagination
@@ -2320,36 +2318,6 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     }
   }
 
-  const handleCreatePendingDockets = async () => {
-    setCreateDocketsStatus("running")
-    const toastId = toast.loading("Checking pendingDocket threads...")
-    try {
-      const dry = await createPendingDocketsAction({ dryRun: true })
-      if (!dry.success) throw new Error(dry.error)
-      const count = dry.data.created
-      if (count === 0) {
-        toast.info("No pendingDocket = true threads to convert.", { id: toastId })
-        return
-      }
-      if (!confirm(`Create ${count} new docket(s) with auto-generated numbers, party names and blank items?`)) {
-        toast.dismiss(toastId)
-        return
-      }
-      toast.loading(`Creating ${count} docket(s)...`, { id: toastId })
-      const res = await createPendingDocketsAction({ dryRun: false })
-      if (!res.success) throw new Error(res.error)
-      toast.success(
-        `Created ${res.data.created} docket(s)${res.data.skipped ? `, ${res.data.skipped} failed` : ""}. Reloading...`,
-        { id: toastId, duration: 9000 },
-      )
-      setTimeout(() => window.location.reload(), 1200)
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to create pending dockets", { id: toastId })
-    } finally {
-      setCreateDocketsStatus("idle")
-    }
-  }
-
   const TOTAL_COLUMNS = 41;
   const SELECT_COL_WIDTH = 44;
   const getColWidth = (idx: number) => columnWidths[idx] ?? DEFAULT_COLUMN_WIDTHS[idx] ?? 120;
@@ -2476,17 +2444,6 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
           >
             <PackageCheck className={`h-3.5 w-3.5 text-amber-700 dark:text-amber-300 stroke-2 ${syncStockStatus === "running" ? "animate-spin" : ""}`} />
             {syncStockStatus === "running" ? "Syncing Stock..." : "Sync Available Stock"}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleCreatePendingDockets}
-            disabled={createDocketsStatus === "running"}
-            className="group/button inline-flex shrink-0 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20 h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer transition-all shrink-0 disabled:opacity-50"
-            title="Create header-only dockets for every DocketQuotationThread flagged pendingDocket = true"
-          >
-            <Plus className={`h-3.5 w-3.5 text-rose-700 dark:text-rose-300 stroke-2 ${createDocketsStatus === "running" ? "animate-spin" : ""}`} />
-            {createDocketsStatus === "running" ? "Creating..." : "Create Pending Dockets"}
           </button>
         </div>
       </div>

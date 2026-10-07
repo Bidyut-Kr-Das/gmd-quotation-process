@@ -12,23 +12,26 @@ Where an algorithm already existed there, it was copied rather than imported
 
 ## Jobs
 
-Four hourly jobs, staggered 15 minutes apart so no two heavy ones collide.
+Five hourly jobs, staggered so no two heavy ones collide.
 
-| :00 | :15 | :30 | :45 |
-|---|---|---|---|
-| `raw-material` | `supply-history` | `contract-review` | `c-batch` |
+| :00 | :15 | :20 | :30 | :45 |
+|---|---|---|---|---|
+| `raw-material` | `supply-history` | `docket-creation` | `contract-review` | `c-batch` |
 
 | Job | Endpoint | Ofelia job name | Reads |
 |---|---|---|---|
 | Raw Material sync | `POST /api/scheduler/raw-material` | `raw-material-sync` | `GMD UPDATION`, `stock-phys` |
 | Supply History MASTER sync | `POST /api/scheduler/supply-history` | `supply-history-sync` | `MASTER`, GMD Clientwise ORDER LIST |
+| Pending docket creation | `POST /api/scheduler/docket-creation` | `docket-creation-sync` | `docket_quotation_threads`, `enquiries` |
 | Contract Review sync | `POST /api/scheduler/contract-review` | `contract-review-sync` | `CONTRACTS`, `DUMP`, `stock-phys`, `INSPECTION OFFER DUMP` |
 | C Batch marks | `POST /api/scheduler/c-batch` | `c-batch-sync` | `ITEM MASTER ERP` |
 
 The stagger is deliberate. `raw-material`, `supply-history` and
 `contract-review` each full-table-read the tables the others write. `c-batch`
 runs last and can safely overlap any of them: it writes **only** the `cBatch`
-column, which no other scheduled job touches.
+column, which no other scheduled job touches. `docket-creation` runs at `:20`,
+between `supply-history` and `contract-review`, so contract-review's same-hour
+pass can backfill `contractNo` on the dockets it creates.
 
 ## `raw-material`
 
@@ -319,6 +322,45 @@ Three of the four code columns have **no index**: `SupplyHistoryItem.erpItemCode
 columns, so the job is cheaper than the original — but `ContractReview` and
 `EnquiryItem` are still full scans.
 
+## `docket-creation`
+
+Single step: `runPendingDocketCreation()` in `docket-creation.ts`. For every
+`DocketQuotationThread` row with `pendingDocket = true` **and** `docketNo = null`
+it creates a header-only `Enquiry` (no items):
+
+1. Allocates the next fiscal docket number(s) via `nextDocketSerials`
+   (`lib/docketNumber`) from the current fiscal year's existing dockets.
+2. Resolves the party name via `resolvePartyForThread`
+   (`lib/pendingDocketMaterializer`): first email match against previous dockets,
+   then the thread's own `partyName`, then `sub_category`, else `"Unknown"`.
+3. Links the mail file attachments as-is (`parseThreadAttachments`) and renders a
+   mail-snapshot PDF, uploading it to Google Drive (`buildSnapshotAttachment`).
+4. In one `$transaction`, creates the `Enquiry` and stamps the thread with the
+   new `docketNo` + clears `pendingDocket`.
+
+Idempotent: a stamped thread leaves the pending set, so a re-run is a no-op.
+
+### `pendingDocket` is set upstream
+
+Nothing in this repo ever sets `pendingDocket = true` — the external mail
+ingestion does. This job only **consumes** the flag. If no ingestion is running,
+the job reports `pending: 0` and does nothing.
+
+### Snapshot failures never abort a docket
+
+A snapshot that cannot be rendered or uploaded is caught per docket, counted in
+`snapshotFailures`, and the docket is still created with its mail attachments.
+A failure of the `$transaction` itself is counted in `failed`, which is what
+`docket-creation-sync.sh` greps for.
+
+### Relationship to the old manual action
+
+The manual `createPendingDocketsAction` in `app/actions.ts` and the two "Create
+Pending Dockets" buttons (`EnquiryTable.tsx`, `app/docket_follow_up/page.tsx`)
+were **removed**. The action is retained as a commented-out `LEGACY` block in
+`app/actions.ts`, with its now-unused imports commented alongside it. This folder
+is the source of truth for scheduled docket creation.
+
 ## Write policy
 
 ### `raw-material`
@@ -376,6 +418,15 @@ Stock-step edge cases:
 | Table | Column | Rule |
 |---|---|---|
 | `RawMaterial`, `ContractReview`, `SupplyHistoryItem`, `EnquiryItem` | `cBatch` | set to `"C"` when any code column matches. **Set-only** — never cleared, never overwritten once marked. No other column is touched, and `VerifyBom` is not touched at all. |
+
+### `docket-creation`
+
+| Table | Column | Rule |
+|---|---|---|
+| `Enquiry` | `docketNumber`, `partyName`, `enquiryDate`, `emailAddress` | **create only** — a new header-only docket per pending thread. Existing dockets are never touched. |
+| `Enquiry` | attachments | mail attachments linked as-is + one generated snapshot PDF. |
+| `DocketQuotationThread` | `docketNo`, `pendingDocket` | stamped with the new number and `pendingDocket` set to `false`. Never cleared or re-pointed. |
+| deletions | — | none. |
 
 ## Auth
 
