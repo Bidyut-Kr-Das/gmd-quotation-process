@@ -503,3 +503,28 @@ function findById(node: FlowNode, id: string): FlowNode | null {
   }
   return null;
 }
+
+/**
+ * Drops nodes whose filter targets a disabled column (and everything below
+ * them). Returns null when the root itself is filtered on a disabled column.
+ */
+export function pruneTree(
+  node: FlowNode,
+  isEnabled: (column: string) => boolean,
+): FlowNode | null {
+  if (!isEnabled(node.filter.column)) return null;
+  if (!node.children) return node;
+  const children = node.children
+    .map((kid) => pruneTree(kid, isEnabled))
+    .filter((kid): kid is FlowNode => kid !== null);
+  return { ...node, children };
+}
+
+/** CONTRACT_REVIEW_TREES with disabled-column nodes removed. */
+export function enabledTrees(isEnabled: (column: string) => boolean) {
+  return CONTRACT_REVIEW_TREES.flatMap((t) => {
+    if (t.scope && !isEnabled(t.scope.column)) return [];
+    const tree = pruneTree(t.tree, isEnabled);
+    return tree ? [{ ...t, tree }] : [];
+  });
+}

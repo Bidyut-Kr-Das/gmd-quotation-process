@@ -9,6 +9,7 @@ import GMDUpdateSkeleton from "@gmd/dashboard/components/skeletons/GMDUpdateSkel
 import { toast } from "sonner";
 import { parseAndValidateProdOrderNumber } from "../lib/contractValidation";
 import type { ContractReviewActions, ContractReviewData } from "../types";
+import { columnAccess, type ContractReviewFlags, type SidebarSection } from "../flags";
 import {
   CONTRACT_REVIEW_HEADER_TO_DB_FIELD,
   CONTRACT_REVIEW_HEADERS,
@@ -42,7 +43,7 @@ import {
 import { useDefaultLayout } from "react-resizable-panels";
 import { FlowDiagram } from "./graph_flow/FlowDiagram";
 import {
-  CONTRACT_REVIEW_TREES,
+  enabledTrees,
   flatten,
   pathTo,
   type FlowFilter,
@@ -122,7 +123,6 @@ const UPLOAD_DIAGRAM_IDX =
 
 // Stable descriptor list so the sidebar/graph filter mirror keeps a stable
 // dependency and the batch checkboxes + cascading share one definition.
-const CR_BATCH_FILTERS = [cBatchFilter(), nBatchFilter()];
 
 type RateTileKey =
   | "rateXOrderQty"
@@ -470,7 +470,25 @@ function pathToColumnFilters(
   return byCol;
 }
 
-export function ContractReviewPage({ actions }: { actions: ContractReviewActions }) {
+export function ContractReviewPage({
+  actions,
+  flags,
+}: {
+  actions: ContractReviewActions;
+  /** Per-app switches, resolved on the server by the host app. */
+  flags: ContractReviewFlags;
+}) {
+  const { isEnabled, isEditable, showSection } = useMemo(() => columnAccess(flags), [flags]);
+  const trees = useMemo(() => enabledTrees(isEnabled), [isEnabled]);
+  const tileOn = (section: SidebarSection, columns: string[]) =>
+    showSection(section) && columns.every(isEnabled);
+  const batchPresenceFilters = useMemo(
+    () => [
+      ...(isEnabled("C BATCH") ? [cBatchFilter()] : []),
+      ...(isEnabled("N BATCH") ? [nBatchFilter()] : []),
+    ],
+    [isEnabled],
+  );
   const {
     updateContractReviewFieldAction,
     clearContractReviewDiagramAction,
@@ -1052,7 +1070,7 @@ export function ContractReviewPage({ actions }: { actions: ContractReviewActions
   const autoSavedBomIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!data || !selectContractReviewBomIdAction) return;
+    if (!data || !selectContractReviewBomIdAction || !isEditable("BOM ID")) return;
     const pending: { id: string; bomId: string }[] = [];
     const pendingActuator: string[] = [];
     data.rows.forEach((row, i) => {
@@ -1132,7 +1150,7 @@ export function ContractReviewPage({ actions }: { actions: ContractReviewActions
       autoNoUseRef.current.add(id);
       pending.push(id);
     });
-    if (!pending.length || !backfillContractReviewNoUseBatchAction) return;
+    if (!pending.length || !backfillContractReviewNoUseBatchAction || !isEnabled("RM AVAIL")) return;
     backfillContractReviewNoUseBatchAction(pending).then((res) => {
       if (!res?.success) return;
       setData((prev) => {
@@ -1197,7 +1215,7 @@ export function ContractReviewPage({ actions }: { actions: ContractReviewActions
       autoCostFromQuotationRef.current.add(id);
       pending.push(id);
     });
-    if (!pending.length || !backfillContractReviewCostFromQuotationAction) return;
+    if (!pending.length || !backfillContractReviewCostFromQuotationAction || !isEnabled("VA % FROM COST")) return;
     backfillContractReviewCostFromQuotationAction(pending).then((res) => {
       if (!res?.success) return;
       setData((prev) => {
@@ -1233,7 +1251,12 @@ export function ContractReviewPage({ actions }: { actions: ContractReviewActions
       autoEnquiryFieldsRef.current.add(id);
       pending.push(id);
     });
-    if (!pending.length || !syncContractReviewEnquiryFieldsBatchAction) return;
+    if (
+      !pending.length ||
+      !syncContractReviewEnquiryFieldsBatchAction ||
+      !["STATE", "UTILITY", "PROJECT REFERENCE"].some(isEnabled)
+    )
+      return;
     syncContractReviewEnquiryFieldsBatchAction(pending).then((res) => {
       if (!res?.success || !res.data) return;
       setData((prev) => {
@@ -1268,7 +1291,7 @@ export function ContractReviewPage({ actions }: { actions: ContractReviewActions
       autoOfferPendingDoneRef.current.add(id);
       pending.push(id);
     });
-    if (!pending.length) return;
+    if (!pending.length || !isEnabled("OFFER PENDING/DONE")) return;
     backfillContractReviewOfferPendingDoneBatchAction(pending).then((res) => {
       if (!res?.success || !res.data) return;
       setData((prev) => {
@@ -1303,7 +1326,7 @@ export function ContractReviewPage({ actions }: { actions: ContractReviewActions
       autoInspectionRef.current.add(id);
       pending.push(id);
     });
-    if (!pending.length) return;
+    if (!pending.length || !isEnabled("Inspection")) return;
     backfillContractReviewInspectionBatchAction(pending).then((res) => {
       if (!res?.success || !res.data) return;
       setData((prev) => {
@@ -1335,7 +1358,7 @@ export function ContractReviewPage({ actions }: { actions: ContractReviewActions
       autoPnRatingRef.current.add(id);
       pending.push(id);
     });
-    if (!pending.length) return;
+    if (!pending.length || !isEnabled("PN RATING")) return;
     backfillContractReviewPnRatingBatchAction(pending).then((res) => {
       if (!res?.success || !res.data) return;
       setData((prev) => {
@@ -1414,7 +1437,7 @@ export function ContractReviewPage({ actions }: { actions: ContractReviewActions
         return false;
       // Batch presence filters (C / N) cascade through every sidebar, graph and
       // option-metadata call site because they all route through this mirror.
-      for (const bf of CR_BATCH_FILTERS) {
+      for (const bf of batchPresenceFilters) {
         if (!batchFilters[bf.key]) continue;
         const idx = headers.indexOf(bf.column);
         if (idx === -1 || String(row[idx] ?? "").trim() !== bf.value)
@@ -2402,7 +2425,7 @@ tileSize,
 
   const graphCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const { tree, scope } of CONTRACT_REVIEW_TREES) {
+    for (const { tree, scope } of trees) {
       for (const node of flatten(tree)) {
         const path = pathTo(tree, node.id);
         let n = 0;
@@ -2443,7 +2466,7 @@ tileSize,
 
   const handleGraphToggle = useCallback(
     (id: string) => {
-      for (const { tree, scope } of CONTRACT_REVIEW_TREES) {
+      for (const { tree, scope } of trees) {
         const node = flatten(tree).find((n) => n.id === id);
         if (!node) continue;
         const path = pathTo(tree, id);
@@ -2485,7 +2508,7 @@ tileSize,
   // yields, formatted with the en-IN convention used by the sidebar tiles.
   const graphValues = useMemo(() => {
     const values: Record<string, string> = {};
-    for (const { tree, scope } of CONTRACT_REVIEW_TREES) {
+    for (const { tree, scope } of trees) {
       for (const node of flatten(tree)) {
         if (node.metric !== "diBalance") continue;
         const path = pathTo(tree, node.id);
@@ -2761,6 +2784,7 @@ tileSize,
             {rmAvailSyncing ? "Syncing RM AVAIL..." : "Sync RM AVAIL"}
           </button>
           )}
+          {showSection("contractCount") && (<>
           <div className="border rounded-lg p-3 bg-white/5 border-white/10">
             <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">
               NUMBER OF CONTRACTS
@@ -2772,6 +2796,8 @@ tileSize,
               of {tileRowsCount} rows
             </span>
           </div>
+          </>)}
+          {showSection("filters") && (<>
           <span className="text-xs font-bold uppercase tracking-wider text-white dark:text-foreground">
             Filters
           </span>
@@ -2791,6 +2817,7 @@ tileSize,
               <option value="no">No ({balBillCounts.no})</option>
             </select>
           </div> */}
+          {isEnabled("STATUS") && (<>
           <div className="flex flex-col gap-1.5">
             <span className="text-[11px] font-semibold text-white/60">
               STATUS
@@ -2808,6 +2835,8 @@ tileSize,
               ))}
             </select>
           </div>
+          </>)}
+          {isEnabled("CLEARANCE STATUS") && (<>
           <div className="flex flex-col gap-1.5" ref={clearanceRef}>
             <span className="text-[11px] font-semibold text-white/60">
               CLEARANCE STATUS
@@ -2891,11 +2920,15 @@ tileSize,
               )}
             </div>
           </div>
+          </>)}
+          </>)}
 
+          {showSection("breakdown") && (<>
           <span className="text-xs font-bold uppercase tracking-wider text-white dark:text-foreground mt-2">
             Breakdown
           </span>
 
+          {isEnabled("Item") && (<>
           <div className="flex flex-col gap-1.5" ref={itemRef}>
             <span className="text-[11px] font-semibold text-white/60">
               Item
@@ -2973,7 +3006,9 @@ tileSize,
               )}
             </div>
           </div>
+          </>)}
 
+          {isEnabled("SIZE") && (<>
           <div className="flex flex-col gap-1.5">
             <span className="text-[11px] font-semibold text-white/60">
               Size
@@ -2991,7 +3026,9 @@ tileSize,
               ))}
             </select>
           </div>
+          </>)}
 
+          {isEnabled("PN RATING") && (<>
           <div className="flex flex-col gap-1.5" ref={pnRef}>
             <span className="text-[11px] font-semibold text-white/60">
               PN Rating
@@ -3073,6 +3110,8 @@ tileSize,
               )}
             </div>
           </div>
+          </>)}
+          {isEnabled("MC Received/Pending") && (<>
           <div className="flex flex-col gap-1.5" ref={mcRef}>
             <span className="text-[11px] font-semibold text-white/60">
               MC Received/Pending
@@ -3160,6 +3199,8 @@ tileSize,
               )}
             </div>
           </div>
+          </>)}
+          {isEnabled("Inspection") && (<>
           <div className="flex flex-col gap-1.5" ref={inspectionRef}>
             <span className="text-[11px] font-semibold text-white/60">
               Inspection
@@ -3245,6 +3286,9 @@ tileSize,
               )}
             </div>
           </div>
+          </>)}
+          </>)}
+          {tileOn("rateOrderQty", ["RATE","ORDER QTY"]) && (<>
           <button
             type="button"
             onClick={() => handleRateTileClick("rateXOrderQty")}
@@ -3264,7 +3308,9 @@ tileSize,
               {rateOrderQty.count} rows of {tileRowsCount}
             </span>
           </button>
+          </>)}
 
+          {tileOn("rateBalBill", ["RATE","BAL BILL AG CONT"]) && (<>
           <button
             type="button"
             onClick={() => handleRateTileClick("rateXBalBillAgCont")}
@@ -3284,7 +3330,9 @@ tileSize,
               {rateBalBillCont.count} rows of {tileRowsCount}
             </span>
           </button>
+          </>)}
 
+          {tileOn("quantity", ["BAL BILL AG CONT"]) && (<>
           <button
             type="button"
             onClick={() => handleRateTileClick("balBillAgContSum")}
@@ -3304,7 +3352,9 @@ tileSize,
               {balBillAgContTotal.count} rows of {tileRowsCount}
             </span>
           </button>
+          </>)}
 
+          {tileOn("rateMcQty", ["RATE","MC QTY"]) && (<>
           <button
             type="button"
             onClick={() => handleRateTileClick("rateXMcQty")}
@@ -3324,7 +3374,9 @@ tileSize,
               {rateMcCont.count} rows of {tileRowsCount}
             </span>
           </button>
+          </>)}
 
+          {tileOn("rateBalDiQty", ["RATE","DI QTY","BILLED QTY"]) && (<>
           <button
             type="button"
             onClick={() => handleRateTileClick("rateXBalDiQty")}
@@ -3347,7 +3399,9 @@ tileSize,
               {rateBalDiQty.count} rows of {tileRowsCount}
             </span>
           </button>
+          </>)}
 
+          {tileOn("rateBalMcQty", ["RATE","MC QTY","DI QTY"]) && (<>
           <button
             type="button"
             onClick={() => handleRateTileClick("rateXBalMcQty")}
@@ -3370,7 +3424,9 @@ tileSize,
               {rateBalMspQty.count} rows of {tileRowsCount}
             </span>
           </button>
+          </>)}
 
+          {tileOn("totalCostExGst", ["COST FROM QUOTATION"]) && (<>
           <button
             type="button"
             onClick={() => handleRateTileClick("totalCostExcGst")}
@@ -3390,7 +3446,9 @@ tileSize,
               {totalCostExcGst.count} rows of {tileRowsCount}
             </span>
           </button>
+          </>)}
 
+          {tileOn("totalCostIncGst", ["COST FROM QUOTATION"]) && (<>
           <button
             type="button"
             onClick={() => handleRateTileClick("totalCostIncGst")}
@@ -3410,7 +3468,9 @@ tileSize,
               {totalCostIncGst.count} rows of {tileRowsCount}
             </span>
           </button>
+          </>)}
 
+          {tileOn("totalVaPct", ["VA % FROM COST"]) && (<>
           <button
             type="button"
             onClick={() => handleRateTileClick("totalVaPct")}
@@ -3430,6 +3490,7 @@ tileSize,
               {totalVaPct.count} rows of {tileRowsCount}
             </span>
           </button>
+          </>)}
         </aside>
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
           <GMDUpdateHeader
@@ -3463,10 +3524,12 @@ tileSize,
             onLayoutChanged={onVerticalLayoutChanged}
             className="flex-1 min-h-0 "
           >
+            {flags.flowDiagram && trees.length > 0 && (
+            <>
             <ResizablePanel id="graph" defaultSize="20" minSize="12" maxSize="24">
               <div className="h-full overflow-hidden rounded-lg border border-[#1e3d59] dark:border-border bg-[#0a2540] dark:bg-card">
                 <FlowDiagram
-                  trees={CONTRACT_REVIEW_TREES}
+                  trees={trees}
                   counts={graphCounts}
                   values={graphValues}
                   activePath={activePath}
@@ -3475,6 +3538,8 @@ tileSize,
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle className="my-2 bg-border" />
+            </>
+            )}
             <ResizablePanel id="table" defaultSize="68" minSize="25">
               <GMDUpdateTable
                 headers={headers}
@@ -3505,10 +3570,11 @@ tileSize,
                   "VA % FROM COST",
                 ].filter(
                   (c) =>
+                    isEditable(c) &&
                     (c !== "BOM ID" || !!selectContractReviewBomIdAction) &&
                     (c !== "Actuator" || !!saveActuatorWithRmCodeAction),
                 )}
-                blankOnlyEditableColumns={["DATE OF CONTRACT"]}
+                blankOnlyEditableColumns={["DATE OF CONTRACT"].filter(isEditable)}
                 dropdownRowCondition={(header, row) => {
                   if (header !== "Actuator") return true;
                   const n = String(row[ITEM_NAME_IDX] ?? "")
@@ -3571,20 +3637,21 @@ tileSize,
                 columnGroups={CONTRACT_REVIEW_COLUMN_GROUPS}
                 defaultColumnWidths={CONTRACT_REVIEW_COLUMN_WIDTHS}
                 cellBadges={[
-                  ...cBatchBadges("ITEM_CODE"),
-                  ...nBatchBadges("ITEM_CODE"),
+                  ...(isEnabled("C BATCH") ? cBatchBadges("ITEM_CODE") : []),
+                  ...(isEnabled("N BATCH") ? nBatchBadges("ITEM_CODE") : []),
                 ]}
-                batchFilterHeader="ITEM_CODE"
-                batchPresenceFilters={CR_BATCH_FILTERS}
+                batchFilterHeader={batchPresenceFilters.length ? "ITEM_CODE" : undefined}
+                batchPresenceFilters={batchPresenceFilters.length ? batchPresenceFilters : undefined}
+                allowExport={flags.excelExport}
                 wrapCells
-                attachmentColumn={UPLOAD_DIAGRAM_COLUMN}
+                attachmentColumn={isEnabled(UPLOAD_DIAGRAM_COLUMN) ? UPLOAD_DIAGRAM_COLUMN : undefined}
                 attachmentAccept=".pdf,application/pdf"
                 filterAttachmentColumn
-                onUploadAttachment={handleUploadDiagram}
-                onClearAttachment={handleClearDiagram}
+                onUploadAttachment={isEditable(UPLOAD_DIAGRAM_COLUMN) ? handleUploadDiagram : undefined}
+                onClearAttachment={isEditable(UPLOAD_DIAGRAM_COLUMN) ? handleClearDiagram : undefined}
                 verdictColumn={UPLOAD_DIAGRAM_COLUMN}
                 verdictsById={diagramVerdictsById}
-                onSetVerdict={handleSetDiagramVerdict}
+                onSetVerdict={isEditable(UPLOAD_DIAGRAM_COLUMN) ? handleSetDiagramVerdict : undefined}
                 externalFiltersActive={
                   hasTileFilter ||
                   balBillFilter !== "all" ||
@@ -3596,8 +3663,8 @@ tileSize,
                 columnOptionMeta={columnOptionMeta}
                 imageButtonColumn={CONTRACT_REVIEW_HEADERS[ITEM_CODE_IDX]}
                 itemImagesByCode={itemImagesByCode}
-                linkedDrawingColumn={UPLOAD_DIAGRAM_COLUMN}
-                linkedFilesColumn="ORDER LIST"
+                linkedDrawingColumn={isEnabled(UPLOAD_DIAGRAM_COLUMN) ? UPLOAD_DIAGRAM_COLUMN : undefined}
+                linkedFilesColumn={isEnabled("ORDER LIST") ? "ORDER LIST" : undefined}
                 linkedFilesIconColumn="CONTRACT NO"
                 bomIdOptionsById={bomIdOptionsById}
                 onSelectBomId={selectContractReviewBomIdAction ? handleSelectBomId : undefined}
@@ -3622,7 +3689,7 @@ tileSize,
                   // clear every column any tree node can filter on - otherwise
                   // Reset empties activePath but leaves the table filtered.
                   const graphColumns = new Set<string>();
-                  for (const { tree } of CONTRACT_REVIEW_TREES) {
+                  for (const { tree } of trees) {
                     for (const node of flatten(tree)) {
                       if (
                         (CONTRACT_REVIEW_HEADERS as readonly string[]).includes(
@@ -3638,6 +3705,7 @@ tileSize,
                   filterActions.onMultiFilter("PN RATING", []);
                 }}
                 hiddenColumns={[
+                  ...flags.disabledColumns,
                   "VA %",
                   "CV",
                   "C BATCH",

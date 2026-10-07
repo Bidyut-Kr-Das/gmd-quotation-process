@@ -381,8 +381,10 @@ function AttachmentCell({
   onSetVerdict,
 }: {
   url: string;
-  onUpload: (file: File) => void;
-  onClear: () => void;
+  /** Omit to make the cell view-only (no upload / replace). */
+  onUpload?: (file: File) => void;
+  /** Omit to hide the remove button. */
+  onClear?: () => void;
   accept?: string;
   verdict?: string | null;
   onSetVerdict?: (verdict: string | null) => void;
@@ -421,7 +423,7 @@ function AttachmentCell({
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) onUpload(file);
+          if (file) onUpload?.(file);
           e.target.value = "";
         }}
       />
@@ -439,6 +441,7 @@ function AttachmentCell({
             <Eye size={12} />
             Preview
           </button>
+          {onUpload && (
           <button
             type="button"
             onClick={(e) => {
@@ -450,6 +453,8 @@ function AttachmentCell({
           >
             <Upload size={11} />
           </button>
+          )}
+          {onClear && (
           <button
             type="button"
             onClick={(e) => {
@@ -461,8 +466,9 @@ function AttachmentCell({
           >
             <Trash2 size={11} />
           </button>
+          )}
         </>
-      ) : (
+      ) : onUpload ? (
         <button
           type="button"
           onClick={(e) => {
@@ -475,7 +481,7 @@ function AttachmentCell({
           <Paperclip size={12} />
           Upload
         </button>
-      )}
+      ) : null}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-180 p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-4 pt-4 pb-3 border-b border-border bg-muted">
@@ -873,6 +879,8 @@ interface GMDUpdateTableProps {
   onFilteredRowsChange?: (rows: unknown[][]) => void;
   usdInrRate?: number | null;
   onRefreshRate?: () => void;
+  /** Show the Export Excel button. Default true. */
+  allowExport?: boolean;
   onReset?: () => void;
   externalFiltersActive?: boolean;
   castingRateInputs?: {
@@ -1044,6 +1052,7 @@ export default function GMDUpdateTable({
   onFilteredRowsChange,
   usdInrRate,
   onRefreshRate,
+  allowExport = true,
   onReset,
   externalFiltersActive,
 castingRateInputs,
@@ -1884,8 +1893,8 @@ castingRateInputs,
         <AttachmentCell
           url={display}
           accept={attachmentAccept}
-          onUpload={(file) => onUploadAttachment?.(id, file)}
-          onClear={() => onClearAttachment?.(id)}
+          onUpload={onUploadAttachment ? (file) => onUploadAttachment(id, file) : undefined}
+          onClear={onClearAttachment ? () => onClearAttachment(id) : undefined}
           verdict={isVerdictColumn ? verdictsById?.[id] : undefined}
           onSetVerdict={
             isVerdictColumn
@@ -2491,6 +2500,7 @@ castingRateInputs,
               {diffHighlight.label ?? "Highlight Name Diff"}
             </button>
           )}
+          {allowExport && (
           <button
             type="button"
             onClick={handleExportToExcel}
@@ -2499,6 +2509,7 @@ castingRateInputs,
             <Download size={12} />
             Export Excel
           </button>
+          )}
         </div>
       </div>
 

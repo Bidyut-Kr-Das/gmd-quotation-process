@@ -1,5 +1,7 @@
 "use server";
 
+import { columnAccess } from "@gmd/contract-review/flags";
+import { getContractReviewFlags } from "@/lib/contract-review-flags";
 import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { prisma } from "@/lib/prisma";
 import { uploadFileToDrive } from "@/lib/gdrive";
@@ -3274,6 +3276,9 @@ export async function saveActuatorWithRmCodeAction(
   actuator: string | null,
 ) {
   "use server";
+  if (!columnAccess(await getContractReviewFlags()).isEditable("Actuator")) {
+    return { success: false, error: "Not allowed in this app." };
+  }
   try {
     const value = actuator?.trim() || null;
     if (!value) {
@@ -3645,6 +3650,9 @@ export async function selectContractReviewBomIdAction(
   bomId: string | null,
 ) {
   "use server";
+  if (!columnAccess(await getContractReviewFlags()).isEditable("BOM ID")) {
+    return { success: false, error: "Not allowed in this app." };
+  }
   try {
     const item = await tenderPrisma.contractReview.findUnique({
       where: { id },
@@ -3690,6 +3698,9 @@ export async function selectContractReviewBomIdAction(
 
 export async function autoAssignContractReviewBomIdFromActuator(ids: string[]) {
   "use server";
+  if (!columnAccess(await getContractReviewFlags()).isEditable("BOM ID")) {
+    return { success: false, error: "Not allowed in this app." };
+  }
   try {
     const unique = [...new Set(ids.filter(Boolean))];
     if (unique.length === 0) return { success: true, data: [] };

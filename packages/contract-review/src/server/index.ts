@@ -17,6 +17,7 @@ import {
   validateDiagram,
 } from "./s3";
 import type { ActionResult, ContractReviewData, DiagramFileMeta } from "../types";
+import { columnAccess, headerForField, type ContractReviewFlags } from "../flags";
 
 // Pure operations on the ContractReview table (tender DB). No auth, no
 // logging: the host app's Server Actions own those and call into here.
@@ -78,14 +79,49 @@ export function toContractReviewData(items: ContractReview[]): ContractReviewDat
   };
 }
 
+/**
+ * Blanks every disabled column in the rows (headers and indices stay the same)
+ * so the browser never receives that data.
+ */
+export function applyColumnFlags(
+  data: ContractReviewData,
+  flags: ContractReviewFlags,
+): ContractReviewData {
+  const { isEnabled } = columnAccess(flags);
+  if (flags.disabledColumns.length === 0) return data;
+  const blanked = data.headers.flatMap((h, i) => (isEnabled(h) ? [] : [i]));
+  return {
+    ...data,
+    rows: data.rows.map((row) => {
+      const next = [...row];
+      for (const i of blanked) next[i] = Array.isArray(next[i]) ? [] : "";
+      return next;
+    }),
+    diagramVerdicts: isEnabled("Upload Drawing") ? data.diagramVerdicts : {},
+    bomIdOptions: isEnabled("BOM ID") ? data.bomIdOptions : undefined,
+  };
+}
+
+/** The allow-listed fields whose column is editable under these flags. */
+export function editableFieldsFor(flags: ContractReviewFlags): Set<string> {
+  const { isEditable } = columnAccess(flags);
+  return new Set(
+    [...CONTRACT_REVIEW_EDITABLE_FIELDS].filter((field) => {
+      const header = headerForField(field);
+      return header !== undefined && isEditable(header);
+    }),
+  );
+}
+
 export async function updateContractReviewField(
   id: string,
   field: string,
   value: string | null,
+  allowed: ReadonlySet<string> = CONTRACT_REVIEW_EDITABLE_FIELDS,
 ): Promise<ActionResult> {
   try {
     if (!id) return { success: false, error: "Missing contract review id." };
-    if (!CONTRACT_REVIEW_EDITABLE_FIELDS.has(field)) {
+    if (!allowed.has(field)) {
       return { success: false, error: `Field "${field}" cannot be edited.` };
     }
     if (field === "dateOfContract") {

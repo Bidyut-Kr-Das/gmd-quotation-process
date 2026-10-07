@@ -10,11 +10,13 @@ import {
   syncContractReviewEnquiryFieldsBatchAction,
   syncContractReviewRmAvailAction,
 } from "@/app/actions";
+import { getContractReviewFlags } from "@/lib/contract-review-flags";
 import * as core from "./actions";
 
-export default function Page() {
+export default async function Page() {
   return (
     <ContractReviewPage
+      flags={await getContractReviewFlags()}
       actions={{
         ...core,
         // Quotation-only extras: need the quotation DB / Google Sheets.
