@@ -1,3 +1,4 @@
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { prisma as defaultPrisma } from "@/lib/prisma";
 
 function partyKey(value: string | null | undefined): string {
@@ -20,7 +21,7 @@ export async function syncEnquiryContractNumbers(
   enquiryIds?: string[],
   prisma: any = defaultPrisma
 ): Promise<{ updated: number; matched: number }> {
-  const contractRows = await prisma.contractReview.findMany({
+  const contractRows = await tenderPrisma.contractReview.findMany({
     select: { contractNo: true, partyNameDump: true },
   });
 
@@ -70,7 +71,7 @@ export async function syncSingleEnquiryContractNumbers(
     await prisma.enquiry.update({ where: { id: enquiryId }, data: { contractNo: [] } });
     return { updated: true, contractNo: [] };
   }
-  const contractRows = await prisma.contractReview.findMany({
+  const contractRows = await tenderPrisma.contractReview.findMany({
     where: { partyNameDump: { not: null } },
     select: { contractNo: true, partyNameDump: true },
   });

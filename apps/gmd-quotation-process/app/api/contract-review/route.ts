@@ -1,3 +1,4 @@
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -17,7 +18,7 @@ export async function GET() {
   try {
     await recomputeVerifyBomValues();
 
-    const items = await prisma.contractReview.findMany({
+    const items = await tenderPrisma.contractReview.findMany({
       orderBy: { syncedAt: "desc" },
     });
 
@@ -33,13 +34,13 @@ export async function GET() {
     const noUseUpdates = withBom
       .filter((i) => (availMap.get(i.id) ?? null) !== i.noUse)
       .map((i) =>
-        prisma.contractReview.update({
+        tenderPrisma.contractReview.update({
           where: { id: i.id },
           data: { noUse: availMap.get(i.id) ?? null },
         }),
       );
     if (noUseUpdates.length > 0) {
-      await prisma.$transaction(noUseUpdates);
+      await tenderPrisma.$transaction(noUseUpdates);
     }
     for (const item of items) {
       if (item.bomId) item.noUse = availMap.get(item.id) ?? null;

@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -21,7 +22,7 @@ function partyKey(value: string | null | undefined): string {
 async function main() {
   console.log("\n=== SYNC CONTRACT NO (from ContractReview by party name) ===\n");
 
-  const contractRows = await prisma.contractReview.findMany({
+  const contractRows = await tenderPrisma.contractReview.findMany({
     select: { contractNo: true, partyNameDump: true },
   });
 

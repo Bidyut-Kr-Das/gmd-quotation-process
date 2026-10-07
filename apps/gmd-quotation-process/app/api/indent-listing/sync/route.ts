@@ -1,3 +1,4 @@
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { planIndentListingDedupe } from "@/lib/indentListingDedupe";
@@ -9,7 +10,7 @@ import {
 
 export async function POST() {
   try {
-    const source = await prisma.contractReview.findMany({
+    const source = await tenderPrisma.contractReview.findMany({
       select: {
         item: true,
         size: true,

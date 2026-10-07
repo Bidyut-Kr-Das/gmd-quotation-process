@@ -1,3 +1,4 @@
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { prisma } from "@/lib/prisma";
 import {
   BOM_MAST_ERP_SPREADSHEET_ID,
@@ -156,7 +157,7 @@ export async function syncContractReviewItemNames(
   const c = emptyPass();
   const updates: Update[] = [];
 
-  const rows = await prisma.contractReview.findMany({
+  const rows = await tenderPrisma.contractReview.findMany({
     select: { id: true, itemCode: true, itemName: true },
   });
   c.rows = rows.length;
@@ -187,7 +188,7 @@ export async function syncContractReviewItemNames(
   if (!dryRun) {
     c.failedWrites = await applyUpdates(
       updates,
-      (u) => prisma.contractReview.update({ where: { id: u.id }, data: u.data }),
+      (u) => tenderPrisma.contractReview.update({ where: { id: u.id }, data: u.data }),
       chunkSize,
     );
   }

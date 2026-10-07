@@ -31,6 +31,7 @@
  *         npm run cr:norm-dates:apply    (writes)
  */
 import "dotenv/config";
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { format } from "date-fns";
 import { prisma } from "../lib/prisma";
 import {
@@ -99,7 +100,7 @@ async function main() {
     `\n=== NORMALISE ContractReview.dateOfContract -> ${CANONICAL_DATE} [${APPLY ? "APPLY" : "DRY RUN"}] ===\n`,
   );
 
-  const rows = await prisma.contractReview.findMany({
+  const rows = await tenderPrisma.contractReview.findMany({
     where: { dateOfContract: { not: null } },
     select: { id: true, contractNo: true, itemCode: true, dateOfContract: true },
   });
@@ -194,9 +195,9 @@ async function main() {
   let written = 0;
   for (let i = 0; i < updates.length; i += CHUNK) {
     const chunk = updates.slice(i, i + CHUNK);
-    await prisma.$transaction(
+    await tenderPrisma.$transaction(
       chunk.map((u) =>
-        prisma.contractReview.update({
+        tenderPrisma.contractReview.update({
           where: { id: u.id },
           data: { dateOfContract: u.to },
         }),

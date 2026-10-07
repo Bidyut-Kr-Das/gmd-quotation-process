@@ -41,6 +41,7 @@
  *      with the remaining batches unwritten.
  */
 
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { sheets as googleSheets } from "@googleapis/sheets";
 import { prisma } from "@/lib/prisma";
 import { getOAuthClient } from "@/lib/googleAuth";
@@ -207,7 +208,7 @@ export async function runIcDumpSync(
   }
 
   // --- Match against the DB ----------------------------------------------
-  const crRows = await prisma.contractReview.findMany({
+  const crRows = await tenderPrisma.contractReview.findMany({
     select: {
       id: true,
       mcNo: true,
@@ -295,9 +296,9 @@ export async function runIcDumpSync(
     for (let i = 0; i < updates.length; i += WRITE_BATCH) {
       const batch = updates.slice(i, i + WRITE_BATCH);
       try {
-        await prisma.$transaction(
+        await tenderPrisma.$transaction(
           batch.map((u) =>
-            prisma.contractReview.update({
+            tenderPrisma.contractReview.update({
               where: { id: u.id },
               data: {
                 offerNumber: u.offerNumber,

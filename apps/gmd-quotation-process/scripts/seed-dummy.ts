@@ -5,6 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import bcrypt from "bcrypt";
 import "dotenv/config";
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 
 const pool = new Pool({ connectionString: process.env.QUOTATION_DATABASE_URL });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
@@ -136,8 +137,8 @@ async function main() {
     })),
   });
 
-  if ((await prisma.contractReview.count()) === 0)
-    await prisma.contractReview.createMany({
+  if ((await tenderPrisma.contractReview.count()) === 0)
+    await tenderPrisma.contractReview.createMany({
       data: range().map((i) => ({
         contractNo: `CN-${2000 + i}`, itemCode: `ITM-${i}1`, mcNo: `MC-${i}`, itemName: `${pick(TYPES, i)} ${pick(SIZES, i)}mm`,
         rate: String(1500 * i), orderQty: String(10 * i), billedQty: String(2 * i), balBillAgCont: String(8 * i),

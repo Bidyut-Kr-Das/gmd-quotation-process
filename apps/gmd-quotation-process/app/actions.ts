@@ -1,5 +1,6 @@
 "use server";
 
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { prisma } from "@/lib/prisma";
 import { uploadFileToDrive } from "@/lib/gdrive";
 import { recalculateItem, recalculateEnquiryItems, serializeItem, serializeEnquiry, autoDetectItemType, autoDetectMoc, getItemNameMerge } from "@/lib/costCalculator";
@@ -739,7 +740,7 @@ export async function updateEnquiryOrderStatusAction(enquiryId: string, orderSta
 // Find ContractReview rows matching any of the given contract numbers
 export async function updateOrderStatus(contractNos: string[], docketNo: string) {
   try {
-    const rows = await prisma.contractReview.findMany({
+    const rows = await tenderPrisma.contractReview.findMany({
       where: { contractNo: { in: contractNos } },
       select: { id: true, contractNo: true, itemCode: true, rate: true, orderQty: true },
       orderBy: { contractNo: "asc" },
@@ -2894,7 +2895,7 @@ export async function uploadContractReviewDiagramAction(
       return { success: false, error: "Missing contract review id." };
     }
     validateDiagram(file);
-    const existing = await prisma.contractReview.findUnique({
+    const existing = await tenderPrisma.contractReview.findUnique({
       where: { id },
       select: { contractNo: true, diagramUrl: true },
     });
@@ -2916,7 +2917,7 @@ export async function uploadContractReviewDiagramAction(
       }
     }
     // A freshly uploaded diagram has not been reviewed yet, so the verdict resets.
-    await prisma.contractReview.update({
+    await tenderPrisma.contractReview.update({
       where: { id },
       data: { diagramUrl, diagramVerdict: null },
     });
@@ -2936,7 +2937,7 @@ export async function clearContractReviewDiagramAction(id: string) {
     if (!id) {
       return { success: false, error: "Missing contract review id." };
     }
-    const existing = await prisma.contractReview.findUnique({
+    const existing = await tenderPrisma.contractReview.findUnique({
       where: { id },
       select: { diagramUrl: true },
     });
@@ -2950,7 +2951,7 @@ export async function clearContractReviewDiagramAction(id: string) {
         console.warn("[clearContractReviewDiagram] S3 delete failed, continuing:", e);
       }
     }
-    await prisma.contractReview.update({
+    await tenderPrisma.contractReview.update({
       where: { id },
       data: { diagramUrl: null, diagramVerdict: null },
     });
@@ -2984,7 +2985,7 @@ export async function setContractReviewDiagramVerdictAction(
         error: "Diagram verdict must be CORRECT or WRONG.",
       };
     }
-    const existing = await prisma.contractReview.findUnique({
+    const existing = await tenderPrisma.contractReview.findUnique({
       where: { id },
       select: { diagramUrl: true },
     });
@@ -2997,7 +2998,7 @@ export async function setContractReviewDiagramVerdictAction(
         error: "Upload a drawing before marking it correct or wrong.",
       };
     }
-    await prisma.contractReview.update({
+    await tenderPrisma.contractReview.update({
       where: { id },
       data: { diagramVerdict: next },
     });
@@ -3408,7 +3409,7 @@ export async function saveActuatorWithRmCodeAction(
   try {
     const value = actuator?.trim() || null;
     if (!value) {
-      await prisma.contractReview.update({
+      await tenderPrisma.contractReview.update({
         where: { id },
         data: { actuator: null, rmCodeForActuator: null },
       });
@@ -3454,7 +3455,7 @@ export async function saveActuatorWithRmCodeAction(
       }
     }
     const rmCodeForActuator = [...codes].join(",");
-    await prisma.contractReview.update({
+    await tenderPrisma.contractReview.update({
       where: { id },
       data: { actuator: value, rmCodeForActuator },
     });
@@ -3777,7 +3778,7 @@ export async function selectContractReviewBomIdAction(
 ) {
   "use server";
   try {
-    const item = await prisma.contractReview.findUnique({
+    const item = await tenderPrisma.contractReview.findUnique({
       where: { id },
       select: { itemCode: true },
     });
@@ -3795,20 +3796,20 @@ export async function selectContractReviewBomIdAction(
       const itemType = (vbRow?.bomIdType ?? "").trim()
         ? vbRow!.bomIdType!
         : "no itemtype present";
-      const groupRows = await prisma.contractReview.findMany({
+      const groupRows = await tenderPrisma.contractReview.findMany({
         where: { bomId: value },
         select: { id: true, bomId: true, orderQty: true },
       });
       const bomAvail = await getBomRmAvailBatch([value]);
       const availMap = computeContractReviewRmAvail(groupRows, bomAvail);
       const noUse = availMap.get(id) ?? "";
-      await prisma.contractReview.update({
+      await tenderPrisma.contractReview.update({
         where: { id },
         data: { bomId: value, itemType, noUse: noUse || null },
       });
       return { success: true, data: { id, bomId: value, itemType, noUse } };
     }
-    await prisma.contractReview.update({
+    await tenderPrisma.contractReview.update({
       where: { id },
       data: { bomId: null, noUse: null },
     });
@@ -3824,7 +3825,7 @@ export async function autoAssignContractReviewBomIdFromActuator(ids: string[]) {
   try {
     const unique = [...new Set(ids.filter(Boolean))];
     if (unique.length === 0) return { success: true, data: [] };
-    const rows = await prisma.contractReview.findMany({
+    const rows = await tenderPrisma.contractReview.findMany({
       where: { id: { in: unique } },
       select: { id: true, itemCode: true, actuator: true, bomId: true, orderQty: true },
     });
@@ -3843,7 +3844,7 @@ export async function autoAssignContractReviewBomIdFromActuator(ids: string[]) {
       const itemType = (vbRow?.bomIdType ?? "").trim()
         ? vbRow!.bomIdType!
         : "no itemtype present";
-      const groupRows = await prisma.contractReview.findMany({
+      const groupRows = await tenderPrisma.contractReview.findMany({
         where: { bomId },
         select: { id: true, bomId: true, orderQty: true },
       });
@@ -3853,7 +3854,7 @@ export async function autoAssignContractReviewBomIdFromActuator(ids: string[]) {
       const bomAvail = await getBomRmAvailBatch([bomId]);
       const availMap = computeContractReviewRmAvail(groupRows, bomAvail);
       const noUse = availMap.get(row.id) ?? null;
-      await prisma.contractReview.update({
+      await tenderPrisma.contractReview.update({
         where: { id: row.id },
         data: { bomId, itemType, noUse: noUse || null },
       });
@@ -3874,7 +3875,7 @@ export async function backfillContractReviewNoUseBatchAction(ids: string[]) {
   try {
     const unique = [...new Set(ids.filter(Boolean))];
     if (unique.length === 0) return { success: true, data: [] };
-    const items = await prisma.contractReview.findMany({
+    const items = await tenderPrisma.contractReview.findMany({
       where: { id: { in: unique } },
       select: { id: true, bomId: true, orderQty: true, noUse: true },
     });
@@ -3889,13 +3890,13 @@ export async function backfillContractReviewNoUseBatchAction(ids: string[]) {
       .filter((i) => availMap.has(i.id))
       .filter((i) => (availMap.get(i.id) ?? null) !== (i.noUse ?? null))
       .map((i) =>
-        prisma.contractReview.update({
+        tenderPrisma.contractReview.update({
           where: { id: i.id },
           data: { noUse: availMap.get(i.id) ?? null },
         }),
       );
     if (updates.length > 0) {
-      await prisma.$transaction(updates);
+      await tenderPrisma.$transaction(updates);
     }
     return {
       success: true,
@@ -3922,7 +3923,7 @@ export async function backfillContractReviewOfferPendingDoneBatchAction(
   try {
     const unique = [...new Set(ids.filter(Boolean))];
     if (unique.length === 0) return { success: true, data: [] };
-    const items = await prisma.contractReview.findMany({
+    const items = await tenderPrisma.contractReview.findMany({
       where: { id: { in: unique } },
       select: {
         id: true,
@@ -3945,7 +3946,7 @@ export async function backfillContractReviewOfferPendingDoneBatchAction(
         return {
           id: i.id,
           value,
-          promise: prisma.contractReview.update({
+          promise: tenderPrisma.contractReview.update({
             where: { id: i.id },
             data: { offerPendingDone: value },
           }),
@@ -3956,7 +3957,7 @@ export async function backfillContractReviewOfferPendingDoneBatchAction(
       const chunkSize = 200;
       for (let i = 0; i < updates.length; i += chunkSize) {
         const chunk = updates.slice(i, i + chunkSize);
-        await prisma.$transaction(chunk.map((u) => u.promise));
+        await tenderPrisma.$transaction(chunk.map((u) => u.promise));
       }
     }
     return {
@@ -3977,7 +3978,7 @@ export async function backfillContractReviewInspectionBatchAction(ids: string[])
   try {
     const unique = [...new Set(ids.filter(Boolean))];
     if (unique.length === 0) return { success: true, data: [] };
-    const items = await prisma.contractReview.findMany({
+    const items = await tenderPrisma.contractReview.findMany({
       where: { id: { in: unique } },
       select: {
         id: true,
@@ -3999,7 +4000,7 @@ export async function backfillContractReviewInspectionBatchAction(ids: string[])
         return {
           id: i.id,
           value,
-          promise: prisma.contractReview.update({
+          promise: tenderPrisma.contractReview.update({
             where: { id: i.id },
             data: { inspection: value },
           }),
@@ -4010,7 +4011,7 @@ export async function backfillContractReviewInspectionBatchAction(ids: string[])
       const chunkSize = 200;
       for (let i = 0; i < updates.length; i += chunkSize) {
         const chunk = updates.slice(i, i + chunkSize);
-        await prisma.$transaction(chunk.map((u) => u.promise));
+        await tenderPrisma.$transaction(chunk.map((u) => u.promise));
       }
     }
     return {
@@ -4031,12 +4032,12 @@ export async function backfillContractReviewPnRatingBatchAction(ids: string[]) {
   try {
     const unique = [...new Set(ids.filter(Boolean))];
     if (unique.length === 0) return { success: true, data: [] };
-    const items = await prisma.contractReview.findMany({
+    const items = await tenderPrisma.contractReview.findMany({
       where: { id: { in: unique } },
       select: { id: true, itemName: true, pnRating: true },
     });
     // Current dropdown = distinct non-blank pnRating values in the DB (decision-maker).
-    const dropdownRows = await prisma.contractReview.findMany({
+    const dropdownRows = await tenderPrisma.contractReview.findMany({
       select: { pnRating: true },
       distinct: ["pnRating"],
     });
@@ -4055,7 +4056,7 @@ export async function backfillContractReviewPnRatingBatchAction(ids: string[]) {
         return {
           id: i.id,
           value: derived,
-          promise: prisma.contractReview.update({
+          promise: tenderPrisma.contractReview.update({
             where: { id: i.id },
             data: { pnRating: derived },
           }),
@@ -4066,7 +4067,7 @@ export async function backfillContractReviewPnRatingBatchAction(ids: string[]) {
       const chunkSize = 200;
       for (let i = 0; i < updates.length; i += chunkSize) {
         const chunk = updates.slice(i, i + chunkSize);
-        await prisma.$transaction(chunk.map((u) => u.promise));
+        await tenderPrisma.$transaction(chunk.map((u) => u.promise));
       }
     }
     return {
@@ -4087,7 +4088,7 @@ export async function backfillContractReviewOrderListBatchAction(ids: string[]) 
   try {
     const unique = [...new Set(ids.filter(Boolean))];
     if (unique.length === 0) return { success: true, data: [] };
-    const items = await prisma.contractReview.findMany({
+    const items = await tenderPrisma.contractReview.findMany({
       where: { id: { in: unique } },
       select: { id: true, itemCode: true, orderList: true },
     });
@@ -4125,7 +4126,7 @@ export async function backfillContractReviewOrderListBatchAction(ids: string[]) 
         if (merged.length <= (item.orderList?.length ?? 0)) return null;
         return {
           id: item.id,
-          promise: prisma.contractReview.update({
+          promise: tenderPrisma.contractReview.update({
             where: { id: item.id },
             data: { orderList: merged },
           }),
@@ -4205,7 +4206,7 @@ export async function syncContractReviewEnquiryFieldsBatchAction(ids: string[]) 
       }
     }
 
-    const items = await prisma.contractReview.findMany({
+    const items = await tenderPrisma.contractReview.findMany({
       where: { id: { in: unique } },
       select: {
         id: true,
@@ -4262,9 +4263,9 @@ export async function syncContractReviewEnquiryFieldsBatchAction(ids: string[]) 
       const chunkSize = 500;
       for (let i = 0; i < updates.length; i += chunkSize) {
         const chunk = updates.slice(i, i + chunkSize);
-        await prisma.$transaction(
+        await tenderPrisma.$transaction(
           chunk.map((u) =>
-            prisma.contractReview.update({
+            tenderPrisma.contractReview.update({
               where: u.where,
               data: u.data,
             }),
@@ -4322,7 +4323,7 @@ export async function backfillContractReviewCostFromQuotationAction(
   try {
     const unique = [...new Set(ids.filter(Boolean))];
     if (unique.length === 0) return { success: true, data: [] };
-    const items = await prisma.contractReview.findMany({
+    const items = await tenderPrisma.contractReview.findMany({
       where: { id: { in: unique } },
       select: {
         id: true,
@@ -4402,7 +4403,7 @@ export async function backfillContractReviewCostFromQuotationAction(
         if (Object.keys(data).length === 0) return null;
         return {
           id: item.id,
-          promise: prisma.contractReview.update({
+          promise: tenderPrisma.contractReview.update({
             where: { id: item.id },
             data,
           }),
@@ -4457,7 +4458,7 @@ export async function updateContractReviewFieldAction(
   "use server";
   try {
     if (field === "dateOfContract") {
-      const existing = await prisma.contractReview.findUnique({
+      const existing = await tenderPrisma.contractReview.findUnique({
         where: { id },
         select: { dateOfContract: true },
       });
@@ -4482,7 +4483,7 @@ export async function updateContractReviewFieldAction(
       }
       value = validated.contracts.length > 0 ? validated.contracts[0] : null;
     }
-    await prisma.contractReview.update({
+    await tenderPrisma.contractReview.update({
       where: { id },
       data: { [field]: value },
     });
@@ -4714,7 +4715,7 @@ export async function recomputeIndentListingVersionsAction() {
     const [contractCostRefRows, indentRmCodeRows] = await Promise.all([
       // `item` is what drives the indent pipeline and what the join parses into
       // a base item + variant slot, so rows without one can never match.
-      prisma.contractReview.findMany({
+      tenderPrisma.contractReview.findMany({
         where: { item: { not: null } },
         select: {
           id: true,
@@ -4756,9 +4757,9 @@ export async function recomputeIndentListingVersionsAction() {
     // syncedAt is left alone for the same reason as the RM code pass above: it
     // tracks the Contract Review sync, not this derived column.
     if (costCodeRefUpdates.length > 0) {
-      await prisma.$transaction(
+      await tenderPrisma.$transaction(
         costCodeRefUpdates.map((u) =>
-          prisma.contractReview.update({
+          tenderPrisma.contractReview.update({
             where: { id: u.id },
             data: { costCodeRef: u.costCodeRef },
           }),
@@ -5580,7 +5581,7 @@ export async function syncCBatchAction(dryRun = false) {
 
     // ---- ContractReview.itemCode ----
     {
-      const rows = await prisma.contractReview.findMany({
+      const rows = await tenderPrisma.contractReview.findMany({
         select: { itemCode: true, cBatch: true },
       });
       const { present, matched } = matchedFor(rows.map((r) => r.itemCode));
@@ -5593,7 +5594,7 @@ export async function syncCBatchAction(dryRun = false) {
       ).length;
       if (!dryRun && pending > 0) {
         for (let i = 0; i < matched.length; i += C_BATCH_CHUNK) {
-          await prisma.contractReview.updateMany({
+          await tenderPrisma.contractReview.updateMany({
             where: { itemCode: { in: matched.slice(i, i + C_BATCH_CHUNK) } },
             data: { cBatch: C_BATCH_VALUE },
           });
@@ -5757,7 +5758,7 @@ export async function syncContractReviewRmAvailAction() {
     await recomputeVerifyBomValues();
 
     // 3. Recompute RM AVAIL for all Contract Review rows with a bomId
-    const withBom = await prisma.contractReview.findMany({
+    const withBom = await tenderPrisma.contractReview.findMany({
       where: { bomId: { not: null } },
       select: { id: true, bomId: true, orderQty: true, noUse: true },
     });
@@ -5774,18 +5775,18 @@ export async function syncContractReviewRmAvailAction() {
     const rmAvailUpdates = withBom
       .filter((i) => (availMap.get(i.id) ?? null) !== i.noUse)
       .map((i) =>
-        prisma.contractReview.update({
+        tenderPrisma.contractReview.update({
           where: { id: i.id },
           data: { noUse: availMap.get(i.id) ?? null },
         }),
       );
     if (rmAvailUpdates.length > 0) {
-      await prisma.$transaction(rmAvailUpdates);
+      await tenderPrisma.$transaction(rmAvailUpdates);
     }
 
     // 4. Push the PHYSICAL STOCK column: match each row's RM code (costCodeRef)
     //    against the stock-phys sheet, summing every code in a comma-joined ref.
-    const physicalRows = await prisma.contractReview.findMany({
+    const physicalRows = await tenderPrisma.contractReview.findMany({
       select: { id: true, costCodeRef: true, rmPhysicalStock: true },
     });
     const physicalMap = planContractPhysicalStock(physicalRows, stockPhysMap);
@@ -5796,9 +5797,9 @@ export async function syncContractReviewRmAvailAction() {
       const chunkSize = 200;
       for (let i = 0; i < physicalUpdates.length; i += chunkSize) {
         const chunk = physicalUpdates.slice(i, i + chunkSize);
-        await prisma.$transaction(
+        await tenderPrisma.$transaction(
           chunk.map((row) =>
-            prisma.contractReview.update({
+            tenderPrisma.contractReview.update({
               where: { id: row.id },
               data: { rmPhysicalStock: physicalMap.get(row.id) ?? null },
             }),
@@ -5949,7 +5950,7 @@ export async function fetchContractReviewRatesAction(itemIds: string[]) {
 
     // 3. For each distinct code, find the ContractReview row with the most-recent dateOfContract.
     //    We fetch all matching rows and pick the best one in JS so we avoid complex raw SQL.
-    const contractRows = await prisma.contractReview.findMany({
+    const contractRows = await tenderPrisma.contractReview.findMany({
       where: { itemCode: { in: codes } },
       select: { itemCode: true, rate: true, dateOfContract: true, createdAt: true },
     });
@@ -6005,7 +6006,7 @@ export async function fetchContractReviewRatesAction(itemIds: string[]) {
       ReturnType<typeof planCostRefBackfill>
     > | null = null;
     if (normalizedCodes.length > 0) {
-      const costCodeRefRows = await prisma.contractReview.findMany({
+      const costCodeRefRows = await tenderPrisma.contractReview.findMany({
         where: { itemCode: { in: normalizedCodes, mode: "insensitive" } },
         select: {
           itemCode: true,

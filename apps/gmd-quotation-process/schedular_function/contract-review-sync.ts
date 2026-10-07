@@ -7,7 +7,7 @@
  * safe to run hourly:
  *
  * 1. **The per-row lookup is replaced with a Map diff.** The manual version
- *    calls `prisma.contractReview.findFirst({ itemCode, contractNo })` once per
+ *    calls `tenderPrisma.contractReview.findFirst({ itemCode, contractNo })` once per
  *    sheet row and awaits each one serially. `ContractReview` has *no* `@@index`
  *    and *no* `@@unique` (confirmed in `prisma/schema.prisma`), so every one of
  *    those lookups is a sequential full-table scan — roughly 2N round-trips for
@@ -38,6 +38,7 @@
  *   - never deletes.
  */
 
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { sheets as googleSheets } from "@googleapis/sheets";
 import { prisma } from "@/lib/prisma";
 import { getOAuthClient } from "@/lib/googleAuth";
@@ -233,7 +234,7 @@ export async function runContractReviewSheetSync(): Promise<ContractReviewSyncRe
   }
 
   // The Map-diff replacement for the per-row findFirst.
-  const existingRows = (await prisma.contractReview.findMany({
+  const existingRows = (await tenderPrisma.contractReview.findMany({
     select: EXISTING_SELECT,
   })) as unknown as ExistingRow[];
   const existingByKey = new Map<string, ExistingRow>();
@@ -313,7 +314,7 @@ export async function runContractReviewSheetSync(): Promise<ContractReviewSyncRe
 
   if (toCreate.length > 0) {
     try {
-      await prisma.contractReview.createMany({
+      await tenderPrisma.contractReview.createMany({
         data: toCreate.map((c) => c.data as never),
       });
       created = toCreate.length;
@@ -331,7 +332,7 @@ export async function runContractReviewSheetSync(): Promise<ContractReviewSyncRe
 
     const settled = await Promise.allSettled(
       chunk.map((u) =>
-        prisma.contractReview.update({
+        tenderPrisma.contractReview.update({
           where: { id: u.id },
           data: u.data as never,
         }),

@@ -1,3 +1,4 @@
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import type { PrismaClient } from "@gmd/db-quotation";
 
 export function normalizeContractKey(value: string | null | undefined): string {
@@ -59,7 +60,7 @@ export async function computeContractReviewEnquiryBackfill(
     }
   }
 
-  const reviewRows = await prisma.contractReview.findMany({
+  const reviewRows = await tenderPrisma.contractReview.findMany({
     select: {
       id: true,
       contractNo: true,
@@ -118,9 +119,9 @@ export async function applyContractReviewEnquiryBackfill(
   let applied = 0;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
-    await prisma.$transaction(
+    await tenderPrisma.$transaction(
       chunk.map((row) =>
-        prisma.contractReview.update({
+        tenderPrisma.contractReview.update({
           where: { id: row.id },
           data: {
             state: row.state,

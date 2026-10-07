@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -6,7 +7,7 @@ const adapter = new PrismaPg({ connectionString: process.env.QUOTATION_DATABASE_
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const rows = await prisma.contractReview.findMany({
+  const rows = await tenderPrisma.contractReview.findMany({
     select: { item: true },
   });
   const map = new Map<string, number>();

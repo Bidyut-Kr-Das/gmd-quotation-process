@@ -26,6 +26,7 @@
  * Four bugs in the original are fixed here; each is marked CHANGE below.
  */
 
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { prisma } from "@/lib/prisma";
 import {
   BOM_MAST_ERP_SPREADSHEET_ID,
@@ -298,10 +299,10 @@ export async function runCBatchSync(
       table: "ContractReview",
       fields: "itemCode",
       load: async () =>
-        (await prisma.contractReview.findMany({ select: { id: true, itemCode: true, cBatch: true } }))
+        (await tenderPrisma.contractReview.findMany({ select: { id: true, itemCode: true, cBatch: true } }))
           .map((r) => ({ id: r.id, cBatch: r.cBatch, codes: [r.itemCode] })),
       write: async (ids) => ({
-        count: (await prisma.contractReview.updateMany({
+        count: (await tenderPrisma.contractReview.updateMany({
           where: { id: { in: ids } },
           data: { cBatch: C_BATCH_VALUE },
         })).count,

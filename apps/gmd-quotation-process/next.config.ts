@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  transpilePackages: ["@gmd/db-quotation", "@gmd/ui", "@gmd/dashboard"],
+  transpilePackages: ["@gmd/db-quotation", "@gmd/db-tender", "@gmd/ui", "@gmd/dashboard"],
   allowedDevOrigins: ['192.168.1.*', 'localhost', '127.0.0.1'],
   experimental: {
     serverActions: {

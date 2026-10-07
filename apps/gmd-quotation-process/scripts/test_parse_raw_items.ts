@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -114,7 +115,7 @@ function parseRawItem(raw: string): ParsedItem {
 }
 
 async function main() {
-  const rows = await prisma.contractReview.findMany({
+  const rows = await tenderPrisma.contractReview.findMany({
     select: { item: true },
   });
   const distinct = [...new Set(rows.map((r) => (r.item ?? "").trim()).filter(Boolean))].sort();

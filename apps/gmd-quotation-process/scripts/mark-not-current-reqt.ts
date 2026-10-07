@@ -24,6 +24,7 @@
  */
 
 import "dotenv/config";
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { prisma } from "@/lib/prisma";
 import { syncGmdItemCodes } from "@/lib/gmdItemCodeLookup";
 import {
@@ -116,7 +117,7 @@ async function main() {
   }
 
   // ---- Phase 2: contract review marks ---------------------------------------
-  const crRows = await prisma.contractReview.findMany({
+  const crRows = await tenderPrisma.contractReview.findMany({
     select: { id: true, itemCode: true, nBatch: true, contractNo: true },
   });
   const { toMark, toClear } = planContractReviewNotCurrentReqt(crRows, notCurrent);

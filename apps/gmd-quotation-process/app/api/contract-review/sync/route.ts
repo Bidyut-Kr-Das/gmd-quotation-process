@@ -1,3 +1,4 @@
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sheets as googleSheets } from "@googleapis/sheets";
@@ -144,7 +145,7 @@ export async function POST() {
         dumpColumnMap,
       );
 
-      const existing = await prisma.contractReview.findFirst({
+      const existing = await tenderPrisma.contractReview.findFirst({
         where: {
           itemCode: mapped.itemCode,
           contractNo: mapped.contractNo,
@@ -152,7 +153,7 @@ export async function POST() {
       });
       if (!existing) {
         const { itemType: _it, rmCodeForActuator: _rma, ...rest } = mapped;
-        await prisma.contractReview.create({
+        await tenderPrisma.contractReview.create({
           data: { ...rest, syncedAt },
         });
         created++;
@@ -188,14 +189,14 @@ export async function POST() {
       }
 
       if (hasDataChange) {
-        await prisma.contractReview.update({
+        await tenderPrisma.contractReview.update({
           where: { id: existing.id },
           data: filtered,
         });
         updated++;
       } else {
         // No data gaps to fill, still bump syncedAt to record sync time
-        await prisma.contractReview.update({
+        await tenderPrisma.contractReview.update({
           where: { id: existing.id },
           data: { syncedAt },
         });
@@ -205,7 +206,7 @@ export async function POST() {
 
     await recomputeVerifyBomValues();
 
-    const withBom = await prisma.contractReview.findMany({
+    const withBom = await tenderPrisma.contractReview.findMany({
       where: { bomId: { not: null } },
       select: { id: true, bomId: true, orderQty: true, noUse: true },
     });
@@ -222,13 +223,13 @@ export async function POST() {
     const noUseUpdates = withBom
       .filter((i) => (availMap.get(i.id) ?? null) !== i.noUse)
       .map((i) =>
-        prisma.contractReview.update({
+        tenderPrisma.contractReview.update({
           where: { id: i.id },
           data: { noUse: availMap.get(i.id) ?? null },
         }),
       );
     if (noUseUpdates.length > 0) {
-      await prisma.$transaction(noUseUpdates);
+      await tenderPrisma.$transaction(noUseUpdates);
     }
 
     // Backfill State / Utility / Project Reference from Enquiry by matching

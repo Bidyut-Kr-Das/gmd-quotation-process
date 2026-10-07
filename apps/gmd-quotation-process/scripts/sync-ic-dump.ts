@@ -40,6 +40,7 @@
  */
 
 import "dotenv/config";
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { sheets as googleSheets } from "@googleapis/sheets";
@@ -164,7 +165,7 @@ async function main() {
   );
 
   // --- Match against the DB ----------------------------------------------
-  const crRows = await prisma.contractReview.findMany({
+  const crRows = await tenderPrisma.contractReview.findMany({
     select: {
       id: true,
       mcNo: true,
@@ -258,9 +259,9 @@ async function main() {
   let written = 0;
   for (let i = 0; i < updates.length; i += BATCH) {
     const batch = updates.slice(i, i + BATCH);
-    await prisma.$transaction(
+    await tenderPrisma.$transaction(
       batch.map((u) =>
-        prisma.contractReview.update({
+        tenderPrisma.contractReview.update({
           where: { id: u.id },
           data: {
             offerNumber: u.offerNumber,

@@ -32,6 +32,9 @@ importers:
       '@gmd/db-quotation':
         specifier: workspace:*
         version: link:../../packages/db-quotation
+      '@gmd/db-tender':
+        specifier: workspace:*
+        version: link:../../packages/db-tender
       '@gmd/ui':
         specifier: workspace:*
         version: link:../../packages/ui

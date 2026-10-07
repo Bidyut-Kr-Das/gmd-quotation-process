@@ -1,3 +1,4 @@
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { prisma } from "@/lib/prisma";
 
 export type VerifyBomCandidate = {
@@ -233,7 +234,7 @@ export async function recomputeVerifyBomValues(): Promise<{
   const itemCodes = [
     ...new Set(items.map((i) => i.itemCode).filter((c): c is string => !!c)),
   ];
-  const crRows = await prisma.contractReview.findMany({
+  const crRows = await tenderPrisma.contractReview.findMany({
     where: { itemCode: { in: itemCodes }, itemName: { not: null } },
     select: { itemCode: true, itemName: true, syncedAt: true },
     orderBy: { syncedAt: "desc" },

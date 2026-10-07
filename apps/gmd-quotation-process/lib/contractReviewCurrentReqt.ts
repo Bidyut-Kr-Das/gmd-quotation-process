@@ -1,3 +1,4 @@
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { prisma } from "@/lib/prisma";
 import {
   N_BATCH_VALUE,
@@ -76,19 +77,19 @@ export function planContractReviewNotCurrentReqt(
 async function applyToContractReview(
   notCurrent: Set<string>,
 ): Promise<{ marked: number; cleared: number }> {
-  const rows = await prisma.contractReview.findMany({
+  const rows = await tenderPrisma.contractReview.findMany({
     select: { id: true, itemCode: true, nBatch: true },
   });
   const { toMark, toClear } = planContractReviewNotCurrentReqt(rows, notCurrent);
 
   for (let i = 0; i < toMark.length; i += CHUNK) {
-    await prisma.contractReview.updateMany({
+    await tenderPrisma.contractReview.updateMany({
       where: { id: { in: toMark.slice(i, i + CHUNK) } },
       data: { nBatch: N_BATCH_VALUE },
     });
   }
   for (let i = 0; i < toClear.length; i += CHUNK) {
-    await prisma.contractReview.updateMany({
+    await tenderPrisma.contractReview.updateMany({
       where: { id: { in: toClear.slice(i, i + CHUNK) } },
       data: { nBatch: null },
     });

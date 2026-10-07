@@ -34,6 +34,7 @@
  * as the original does — each fetch is 2 Google API calls.
  */
 
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import pLimit from "p-limit";
 import { prisma } from "@/lib/prisma";
 import { fetchStockPhysicalSheet } from "@/lib/gmd_lib/google-sheets";
@@ -165,7 +166,7 @@ export async function runContractReviewRmAvailSync(
   /* ---------------------------------------------------------------- *
    * Step 3 — RM AVAIL (ContractReview.noUse) for rows that have a bomId
    * ---------------------------------------------------------------- */
-  const withBom = await prisma.contractReview.findMany({
+  const withBom = await tenderPrisma.contractReview.findMany({
     where: { bomId: { not: null } },
     select: { id: true, bomId: true, orderQty: true, noUse: true },
   });
@@ -191,9 +192,9 @@ export async function runContractReviewRmAvailSync(
       const chunk = rmAvailUpdates.slice(i, i + WRITE_CHUNK);
       try {
         // Chunked, where the original used one unbounded transaction.
-        await prisma.$transaction(
+        await tenderPrisma.$transaction(
           chunk.map((u) =>
-            prisma.contractReview.update({
+            tenderPrisma.contractReview.update({
               where: { id: u.id },
               data: { noUse: u.noUse },
             }),
@@ -212,7 +213,7 @@ export async function runContractReviewRmAvailSync(
   /* ---------------------------------------------------------------- *
    * Step 4 — PHYSICAL STOCK (ContractReview.rmPhysicalStock)
    * ---------------------------------------------------------------- */
-  const physicalRows = await prisma.contractReview.findMany({
+  const physicalRows = await tenderPrisma.contractReview.findMany({
     select: { id: true, costCodeRef: true, rmPhysicalStock: true },
   });
   const physicalMap = planContractPhysicalStock(physicalRows, stockPhysMap);
@@ -234,9 +235,9 @@ export async function runContractReviewRmAvailSync(
     for (let i = 0; i < physicalUpdates.length; i += WRITE_CHUNK) {
       const chunk = physicalUpdates.slice(i, i + WRITE_CHUNK);
       try {
-        await prisma.$transaction(
+        await tenderPrisma.$transaction(
           chunk.map((u) =>
-            prisma.contractReview.update({
+            tenderPrisma.contractReview.update({
               where: { id: u.id },
               data: { rmPhysicalStock: u.value },
             }),

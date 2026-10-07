@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { sheets as googleSheets } from "@googleapis/sheets";
 import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -115,7 +116,7 @@ async function main() {
     `Sheet rows: ${dataRows.length}, distinct contracts: ${byContract.size}`,
   );
 
-  const crRows = await prisma.contractReview.findMany({
+  const crRows = await tenderPrisma.contractReview.findMany({
     select: {
       id: true,
       contractNo: true,
@@ -187,9 +188,9 @@ async function main() {
   const BATCH = 200;
   for (let i = 0; i < updates.length; i += BATCH) {
     const batch = updates.slice(i, i + BATCH);
-    await prisma.$transaction(
+    await tenderPrisma.$transaction(
       batch.map((u) =>
-        prisma.contractReview.update({
+        tenderPrisma.contractReview.update({
           where: { id: u.id },
           data: { poNo: u.poNo, orderList: u.orderList },
         }),

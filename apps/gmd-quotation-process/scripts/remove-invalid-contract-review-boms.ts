@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -47,7 +48,7 @@ async function main() {
   console.log(`VerifyBom: loaded ${validPairSet.size} distinct (itemCode, bomId) valid pair(s).`);
 
   // 2. Fetch all ContractReview rows with a bomId assigned
-  const crRows = await prisma.contractReview.findMany({
+  const crRows = await tenderPrisma.contractReview.findMany({
     where: { bomId: { not: null } },
     select: {
       id: true,
@@ -145,7 +146,7 @@ async function main() {
     for (let i = 0; i < actionable.length; i += BATCH_SIZE) {
       const chunk = actionable.slice(i, i + BATCH_SIZE);
       const updates = chunk.map((r) =>
-        prisma.contractReview.update({
+        tenderPrisma.contractReview.update({
           where: { id: r.id },
           data: {
             bomId: null,
@@ -153,7 +154,7 @@ async function main() {
           },
         })
       );
-      await prisma.$transaction(updates);
+      await tenderPrisma.$transaction(updates);
       updated += chunk.length;
       console.log(`  Processed ${updated} / ${actionable.length} rows...`);
     }

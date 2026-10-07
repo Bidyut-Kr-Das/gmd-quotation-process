@@ -22,6 +22,7 @@
  *         npm run cr:contract-dump:apply    (writes)
  */
 import "dotenv/config";
+import { prisma as tenderPrisma, Prisma as TenderPrisma } from "@gmd/db-tender";
 import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "../lib/googleAuth";
 import { prisma } from "../lib/prisma";
@@ -291,7 +292,7 @@ async function main() {
 
   // ---- index the DB once ----
   const fields = [...map.keys()];
-  const dbRows = (await prisma.contractReview.findMany({
+  const dbRows = (await tenderPrisma.contractReview.findMany({
     select: {
       id: true,
       itemCode: true,
@@ -448,9 +449,9 @@ async function main() {
   let written = 0;
   for (let i = 0; i < updates.length; i += CHUNK) {
     const chunk = updates.slice(i, i + CHUNK);
-    await prisma.$transaction(
+    await tenderPrisma.$transaction(
       chunk.map((u) =>
-        prisma.contractReview.update({ where: { id: u.id }, data: u.data }),
+        tenderPrisma.contractReview.update({ where: { id: u.id }, data: u.data }),
       ),
     );
     written += chunk.length;
@@ -462,10 +463,10 @@ async function main() {
   let created = 0;
   for (let i = 0; i < creates.length; i += CHUNK) {
     const chunk = creates.slice(i, i + CHUNK);
-    await prisma.$transaction(
+    await tenderPrisma.$transaction(
       chunk.map((c) =>
-        prisma.contractReview.create({
-          data: c.data as unknown as Prisma.ContractReviewUncheckedCreateInput,
+        tenderPrisma.contractReview.create({
+          data: c.data as unknown as TenderPrisma.ContractReviewUncheckedCreateInput,
         }),
       ),
     );

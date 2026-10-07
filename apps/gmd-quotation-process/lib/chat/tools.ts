@@ -1,3 +1,4 @@
+import { prisma as tenderPrisma, Prisma as TenderPrisma } from "@gmd/db-tender";
 import { tool } from "ai";
 import { z } from "zod";
 import * as XLSX from "xlsx";
@@ -129,7 +130,7 @@ export function buildChatTools(userId: string) {
       }),
     execute: async (input) => {
       const { limit, ...filters } = input;
-      const where: Prisma.ContractReviewWhereInput = {};
+      const where: TenderPrisma.ContractReviewWhereInput = {};
       const whereRecord = where as Record<string, unknown>;
       for (const [key, value] of Object.entries(filters)) {
         if (!value) continue;
@@ -139,7 +140,7 @@ export function buildChatTools(userId: string) {
           whereRecord[key] = { contains: value, mode: "insensitive" };
         }
       }
-      const rows = await prisma.contractReview.findMany({
+      const rows = await tenderPrisma.contractReview.findMany({
         where,
         orderBy: { syncedAt: "desc" },
         take: Number(limit) || 25,
