@@ -15,12 +15,12 @@ services:
       PORT: 4570
       HOSTNAME: 0.0.0.0
 
-      GOOGLE_APPLICATION_CREDENTIALS: /app/credentials.json
-      TOKEN_PATH: /app/token.json
+      GOOGLE_APPLICATION_CREDENTIALS: /app/apps/gmd-quotation-process/credentials.json
+      TOKEN_PATH: /app/apps/gmd-quotation-process/token.json
 
     volumes:
-      - ./credentials.json:/app/credentials.json:ro
-      - ./token.json:/app/token.json:rw
+      - ./credentials.json:/app/apps/gmd-quotation-process/credentials.json:ro
+      - ./token.json:/app/apps/gmd-quotation-process/token.json:rw
 
     restart: unless-stopped
 

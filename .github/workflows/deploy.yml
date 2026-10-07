@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - main  # Change to 'master' if your default branch is master
+    # Only this app and the shared packages affect the quotation image.
+    paths:
+      - "apps/gmd-quotation-process/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".github/workflows/**"
 
 # 🟢 ADD THESE 3 LINES:
 concurrency:
@@ -48,7 +57,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./apps/gmd-quotation-process/Dockerfile
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -69,7 +78,7 @@ jobs:
       - name: Sync Latest docker-compose.yml
         shell: powershell
         run: |
-          Copy-Item -Path "docker-compose.yml" -Destination "D:/gmd-quotation-process/docker-compose.yml" -Force
+          Copy-Item -Path "apps/gmd-quotation-process/docker-compose.yml" -Destination "D:/gmd-quotation-process/docker-compose.yml" -Force
           Write-Host "✅ Synced latest docker-compose.yml to D:/gmd-quotation-process/"
 
       - name: Pull and Restart Container

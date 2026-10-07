@@ -1,0 +1,14 @@
+**/node_modules
+**/.next
+**/.turbo
+**/.env*
+!**/.env.example
+**/*.tsbuildinfo
+**/next-env.d.ts
+**/credentials.json
+**/token.json
+**/src/generated
+apps/gmd-quotation-process/public/offers
+apps/gmd-quotation-process/public/generated-images
+apps/gmd-quotation-process/assets
+.git
