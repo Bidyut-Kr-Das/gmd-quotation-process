@@ -114,3 +114,23 @@ export {
   type IcDumpSyncOptions,
   type IcDumpSyncResult,
 } from "./contract-review-ic-dump";
+
+export {
+  runPendingDocketCreation,
+  type PendingDocketCreationOptions,
+  type PendingDocketCreationResult,
+  type PendingDocketCreated,
+} from "./docket-creation";
+
+export {
+  runScheduledDocketCreation,
+  type RunDocketCreationOptions,
+  type ScheduledDocketCreationResult,
+} from "./run-docket-creation";
+
+export {
+  runDocketFollowupSync,
+  detectDocketNumber,
+  extractAttachmentNamesText,
+  type DocketFollowupSyncResult,
+} from "./docket-followup-sync";

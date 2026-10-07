@@ -53,6 +53,38 @@ export const FIXED_DROPDOWN_OPTIONS: Record<string, string[]> = {
   "RM TYPE": RM_TYPE_OPTIONS,
 };
 
+/**
+ * Extra L7-DIMENSION options, merged on top of the GMD Category sheet list and
+ * the Trading Valve cascade.
+ *
+ * Kept here rather than in the page because both `app/raw_material/page.tsx` and
+ * `getTradingValveOptionsAction` (`app/actions.ts`) need the same list — the
+ * cascade is the Transferred Items table's source for L7, so adding the value
+ * only client-side would leave the cascade without it.
+ *
+ * NOT to be added to FIXED_DROPDOWN_OPTIONS: that map takes priority over
+ * `categoryOptions` in GMDUpdateTable, so it would REPLACE the sheet's L7 list
+ * rather than extend it.
+ */
+export const HARDCODED_L7_OPTIONS: string[] = ["SA25A22-RPM22"];
+
+/**
+ * Extends `options["L7-DIMENSION"]` with HARDCODED_L7_OPTIONS, append-only.
+ *
+ * Safe to apply repeatedly and to an options map that has no L7 entry at all.
+ * Returns the input unchanged when every extra is already present, so callers
+ * wrapped in `useMemo` keep referential stability.
+ */
+export function withHardcodedL7Options(
+  options: Record<string, string[]>,
+): Record<string, string[]> {
+  const existing = options["L7-DIMENSION"] ?? [];
+  const missing = HARDCODED_L7_OPTIONS.filter((v) => !existing.includes(v));
+  return missing.length === 0
+    ? options
+    : { ...options, "L7-DIMENSION": [...existing, ...missing] };
+}
+
 export const COL_INDEX_TO_DB_FIELD: Record<number, string> = {
   0: "erpItemCode",
   1: "itemNameAuto",

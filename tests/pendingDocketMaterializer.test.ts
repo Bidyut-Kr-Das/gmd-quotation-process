@@ -3,8 +3,11 @@ import assert from 'node:assert/strict'
 import {
   isRealPartyName,
   threadExternalEmails,
+  threadInternalEmails,
+  threadPreferredEmails,
   buildEmailPartyMap,
   resolvePartyForThread,
+  isDeletableDuplicate,
 } from '../lib/pendingDocketMaterializer.js'
 
 test('isRealPartyName rejects blanks and sentinels', () => {
@@ -23,6 +26,34 @@ test('threadExternalEmails drops internal addresses and de-duplicates', () => {
     ccDetails: null,
   })
   assert.deepEqual(emails, ['buyer@acme.com', 'info@acme.co.in'])
+})
+
+test('threadInternalEmails returns internal addresses only', () => {
+  const emails = threadInternalEmails({
+    subCategory: null,
+    sender: 'Tridip <tridip@gmdalui.co.in>',
+    toDetails: { value: 'buyer@acme.com, puja.agarwal@laserpowerinfra.com' },
+    ccDetails: null,
+  })
+  assert.deepEqual(emails, ['tridip@gmdalui.co.in', 'puja.agarwal@laserpowerinfra.com'])
+})
+
+test('threadPreferredEmails uses external when present, internal when internal-only', () => {
+  const external = threadPreferredEmails({
+    subCategory: null,
+    sender: 'buyer@acme.com',
+    toDetails: { value: 'tridip@gmdalui.co.in' },
+    ccDetails: null,
+  })
+  assert.deepEqual(external, ['buyer@acme.com'])
+
+  const internalOnly = threadPreferredEmails({
+    subCategory: null,
+    sender: 'tridip@gmdalui.co.in',
+    toDetails: { value: 'laserentry.four@gmail.com' },
+    ccDetails: null,
+  })
+  assert.deepEqual(internalOnly, ['tridip@gmdalui.co.in', 'laserentry.four@gmail.com'])
 })
 
 test('buildEmailPartyMap maps previous dockets and assigned threads', () => {
@@ -72,6 +103,15 @@ test('resolvePartyForThread falls back to a real subCategory', () => {
     new Map(),
   )
   assert.deepEqual(r, { partyName: 'ACME VALVES', source: 'subCategory' })
+})
+
+test('isDeletableDuplicate requires Yes + a target + zero items', () => {
+  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: 'GMD/2026-27/1', itemCount: 0 }), true)
+  assert.equal(isDeletableDuplicate({ duplicate: 'yes', duplicateOfDocket: 'GMD/2026-27/1', itemCount: 0 }), true)
+  assert.equal(isDeletableDuplicate({ duplicate: 'No', duplicateOfDocket: 'GMD/2026-27/1', itemCount: 0 }), false)
+  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: '', itemCount: 0 }), false)
+  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: null, itemCount: 0 }), false)
+  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: 'GMD/2026-27/1', itemCount: 3 }), false)
 })
 
 test('resolvePartyForThread falls back to Unknown for sentinels / no data', () => {

@@ -12,13 +12,12 @@ import {
   FileWarning,
   Paperclip,
   CheckCircle2,
+  Zap,
 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import DocketFollowUpTable from "@/components/docket_follow_up/DocketFollowUpTable";
 import PendingDocketsTable, { PendingDocketRow } from "@/components/docket_follow_up/PendingDocketsTable";
-import { createPendingDocketsAction } from "@/app/actions";
 
 interface SummaryData {
   totalEnquiries: number;
@@ -53,6 +52,8 @@ export default function DocketFollowUpPage() {
   const [pendingError, setPendingError] = useState<string | null>(null);
   const [pendingSummary, setPendingSummary] = useState<PendingSummaryData | null>(null);
   const [pendingRows, setPendingRows] = useState<PendingDocketRow[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
   const fetchPortalData = useCallback(async () => {
     setLoading(true);
@@ -94,51 +95,47 @@ export default function DocketFollowUpPage() {
     }
   }, []);
 
+  const handleSyncAndDetect = useCallback(async (isSilent = false) => {
+    if (!isSilent) setIsSyncing(true);
+    setSyncStatus("Detecting dockets & syncing...");
+    try {
+      const res = await fetch("/api/scheduler/docket-followup", {
+        method: "POST",
+        headers: { "x-app-source": "gmd-dashboard" },
+      });
+      if (res.ok) {
+        const result = await res.json();
+        setSyncStatus("Sync completed");
+      }
+    } catch (err) {
+      console.error("Auto sync failed:", err);
+    } finally {
+      if (!isSilent) setIsSyncing(false);
+      fetchPortalData();
+      fetchPendingData();
+      setTimeout(() => setSyncStatus(null), 4000);
+    }
+  }, [fetchPortalData, fetchPendingData]);
+
   useEffect(() => {
     fetchPortalData();
     fetchPendingData();
-  }, [fetchPortalData, fetchPendingData]);
+
+    // 1-Hour Automatic Sync Interval (Runs in background every 60 minutes)
+    const ONE_HOUR_MS = 60 * 60 * 1000;
+    const intervalId = setInterval(() => {
+      console.log("[Auto-Sync] Running 1-hour docket follow-up sync...");
+      handleSyncAndDetect(true);
+    }, ONE_HOUR_MS);
+
+    return () => clearInterval(intervalId);
+  }, [fetchPortalData, fetchPendingData, handleSyncAndDetect]);
 
   const handleRefresh = () => {
     if (activeTab === "PORTAL_DOCKETS") {
       fetchPortalData();
     } else {
       fetchPendingData();
-    }
-  };
-
-  const [creatingDockets, setCreatingDockets] = useState(false);
-  const handleCreatePendingDockets = async () => {
-    setCreatingDockets(true);
-    const toastId = toast.loading("Checking pendingDocket threads...");
-    try {
-      const dry = await createPendingDocketsAction({ dryRun: true });
-      if (!dry.success) throw new Error(dry.error);
-      const count = dry.data.created;
-      if (count === 0) {
-        toast.info("No pendingDocket = true threads to convert.", { id: toastId });
-        return;
-      }
-      if (
-        !confirm(
-          `Create ${count} new docket(s) with auto-generated numbers, party names and blank items?`,
-        )
-      ) {
-        toast.dismiss(toastId);
-        return;
-      }
-      toast.loading(`Creating ${count} docket(s)...`, { id: toastId });
-      const res = await createPendingDocketsAction({ dryRun: false });
-      if (!res.success) throw new Error(res.error);
-      toast.success(
-        `Created ${res.data.created} docket(s)${res.data.skipped ? `, ${res.data.skipped} failed` : ""}.`,
-        { id: toastId, duration: 9000 },
-      );
-      await Promise.all([fetchPendingData(), fetchPortalData()]);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create pending dockets", { id: toastId });
-    } finally {
-      setCreatingDockets(false);
     }
   };
 
@@ -193,23 +190,29 @@ export default function DocketFollowUpPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {activeTab === "PENDING_DOCKETS" && (
-              <Button
-                size="sm"
-                onClick={handleCreatePendingDockets}
-                disabled={creatingDockets || isCurrentLoading}
-                className="h-7 px-2.5 text-xs font-medium cursor-pointer"
-                title="Create dockets for every thread flagged pendingDocket = true"
-              >
-                <Layers className={`w-3 h-3 mr-1 ${creatingDockets ? "animate-spin" : ""}`} />
-                {creatingDockets ? "Creating..." : "Create Pending Dockets"}
-              </Button>
+            {syncStatus && (
+              <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 animate-pulse hidden sm:inline">
+                {syncStatus}
+              </span>
             )}
+
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => handleSyncAndDetect(false)}
+              disabled={isSyncing || isCurrentLoading}
+              className="h-7 px-2.5 text-xs font-medium cursor-pointer bg-blue-600 hover:bg-blue-700 text-white"
+              title="Scan all threads, attachment names & OCR to detect dockets and update pending status"
+            >
+              <Zap className={`w-3 h-3 mr-1 ${isSyncing ? "animate-spin" : ""}`} />
+              {isSyncing ? "Syncing..." : "Sync & Detect"}
+            </Button>
+
             <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
-              disabled={isCurrentLoading}
+              disabled={isCurrentLoading || isSyncing}
               className="h-7 px-2.5 text-xs font-medium cursor-pointer"
             >
               <RefreshCw className={`w-3 h-3 mr-1 ${isCurrentLoading ? "animate-spin" : ""}`} />

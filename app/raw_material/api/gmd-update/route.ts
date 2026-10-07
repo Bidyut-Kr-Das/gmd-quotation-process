@@ -41,6 +41,7 @@ export async function GET() {
         vendorReference: true,
         attachmentUrl: true,
         cBatch: true,
+        costMerged: true,
         syncedAt: true,
       },
     });
@@ -105,8 +106,11 @@ export async function GET() {
     const transferredIds = items
       .filter((item) => item.transferred)
       .map((item) => item.id);
+    const costMergedIds = items
+      .filter((item) => item.costMerged)
+      .map((item) => item.id);
 
-    return NextResponse.json({ headers, rows, ids, syncedAt, bomIdOptions, transferredIds });
+    return NextResponse.json({ headers, rows, ids, syncedAt, bomIdOptions, transferredIds, costMergedIds });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

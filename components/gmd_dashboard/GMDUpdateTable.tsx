@@ -3048,6 +3048,29 @@ castingRateInputs,
 
                     const frozenLeft = frozenOffsets[visIdx];
 
+                    // One background per cell: a translucent tint would let the
+                    // columns scrolling under a sticky cell show through, and
+                    // stacking bg-card with a bg-* highlight makes the winner
+                    // depend on stylesheet order. So pick a single opaque class.
+                    const rowIsDiff = isDiffCol(header) && rowDiffers(row);
+                    const diffBg =
+                      diffHighlight?.tone === "amber"
+                        ? "bg-amber-200 dark:bg-amber-800"
+                        : diffHighlight?.tone === "yellow"
+                          ? "bg-yellow-200 dark:bg-yellow-800"
+                          : "bg-rose-100 dark:bg-rose-900";
+                    const editableBg =
+                      isCellEditable || isPnBlankDropdown || groupIsEditable
+                        ? "bg-amber-50 dark:bg-[color-mix(in_oklch,var(--card),var(--color-amber-500)_10%)]"
+                        : "";
+                    const bgClass = rowIsDiff
+                      ? diffBg
+                      : editableBg
+                        ? editableBg
+                        : frozenLeft !== undefined
+                          ? "bg-card"
+                          : "";
+
                     return (
                       <td
                         key={cellIdx}
@@ -3055,20 +3078,8 @@ castingRateInputs,
                         className={`${group ? "px-2" : "px-3"} py-2 text-xs border-b border-border border-r  last:border-r-0${
                           wrapCells ? " align-top" : ""
                         }${
-                          frozenLeft !== undefined ? " sticky z-10 bg-card" : ""
-                        }${
-                          isCellEditable || isPnBlankDropdown || groupIsEditable
-                            ? " bg-amber-50 dark:bg-[color-mix(in_oklch,var(--card),var(--color-amber-500)_10%)]"
-                            : ""
-                        }${
-                          isDiffCol(header) && rowDiffers(row)
-                            ? diffHighlight?.tone === "amber"
-                              ? " bg-amber-200/60 dark:bg-amber-500/25"
-                              : diffHighlight?.tone === "yellow"
-                                ? " bg-yellow-200/70 dark:bg-yellow-500/25"
-                                : " bg-rose-100 dark:bg-rose-500/20"
-                            : ""
-                        }`}
+                          frozenLeft !== undefined ? " sticky z-10" : ""
+                        } ${bgClass}`}
                         style={
                           frozenLeft !== undefined ? { left: frozenLeft } : undefined
                         }

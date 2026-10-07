@@ -21,9 +21,16 @@ import { resolveImportedInhouse } from "@/lib/importInhouseMapping";
 import { makeImageKey } from "@/lib/imageKey";
 import { parseAndValidateProdOrderNumber } from "@/lib/contractValidation";
 import { matchPnRating } from "@/lib/pnRatingMatcher";
+import { withHardcodedL7Options } from "@/lib/gmd_lib/sheet-columns";
 import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
-import { getFiscalPrefix, nextDocketSerials } from "@/lib/docketNumber";
-import { buildEmailPartyMap, resolvePartyForThread } from "@/lib/pendingDocketMaterializer";
+// LEGACY — superseded by the hourly `docket-creation` scheduler job
+// (schedular_function/docket-creation.ts). The imports below were used only by
+// the commented-out `createPendingDocketsAction`; restore them when re-enabling.
+// import { getFiscalPrefix, nextDocketSerials } from "@/lib/docketNumber";
+import { isDeletableDuplicate } from "@/lib/pendingDocketMaterializer";
+// import { parseThreadAttachments } from "@/lib/docketSnapshot";
+// import { buildSnapshotAttachment } from "@/lib/docketSnapshotPdf";
+// import { extractEmailsFromValue } from "@/lib/enquiryEmailParty";
 import {
   uploadToS3,
   deleteFromS3,
@@ -841,6 +848,78 @@ export async function deleteEnquiryItemsAction(itemIds: string[]) {
   }
 }
 
+/**
+ * Deletes a blank docket that was flagged as a duplicate of another docket.
+ *
+ * Safety: only allowed when `duplicate === "Yes"`, a `duplicateOfDocket` is set,
+ * and the docket has NO items. The source thread (matched by docketNo) is
+ * re-pointed at the original docket so the mail links there and the blank docket
+ * is never recreated.
+ */
+export async function deleteEnquiryAction(enquiryId: string) {
+  try {
+    const enquiry = await prisma.enquiry.findUnique({
+      where: { id: enquiryId },
+      select: {
+        id: true,
+        docketNumber: true,
+        duplicate: true,
+        duplicateOfDocket: true,
+        _count: { select: { items: true } },
+      },
+    });
+    if (!enquiry) {
+      return { success: false as const, error: "Docket not found." };
+    }
+
+    if (
+      !isDeletableDuplicate({
+        duplicate: enquiry.duplicate,
+        duplicateOfDocket: enquiry.duplicateOfDocket,
+        itemCount: enquiry._count.items,
+      })
+    ) {
+      return {
+        success: false as const,
+        error:
+          enquiry._count.items > 0
+            ? "Cannot delete: this docket has items."
+            : "Only a blank docket flagged as Duplicate = Yes with a selected original can be deleted.",
+      };
+    }
+
+    const original = String(enquiry.duplicateOfDocket).trim();
+    const originalExists = await prisma.enquiry.findUnique({
+      where: { docketNumber: original },
+      select: { id: true },
+    });
+    if (!originalExists) {
+      return { success: false as const, error: `Original docket "${original}" no longer exists.` };
+    }
+
+    // Link the source mail(s) to the original docket, then remove the blank one.
+    await prisma.docketQuotationThread.updateMany({
+      where: { docketNo: enquiry.docketNumber },
+      data: { docketNo: original, pendingDocket: false },
+    });
+
+    await prisma.enquiry.delete({ where: { id: enquiryId } });
+
+    console.log(
+      `[Server] deleteEnquiry (duplicate) ${enquiry.docketNumber} -> original ${original}`,
+    );
+
+    return {
+      success: true as const,
+      data: { enquiryId, docketNumber: enquiry.docketNumber, duplicateOfDocket: original },
+    };
+  } catch (error: unknown) {
+    console.error("Error deleting duplicate enquiry:", error);
+    const message = error instanceof Error ? error.message : "Failed to delete docket.";
+    return { success: false as const, error: message };
+  }
+}
+
 // Update a specific field of an enquiry directly (for inline cell editing)
 export async function updateEnquiryFieldAction(
   enquiryId: string,
@@ -858,6 +937,12 @@ export async function updateEnquiryFieldAction(
       }
       if (value !== null && value !== "" && value !== "Yes" && value !== "No") {
         return { success: false, error: "APM must be Yes, No, or blank." }
+      }
+    }
+    // Duplicate flag is a plain Yes/No marker.
+    if (field === "duplicate") {
+      if (value !== null && value !== "" && value !== "Yes" && value !== "No") {
+        return { success: false, error: "Duplicate must be Yes, No, or blank." }
       }
     }
     const prev = await prisma.enquiry.findUnique({
@@ -958,136 +1043,180 @@ export async function syncEnquiryEmailAddressesAction() {
   }
 }
 
-export interface PendingDocketCreated {
-  docketNumber: string;
-  partyName: string;
-  threadId: string;
-  source: "email" | "partyName" | "subCategory" | "unknown";
-}
-
-/**
- * Materializes dockets for `DocketQuotationThread` rows flagged
- * `pendingDocket = true`. For each thread it creates a header-only `Enquiry`
- * (no items) with an auto-generated docket number, resolving the party name by
- * matching the thread's external emails against previous dockets (falling back
- * to the thread's `sub_category`, then "Unknown"), then stamps the thread with
- * the new docket number and clears `pendingDocket`.
- *
- * Manual trigger only. Idempotent: a stamped thread leaves the pending set.
- */
-export async function createPendingDocketsAction(options?: { dryRun?: boolean }) {
-  try {
-    const dryRun = options?.dryRun ?? false;
-
-    const pending = await prisma.docketQuotationThread.findMany({
-      where: { pendingDocket: true, docketNo: null },
-      orderBy: { date: "asc" },
-      select: {
-        id: true,
-        threadId: true,
-        subCategory: true,
-        partyName: true,
-        sender: true,
-        toDetails: true,
-        ccDetails: true,
-        date: true,
-      },
-    });
-
-    if (pending.length === 0) {
-      return { success: true as const, data: { created: 0, skipped: 0, dryRun, dockets: [] as PendingDocketCreated[] } };
-    }
-
-    const fiscalPrefix = getFiscalPrefix(new Date());
-    const [enquiries, assignedThreads, fiscalRows] = await Promise.all([
-      prisma.enquiry.findMany({ select: { emailAddress: true, partyName: true } }),
-      prisma.docketQuotationThread.findMany({
-        where: { docketNo: { not: null } },
-        select: { subCategory: true, partyName: true, sender: true, toDetails: true, ccDetails: true },
-      }),
-      prisma.enquiry.findMany({
-        where: { docketNumber: { startsWith: fiscalPrefix } },
-        select: { docketNumber: true },
-      }),
-    ]);
-
-    const emailPartyMap = buildEmailPartyMap({ enquiries, assignedThreads });
-    const docketNumbers = nextDocketSerials(
-      fiscalRows.map((r) => r.docketNumber),
-      pending.length,
-      new Date(),
-    );
-
-    const plan = pending.map((thread, index) => {
-      const resolved = resolvePartyForThread(thread, emailPartyMap);
-      return {
-        threadId: thread.threadId,
-        threadRowId: thread.id,
-        date: thread.date,
-        docketNumber: docketNumbers[index],
-        partyName: resolved.partyName,
-        source: resolved.source,
-      };
-    });
-
-    if (dryRun) {
-      return {
-        success: true as const,
-        data: {
-          created: plan.length,
-          skipped: 0,
-          dryRun,
-          dockets: plan.map((p) => ({
-            docketNumber: p.docketNumber,
-            partyName: p.partyName,
-            threadId: p.threadId,
-            source: p.source,
-          })) as PendingDocketCreated[],
-        },
-      };
-    }
-
-    const created: PendingDocketCreated[] = [];
-    for (const p of plan) {
-      try {
-        await prisma.$transaction([
-          prisma.enquiry.create({
-            data: {
-              docketNumber: p.docketNumber,
-              partyName: p.partyName,
-              enquiryDate: p.date ?? new Date(),
-            },
-          }),
-          prisma.docketQuotationThread.update({
-            where: { id: p.threadRowId },
-            data: { docketNo: p.docketNumber, pendingDocket: false },
-          }),
-        ]);
-        created.push({
-          docketNumber: p.docketNumber,
-          partyName: p.partyName,
-          threadId: p.threadId,
-          source: p.source,
-        });
-      } catch (e) {
-        console.error(`[createPendingDockets] failed for thread ${p.threadId}:`, e);
-      }
-    }
-
-    console.log(
-      `[createPendingDockets] pending=${pending.length} created=${created.length} skipped=${plan.length - created.length}`,
-    );
-
-    return {
-      success: true as const,
-      data: { created: created.length, skipped: plan.length - created.length, dryRun, dockets: created },
-    };
-  } catch (error: unknown) {
-    console.error("Error creating pending dockets:", error);
-    const message = error instanceof Error ? error.message : "Failed to create pending dockets.";
-    return { success: false as const, error: message };
-  }
-}
+// ============================================================================
+// LEGACY — superseded by the hourly `docket-creation` scheduler job.
+// Source of truth: schedular_function/docket-creation.ts (+ run-docket-creation.ts,
+// app/api/scheduler/docket-creation/route.ts). The manual "Create Pending
+// Dockets" buttons were removed from EnquiryTable and the docket-follow-up page.
+// Kept commented for reference. To re-enable, uncomment this block AND the
+// matching imports near the top of this file.
+// ============================================================================
+//
+// export interface PendingDocketCreated {
+//   docketNumber: string;
+//   partyName: string;
+//   threadId: string;
+//   source: "email" | "partyName" | "subCategory" | "unknown";
+// }
+//
+// /**
+//  * Materializes dockets for `DocketQuotationThread` rows flagged
+//  * `pendingDocket = true`. For each thread it creates a header-only `Enquiry`
+//  * (no items) with an auto-generated docket number, resolving the party name by
+//  * matching the thread's external emails against previous dockets (falling back
+//  * to the thread's `sub_category`, then "Unknown"), then stamps the thread with
+//  * the new docket number and clears `pendingDocket`.
+//  *
+//  * Manual trigger only. Idempotent: a stamped thread leaves the pending set.
+//  */
+// export async function createPendingDocketsAction(options?: { dryRun?: boolean }) {
+//   try {
+//     const dryRun = options?.dryRun ?? false;
+//
+//     const pending = await prisma.docketQuotationThread.findMany({
+//       where: { pendingDocket: true, docketNo: null },
+//       orderBy: { date: "asc" },
+//       select: {
+//         id: true,
+//         threadId: true,
+//         subCategory: true,
+//         partyName: true,
+//         sender: true,
+//         toDetails: true,
+//         ccDetails: true,
+//         date: true,
+//         subject: true,
+//         body: true,
+//         bodyPreview: true,
+//         attachNames: true,
+//         attachLinks: true,
+//       },
+//     });
+//
+//     if (pending.length === 0) {
+//       return { success: true as const, data: { created: 0, skipped: 0, dryRun, dockets: [] as PendingDocketCreated[] } };
+//     }
+//
+//     const fiscalPrefix = getFiscalPrefix(new Date());
+//     const [enquiries, assignedThreads, fiscalRows] = await Promise.all([
+//       prisma.enquiry.findMany({ select: { emailAddress: true, partyName: true } }),
+//       prisma.docketQuotationThread.findMany({
+//         where: { docketNo: { not: null } },
+//         select: { subCategory: true, partyName: true, sender: true, toDetails: true, ccDetails: true },
+//       }),
+//       prisma.enquiry.findMany({
+//         where: { docketNumber: { startsWith: fiscalPrefix } },
+//         select: { docketNumber: true },
+//       }),
+//     ]);
+//
+//     const emailPartyMap = buildEmailPartyMap({ enquiries, assignedThreads });
+//     const docketNumbers = nextDocketSerials(
+//       fiscalRows.map((r) => r.docketNumber),
+//       pending.length,
+//       new Date(),
+//     );
+//
+//     const plan = pending.map((thread, index) => {
+//       const resolved = resolvePartyForThread(thread, emailPartyMap);
+//       return {
+//         threadId: thread.threadId,
+//         threadRowId: thread.id,
+//         date: thread.date,
+//         docketNumber: docketNumbers[index],
+//         partyName: resolved.partyName,
+//         source: resolved.source,
+//         emailAddress: threadPreferredEmails(thread).join(", ") || null,
+//         // Mail file attachments (linked as-is) + data for the snapshot PDF.
+//         attachments: parseThreadAttachments(thread.attachNames, thread.attachLinks),
+//         subject: thread.subject,
+//         body: thread.body || thread.bodyPreview,
+//         sender: thread.sender,
+//         to: extractEmailsFromValue(thread.toDetails).join(", "),
+//         cc: extractEmailsFromValue(thread.ccDetails).join(", "),
+//       };
+//     });
+//
+//     if (dryRun) {
+//       return {
+//         success: true as const,
+//         data: {
+//           created: plan.length,
+//           skipped: 0,
+//           dryRun,
+//           dockets: plan.map((p) => ({
+//             docketNumber: p.docketNumber,
+//             partyName: p.partyName,
+//             threadId: p.threadId,
+//             source: p.source,
+//           })) as PendingDocketCreated[],
+//         },
+//       };
+//     }
+//
+//     const created: PendingDocketCreated[] = [];
+//     for (const p of plan) {
+//       try {
+//         // Mail file attachments (linked as-is) + a generated snapshot PDF.
+//         const attachmentRows: { name: string; url: string; type: string | null; size: number | null }[] =
+//           p.attachments.map((a) => ({ name: a.name, url: a.url, type: a.type, size: null }));
+//         try {
+//           const snapshot = await buildSnapshotAttachment({
+//             docketNumber: p.docketNumber,
+//             partyName: p.partyName,
+//             date: p.date ? p.date.toISOString() : null,
+//             subject: p.subject,
+//             sender: p.sender,
+//             to: p.to,
+//             cc: p.cc,
+//             body: p.body,
+//             attachments: p.attachments.map((a) => ({ name: a.name, url: a.url })),
+//           });
+//           attachmentRows.push({ name: snapshot.name, url: snapshot.url, type: snapshot.type, size: snapshot.size });
+//         } catch (e) {
+//           console.warn(`[createPendingDockets] snapshot failed for ${p.docketNumber}:`, e);
+//         }
+//
+//         await prisma.$transaction([
+//           prisma.enquiry.create({
+//             data: {
+//               docketNumber: p.docketNumber,
+//               partyName: p.partyName,
+//               enquiryDate: p.date ?? new Date(),
+//               emailAddress: p.emailAddress,
+//               attachments: { create: attachmentRows },
+//             },
+//           }),
+//           prisma.docketQuotationThread.update({
+//             where: { id: p.threadRowId },
+//             data: { docketNo: p.docketNumber, pendingDocket: false },
+//           }),
+//         ]);
+//         created.push({
+//           docketNumber: p.docketNumber,
+//           partyName: p.partyName,
+//           threadId: p.threadId,
+//           source: p.source,
+//         });
+//       } catch (e) {
+//         console.error(`[createPendingDockets] failed for thread ${p.threadId}:`, e);
+//       }
+//     }
+//
+//     console.log(
+//       `[createPendingDockets] pending=${pending.length} created=${created.length} skipped=${plan.length - created.length}`,
+//     );
+//
+//     return {
+//       success: true as const,
+//       data: { created: created.length, skipped: plan.length - created.length, dryRun, dockets: created },
+//     };
+//   } catch (error: unknown) {
+//     console.error("Error creating pending dockets:", error);
+//     const message = error instanceof Error ? error.message : "Failed to create pending dockets.";
+//     return { success: false as const, error: message };
+//   }
+// }
 
 /**
  * Back-calculates and populates BOM ID from a selected rmType on an EnquiryItem.
@@ -3210,7 +3339,7 @@ export async function getTradingValveOptionsAction() {
       );
     return {
       success: true,
-      data: {
+      data: withHardcodedL7Options({
         L1: collect(rows.map((r) => r.l1)),
         "L2-VALVE TYPE": collect(rows.map((r) => r.l2ValveType)),
         "L3-DIA": collect(rows.map((r) => r.l3Dia)),
@@ -3218,7 +3347,7 @@ export async function getTradingValveOptionsAction() {
         "L4-COMPONENT": collect(rows.map((r) => r.l4Component)),
         "L5- MATERIAL": collect(rows.map((r) => r.l5Material)),
         "L6-STD": collect(rows.map((r) => r.l6Std)),
-      },
+      }),
     };
   } catch (error: any) {
     console.error("Error fetching trading valve options:", error);
@@ -3393,6 +3522,110 @@ export async function updateGMDUpdateFieldAction(
     field,
     value,
     itemNameDerived: updated.itemNameDerived,
+  };
+}
+
+/** NEW ITEM STATUS values that place a row in the "New Items" table. */
+const NEW_ITEM_STATUS_VALUES = new Set(["", "-", "UPDATED"]);
+
+function isNewItemsStatus(value: string | null): boolean {
+  return NEW_ITEM_STATUS_VALUES.has((value ?? "").trim().toUpperCase());
+}
+
+/**
+ * Sets NEW ITEM STATUS but, when the new value would move a row up into the
+ * "New Items" table and the row's ITEM NAME (proposed)-AUTO already exists on a
+ * New Item, it instead copies this row's cost onto that/those New Item(s) and
+ * flags this row `costMerged` so it stays in Filtered (blank status) rather
+ * than duplicating the New Item.
+ */
+export async function setNewItemStatusWithCostMergeAction(
+  id: string,
+  value: string | null,
+) {
+  "use server";
+  const stored = value == null || value.trim() === "" ? null : value;
+
+  const empty = {
+    merged: false,
+    noCost: false,
+    sourceId: id,
+    newItemStatus: stored,
+    targetIds: [] as string[],
+    cost: null as number | null,
+  };
+
+  // Any value that keeps the row in Filtered is a plain write.
+  if (!isNewItemsStatus(stored)) {
+    await prisma.rawMaterial.update({
+      where: { id },
+      data: { newItemStatus: stored },
+    });
+    return { success: true, data: empty };
+  }
+
+  const source = await prisma.rawMaterial.findUnique({
+    where: { id },
+    select: { itemNameAuto: true, cost: true },
+  });
+  if (!source) return { success: false, error: "Item not found." };
+
+  const name = (source.itemNameAuto ?? "").trim();
+  const targets = name
+    ? await prisma.rawMaterial.findMany({
+        where: {
+          id: { not: id },
+          transferred: false,
+          costMerged: false,
+          OR: [
+            { newItemStatus: null },
+            { newItemStatus: "" },
+            { newItemStatus: "-" },
+            { newItemStatus: "Updated" },
+          ],
+          itemNameAuto: { equals: name, mode: "insensitive" },
+        },
+        select: { id: true },
+      })
+    : [];
+
+  if (targets.length === 0) {
+    await prisma.rawMaterial.update({
+      where: { id },
+      data: { newItemStatus: stored },
+    });
+    return { success: true, data: empty };
+  }
+
+  const targetIds = targets.map((t) => t.id);
+  const sourceCost = source.cost == null ? null : Number(source.cost);
+  const hasCost = sourceCost != null && sourceCost !== 0;
+
+  await prisma.$transaction([
+    ...(hasCost
+      ? [
+          prisma.rawMaterial.updateMany({
+            where: { id: { in: targetIds } },
+            data: { cost: sourceCost },
+          }),
+        ]
+      : []),
+    prisma.rawMaterial.update({
+      where: { id },
+      data: { newItemStatus: stored, costMerged: true },
+    }),
+  ]);
+
+  return {
+    success: true,
+    data: {
+      merged: true,
+      noCost: !hasCost,
+      sourceId: id,
+      newItemStatus: stored,
+      targetIds,
+      cost: hasCost ? sourceCost : null,
+    },
   };
 }
 

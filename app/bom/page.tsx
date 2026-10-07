@@ -684,7 +684,7 @@ export default function BomPage() {
             title="Verify BOM — grouped by ITEM CODE"
             groupByColumn="ITEM CODE"
             mergeColumns={GROUPED_MERGE_COLUMNS}
-            diffHighlight={{ columns: ["ITEM NAME", "NEW ITEM NAME"], tone: "yellow" }}
+            diffHighlight={{ columns: ["ITEM NAME", "NEW ITEM NAME"], tone:"amber" }}
             fullHeight
           />
         </div>
