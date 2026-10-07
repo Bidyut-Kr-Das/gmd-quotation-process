@@ -1,0 +1,675 @@
+export const CONTRACT_REVIEW_HEADERS = [
+  "CONTRACT NO",
+  "DATE OF CONTRACT",
+  "PARTY NAME",
+  "ITEM_CODE",
+  "ITEM_NAME",
+  "PARTY ITEM NAME",
+  "MC NO",
+  "PO NO",
+  "RATE",
+  "VALUE",
+  "VA % FROM COST",
+  "COST FROM QUOTATION",
+  "CV",
+  "VA %",
+  "ORDER QTY",
+  "FREE STOCK",
+  "FINAL REQ",
+  "MC QTY",
+  "Balance mc",
+  "PROD ORD QTY",
+  "BALANCE TO PROD ORD",
+  "BALANCE TO PROD ENT",
+  "DI QTY",
+  "BILLED QTY",
+  "BAL BILL AG CONT",
+  "BAL DI QTY",
+  "BAL MC VAL",
+  "BAL PROD ORD VAL",
+  "BAL TO PROD ORD ENT VAL",
+  "BAL BILL AG CONT VAL",
+  "BAL BILL AG MC VAL",
+  "BAL DI VAL",
+  "DI VAL",
+  "Item",
+  "SIZE",
+  "PN RATING",
+  "COST CODE REF",
+  "BOM ID",
+  "PHYSICAL STOCK",
+  "CLEARANCE STATUS",
+  "Actuator",
+  "RM CODE FOR ACTUATOR",
+  "RM CODE FOR GB",
+  "PAYMENT TERMS",
+  "LC/RTGS REF NO",
+  "LC DATE/RTGS DATE",
+  "LAST DATE OF SHIPMENT/DATE OF LC",
+  "Issuing bank name",
+  "bom formula trial",
+  "ITEM TYPE",
+  "ERP PARTY NAME FROM GMD SUPPLY HISTORY",
+  "JOB Code",
+  "BAL BILL AG MC",
+  "ic qty",
+  "RM AVAIL",
+  "STATUS",
+  "MC Received/Pending",
+  "Inspection",
+  "OFFER PENDING/DONE",
+  "Remarks",
+  "STATE",
+  "UTILITY",
+  "PROJECT REFERENCE",
+  "OFFER NUMBER",
+  "INSPECTION NUMBER",
+  "DI DATE",
+  "ORDER LIST",
+  "PROD ORDER NO",
+  "Upload Drawing",
+  // Hidden data carrier. Never rendered: listed in the page's hiddenColumns and
+  // only used to drive the "C" chip inside the ITEM_CODE cell.
+  "C BATCH",
+  // Hidden data carrier for the "N" chip (item code is NOT in CURRENT REQT).
+  // Appended after C BATCH so existing column indices/widths stay stable.
+  "N BATCH",
+] as const;
+
+export const N_BATCH_HEADER = "N BATCH";
+export const N_BATCH_VALUE = "N";
+
+/**
+ * Only an explicit "NO" (case-insensitive, trimmed) means the item code is not
+ * a current requirement. Blank / missing / any other value stays unmarked.
+ */
+export function isNotCurrentReqt(value: string | null | undefined): boolean {
+  return String(value ?? "").trim().toUpperCase() === "NO";
+}
+
+/**
+ * Badge definition for the "N" chip that sits beside the item code when the
+ * code is not in CURRENT REQT on the GMD Item Creation Form. Mirrors
+ * `cBatchBadges` but with an amber tone so it reads differently from "C".
+ */
+export function nBatchBadges(onColumn: string) {
+  return [
+    {
+      onColumn,
+      fromColumn: N_BATCH_HEADER,
+      value: N_BATCH_VALUE,
+      label: N_BATCH_VALUE,
+      tone: "amber" as const,
+      title: "Item code is NOT in CURRENT REQT (GMD Item Creation Form)",
+    },
+  ];
+}
+
+/**
+ * Checkbox presence filter for the N batch flag, rendered in the item-code
+ * column header by `GMDUpdateTable`. Mirrors {@link nBatchBadges}.
+ */
+export function nBatchFilter() {
+  return {
+    key: "nBatch",
+    label: "N Batch",
+    column: N_BATCH_HEADER,
+    value: N_BATCH_VALUE,
+    title: "Show only rows NOT in CURRENT REQT (GMD Item Creation Form)",
+  };
+}
+
+/**
+ * Default rendered width, in px, for each column on the Contract Review
+ * dashboard. Sizes are driven by the widest of the two things a cell can hold:
+ * the truncated header caption, or the value.
+ *
+ * Only the standalone columns need an entry here — the 5 collapsed groups are
+ * sized by `width` on CONTRACT_REVIEW_COLUMN_GROUPS below, which takes
+ * precedence. Any header missing from this map (or renamed on the sheet, which
+ * makes the API's header string stop matching) falls back to the generic
+ * default in GMDUpdateTable.
+ *
+ * Keyed by header so widths survive column reordering, and typed against the
+ * header union so a typo is a compile error rather than a silent fallback.
+ */
+export const CONTRACT_REVIEW_COLUMN_WIDTHS: Partial<
+  Record<(typeof CONTRACT_REVIEW_HEADERS)[number], number>
+> = {
+  // Dates.
+  "DATE OF CONTRACT": 150,
+  "DI DATE": 150,
+
+  // Short codes / identifiers.
+  "MC NO": 110,
+  "ic qty": 100,
+  "ITEM_CODE": 130,
+  "COST CODE REF": 130,
+  "JOB Code": 120,
+  "BOM ID": 130,
+  "RM CODE FOR GB": 130,
+  "PROD ORDER NO": 150,
+  "OFFER NUMBER": 140,
+  "INSPECTION NUMBER": 150,
+
+  // Plain numeric values: the value is short, the caption is not.
+  "CV": 100,
+  "VA %": 80,
+  "PHYSICAL STOCK": 130,
+  RATE: 90,
+  "ORDER QTY": 100,
+  "FREE STOCK": 110,
+  "FINAL REQ": 110,
+  "MC QTY": 110,
+  "DI QTY": 110,
+  "DI VAL": 110,
+  "RM AVAIL": 110,
+  "BAL DI VAL": 120,
+  "BAL MC VAL": 120,
+  VALUE: 95,
+  "Balance mc": 120,
+  "PROD ORD QTY": 120,
+  "BILLED QTY": 120,
+  "BAL DI QTY": 120,
+  "STATE": 110,
+  "UTILITY": 110,
+  "ITEM TYPE": 120,
+  "VA % FROM COST": 100,
+  "COST FROM QUOTATION": 150,
+  // Caption-driven: these columns are wide purely because the header is.
+  "BAL BILL AG CONT": 100,
+  "BAL BILL AG MC": 140,
+  "BAL PROD ORD VAL": 145,
+  "BALANCE TO PROD ORD": 150,
+  "BALANCE TO PROD ENT": 150,
+  "BAL BILL AG MC VAL": 155,
+  "BAL BILL AG CONT VAL": 160,
+  "BAL TO PROD ORD ENT VAL": 165,
+
+  // Status / medium free text.
+  STATUS: 140,
+  Inspection: 140,
+  "CLEARANCE STATUS": 130,
+  "OFFER PENDING/DONE": 150,
+  "MC Received/Pending": 160,
+  "ORDER LIST": 160,
+  "PAYMENT TERMS": 180,
+  "PROJECT REFERENCE": 200,
+  "Upload Drawing": 180,
+  Remarks: 220,
+
+  // Long free text.
+  "PARTY NAME": 240,
+  "ERP PARTY NAME FROM GMD SUPPLY HISTORY": 280,
+  "bom formula trial": 300,
+};
+
+/**
+ * Columns collapsed into a single parent column in the UI, mirroring the
+ * grouped columns on the Quotation Process page.
+ *
+ * A group always renders at the position of its first *visible* child in
+ * CONTRACT_REVIEW_HEADERS, so visual order follows the header array, not the
+ * order groups are listed here. Declared in visual order for readability:
+ *   Contract/PO (idx 0) -> Item Code/Type (idx 3) -> Item Names (idx 4)
+ *   -> Item/Size/PN/CostRef (idx 33) -> BOM ID (idx 37)
+ *   -> Physical Stock/RM Avail (idx 38) -> Actuator (idx 40)
+ *   -> LC/RTGS/Bank (idx 44)
+ *
+ * These are purely a display concern: the headers array, the row serializer and
+ * the header->DB field map are all untouched, so every *IDX constant and all
+ * inline edits keep working.
+ *
+ * Each child normally renders as a captioned, bordered box inside the collapsed
+ * cell; a child flagged `plain` renders as a bare wrapped line instead.
+ */
+export const CONTRACT_REVIEW_COLUMN_GROUPS = [
+  {
+    label: "Contract / PO NO",
+    width: 175,
+    children: [
+      { header: "CONTRACT NO", plain: true },
+      { header: "PO NO", plain: true },
+    ],
+  },
+  {
+    label: "Item Code / Item Type",
+    width: 185,
+    // Both render as bare stacked lines (no captioned boxes): the item code
+    // keeps its images/drawing icon buttons, the item type sits below it.
+    children: [
+      { header: "ITEM_CODE", plain: true },
+      { header: "ITEM TYPE", plain: true },
+    ],
+  },
+  {
+    label: "Item Names/Party Item Names",
+    width: 200,
+    // The parent caption already names both fields, so these two render as
+    // bare stacked lines instead of captioned boxes (see ColumnGroupChild.plain).
+    children: [{ header: "ITEM_NAME", plain: true }, { header: "PARTY ITEM NAME", plain: true }],
+  },
+  {
+    // Cost Code Ref is a child rather than a column of its own: the group
+    // collapses onto its first child ("Item"), so a non-first child renders
+    // inside the single collapsed cell. COST CODE REF must therefore stay in
+    // CONTRACT_REVIEW_HEADERS — GMDUpdateTable looks group children up with
+    // headers.includes(), so a header that is missing from the array makes its
+    // child render silently never.
+    //
+    // Four captioned boxes overflow the collapsed cell's 64px cap
+    // (GMDUpdateTable WRAPPED_CELL_BOX), so these now render as bare stacked lines
+    // instead of captioned boxes (see ColumnGroupChild.plain).
+    // The Item and PN Rating children are editable dropdowns, which render as-is.
+    label: "Item / Size / PN Rating / Cost Code Ref",
+    width: 185,
+    children: [
+      { header: "Item", plain: true },
+      { header: "SIZE", plain: true },
+      { header: "PN RATING", plain: true },
+      { header: "COST CODE REF", plain: true },
+    ],
+  },
+  {
+    label: "Physical Stock / RM Avail",
+    width: 160,
+    // Anchored at PHYSICAL STOCK; both render as bare stacked lines.
+    children: [
+      { header: "PHYSICAL STOCK", plain: true },
+      { header: "RM AVAIL", plain: true },
+    ],
+  },
+  {
+    label: "Actuator / RM Code for Actuator",
+    width: 185,
+    // Same as the Item Names group: the parent caption already names both
+    // fields, so these render as bare stacked lines. The Actuator child is an
+    // editable dropdown, which the plain line renders as-is.
+    children: [{ header: "Actuator", plain: true }, { header: "RM CODE FOR ACTUATOR", plain: true }],
+  },
+  {
+    label: "LC / RTGS / Issuing bank name",
+    width: 240,
+    children: [
+      { header: "LC/RTGS REF NO", plain: true },
+      { header: "LC DATE/RTGS DATE", plain: true },
+      { header: "LAST DATE OF SHIPMENT/DATE OF LC", plain: true },
+      { header: "Issuing bank name", plain: true },
+    ],
+  },
+];
+
+export const CONTRACTS_SHEET_COLUMNS = [
+  "CONTRACT NO",
+  "ITEM_CODE",
+  "MC NO",
+  "ITEM_NAME",
+  "PARTY ITEM NAME",
+  "RATE",
+  "CV",
+  "VA %",
+  "ORDER QTY",
+  "FREE STOCK",
+  "FINAL REQ",
+  "MC QTY",
+  "Balance mc",
+  "PROD ORD QTY",
+  "BALANCE TO PROD ORD",
+  "BALANCE TO PROD ENT",
+  "DI QTY",
+  "BILLED QTY",
+  "BAL BILL AG MC",
+  "BAL BILL AG CONT",
+  "Item",
+  "VALUE",
+  "SIZE",
+  "PN RATING",
+  "DATE OF CONTRACT",
+  "CLEARANCE STATUS",
+  "Actuator",
+  "RM CODE FOR ACTUATOR",
+  "RM CODE FOR GB",
+  "PAYMENT TERMS",
+  "LC/RTGS REF NO",
+  "LC DATE/RTGS DATE",
+  "LAST DATE OF SHIPMENT/DATE OF LC",
+  "Issuing bank name",
+  "bom formula trial",
+  "ERP PARTY NAME FROM GMD SUPPLY HISTORY",
+  "BOM NATURE",
+  "STATUS",
+] as const;
+
+export const DUMP_SHEET_COLUMNS = [
+  "JOB Code",
+  "BAL DI QTY",
+  "BAL MC VAL",
+  "BAL PROD ORD VAL",
+  "BAL TO PROD ORD ENT VAL",
+  "BAL BILL AG MC VAL",
+  "BAL BILL AG CONT VAL",
+  "BAL DI VAL",
+  "DI VAL",
+  "ic qty",
+  "BAL BILL AG MC",
+  "DI QTY",
+  "MC QTY",
+  "BILLED QTY",
+  "ORDER QTY",
+  "PARTY NAME",
+] as const;
+
+function normalizeHeader(h: string): string {
+  return h
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/\n/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+export function buildContractsColumnMap(sheetHeaders: string[]): number[] {
+  const normalized = sheetHeaders.map(normalizeHeader);
+  const map = CONTRACTS_SHEET_COLUMNS.map((col) => {
+    const target = normalizeHeader(col);
+    return normalized.lastIndexOf(target);
+  });
+  assertNoCollision(map, CONTRACTS_SHEET_COLUMNS);
+  return map;
+}
+
+export function buildDumpColumnMap(sheetHeaders: string[]): number[] {
+  const normalized = sheetHeaders.map(normalizeHeader);
+  const map = DUMP_SHEET_COLUMNS.map((col) => {
+    const target = normalizeHeader(col);
+    return normalized.findIndex((h) => h === target);
+  });
+  assertNoCollision(map, DUMP_SHEET_COLUMNS);
+  return map;
+}
+
+function assertNoCollision(
+  map: number[],
+  cols: readonly string[],
+): void {
+  const seen = new Map<number, string>();
+  for (let i = 0; i < map.length; i++) {
+    const idx = map[i];
+    if (idx < 0) continue;
+    const prev = seen.get(idx);
+    if (prev !== undefined) {
+      throw new Error(
+        `Column collision: "${prev}" and "${cols[i]}" both map to sheet index ${idx}. ` +
+          `Refusing to interchange data. Check sheet headers for exact/duplicate column names.`,
+      );
+    }
+    seen.set(idx, cols[i]);
+  }
+}
+
+export function mapContractReviewRow(
+  contractRow: unknown[],
+  dumpRow: unknown[] | null,
+  contractsColumnMap: number[],
+  dumpColumnMap: number[],
+) {
+  const getVal = (row: unknown[], sheetIdx: number): string | null => {
+    if (sheetIdx < 0) return null;
+    const v = row[sheetIdx];
+    return v != null && v !== "" ? String(v).trim() : null;
+  };
+
+  const field = (
+    canonicalIdx: number,
+  ): string | null => getVal(contractRow, contractsColumnMap[canonicalIdx]);
+
+  const itemTypeVal = field(36);
+
+  const dumpVal = (
+    name: (typeof DUMP_SHEET_COLUMNS)[number],
+  ): string | null => {
+    const idx = dumpColumnMap[DUMP_SHEET_COLUMNS.indexOf(name)];
+    return dumpRow ? getVal(dumpRow, idx) : null;
+  };
+
+  return {
+    contractNo: field(0) ?? "",
+    itemCode: field(1) ?? "",
+    mcNo: field(2),
+    itemName: field(3),
+    partyItemName: field(4),
+    rate: field(5),
+    cv: field(6),
+    vaPercent: field(7),
+    orderQty: field(8) ?? dumpVal("ORDER QTY"),
+    freeStock: field(9),
+    finalReq: field(10),
+    mcQty: field(11) ?? dumpVal("MC QTY"),
+    balanceMc: field(12),
+    prodOrdQty: field(13),
+    balanceToProdOrd: field(14),
+    balanceToProdEnt: field(15),
+    diQty: field(16) ?? dumpVal("DI QTY"),
+    billedQty: field(17) ?? dumpVal("BILLED QTY"),
+    balBillAgCont: field(19),
+    item: field(20),
+    value: field(21),
+    size: field(22),
+    pnRating: field(23),
+    dateOfContract: field(24),
+    clearanceStatus: field(25),
+    actuator: field(26),
+    rmCodeForActuator: field(27),
+    rmCodeForGb: field(28),
+    paymentTerms: field(29),
+    lcRtgsRefNo: field(30),
+    lcDateRtgsDate: field(31),
+    lastDateOfShipmentDateOfLc: field(32),
+    issuingBankName: field(33),
+    bomFormulaTrial: field(34),
+    erpPartyNameFromGmdSupplyHistory: field(35),
+    itemType: itemTypeVal,
+    jobCode: dumpRow ? getVal(dumpRow, dumpColumnMap[0]) : null,
+    balBillAgMc: dumpRow ? getVal(dumpRow, dumpColumnMap[10]) : null,
+    balDiQty: dumpRow ? getVal(dumpRow, dumpColumnMap[1]) : null,
+    balMcVal: dumpRow ? getVal(dumpRow, dumpColumnMap[2]) : null,
+    balProdOrdVal: dumpRow ? getVal(dumpRow, dumpColumnMap[3]) : null,
+    balToProdOrdEntVal: dumpRow ? getVal(dumpRow, dumpColumnMap[4]) : null,
+    balBillAgMcVal: dumpRow ? getVal(dumpRow, dumpColumnMap[5]) : null,
+    balBillAgContVal: dumpRow ? getVal(dumpRow, dumpColumnMap[6]) : null,
+    balDiVal: dumpRow ? getVal(dumpRow, dumpColumnMap[7]) : null,
+    diVal: dumpRow ? getVal(dumpRow, dumpColumnMap[8]) : null,
+    icQty: dumpRow ? getVal(dumpRow, dumpColumnMap[9]) : null,
+    partyNameDump: dumpRow
+      ? getVal(dumpRow, dumpColumnMap[DUMP_SHEET_COLUMNS.indexOf("PARTY NAME")])
+      : null,
+    status: field(37),
+  };
+}
+
+export function dbContractReviewToRow(item: {
+  contractNo: string | null;
+  itemCode: string | null;
+  costCodeRef: string | null;
+  mcNo: string | null;
+  itemName: string | null;
+  partyItemName: string | null;
+  rate: string | null;
+  cv: string | null;
+  vaPercent: string | null;
+  orderQty: string | null;
+  freeStock: string | null;
+  finalReq: string | null;
+  mcQty: string | null;
+  balanceMc: string | null;
+  prodOrdQty: string | null;
+  balanceToProdOrd: string | null;
+  balanceToProdEnt: string | null;
+  diQty: string | null;
+  billedQty: string | null;
+  balBillAgCont: string | null;
+  balDiQty: string | null;
+  balMcVal: string | null;
+  balProdOrdVal: string | null;
+  balToProdOrdEntVal: string | null;
+  balBillAgContVal: string | null;
+  balBillAgMcVal: string | null;
+  balDiVal: string | null;
+  diVal: string | null;
+  item: string | null;
+  value: string | null;
+  size: string | null;
+  pnRating: string | null;
+  rmPhysicalStock: string | null;
+  dateOfContract: string | null;
+  clearanceStatus: string | null;
+  actuator: string | null;
+  itemType: string | null;
+  rmCodeForActuator: string | null;
+  rmCodeForGb: string | null;
+  paymentTerms: string | null;
+  lcRtgsRefNo: string | null;
+  lcDateRtgsDate: string | null;
+  lastDateOfShipmentDateOfLc: string | null;
+  issuingBankName: string | null;
+  bomFormulaTrial: string | null;
+  erpPartyNameFromGmdSupplyHistory: string | null;
+  jobCode: string | null;
+  balBillAgMc: string | null;
+  icQty: string | null;
+  bomId: string | null;
+  noUse: string | null;
+  partyNameDump: string | null;
+  status: string | null;
+  mcReceivedPending: string | null;
+  inspection: string | null;
+  offerPendingDone: string | null;
+  remarks: string | null;
+  state: string | null;
+  utility: string | null;
+  projectReference: string | null;
+  offerNumber: string[] | null;
+  inspectionNumber: string[] | null;
+  diDate: string[] | null;
+  orderList: string[] | null;
+  poNo: string | null;
+  costfromQuotation: string | null;
+  vaPercentfromcost: string | null;
+  productionOrderNumber: string | null;
+  diagramUrl: string | null;
+  cBatch: string | null;
+  nBatch: string | null;
+}): unknown[] {
+  return [
+    item.contractNo,
+    item.dateOfContract,
+    item.partyNameDump,
+    item.itemCode, item.itemName, item.partyItemName,
+    item.mcNo, item.poNo,
+    item.rate,
+    item.value,
+    item.vaPercentfromcost,
+    item.costfromQuotation,
+    item.cv, item.vaPercent,
+    item.orderQty,
+    item.freeStock, item.finalReq, item.mcQty,
+    item.balanceMc,
+    item.prodOrdQty, item.balanceToProdOrd, item.balanceToProdEnt,
+    item.diQty, item.billedQty,
+    item.balBillAgCont,
+    item.balDiQty, item.balMcVal, item.balProdOrdVal,
+    item.balToProdOrdEntVal, item.balBillAgContVal, item.balBillAgMcVal,
+    item.balDiVal, item.diVal,
+    item.item, item.size, item.pnRating, item.costCodeRef,
+    item.bomId,
+    item.rmPhysicalStock,
+    item.clearanceStatus, item.actuator,
+    item.rmCodeForActuator, item.rmCodeForGb, item.paymentTerms,
+    item.lcRtgsRefNo, item.lcDateRtgsDate, item.lastDateOfShipmentDateOfLc,
+    item.issuingBankName, item.bomFormulaTrial,
+    item.itemType,
+    item.erpPartyNameFromGmdSupplyHistory,
+    item.jobCode, item.balBillAgMc, item.icQty,
+    item.noUse,
+    item.status,
+    item.mcReceivedPending,
+    item.inspection,
+    item.offerPendingDone,
+    item.remarks,
+    item.state,
+    item.utility,
+    item.projectReference,
+    (item.offerNumber ?? []).join(", "),
+    (item.inspectionNumber ?? []).join(", "),
+    (item.diDate ?? []).join(", "),
+    (item.orderList ?? []).join(", "),
+    item.productionOrderNumber,
+    item.diagramUrl,
+    item.cBatch,
+    item.nBatch,
+  ];
+}
+
+export const CONTRACT_REVIEW_HEADER_TO_DB_FIELD: Record<string, string> = {
+  "CONTRACT NO": "contractNo",
+  "PARTY NAME": "partyNameDump",
+  "MC NO": "mcNo",
+  "PO NO": "poNo",
+  "ITEM_CODE": "itemCode",
+  "ITEM_NAME": "itemName",
+  "PARTY ITEM NAME": "partyItemName",
+  "RATE": "rate",
+  "VA % FROM COST": "vaPercentfromcost",
+  "COST FROM QUOTATION": "costfromQuotation",
+  "CV": "cv",
+  "VA %": "vaPercent",
+  "ORDER QTY": "orderQty",
+  "FREE STOCK": "freeStock",
+  "FINAL REQ": "finalReq",
+  "MC QTY": "mcQty",
+  "Balance mc": "balanceMc",
+  "PROD ORD QTY": "prodOrdQty",
+  "BALANCE TO PROD ORD": "balanceToProdOrd",
+  "BALANCE TO PROD ENT": "balanceToProdEnt",
+  "DI QTY": "diQty",
+  "BILLED QTY": "billedQty",
+  "BAL BILL AG MC": "balBillAgMc",
+  "BAL BILL AG CONT": "balBillAgCont",
+  "Item": "item",
+  "VALUE": "value",
+  "SIZE": "size",
+  "PN RATING": "pnRating",
+  "DATE OF CONTRACT": "dateOfContract",
+  "CLEARANCE STATUS": "clearanceStatus",
+  "Actuator": "actuator",
+  "RM CODE FOR ACTUATOR": "rmCodeForActuator",
+  "RM CODE FOR GB": "rmCodeForGb",
+  "PAYMENT TERMS": "paymentTerms",
+  "LC/RTGS REF NO": "lcRtgsRefNo",
+  "LC DATE/RTGS DATE": "lcDateRtgsDate",
+  "LAST DATE OF SHIPMENT/DATE OF LC": "lastDateOfShipmentDateOfLc",
+  "Issuing bank name": "issuingBankName",
+  "bom formula trial": "bomFormulaTrial",
+  "ERP PARTY NAME FROM GMD SUPPLY HISTORY": "erpPartyNameFromGmdSupplyHistory",
+  "ITEM TYPE": "itemType",
+  "JOB Code": "jobCode",
+  "BAL DI QTY": "balDiQty",
+  "BAL MC VAL": "balMcVal",
+  "BAL PROD ORD VAL": "balProdOrdVal",
+  "BAL TO PROD ORD ENT VAL": "balToProdOrdEntVal",
+  "BAL BILL AG MC VAL": "balBillAgMcVal",
+  "BAL BILL AG CONT VAL": "balBillAgContVal",
+  "BAL DI VAL": "balDiVal",
+  "DI VAL": "diVal",
+  "ic qty": "icQty",
+  "BOM ID": "bomId",
+  "RM AVAIL": "noUse",
+  "STATUS": "status",
+  "MC Received/Pending": "mcReceivedPending",
+  "Inspection": "inspection",
+  "OFFER PENDING/DONE": "offerPendingDone",
+  "Remarks": "remarks",
+  "ORDER LIST": "orderList",
+  "PROD ORDER NO": "productionOrderNumber",
+  "Upload Drawing": "diagramUrl",
+};

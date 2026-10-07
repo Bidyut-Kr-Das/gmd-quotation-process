@@ -11,7 +11,7 @@ import {
   FLOW_NO_VALUE,
   FLOW_ZERO,
   FLOW_NON_ZERO,
-} from "@/lib/gmd_lib/flowFilter";
+} from "@gmd/dashboard/lib/flowFilter";
 
 export interface FlowFilter {
   /** Display header the filter targets, e.g. "STATUS". */

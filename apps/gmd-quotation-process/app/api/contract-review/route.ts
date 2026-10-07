@@ -1,10 +1,9 @@
 import { prisma as tenderPrisma } from "@gmd/db-tender";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import {
-  CONTRACT_REVIEW_HEADERS,
-  dbContractReviewToRow,
-} from "@/lib/gmd_lib/contract-review-columns";
+  loadContractReviewItems,
+  toContractReviewData,
+} from "@gmd/contract-review/server";
 import {
   getBatchDistinctBomIds,
   getBomRmAvailBatch,
@@ -18,9 +17,7 @@ export async function GET() {
   try {
     await recomputeVerifyBomValues();
 
-    const items = await tenderPrisma.contractReview.findMany({
-      orderBy: { syncedAt: "desc" },
-    });
+    const items = await loadContractReviewItems();
 
     const withBom = items.filter((i) => i.bomId);
     const bomIds = [
@@ -45,15 +42,6 @@ export async function GET() {
     for (const item of items) {
       if (item.bomId) item.noUse = availMap.get(item.id) ?? null;
     }
-
-    const lastSynced =
-      items.length > 0
-        ? items.reduce(
-            (latest: Date, item) =>
-              item.syncedAt > latest ? item.syncedAt : latest,
-            items[0].syncedAt,
-          )
-        : null;
 
     const codes = [
       ...new Set(items.map((i) => i.itemCode).filter(Boolean)),
@@ -87,22 +75,10 @@ export async function GET() {
       itemImages[item.itemCode] = matches;
     }
 
-    const rows = items.map(dbContractReviewToRow);
-
-    const diagramVerdicts: Record<string, string> = {};
-    for (const item of items) {
-      if (item.diagramVerdict) diagramVerdicts[item.id] = item.diagramVerdict;
-    }
-
     return NextResponse.json({
-      headers: CONTRACT_REVIEW_HEADERS,
-      rows,
-      ids: items.map((i) => i.id),
-      totalRows: rows.length,
-      syncedAt: lastSynced?.toISOString() ?? null,
+      ...toContractReviewData(items),
       bomIdOptions,
       itemImages,
-      diagramVerdicts,
     });
   } catch (error) {
     return NextResponse.json(
