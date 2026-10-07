@@ -80,6 +80,8 @@ export interface EnquiryData {
   offerPdfGeneratedBy?: string | null;
   emailAddress?: string | null;
   contactNo?: string | null;
+  duplicate?: string | null;
+  duplicateOfDocket?: string | null;
   attachments: AttachmentData[];
   items: EnquiryItemData[];
 }

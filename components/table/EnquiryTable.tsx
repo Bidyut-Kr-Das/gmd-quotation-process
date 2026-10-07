@@ -8,7 +8,7 @@ import Pagination from "./Pagination";
 import MultiSelectFilter, { BLANK, AVAILABLE } from "./MultiSelectFilter";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import DebouncedSearchInput from "./DebouncedSearchInput";
-import { selectAllEnquiries, selectAllItems, updateEnquiryField, updateItemField, addAttachments, fetchItemCodes, updateProductCost, update2to1Cost, updateAllBomCosts, fetchContractReviewRates, populatePdCostValidation, deleteEnquiryItems, bulkUpdateValidation, bulkUpdateApm, clearQuotedRates, selectBomId, syncAvailableStock } from "@/lib/enquiriesSlice";
+import { selectAllEnquiries, selectAllItems, updateEnquiryField, updateItemField, addAttachments, fetchItemCodes, updateProductCost, update2to1Cost, updateAllBomCosts, fetchContractReviewRates, populatePdCostValidation, deleteEnquiryItems, deleteEnquiry, bulkUpdateValidation, bulkUpdateApm, clearQuotedRates, selectBomId, syncAvailableStock } from "@/lib/enquiriesSlice";
 import { setFilter, resetFilters } from "@/lib/filtersSlice";
 import { matchesGlobalSearch, itemDeletedStatus, DELETED_STATUS_OPTIONS } from "@/lib/filterUtils";
 import { setPage, setPageSize, resetPage } from "@/lib/paginationSlice";
@@ -27,6 +27,7 @@ import { RM_TYPE_OPTIONS } from "@/lib/gmd_lib/sheet-columns";
 import { C_BATCH_VALUE } from "@/lib/gmd_lib/verify-bom-columns";
 import { N_BATCH_VALUE } from "@/lib/gmd_lib/contract-review-columns";
 import { correctItemType } from "@/lib/itemTypePatterns";
+import { isInternalEmail } from "@/lib/enquiryEmailParty";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -402,6 +403,8 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   const [pdCostValStatus, setPdCostValStatus] = useState<"idle" | "running">("idle");
   const [syncStockStatus, setSyncStockStatus] = useState<"idle" | "running">("idle");
   const [createDocketsStatus, setCreateDocketsStatus] = useState<"idle" | "running">("idle");
+  // Docket No header filter: show only pending dockets (auto-created, no items yet).
+  const [pendingOnly, setPendingOnly] = useState(false);
   // Bulk delete selection: per enquiry constraint, filtered scope, persisted across pagination
   const [selectedEnquiryId, setSelectedEnquiryId] = useState<string | null>(null);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
@@ -818,6 +821,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
 
   const handleResetAllFilters = () => {
     dispatch(resetFilters());
+    setPendingOnly(false);
     toast.success("All filters reset successfully.");
   };
 
@@ -1155,6 +1159,30 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
       toast.success(`Saved successfully.`, { id: toastId });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : err ? String(err) : `Failed to save.`, { id: toastId });
+    }
+  };
+
+  const [deletingEnquiryId, setDeletingEnquiryId] = useState<string | null>(null);
+  const handleDeleteDuplicate = async (enquiry: EnquiryData) => {
+    if (!enquiry.duplicateOfDocket) return;
+    if (
+      !confirm(
+        `Delete blank docket ${enquiry.docketNumber} as a duplicate of ${enquiry.duplicateOfDocket}? Its source mail will be re-linked to ${enquiry.duplicateOfDocket}.`,
+      )
+    )
+      return;
+    setDeletingEnquiryId(enquiry.id);
+    const toastId = toast.loading(`Deleting ${enquiry.docketNumber}...`);
+    try {
+      await dispatch(deleteEnquiry(enquiry.id)).unwrap();
+      toast.success(`Deleted ${enquiry.docketNumber}.`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to delete docket",
+        { id: toastId },
+      );
+    } finally {
+      setDeletingEnquiryId(null);
     }
   };
 
@@ -1667,12 +1695,14 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
 
     // Header-only "pending" dockets (no items) have nothing to match item
     // filters against. Keep them visible in the default view, but hide them once
-    // a filter is narrowing the list.
+    // a filter is narrowing the list. When the "Pending only" filter is on, empty
+    // dockets always pass and dockets with items are excluded below.
     if (!enquiry.items || enquiry.items.length === 0) {
-      if (hasActiveFilters) return false;
+      if (hasActiveFilters && !pendingOnly) return false;
     } else if (!matchesItems) {
       return false;
     }
+    if (pendingOnly && (enquiry.items?.length ?? 0) > 0) return false;
 
     // 25. Attachment
     if (filters.attachment) {
@@ -1684,7 +1714,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     }
 
     return true;
-  }), [enquiries, filters, filterProjectReference, globalSearch, getItemImage, hasActiveFilters]);
+  }), [enquiries, filters, filterProjectReference, globalSearch, getItemImage, hasActiveFilters, pendingOnly]);
 
   const getSortValue = useCallback((enquiry: EnquiryData, field: string): string | number | Date | null | undefined => {
     if (field === "contractNo") {
@@ -2320,7 +2350,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     }
   }
 
-  const TOTAL_COLUMNS = 40;
+  const TOTAL_COLUMNS = 41;
   const SELECT_COL_WIDTH = 44;
   const getColWidth = (idx: number) => columnWidths[idx] ?? DEFAULT_COLUMN_WIDTHS[idx] ?? 120;
   const totalTableWidth =
@@ -2532,6 +2562,18 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                 placeholder="Search..."
                 className={inputClass}
               />
+              <button
+                type="button"
+                onClick={() => setPendingOnly((v) => !v)}
+                className={`mt-1.5 w-full h-6 rounded border text-[9px] font-semibold transition-colors cursor-pointer ${
+                  pendingOnly
+                    ? "bg-amber-500 text-white border-amber-500"
+                    : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/25 dark:hover:bg-amber-500/20"
+                }`}
+                title="Show only pending dockets (auto-created, no items yet)"
+              >
+                {pendingOnly ? "Pending only ✓" : "Pending only"}
+              </button>
               <div
                 onMouseDown={(e) => handleMouseDown(1, e)}
                 className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-20 group"
@@ -3855,12 +3897,28 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
               </div>
             </th>
 
-            {/* 46. Actions */}
+            {/* 46. Duplicate */}
+            <th className="relative sticky top-0 z-30 bg-muted/90 py-2.5 px-3 text-[10px] font-bold tracking-wider text-muted-foreground uppercase border-r border-b border-border last:border-r-0">
+              <div className="flex items-center justify-between">
+                <span>Duplicate</span>
+              </div>
+              <div className="h-7 mt-1.5" />
+              <div
+                onMouseDown={(e) => handleMouseDown(39, e)}
+                className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-20 group"
+                style={{ marginRight: "-3px" }}
+              >
+                <div className="absolute top-0 left-[-4px] w-[14px] h-full" />
+                <div className="absolute right-[2px] top-0 w-[2px] h-full bg-transparent group-hover:bg-[#0f62fe] group-active:bg-[#0f62fe] dark:group-hover:bg-blue-500 dark:group-active:bg-blue-500 transition-colors" />
+              </div>
+            </th>
+
+            {/* 47. Actions */}
             <th className="relative sticky top-0 z-30 bg-muted/90 py-2.5 px-3 text-[10px] font-bold tracking-wider text-muted-foreground uppercase border-b border-border text-right">
               <div>Actions</div>
               <div className="h-7 mt-1.5" />
               <div
-                onMouseDown={(e) => handleMouseDown(39, e)}
+                onMouseDown={(e) => handleMouseDown(40, e)}
                 className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-20 group"
                 style={{ marginRight: "-3px" }}
               >
@@ -4255,6 +4313,14 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
 
                     {/* Email Address */}
                     <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
+                      {enquiry.emailAddress && isInternalEmail(enquiry.emailAddress) && (
+                        <span
+                          className="inline-block mb-0.5 px-1.5 py-0.5 text-[9px] font-semibold bg-slate-100 text-slate-600 rounded-full border border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/25"
+                          title="Internal (GMD / Laser) email address"
+                        >
+                          Internal
+                        </span>
+                      )}
                       <input
                         key={enquiry.id + "-emailAddress-" + (enquiry.emailAddress || "")}
                         type="text"
@@ -5033,6 +5099,63 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                       <OfferPdfCell enquiry={enquiry} />
                     </td>
 
+                    {/* Duplicate */}
+                    <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
+                      <div className="flex flex-col gap-1">
+                        <select
+                          value={enquiry.duplicate || ""}
+                          onChange={(e) => handleEnquiryFieldChange(enquiry.id, "duplicate", e.target.value)}
+                          className={cellSelectClass}
+                          title="Mark this docket as a duplicate"
+                        >
+                          <option value="">-</option>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                        </select>
+                        {enquiry.duplicate === "Yes" && (
+                          <>
+                            <select
+                              value={enquiry.duplicateOfDocket || ""}
+                              onChange={(e) =>
+                                handleEnquiryFieldChange(enquiry.id, "duplicateOfDocket", e.target.value)
+                              }
+                              className={cellSelectClass}
+                              title="Select the original docket this duplicates"
+                            >
+                              <option value="">- original -</option>
+                              {enquiries
+                                .filter((e) => e.id !== enquiry.id)
+                                .map((e) => (
+                                  <option key={e.id} value={e.docketNumber}>
+                                    {e.docketNumber}
+                                  </option>
+                                ))}
+                            </select>
+                            <button
+                              type="button"
+                              disabled={
+                                deletingEnquiryId === enquiry.id ||
+                                !enquiry.duplicateOfDocket ||
+                                (enquiry.items?.length ?? 0) > 0
+                              }
+                              onClick={() => handleDeleteDuplicate(enquiry)}
+                              className="inline-flex items-center justify-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:hover:bg-rose-500/20 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={
+                                (enquiry.items?.length ?? 0) > 0
+                                  ? "Cannot delete: this docket has items"
+                                  : !enquiry.duplicateOfDocket
+                                    ? "Select the original docket first"
+                                    : "Delete this blank duplicate docket"
+                              }
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              Delete duplicate
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+
                     {/* Actions */}
                     <td className="py-3.5 px-4 text-right border-b border-border">
                       {firstItem && (
@@ -5634,6 +5757,9 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                         <td className="py-3 px-4 border-r border-b border-border last:border-r-0"></td>
 
                       {/* Empty Offer PDF column */}
+                        <td className="py-3 px-4 border-r border-b border-border last:border-r-0"></td>
+
+                      {/* Empty Duplicate column (enquiry-based, only parent row has controls) */}
                         <td className="py-3 px-4 border-r border-b border-border last:border-r-0"></td>
 
                         {/* Actions on this item */}

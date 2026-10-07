@@ -8,6 +8,8 @@
 import {
   extractEmailsFromValue,
   isExternalEmail,
+  isInternalEmail,
+  isSpamOrBotEmail,
   PARTY_SENTINELS,
 } from "./enquiryEmailParty";
 
@@ -36,6 +38,26 @@ export function threadExternalEmails(thread: ThreadPartyFields): string[] {
     ...extractEmailsFromValue(thread.ccDetails),
   ].filter(isExternalEmail);
   return Array.from(new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean)));
+}
+
+/** Internal (GMD / Laser) addresses mentioned by a thread, de-duplicated. */
+export function threadInternalEmails(thread: ThreadPartyFields): string[] {
+  const emails = [
+    ...extractEmailsFromValue(thread.sender),
+    ...extractEmailsFromValue(thread.toDetails),
+    ...extractEmailsFromValue(thread.ccDetails),
+  ].filter((e) => isInternalEmail(e) && !isSpamOrBotEmail(e));
+  return Array.from(new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean)));
+}
+
+/**
+ * Emails to store on the new docket: the thread's external addresses, or its
+ * internal (GMD / Laser) ones when the mail is internal-only. Internal values
+ * are shown with an "Internal" tag in the quotation table.
+ */
+export function threadPreferredEmails(thread: ThreadPartyFields): string[] {
+  const external = threadExternalEmails(thread);
+  return external.length > 0 ? external : threadInternalEmails(thread);
 }
 
 /**
@@ -68,6 +90,22 @@ export function buildEmailPartyMap(input: {
   }
 
   return map;
+}
+
+export interface DuplicateGuardInput {
+  duplicate: string | null | undefined;
+  duplicateOfDocket: string | null | undefined;
+  itemCount: number;
+}
+
+/**
+ * A blank docket may be deleted only when it is flagged `duplicate = Yes`,
+ * linked to an original docket, and has no items of its own.
+ */
+export function isDeletableDuplicate(input: DuplicateGuardInput): boolean {
+  const dup = String(input.duplicate ?? "").trim().toUpperCase();
+  const target = String(input.duplicateOfDocket ?? "").trim();
+  return dup === "YES" && target !== "" && input.itemCount === 0;
 }
 
 /**

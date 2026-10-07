@@ -41,7 +41,8 @@ export const DEFAULT_COLUMN_WIDTHS: Record<number, number> = {
   36: 140, // Delivery Schedule
   37: 170, // APM
   38: 150, // Offer PDF
-  39: 80,  // Actions
+  39: 140, // Duplicate
+  40: 80,  // Actions
 };
 
 const initialState: UiState = {
