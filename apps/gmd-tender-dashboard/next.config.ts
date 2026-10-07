@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@gmd/db-tender"],
+  transpilePackages: ["@gmd/db-tender", "@gmd/ui", "@gmd/dashboard", "@gmd/contract-review"],
   serverExternalPackages: [
     "@prisma/client",
     "@prisma/adapter-pg",

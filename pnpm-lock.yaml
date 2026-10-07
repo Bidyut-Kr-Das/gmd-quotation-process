@@ -207,9 +207,18 @@ importers:
       '@base-ui/react':
         specifier: ^1.6.0
         version: 1.8.0(@date-fns/tz@1.5.0)(@types/react@19.3.0)(date-fns@4.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@gmd/contract-review':
+        specifier: workspace:*
+        version: link:../../packages/contract-review
+      '@gmd/dashboard':
+        specifier: workspace:*
+        version: link:../../packages/dashboard
       '@gmd/db-tender':
         specifier: workspace:*
         version: link:../../packages/db-tender
+      '@gmd/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@googleapis/drive':
         specifier: ^26.0.1
         version: 26.0.2
