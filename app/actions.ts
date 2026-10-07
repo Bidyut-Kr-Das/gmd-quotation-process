@@ -21,6 +21,7 @@ import { resolveImportedInhouse } from "@/lib/importInhouseMapping";
 import { makeImageKey } from "@/lib/imageKey";
 import { parseAndValidateProdOrderNumber } from "@/lib/contractValidation";
 import { matchPnRating } from "@/lib/pnRatingMatcher";
+import { withHardcodedL7Options } from "@/lib/gmd_lib/sheet-columns";
 import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
 // LEGACY — superseded by the hourly `docket-creation` scheduler job
 // (schedular_function/docket-creation.ts). The imports below were used only by
@@ -3338,7 +3339,7 @@ export async function getTradingValveOptionsAction() {
       );
     return {
       success: true,
-      data: {
+      data: withHardcodedL7Options({
         L1: collect(rows.map((r) => r.l1)),
         "L2-VALVE TYPE": collect(rows.map((r) => r.l2ValveType)),
         "L3-DIA": collect(rows.map((r) => r.l3Dia)),
@@ -3346,7 +3347,7 @@ export async function getTradingValveOptionsAction() {
         "L4-COMPONENT": collect(rows.map((r) => r.l4Component)),
         "L5- MATERIAL": collect(rows.map((r) => r.l5Material)),
         "L6-STD": collect(rows.map((r) => r.l6Std)),
-      },
+      }),
     };
   } catch (error: any) {
     console.error("Error fetching trading valve options:", error);

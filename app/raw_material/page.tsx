@@ -24,6 +24,7 @@ import {
   CANONICAL_COLUMNS,
   COL_INDEX_TO_DB_FIELD,
   resolveGMDUpdateField,
+  withHardcodedL7Options,
 } from "@/lib/gmd_lib/sheet-columns";
 import { C_BATCH_HEADER, C_BATCH_VALUE, cBatchBadges, cBatchFilter } from "@/lib/gmd_lib/verify-bom-columns";
 import {
@@ -332,26 +333,28 @@ export default function Home() {
   }, []);
 
   const enhancedCategoryOptions = useMemo(
-    () => ({
-      ...categoryOptions,
-      "INDIAN/IMPORTED": categoryOptions["INDIAN/IMPORTED"] || [
-        "Indian",
-        "Imported",
-      ],
-    }),
+    () =>
+      withHardcodedL7Options({
+        ...categoryOptions,
+        "INDIAN/IMPORTED": categoryOptions["INDIAN/IMPORTED"] || [
+          "Indian",
+          "Imported",
+        ],
+      }),
     [categoryOptions],
   );
 
   const transferredCategoryOptions = useMemo(
-    () => ({
-      ...enhancedCategoryOptions,
-      [CASCADE_ROOT_HEADER]: CASCADE_ROOT_VALUES,
-      ...Object.fromEntries(
-        CASCADE_LEVEL_HEADERS.filter(
-          (h) => (tradingValveOptions[h]?.length ?? 0) > 0,
-        ).map((h) => [h, tradingValveOptions[h]]),
-      ),
-    }),
+    () =>
+      withHardcodedL7Options({
+        ...enhancedCategoryOptions,
+        [CASCADE_ROOT_HEADER]: CASCADE_ROOT_VALUES,
+        ...Object.fromEntries(
+          CASCADE_LEVEL_HEADERS.filter(
+            (h) => (tradingValveOptions[h]?.length ?? 0) > 0,
+          ).map((h) => [h, tradingValveOptions[h]]),
+        ),
+      }),
     [enhancedCategoryOptions, tradingValveOptions],
   );
 

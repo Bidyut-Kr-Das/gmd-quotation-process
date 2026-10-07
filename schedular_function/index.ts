@@ -127,3 +127,10 @@ export {
   type RunDocketCreationOptions,
   type ScheduledDocketCreationResult,
 } from "./run-docket-creation";
+
+export {
+  runDocketFollowupSync,
+  detectDocketNumber,
+  extractAttachmentNamesText,
+  type DocketFollowupSyncResult,
+} from "./docket-followup-sync";

@@ -50,6 +50,8 @@
     "itemcode:refresh:apply": "tsx scripts/refresh-item-codes.ts --apply",
     "rmtype:common": "tsx scripts/backfill-rmtype-common.ts",
     "rmtype:common:apply": "tsx scripts/backfill-rmtype-common.ts --apply",
+    "docket:pending:backfill": "tsx scripts/backfill-docket-pending-party.ts",
+    "docket:pending:backfill:apply": "tsx scripts/backfill-docket-pending-party.ts --apply",
     "email:backfill": "tsx scripts/backfill-enquiry-email-addresses.ts",
     "email:backfill:apply": "tsx scripts/backfill-enquiry-email-addresses.ts --apply",
     "bom:fix-stale": "tsx scripts/fix-stale-bom-ids.ts",
