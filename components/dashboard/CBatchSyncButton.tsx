@@ -128,7 +128,7 @@ export default function CBatchSyncButton() {
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[520px] max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-130 max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Mark batch C from {plan?.tabTitle}?</DialogTitle>
             <DialogDescription>
