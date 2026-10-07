@@ -1271,4 +1271,12 @@ model ContractReview {
   syncedAt  DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Columns carried over from the quotation app ContractReview model.
+  costCodeRef     String?
+  rmPhysicalStock String?
+  // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
+  // never rendered as its own column.
+  cBatch          String?
+  nBatch          String?
 }
