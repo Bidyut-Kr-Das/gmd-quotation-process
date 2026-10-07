@@ -3,12 +3,12 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { ChevronUp, ChevronDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check, Highlighter } from "lucide-react";
 import GMDUpdateStatusBadge from "./GMDUpdateStatusBadge";
-import type { ContractReviewImage } from "@/lib/gmd_lib/contract-review-image-lookup";
+import type { ContractReviewImage } from "../lib/types";
 import {
   STATUS_COLUMNS,
   NUMERIC_COLUMNS,
   COL_INDEX_TO_DB_FIELD,
-} from "../../lib/gmd_lib/sheet-columns";
+} from "../lib/sheet-columns";
 import {
   FLOW_HAS_VALUE,
   FLOW_NO_VALUE,
@@ -16,17 +16,15 @@ import {
   FLOW_NON_ZERO,
   cellHasValue,
   cellIsZero,
-} from "../../lib/gmd_lib/flowFilter";
+} from "../lib/flowFilter";
 import {
   BOM_ID_COLUMN,
   BOM_ID_FILTER_VALUES,
   getBomIdCategory,
-} from "../../lib/gmd_lib/bomCategory";
-import { parseGmdDate } from "../../lib/gmd_lib/dateParse";
-import DebouncedSearchInput from "@/components/table/DebouncedSearchInput";
+} from "../lib/bomCategory";
+import { parseGmdDate } from "@gmd/ui/lib/dateParse";
+import DebouncedSearchInput from "./DebouncedSearchInput";
 import Pagination from "./Pagination";
-import { useAppDispatch } from "@/lib/hooks";
-import { updateGMDUpdateField, updateGMDUsdCost } from "@/lib/gmdUpdateSlice";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@gmd/ui/components/dialog";
 import { Button } from "@gmd/ui/components/button";
@@ -868,6 +866,10 @@ interface GMDUpdateTableProps {
   uniqueKeyColumns?: string[];
   fixedDropdownOptions?: Record<string, string[]>;
   onCellUpdate?: (id: string, colIndex: number, value: string) => Promise<void>;
+  /** Fallback save when onCellUpdate is not given: persist one DB field. */
+  onFieldUpdate?: (id: string, field: string, value: string | null) => Promise<unknown>;
+  /** Save handler for the "USD cost" column. */
+  onUsdCostUpdate?: (id: string, usdCost: string) => Promise<unknown>;
   onFilteredRowsChange?: (rows: unknown[][]) => void;
   usdInrRate?: number | null;
   onRefreshRate?: () => void;
@@ -1037,6 +1039,8 @@ export default function GMDUpdateTable({
   uniqueKeyColumns,
   fixedDropdownOptions,
   onCellUpdate,
+  onFieldUpdate,
+  onUsdCostUpdate,
   onFilteredRowsChange,
   usdInrRate,
   onRefreshRate,
@@ -1287,7 +1291,6 @@ castingRateInputs,
     });
     return out;
   }, [headers, hiddenSet, groupByChild]);
-  const dispatch = useAppDispatch();
   const [columnWidths, setColumnWidths] = useState<Record<number, number>>(
     () => {
       // A collapsed group seeds the width of the column it renders on, so a
@@ -1784,15 +1787,13 @@ castingRateInputs,
     }
 
     const field = fieldOverride?.[header] ?? COL_INDEX_TO_DB_FIELD[colIndex];
-    if (!field) return;
+    if (!field || !onFieldUpdate) return;
 
     const savedValue = value || null;
 
     const toastId = toast.loading(`Updating ${header}...`);
     try {
-      await dispatch(
-        updateGMDUpdateField({ id, field, value: savedValue }),
-      ).unwrap();
+      await onFieldUpdate(id, field, savedValue);
       toast.success(`${header} updated`, { id: toastId });
     } catch (err: any) {
       toast.error(err?.message || err || `Failed to update ${header}`, { id: toastId });
@@ -1806,10 +1807,10 @@ castingRateInputs,
   const handleUsdCostUpdate = async (rowIndex: number, value: string) => {
     const entry = paginatedWithIds[rowIndex];
     const id = entry?.id;
-    if (!id) return;
+    if (!id || !onUsdCostUpdate) return;
     const toastId = toast.loading("Converting USD cost...");
     try {
-      await dispatch(updateGMDUsdCost({ id, usdCost: value })).unwrap();
+      await onUsdCostUpdate(id, value);
       toast.success("USD cost converted to INR", { id: toastId });
     } catch (err: any) {
       toast.error(err?.message || err || "Failed to update USD cost", { id: toastId });

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import GMDUpdateHeader from "@/components/gmd_dashboard/GMDUpdateHeader";
-import GMDUpdateSkeleton from "@/components/gmd_dashboard/skeletons/GMDUpdateSkeleton";
-import ErrorState from "@/components/gmd_dashboard/ErrorState";
+import GMDUpdateHeader from "@gmd/dashboard/components/GMDUpdateHeader";
+import GMDUpdateSkeleton from "@gmd/dashboard/components/skeletons/GMDUpdateSkeleton";
+import ErrorState from "@gmd/dashboard/components/ErrorState";
 import UploadImageTable, { UploadImageComboRow } from "@/components/upload_image/UploadImageTable";
 import { Button } from "@gmd/ui/components/button";
 import { Input } from "@gmd/ui/components/input";

@@ -1,16 +1,17 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import GMDUpdateHeader from "../../components/gmd_dashboard/GMDUpdateHeader";
-import GMDUpdateTable from "../../components/gmd_dashboard/GMDUpdateTable";
-import ErrorState from "../../components/gmd_dashboard/ErrorState";
-import GMDUpdateSkeleton from "../../components/gmd_dashboard/skeletons/GMDUpdateSkeleton";
+import GMDUpdateHeader from "@gmd/dashboard/components/GMDUpdateHeader";
+import GMDUpdateTable from "@gmd/dashboard/components/GMDUpdateTable";
+import ErrorState from "@gmd/dashboard/components/ErrorState";
+import GMDUpdateSkeleton from "@gmd/dashboard/components/skeletons/GMDUpdateSkeleton";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import {
   hydrateGMDUpdate,
   upsertGMDUpdateItems,
   applyTransferCostMatch,
   updateGMDUpdateField,
+  updateGMDUsdCost,
   setNewItemStatusWithCostMerge,
   selectAllGMDUpdateRows,
   selectGMDUpdateBomId,
@@ -1405,6 +1406,7 @@ export default function Home() {
                     bomIdOptionsById={bomIdOptionsById}
                     onSelectBomId={handleSelectBomId}
                     usdInrRate={usdInrRate}
+                    onUsdCostUpdate={(id, usdCost) => dispatch(updateGMDUsdCost({ id, usdCost })).unwrap()}
                     onRefreshRate={refreshRate}
                     hiddenColumns={[
                       "BOM ID",
@@ -1441,6 +1443,7 @@ export default function Home() {
                     bomIdOptionsById={bomIdOptionsById}
                     onSelectBomId={handleSelectBomId}
                     usdInrRate={usdInrRate}
+                    onUsdCostUpdate={(id, usdCost) => dispatch(updateGMDUsdCost({ id, usdCost })).unwrap()}
                     onRefreshRate={refreshRate}
                     hiddenColumns={[
                       "Vendor Reference",
@@ -1477,6 +1480,7 @@ export default function Home() {
                     bomIdOptionsById={bomIdOptionsById}
                     onSelectBomId={handleSelectBomId}
                     usdInrRate={usdInrRate}
+                    onUsdCostUpdate={(id, usdCost) => dispatch(updateGMDUsdCost({ id, usdCost })).unwrap()}
                     onRefreshRate={refreshRate}
                     hiddenColumns={["BOM ID", C_BATCH_HEADER]}
                     cellBadges={cBatchBadges("ERP ITEM CODE")}

@@ -2,14 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { makeImageKey } from "@/lib/imageKey";
 import { normalizeContractKey } from "@/lib/gmd_lib/contract-review-enquiry-backfill";
 
-export interface ContractReviewImage {
-  imageKey: string;
-  url: string | null;
-  driveFileId: string | null;
-  itemType: string | null;
-  operationType: string | null;
-  rmType: string | null;
-}
+import type { ContractReviewImage } from "@gmd/dashboard/lib/types";
+export type { ContractReviewImage };
 
 export interface ContractReviewEnquiryImageRow {
   erpItemCode: string | null;

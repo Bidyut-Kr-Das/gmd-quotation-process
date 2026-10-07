@@ -104,7 +104,8 @@
     "xlsx": "^0.18.5",
     "zod": "^4.4.3",
     "@gmd/db-quotation": "workspace:*",
-    "@gmd/ui": "workspace:*"
+    "@gmd/ui": "workspace:*",
+    "@gmd/dashboard": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

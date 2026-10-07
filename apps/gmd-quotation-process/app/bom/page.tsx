@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Database, Loader2, Tags } from "lucide-react";
 import { RefreshCw } from "lucide-react";
-import GMDUpdateHeader from "../../components/gmd_dashboard/GMDUpdateHeader";
-import GMDUpdateTable from "../../components/gmd_dashboard/GMDUpdateTable";
-import ErrorState from "../../components/gmd_dashboard/ErrorState";
-import GMDUpdateSkeleton from "../../components/gmd_dashboard/skeletons/GMDUpdateSkeleton";
+import GMDUpdateHeader from "@gmd/dashboard/components/GMDUpdateHeader";
+import GMDUpdateTable from "@gmd/dashboard/components/GMDUpdateTable";
+import ErrorState from "@gmd/dashboard/components/ErrorState";
+import GMDUpdateSkeleton from "@gmd/dashboard/components/skeletons/GMDUpdateSkeleton";
 import { toast } from "sonner";
 import {
   updateVerifyBomFieldBatchAction,

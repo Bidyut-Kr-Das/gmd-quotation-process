@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import GMDUpdateHeader from "@/components/gmd_dashboard/GMDUpdateHeader";
-import GMDUpdateSkeleton from "@/components/gmd_dashboard/skeletons/GMDUpdateSkeleton";
+import GMDUpdateHeader from "@gmd/dashboard/components/GMDUpdateHeader";
+import GMDUpdateSkeleton from "@gmd/dashboard/components/skeletons/GMDUpdateSkeleton";
 import IndentListingTable from "@/components/indent_listing/IndentListingTable";
 import { recomputeIndentListingVersionsAction } from "@/app/actions";
 
