@@ -11,6 +11,7 @@ import {
   upsertGMDUpdateItems,
   applyTransferCostMatch,
   updateGMDUpdateField,
+  setNewItemStatusWithCostMerge,
   selectAllGMDUpdateRows,
   selectGMDUpdateBomId,
   uploadGMDUpdateAttachment,
@@ -76,9 +77,16 @@ interface SheetData {
   syncedAt: string | null;
   bomIdOptions?: Record<string, string[]>;
   transferredIds?: string[];
+  costMergedIds?: string[];
 }
 
 const NEW_STATUS_COL = "NEW ITEM STATUS";
+
+/** NEW ITEM STATUS values that place a row in the "New Items" table. */
+function isMoveToNewItemsStatus(value: string | null): boolean {
+  const v = (value ?? "").trim().toUpperCase();
+  return v === "" || v === "-" || v === "UPDATED";
+}
 
 // Stable descriptor list so GMDUpdateTable's row predicate keeps a stable dep.
 const RAW_MATERIAL_BATCH_FILTERS = [cBatchFilter()];
@@ -135,6 +143,7 @@ function rowToGMDUpdateItem(
   id: string,
   row: unknown[],
   cBatchIdx: number,
+  costMerged = false,
 ): GMDUpdateRow {
   return {
     id,
@@ -171,6 +180,7 @@ function rowToGMDUpdateItem(
     // cBatch is appended after dbItemToRow by the route, so its index is not
     // fixed here - it is resolved from the payload headers at the call site.
     cBatch: cBatchIdx >= 0 ? String(row[cBatchIdx] ?? "") : "",
+    costMerged,
   };
 }
 
@@ -208,6 +218,7 @@ function blankGMDUpdateRow(id: string, erpItemCode: string): GMDUpdateRow {
     attachmentUrl: null,
     itemNameDerived: null,
     cBatch: null,
+    costMerged: false,
   };
 }
 
@@ -444,8 +455,14 @@ export default function Home() {
         )
         .map(({ i }) => i);
       const cBatchIdx = (data.headers ?? []).indexOf(C_BATCH_HEADER);
+      const costMergedIdSet = new Set(data.costMergedIds ?? []);
       const items = validIndices.map((i) =>
-        rowToGMDUpdateItem(data.ids[i], data.rows[i], cBatchIdx),
+        rowToGMDUpdateItem(
+          data.ids[i],
+          data.rows[i],
+          cBatchIdx,
+          costMergedIdSet.has(data.ids[i]),
+        ),
       );
       dispatch(hydrateGMDUpdate(items));
     }
@@ -466,6 +483,7 @@ export default function Home() {
           (!item.newItemStatus ||
             item.newItemStatus === "-" ||
             item.newItemStatus === "Updated") &&
+          !item.costMerged &&
           !transferredSet.has(item.id),
       ),
     [allItems, transferredSet],
@@ -475,9 +493,10 @@ export default function Home() {
     () =>
       allItems.filter(
         (item) =>
-          item.newItemStatus &&
-          item.newItemStatus !== "-" &&
-          item.newItemStatus !== "Updated" &&
+          (item.costMerged ||
+            (item.newItemStatus &&
+              item.newItemStatus !== "-" &&
+              item.newItemStatus !== "Updated")) &&
           !transferredSet.has(item.id),
       ),
     [allItems, transferredSet],
@@ -719,6 +738,44 @@ export default function Home() {
       if (!header) return;
       const field = resolveGMDUpdateField(headers, colIndex);
       if (!field) return;
+
+      // Clearing NEW ITEM STATUS normally shifts the row up to New Items. If its
+      // ITEM NAME (proposed)-AUTO already exists there, transfer this row's cost
+      // to that New Item instead and keep this row in Filtered.
+      if (field === "newItemStatus" && isMoveToNewItemsStatus(value)) {
+        const src = allItems.find((it) => it.id === id);
+        const isFilteredRow =
+          !!src &&
+          !src.costMerged &&
+          !!src.newItemStatus &&
+          src.newItemStatus !== "-" &&
+          src.newItemStatus !== "Updated";
+        if (isFilteredRow) {
+          const toastId = toast.loading(`Updating ${header}...`);
+          try {
+            const data = await dispatch(
+              setNewItemStatusWithCostMerge({ id, value: value || null }),
+            ).unwrap();
+            if (data.merged) {
+              toast.success(
+                data.noCost
+                  ? "No cost to transfer — row kept in Filtered Items."
+                  : `Cost transferred to ${data.targetIds.length} New Item(s); row kept in Filtered Items.`,
+                { id: toastId },
+              );
+            } else {
+              toast.success(`${header} updated`, { id: toastId });
+            }
+          } catch (err) {
+            toast.error(
+              err instanceof Error ? err.message : `Failed to update ${header}`,
+              { id: toastId },
+            );
+          }
+          return;
+        }
+      }
+
       const toastId = toast.loading(`Updating ${header}...`);
       try {
         await dispatch(
@@ -731,7 +788,7 @@ export default function Home() {
         });
       }
     },
-    [headers, dispatch],
+    [headers, dispatch, allItems],
   );
 
   const handleTransferredCellUpdate = useCallback(

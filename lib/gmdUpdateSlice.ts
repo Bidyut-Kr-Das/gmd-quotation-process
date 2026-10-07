@@ -11,6 +11,7 @@ import {
   uploadGMDUpdateAttachmentAction,
   clearGMDUpdateAttachmentAction,
   deleteGMDUpdateTransferredAction,
+  setNewItemStatusWithCostMergeAction,
 } from "@/app/actions";
 
 export interface GMDUpdateRow {
@@ -51,6 +52,12 @@ export interface GMDUpdateRow {
    * the payload and must be re-appended by any page that rebuilds rows.
    */
   cBatch: string | null;
+  /**
+   * Hidden flag: the row's blank NEW ITEM STATUS was merged into an existing
+   * New Item (same ITEM NAME (proposed)-AUTO), so it must stay in Filtered
+   * rather than shift up. Never auto-cleared.
+   */
+  costMerged: boolean;
 }
 
 const adapter = createEntityAdapter<GMDUpdateRow>();
@@ -120,6 +127,17 @@ export const deleteGMDUpdateTransferredItem = createAsyncThunk(
     const result = await deleteGMDUpdateTransferredAction(id);
     if (!result.success) {
       throw new Error(result.error || "Failed to delete item.");
+    }
+    return result.data!;
+  },
+);
+
+export const setNewItemStatusWithCostMerge = createAsyncThunk(
+  "gmdUpdate/setNewItemStatusWithCostMerge",
+  async ({ id, value }: { id: string; value: string | null }) => {
+    const result = await setNewItemStatusWithCostMergeAction(id, value);
+    if (!result.success) {
+      throw new Error(result.error || "Failed to update status.");
     }
     return result.data!;
   },
@@ -203,6 +221,23 @@ const gmdUpdateSlice = createSlice({
     builder.addCase(deleteGMDUpdateTransferredItem.fulfilled, (state, action) => {
       const { id } = action.payload;
       adapter.removeOne(state, id);
+    });
+    builder.addCase(setNewItemStatusWithCostMerge.fulfilled, (state, action) => {
+      const { merged, sourceId, newItemStatus, targetIds, cost } =
+        action.payload;
+      if (merged) {
+        if (cost != null) {
+          for (const id of targetIds) {
+            adapter.updateOne(state, { id, changes: { cost } });
+          }
+        }
+        adapter.updateOne(state, {
+          id: sourceId,
+          changes: { newItemStatus, costMerged: true },
+        });
+      } else {
+        adapter.updateOne(state, { id: sourceId, changes: { newItemStatus } });
+      }
     });
   },
 });

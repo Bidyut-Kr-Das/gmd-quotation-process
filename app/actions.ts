@@ -3525,6 +3525,110 @@ export async function updateGMDUpdateFieldAction(
   };
 }
 
+/** NEW ITEM STATUS values that place a row in the "New Items" table. */
+const NEW_ITEM_STATUS_VALUES = new Set(["", "-", "UPDATED"]);
+
+function isNewItemsStatus(value: string | null): boolean {
+  return NEW_ITEM_STATUS_VALUES.has((value ?? "").trim().toUpperCase());
+}
+
+/**
+ * Sets NEW ITEM STATUS but, when the new value would move a row up into the
+ * "New Items" table and the row's ITEM NAME (proposed)-AUTO already exists on a
+ * New Item, it instead copies this row's cost onto that/those New Item(s) and
+ * flags this row `costMerged` so it stays in Filtered (blank status) rather
+ * than duplicating the New Item.
+ */
+export async function setNewItemStatusWithCostMergeAction(
+  id: string,
+  value: string | null,
+) {
+  "use server";
+  const stored = value == null || value.trim() === "" ? null : value;
+
+  const empty = {
+    merged: false,
+    noCost: false,
+    sourceId: id,
+    newItemStatus: stored,
+    targetIds: [] as string[],
+    cost: null as number | null,
+  };
+
+  // Any value that keeps the row in Filtered is a plain write.
+  if (!isNewItemsStatus(stored)) {
+    await prisma.rawMaterial.update({
+      where: { id },
+      data: { newItemStatus: stored },
+    });
+    return { success: true, data: empty };
+  }
+
+  const source = await prisma.rawMaterial.findUnique({
+    where: { id },
+    select: { itemNameAuto: true, cost: true },
+  });
+  if (!source) return { success: false, error: "Item not found." };
+
+  const name = (source.itemNameAuto ?? "").trim();
+  const targets = name
+    ? await prisma.rawMaterial.findMany({
+        where: {
+          id: { not: id },
+          transferred: false,
+          costMerged: false,
+          OR: [
+            { newItemStatus: null },
+            { newItemStatus: "" },
+            { newItemStatus: "-" },
+            { newItemStatus: "Updated" },
+          ],
+          itemNameAuto: { equals: name, mode: "insensitive" },
+        },
+        select: { id: true },
+      })
+    : [];
+
+  if (targets.length === 0) {
+    await prisma.rawMaterial.update({
+      where: { id },
+      data: { newItemStatus: stored },
+    });
+    return { success: true, data: empty };
+  }
+
+  const targetIds = targets.map((t) => t.id);
+  const sourceCost = source.cost == null ? null : Number(source.cost);
+  const hasCost = sourceCost != null && sourceCost !== 0;
+
+  await prisma.$transaction([
+    ...(hasCost
+      ? [
+          prisma.rawMaterial.updateMany({
+            where: { id: { in: targetIds } },
+            data: { cost: sourceCost },
+          }),
+        ]
+      : []),
+    prisma.rawMaterial.update({
+      where: { id },
+      data: { newItemStatus: stored, costMerged: true },
+    }),
+  ]);
+
+  return {
+    success: true,
+    data: {
+      merged: true,
+      noCost: !hasCost,
+      sourceId: id,
+      newItemStatus: stored,
+      targetIds,
+      cost: hasCost ? sourceCost : null,
+    },
+  };
+}
+
 export async function updateDerivedItemName(itemCode: string) {
   "use server";
   try {

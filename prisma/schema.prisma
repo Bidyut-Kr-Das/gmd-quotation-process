@@ -338,6 +338,11 @@ model RawMaterial {
   rmType            String?
   indianImported    String?
   transferred       Boolean  @default(false)
+  // Set when a Filtered row's NEW ITEM STATUS is cleared to blank/-/Updated and
+  // its ITEM NAME (proposed)-AUTO matches an existing New Item: the cost is
+  // copied onto that New Item and this flag keeps the source row in Filtered
+  // (blank status) instead of shifting it up. Never auto-cleared.
+  costMerged        Boolean  @default(false)
   vendorReference   String?
   attachmentUrl     String?
   orderDelivery     String?
