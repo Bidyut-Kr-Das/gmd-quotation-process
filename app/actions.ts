@@ -22,11 +22,14 @@ import { makeImageKey } from "@/lib/imageKey";
 import { parseAndValidateProdOrderNumber } from "@/lib/contractValidation";
 import { matchPnRating } from "@/lib/pnRatingMatcher";
 import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
-import { getFiscalPrefix, nextDocketSerials } from "@/lib/docketNumber";
-import { buildEmailPartyMap, resolvePartyForThread, threadPreferredEmails, isDeletableDuplicate } from "@/lib/pendingDocketMaterializer";
-import { parseThreadAttachments } from "@/lib/docketSnapshot";
-import { buildSnapshotAttachment } from "@/lib/docketSnapshotPdf";
-import { extractEmailsFromValue } from "@/lib/enquiryEmailParty";
+// LEGACY — superseded by the hourly `docket-creation` scheduler job
+// (schedular_function/docket-creation.ts). The imports below were used only by
+// the commented-out `createPendingDocketsAction`; restore them when re-enabling.
+// import { getFiscalPrefix, nextDocketSerials } from "@/lib/docketNumber";
+import { isDeletableDuplicate } from "@/lib/pendingDocketMaterializer";
+// import { parseThreadAttachments } from "@/lib/docketSnapshot";
+// import { buildSnapshotAttachment } from "@/lib/docketSnapshotPdf";
+// import { extractEmailsFromValue } from "@/lib/enquiryEmailParty";
 import {
   uploadToS3,
   deleteFromS3,
@@ -1039,171 +1042,180 @@ export async function syncEnquiryEmailAddressesAction() {
   }
 }
 
-export interface PendingDocketCreated {
-  docketNumber: string;
-  partyName: string;
-  threadId: string;
-  source: "email" | "partyName" | "subCategory" | "unknown";
-}
-
-/**
- * Materializes dockets for `DocketQuotationThread` rows flagged
- * `pendingDocket = true`. For each thread it creates a header-only `Enquiry`
- * (no items) with an auto-generated docket number, resolving the party name by
- * matching the thread's external emails against previous dockets (falling back
- * to the thread's `sub_category`, then "Unknown"), then stamps the thread with
- * the new docket number and clears `pendingDocket`.
- *
- * Manual trigger only. Idempotent: a stamped thread leaves the pending set.
- */
-export async function createPendingDocketsAction(options?: { dryRun?: boolean }) {
-  try {
-    const dryRun = options?.dryRun ?? false;
-
-    const pending = await prisma.docketQuotationThread.findMany({
-      where: { pendingDocket: true, docketNo: null },
-      orderBy: { date: "asc" },
-      select: {
-        id: true,
-        threadId: true,
-        subCategory: true,
-        partyName: true,
-        sender: true,
-        toDetails: true,
-        ccDetails: true,
-        date: true,
-        subject: true,
-        body: true,
-        bodyPreview: true,
-        attachNames: true,
-        attachLinks: true,
-      },
-    });
-
-    if (pending.length === 0) {
-      return { success: true as const, data: { created: 0, skipped: 0, dryRun, dockets: [] as PendingDocketCreated[] } };
-    }
-
-    const fiscalPrefix = getFiscalPrefix(new Date());
-    const [enquiries, assignedThreads, fiscalRows] = await Promise.all([
-      prisma.enquiry.findMany({ select: { emailAddress: true, partyName: true } }),
-      prisma.docketQuotationThread.findMany({
-        where: { docketNo: { not: null } },
-        select: { subCategory: true, partyName: true, sender: true, toDetails: true, ccDetails: true },
-      }),
-      prisma.enquiry.findMany({
-        where: { docketNumber: { startsWith: fiscalPrefix } },
-        select: { docketNumber: true },
-      }),
-    ]);
-
-    const emailPartyMap = buildEmailPartyMap({ enquiries, assignedThreads });
-    const docketNumbers = nextDocketSerials(
-      fiscalRows.map((r) => r.docketNumber),
-      pending.length,
-      new Date(),
-    );
-
-    const plan = pending.map((thread, index) => {
-      const resolved = resolvePartyForThread(thread, emailPartyMap);
-      return {
-        threadId: thread.threadId,
-        threadRowId: thread.id,
-        date: thread.date,
-        docketNumber: docketNumbers[index],
-        partyName: resolved.partyName,
-        source: resolved.source,
-        emailAddress: threadPreferredEmails(thread).join(", ") || null,
-        // Mail file attachments (linked as-is) + data for the snapshot PDF.
-        attachments: parseThreadAttachments(thread.attachNames, thread.attachLinks),
-        subject: thread.subject,
-        body: thread.body || thread.bodyPreview,
-        sender: thread.sender,
-        to: extractEmailsFromValue(thread.toDetails).join(", "),
-        cc: extractEmailsFromValue(thread.ccDetails).join(", "),
-      };
-    });
-
-    if (dryRun) {
-      return {
-        success: true as const,
-        data: {
-          created: plan.length,
-          skipped: 0,
-          dryRun,
-          dockets: plan.map((p) => ({
-            docketNumber: p.docketNumber,
-            partyName: p.partyName,
-            threadId: p.threadId,
-            source: p.source,
-          })) as PendingDocketCreated[],
-        },
-      };
-    }
-
-    const created: PendingDocketCreated[] = [];
-    for (const p of plan) {
-      try {
-        // Mail file attachments (linked as-is) + a generated snapshot PDF.
-        const attachmentRows: { name: string; url: string; type: string | null; size: number | null }[] =
-          p.attachments.map((a) => ({ name: a.name, url: a.url, type: a.type, size: null }));
-        try {
-          const snapshot = await buildSnapshotAttachment({
-            docketNumber: p.docketNumber,
-            partyName: p.partyName,
-            date: p.date ? p.date.toISOString() : null,
-            subject: p.subject,
-            sender: p.sender,
-            to: p.to,
-            cc: p.cc,
-            body: p.body,
-            attachments: p.attachments.map((a) => ({ name: a.name, url: a.url })),
-          });
-          attachmentRows.push({ name: snapshot.name, url: snapshot.url, type: snapshot.type, size: snapshot.size });
-        } catch (e) {
-          console.warn(`[createPendingDockets] snapshot failed for ${p.docketNumber}:`, e);
-        }
-
-        await prisma.$transaction([
-          prisma.enquiry.create({
-            data: {
-              docketNumber: p.docketNumber,
-              partyName: p.partyName,
-              enquiryDate: p.date ?? new Date(),
-              emailAddress: p.emailAddress,
-              attachments: { create: attachmentRows },
-            },
-          }),
-          prisma.docketQuotationThread.update({
-            where: { id: p.threadRowId },
-            data: { docketNo: p.docketNumber, pendingDocket: false },
-          }),
-        ]);
-        created.push({
-          docketNumber: p.docketNumber,
-          partyName: p.partyName,
-          threadId: p.threadId,
-          source: p.source,
-        });
-      } catch (e) {
-        console.error(`[createPendingDockets] failed for thread ${p.threadId}:`, e);
-      }
-    }
-
-    console.log(
-      `[createPendingDockets] pending=${pending.length} created=${created.length} skipped=${plan.length - created.length}`,
-    );
-
-    return {
-      success: true as const,
-      data: { created: created.length, skipped: plan.length - created.length, dryRun, dockets: created },
-    };
-  } catch (error: unknown) {
-    console.error("Error creating pending dockets:", error);
-    const message = error instanceof Error ? error.message : "Failed to create pending dockets.";
-    return { success: false as const, error: message };
-  }
-}
+// ============================================================================
+// LEGACY — superseded by the hourly `docket-creation` scheduler job.
+// Source of truth: schedular_function/docket-creation.ts (+ run-docket-creation.ts,
+// app/api/scheduler/docket-creation/route.ts). The manual "Create Pending
+// Dockets" buttons were removed from EnquiryTable and the docket-follow-up page.
+// Kept commented for reference. To re-enable, uncomment this block AND the
+// matching imports near the top of this file.
+// ============================================================================
+//
+// export interface PendingDocketCreated {
+//   docketNumber: string;
+//   partyName: string;
+//   threadId: string;
+//   source: "email" | "partyName" | "subCategory" | "unknown";
+// }
+//
+// /**
+//  * Materializes dockets for `DocketQuotationThread` rows flagged
+//  * `pendingDocket = true`. For each thread it creates a header-only `Enquiry`
+//  * (no items) with an auto-generated docket number, resolving the party name by
+//  * matching the thread's external emails against previous dockets (falling back
+//  * to the thread's `sub_category`, then "Unknown"), then stamps the thread with
+//  * the new docket number and clears `pendingDocket`.
+//  *
+//  * Manual trigger only. Idempotent: a stamped thread leaves the pending set.
+//  */
+// export async function createPendingDocketsAction(options?: { dryRun?: boolean }) {
+//   try {
+//     const dryRun = options?.dryRun ?? false;
+//
+//     const pending = await prisma.docketQuotationThread.findMany({
+//       where: { pendingDocket: true, docketNo: null },
+//       orderBy: { date: "asc" },
+//       select: {
+//         id: true,
+//         threadId: true,
+//         subCategory: true,
+//         partyName: true,
+//         sender: true,
+//         toDetails: true,
+//         ccDetails: true,
+//         date: true,
+//         subject: true,
+//         body: true,
+//         bodyPreview: true,
+//         attachNames: true,
+//         attachLinks: true,
+//       },
+//     });
+//
+//     if (pending.length === 0) {
+//       return { success: true as const, data: { created: 0, skipped: 0, dryRun, dockets: [] as PendingDocketCreated[] } };
+//     }
+//
+//     const fiscalPrefix = getFiscalPrefix(new Date());
+//     const [enquiries, assignedThreads, fiscalRows] = await Promise.all([
+//       prisma.enquiry.findMany({ select: { emailAddress: true, partyName: true } }),
+//       prisma.docketQuotationThread.findMany({
+//         where: { docketNo: { not: null } },
+//         select: { subCategory: true, partyName: true, sender: true, toDetails: true, ccDetails: true },
+//       }),
+//       prisma.enquiry.findMany({
+//         where: { docketNumber: { startsWith: fiscalPrefix } },
+//         select: { docketNumber: true },
+//       }),
+//     ]);
+//
+//     const emailPartyMap = buildEmailPartyMap({ enquiries, assignedThreads });
+//     const docketNumbers = nextDocketSerials(
+//       fiscalRows.map((r) => r.docketNumber),
+//       pending.length,
+//       new Date(),
+//     );
+//
+//     const plan = pending.map((thread, index) => {
+//       const resolved = resolvePartyForThread(thread, emailPartyMap);
+//       return {
+//         threadId: thread.threadId,
+//         threadRowId: thread.id,
+//         date: thread.date,
+//         docketNumber: docketNumbers[index],
+//         partyName: resolved.partyName,
+//         source: resolved.source,
+//         emailAddress: threadPreferredEmails(thread).join(", ") || null,
+//         // Mail file attachments (linked as-is) + data for the snapshot PDF.
+//         attachments: parseThreadAttachments(thread.attachNames, thread.attachLinks),
+//         subject: thread.subject,
+//         body: thread.body || thread.bodyPreview,
+//         sender: thread.sender,
+//         to: extractEmailsFromValue(thread.toDetails).join(", "),
+//         cc: extractEmailsFromValue(thread.ccDetails).join(", "),
+//       };
+//     });
+//
+//     if (dryRun) {
+//       return {
+//         success: true as const,
+//         data: {
+//           created: plan.length,
+//           skipped: 0,
+//           dryRun,
+//           dockets: plan.map((p) => ({
+//             docketNumber: p.docketNumber,
+//             partyName: p.partyName,
+//             threadId: p.threadId,
+//             source: p.source,
+//           })) as PendingDocketCreated[],
+//         },
+//       };
+//     }
+//
+//     const created: PendingDocketCreated[] = [];
+//     for (const p of plan) {
+//       try {
+//         // Mail file attachments (linked as-is) + a generated snapshot PDF.
+//         const attachmentRows: { name: string; url: string; type: string | null; size: number | null }[] =
+//           p.attachments.map((a) => ({ name: a.name, url: a.url, type: a.type, size: null }));
+//         try {
+//           const snapshot = await buildSnapshotAttachment({
+//             docketNumber: p.docketNumber,
+//             partyName: p.partyName,
+//             date: p.date ? p.date.toISOString() : null,
+//             subject: p.subject,
+//             sender: p.sender,
+//             to: p.to,
+//             cc: p.cc,
+//             body: p.body,
+//             attachments: p.attachments.map((a) => ({ name: a.name, url: a.url })),
+//           });
+//           attachmentRows.push({ name: snapshot.name, url: snapshot.url, type: snapshot.type, size: snapshot.size });
+//         } catch (e) {
+//           console.warn(`[createPendingDockets] snapshot failed for ${p.docketNumber}:`, e);
+//         }
+//
+//         await prisma.$transaction([
+//           prisma.enquiry.create({
+//             data: {
+//               docketNumber: p.docketNumber,
+//               partyName: p.partyName,
+//               enquiryDate: p.date ?? new Date(),
+//               emailAddress: p.emailAddress,
+//               attachments: { create: attachmentRows },
+//             },
+//           }),
+//           prisma.docketQuotationThread.update({
+//             where: { id: p.threadRowId },
+//             data: { docketNo: p.docketNumber, pendingDocket: false },
+//           }),
+//         ]);
+//         created.push({
+//           docketNumber: p.docketNumber,
+//           partyName: p.partyName,
+//           threadId: p.threadId,
+//           source: p.source,
+//         });
+//       } catch (e) {
+//         console.error(`[createPendingDockets] failed for thread ${p.threadId}:`, e);
+//       }
+//     }
+//
+//     console.log(
+//       `[createPendingDockets] pending=${pending.length} created=${created.length} skipped=${plan.length - created.length}`,
+//     );
+//
+//     return {
+//       success: true as const,
+//       data: { created: created.length, skipped: plan.length - created.length, dryRun, dockets: created },
+//     };
+//   } catch (error: unknown) {
+//     console.error("Error creating pending dockets:", error);
+//     const message = error instanceof Error ? error.message : "Failed to create pending dockets.";
+//     return { success: false as const, error: message };
+//   }
+// }
 
 /**
  * Back-calculates and populates BOM ID from a selected rmType on an EnquiryItem.
