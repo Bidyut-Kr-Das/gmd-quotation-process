@@ -4,12 +4,12 @@
 // - Every BOM belongs to exactly one full item (bomId is unique per full item).
 // - A few full items get no BOMs at all.
 // Run: npx tsx scripts/seed-bom-tree.ts   (skips existing rows, safe to re-run)
-import { PrismaClient } from "../app/generated/prisma";
+import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import "dotenv/config";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ connectionString: process.env.QUOTATION_DATABASE_URL });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 const TYPES = ["BUTTERFLY VALVE", "GATE VALVE", "CHECK VALVE", "AIR VALVE", "BALL VALVE"];

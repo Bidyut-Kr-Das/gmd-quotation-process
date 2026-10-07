@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { sheets as googleSheets } from "@googleapis/sheets";
-import { PrismaClient } from "../app/generated/prisma";
+import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { getOAuthClient } from "../lib/googleAuth";
@@ -14,7 +14,7 @@ const TAB_TITLE = "CONTRACTS";
 const HEADER_ROW = 4;
 const ROWS_PER_GRID_REQUEST = 5000;
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ connectionString: process.env.QUOTATION_DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 

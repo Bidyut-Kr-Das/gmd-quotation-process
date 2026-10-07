@@ -1,4 +1,4 @@
-import { PrismaClient } from "../app/generated/prisma";
+import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import "dotenv/config";
@@ -8,7 +8,7 @@ import { ALLOWED_OPERATION_TYPES } from "../lib/operationTypePatterns";
 import { ALLOWED_EXTENSIONS } from "../lib/extensionPatterns";
 import { ALLOWED_BYPASSES } from "../lib/bypassPatterns";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ connectionString: process.env.QUOTATION_DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 

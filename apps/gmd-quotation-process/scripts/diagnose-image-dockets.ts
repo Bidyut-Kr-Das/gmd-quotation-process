@@ -1,7 +1,7 @@
-import { PrismaClient } from '../app/generated/prisma/index.js';
+import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from '@prisma/adapter-pg';
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg({ connectionString: process.env.QUOTATION_DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {

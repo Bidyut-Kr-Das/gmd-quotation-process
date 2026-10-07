@@ -6,7 +6,7 @@ import {
   sanitizeAttachmentFileName,
   uploadToS3,
 } from "@/lib/s3";
-import type { Prisma } from "@/app/generated/prisma";
+import type { Prisma } from "@gmd/db-quotation";
 
 const CONTRACT_REVIEW_FILTER_COLUMNS = [
   "contractNo",

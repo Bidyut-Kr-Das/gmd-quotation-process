@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "../../generated/prisma/client";
+import { Prisma } from "@gmd/db-quotation";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";

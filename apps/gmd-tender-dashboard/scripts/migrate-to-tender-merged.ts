@@ -10,7 +10,7 @@
  * NO delete operations - all original data is preserved
  */
 import { prisma } from "../lib/prisma";
-import { TenderType } from "../generated/prisma/client";
+import { TenderType } from "@gmd/db-tender";
 
 interface TenderMapping {
   originalId: number;

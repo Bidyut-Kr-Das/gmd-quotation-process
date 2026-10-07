@@ -28,7 +28,7 @@ import { searchTendersByParty } from "@/actions/searchTendersByParty";
 import type { ReverseAuctionWebhookData } from "@/lib/integrations/n8n";
 import { filtersSlice } from "./filtersSlice";
 import { uploadFiles } from "./uploadSlice";
-import type { TenderMergedMinAggregateOutputType } from "@/generated/prisma/models/TenderMerged";
+import type { TenderMergedMinAggregateOutputType } from "@gmd/db-tender/models/TenderMerged";
 
 type StringifyFields<T> = { [K in keyof T]: string };
 

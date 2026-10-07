@@ -9,7 +9,7 @@
  * - tenderPrepareBy → fuzzy match against Association table → TenderAssociation
  */
 import { prisma } from "../lib/prisma";
-import { Decision, TenderType } from "../generated/prisma/client";
+import { Decision, TenderType } from "@gmd/db-tender";
 
 function deriveTenderType(typeOfTender: string): TenderType {
   const upper = typeOfTender.toUpperCase();

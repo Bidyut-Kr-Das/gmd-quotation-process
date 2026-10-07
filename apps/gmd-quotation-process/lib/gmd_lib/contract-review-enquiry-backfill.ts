@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@/app/generated/prisma";
+import type { PrismaClient } from "@gmd/db-quotation";
 
 export function normalizeContractKey(value: string | null | undefined): string {
   return (value ?? "").trim().replace(/\s+/g, " ").toUpperCase();

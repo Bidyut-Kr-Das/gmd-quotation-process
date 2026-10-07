@@ -1,10 +1,10 @@
-import { PrismaClient } from "../generated/prisma/client";
+import { PrismaClient } from "@gmd/db-tender";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { syncMasterWebsites } from "../lib/google-sheets";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient({
-  adapter: new PrismaPg(process.env.DATABASE_URL!),
+  adapter: new PrismaPg(process.env.TENDER_DATABASE_URL!),
 });
 
 async function main() {

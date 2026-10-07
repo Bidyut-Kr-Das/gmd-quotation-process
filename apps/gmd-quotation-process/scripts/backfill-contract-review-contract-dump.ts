@@ -25,7 +25,7 @@ import "dotenv/config";
 import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "../lib/googleAuth";
 import { prisma } from "../lib/prisma";
-import type { Prisma } from "../app/generated/prisma";
+import type { Prisma } from "@gmd/db-quotation";
 import {
   CONTRACT_REVIEW_HEADERS,
   CONTRACT_REVIEW_HEADER_TO_DB_FIELD,

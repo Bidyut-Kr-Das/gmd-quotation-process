@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import type { ItemsModel } from "@/generated/prisma/models/Items";
+import type { ItemsModel } from "@gmd/db-tender/models/Items";
 import { getItems } from "@/actions/items";
 
 export type ItemRow = ItemsModel & Record<string, unknown>;

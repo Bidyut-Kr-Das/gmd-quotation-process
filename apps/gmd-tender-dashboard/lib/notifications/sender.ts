@@ -1,5 +1,5 @@
 import "server-only";
-import type { TenderMergedModel } from "@/generated/prisma/models/TenderMerged";
+import type { TenderMergedModel } from "@gmd/db-tender/models/TenderMerged";
 import { NOTIFICATION_TYPES } from "@/lib/notification-types";
 import type { NotificationType } from "@/lib/notification-types";
 import type { NotificationMessageData } from "@/lib/notifications/messages";

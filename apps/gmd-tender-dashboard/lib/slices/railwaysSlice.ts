@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import type { RailwaysModel } from "@/generated/prisma/models/Railways";
+import type { RailwaysModel } from "@gmd/db-tender/models/Railways";
 import {
   getRailways,
   updateRailwaysErpCode as updateRailwaysErpCodeAction,

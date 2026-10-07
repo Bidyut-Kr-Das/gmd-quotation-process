@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@gmd/db-tender";
 import type { ColumnFilterState } from "@/lib/types";
 import type {
   AnalyticsFilter,

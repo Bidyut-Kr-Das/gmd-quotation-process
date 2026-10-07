@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { PrismaClient } from "../app/generated/prisma";
+import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "../lib/googleAuth";
@@ -28,7 +28,7 @@ const SALE_BILL_HEADERS = [
 ] as const;
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.QUOTATION_DATABASE_URL,
 });
 const prisma = new PrismaClient({ adapter });
 

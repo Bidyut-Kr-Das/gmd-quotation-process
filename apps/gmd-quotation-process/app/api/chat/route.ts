@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@/app/generated/prisma";
+import type { Prisma } from "@gmd/db-quotation";
 import { buildChatTools } from "@/lib/chat/tools";
 import { openai } from "@ai-sdk/openai";
 import {

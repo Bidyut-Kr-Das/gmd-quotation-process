@@ -66,7 +66,7 @@ async function main() {
   const dataRows = rows.slice(1);
   console.log(`[bis-import] Data rows: ${dataRows.length}`);
 
-  const conn = process.env.DATABASE_URL || "postgresql://postgres:postgres@192.168.1.190:5432/gmd-quotation";
+  const conn = process.env.QUOTATION_DATABASE_URL || "postgresql://postgres:postgres@192.168.1.190:5432/gmd-quotation";
   const client = new pg.Client({ connectionString: conn });
   await client.connect();
   console.log("[bis-import] Connected via pg");

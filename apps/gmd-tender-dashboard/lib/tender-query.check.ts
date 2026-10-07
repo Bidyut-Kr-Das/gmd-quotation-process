@@ -7,7 +7,7 @@
  * SQL text and the bound parameters it produces.
  */
 import assert from "node:assert/strict";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@gmd/db-tender";
 import {
   buildOrderBySql,
   buildWhereSql,

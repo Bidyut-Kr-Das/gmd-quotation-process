@@ -1,9 +1,9 @@
 import "dotenv/config";
-import { PrismaClient } from "../app/generated/prisma";
+import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  adapter: new PrismaPg({ connectionString: process.env.QUOTATION_DATABASE_URL }),
 });
 
 // Default every blank EnquiryItem.rmType to "COMMON". The column default added by

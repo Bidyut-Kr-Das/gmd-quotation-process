@@ -27,7 +27,7 @@
  */
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { Prisma } from "../generated/prisma/client";
+import { Prisma } from "@gmd/db-tender";
 import { prisma } from "../lib/prisma";
 
 const APPLY = process.argv.includes("--apply");

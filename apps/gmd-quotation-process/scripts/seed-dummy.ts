@@ -1,12 +1,12 @@
 // Dev-only: fills every table with a few dummy rows for UI checks.
 // Run: npx tsx scripts/seed-dummy.ts   (upserts/skipDuplicates, safe to re-run)
-import { PrismaClient } from "../app/generated/prisma";
+import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import bcrypt from "bcrypt";
 import "dotenv/config";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ connectionString: process.env.QUOTATION_DATABASE_URL });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 const N = 5;

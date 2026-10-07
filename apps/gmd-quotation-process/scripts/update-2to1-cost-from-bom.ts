@@ -1,11 +1,11 @@
 import "dotenv/config";
-import { PrismaClient } from "../app/generated/prisma";
+import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { fetch2to1BomRows, buildRawMaterialsCostMap, BOM_TYPE_2TO1 } from "../lib/gmd2to1CostLookup";
 import { recalculateItem } from "../lib/costCalculator";
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.QUOTATION_DATABASE_URL,
 });
 const prisma = new PrismaClient({ adapter });
 

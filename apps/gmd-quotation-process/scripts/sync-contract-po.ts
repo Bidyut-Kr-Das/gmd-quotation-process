@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { sheets as googleSheets } from "@googleapis/sheets";
-import { PrismaClient } from "../app/generated/prisma";
+import { PrismaClient } from "@gmd/db-quotation";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { getOAuthClient } from "../lib/googleAuth";
@@ -8,7 +8,7 @@ import { getOAuthClient } from "../lib/googleAuth";
 const SPREADSHEET_ID = "1sf-uCfCSAUovNAWJSiSyojTPFvUSzmp23keF0ymkjIE";
 const TAB_TITLE = "CONTRACTS copy";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ connectionString: process.env.QUOTATION_DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
