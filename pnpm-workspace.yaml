@@ -1,0 +1,14 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - prisma
+  - bcrypt
+  - esbuild
+  - puppeteer
+  - sharp
+  - tesseract.js
+  - unrs-resolver

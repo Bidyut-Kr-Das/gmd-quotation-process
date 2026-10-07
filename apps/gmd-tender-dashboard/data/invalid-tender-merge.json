@@ -1,0 +1,22 @@
+[
+  {
+    "docketNo": "ENQ-19377-25-26",
+    "action": "SKIPPED",
+    "skipReason": "different referenceNo — log only, not merged (winning ref: \"TENDER REFERENCE NUMBER\tTS 1704 AAA RABBIT AND DOG CONDUCTOR TENDER ID\t2026_PKVVC_499972_1\")"
+  },
+  {
+    "docketNo": "ENQ-20595-25-26",
+    "action": "SKIPPED",
+    "skipReason": "different referenceNo — log only, not merged (winning ref: \"CPC-31/2026-27 / LOT-III\")"
+  },
+  {
+    "docketNo": "ENQ-16670-25-26",
+    "action": "SKIPPED",
+    "skipReason": "different referenceNo — log only, not merged (winning ref: \"T-118\")"
+  },
+  {
+    "docketNo": "19521",
+    "action": "SKIPPED",
+    "skipReason": "different referenceNo — log only, not merged (winning ref: \"-GEM/2026/B/7511033\")"
+  }
+]

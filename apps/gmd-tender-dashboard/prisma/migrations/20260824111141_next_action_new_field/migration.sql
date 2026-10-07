@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "NextAction" ADD VALUE 'BID_VALIDITY_NOT_ACCEPTED';

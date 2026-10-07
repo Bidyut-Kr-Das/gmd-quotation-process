@@ -1,0 +1,1274 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TenderUpdateStatus {
+  OPEN
+  CLOSED
+}
+
+enum NextAction {
+  UPDATE_FROM_AB_LETTER
+  BG_REFUND_LETTER_TO_BE_SENT
+  FOLLOW_UP_FOR_FINANCIAL_STATUS
+  REVERSE_AUCTION_PENDING
+  COUNTER_OFFER_YES
+  COUNTER_OFFER_NO
+  BID_VALIDITY_NOT_ACCEPTED
+}
+
+enum TenderType {
+  GEM
+  NON_GEM
+}
+
+enum EmdType {
+  CASH
+  BG
+}
+
+enum PriceType {
+  FIRM
+  VARIABLE
+}
+
+enum StatusCategory {
+  AOC
+  FINANCIAL
+  TECHNICAL
+}
+
+enum TypeTestLab {
+  CPRI
+  ERDA
+  NABL
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String?
+  email        String        @unique
+  passwordHash String?
+  role         String        @default("user")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  activityLogs ActivityLog[]
+
+  @@map("users")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  userName    String?
+  userEmail   String?
+  referenceNo String?
+  action      String // "CREATE" | "UPDATE" | "DELETE"
+  tableName   String // e.g. "Tender", "GemTender", "ColumnMapping"
+  recordId    String? // ID of the affected record
+  details     String? // JSON — what changed / description
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model Tender {
+  id           String   @id @default(uuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  slNo         Int
+  docketNo     String
+  tenderFor    String
+  typeOfTender String
+
+  tenderNoNitNo            String             @unique @map("Tender No / NIT No with Date")
+  nameOfWorkDescription    String?            @map("Name of Work / Item Description")
+  totalQuantityMeter       Float?             @map("Total Quantity in Meter")
+  nameOfTheClient          String             @map("Name of the Client")
+  lastDateOfSubmission     DateTime?          @map("Last Date of Submission")
+  tenderOpeningDate        DateTime?          @map("Tender Opening Date")
+  costOfTenderFeeRs        Float?             @map("Cost of Tender / Tender Fee (In Rs)")
+  emdAmountRs              Float?             @map("EMD Amount (In Rs)")
+  estimatedCostRs          Float?             @map("Estimated Cost (In Rs)")
+  bidValidityDays          Int?               @map("Bid Validity (in Days)")
+  contractPeriodDays       Int?               @map("Contract Period in Days")
+  managementDecision       String             @map("Management Decision")
+  participated             Boolean            @map("Participated")
+  tenderPrepareBy          String             @map("Tender Prepare By")
+  currentStatus            String             @map("Current Status")
+  tenderSubmittedDate      DateTime?          @map("Tender Submitted Date")
+  reverseAuctionApplicable Boolean?           @map("Reverse Auction Applicable")
+  reverseAuctionDate       DateTime?          @map("Reverse Auction Date")
+  emdPaymentMode           String?            @map("EMD Payment Through BG / NEFT")
+  bgNoUtrNo                String?            @map("BG No / UTR No")
+  emdValidity              DateTime?          @map("EMD Validity")
+  loiPoNoAndDate           String?            @map("LOI / PO No & Date")
+  remarks                  String?            @map("Remarks")
+  bidValidityExpired       Boolean            @map("Bid Validity Expired")
+  diffPercentFromL1        Float?             @map("Diff % from L1")
+  diffPercentFromL2        Float?             @map("Diff % from L2")
+  reason                   String?            @map("Reason")
+  finalRemarks             String?            @map("Final Remarks")
+  attachmentUrl            String?            @map("attachmentUrl")
+  tenderUpdateStatus       TenderUpdateStatus @default(OPEN)
+  nextAction               NextAction?
+  diffL1ManuallyEdited     Boolean            @default(false)
+  diffL2ManuallyEdited     Boolean            @default(false)
+
+  cva          String?
+  quotationNo  String?
+  rawMaterials String?
+}
+
+model SmartsheetTender {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  enquiryDate     String?
+  partyName       String?
+  docketNumber    String? @unique
+  utility         String?
+  quotationNumber String?
+  quotationDate   String?
+  accountHolder   String?
+  tenderPurchase  String?
+
+  attachmentUrl                 String?
+  proposedErpItemName           String?
+  proposedQty                   String?
+  priceBasis                    String?
+  aluminiumPrice                Float?
+  aluminiumAlloyPrice           Float?
+  copperTapePrice               Float?
+  extrudedSemiconductivePrice   Float?
+  htXlpePrice                   Float?
+  pvcTypeSt2Price               Float?
+  galvanisedSteelFlatStripPrice Float?
+  fillerPrice                   Float?
+
+  lastSyncedAt DateTime @default(now())
+}
+
+model SupplyHistory {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fy             String?
+  saleBillNumber String?
+  saleBillDate   String?
+  partyName      String?
+  itemCode       String?
+  itemSchedule   String?
+  itemName       String?
+  lrNo           String?
+  truckNo        String?
+  partyRefNo     String?
+  partyRefDate   String?
+  contractVrNo   String?
+  quotationNo    String?
+  utility        String?
+  docketNo       String?
+  rate           Float?
+  invoiceQty     Float?
+  invoiceAmt     Float?
+
+  documentUrls  String?
+  attachmentUrl String?
+  email         String?
+  contactNo     String?
+  certificateUrl String?
+  certificateFileName String? 
+  certificateSentDate DateTime?
+
+  lastSyncedAt DateTime @default(now())
+
+  @@unique([saleBillNumber, itemCode])
+}
+
+enum Decision {
+  YES
+  NO
+  NOT_DECIDED
+
+  @@map("decision")
+}
+
+// ---------- FILES ----------
+model File {
+  id         Int     @id @default(autoincrement())
+  fileName   String
+  filePath   String?
+  fileType   String?
+  fileSize   Int?
+  uploadedBy String?
+  status     String?
+
+  totalCount    Int? @default(0)
+  excludedCount Int? @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  gemTenders       GemTender[]
+  nonGemTenders    NonGemTender[]
+  tenderMergedList TenderMerged[]
+
+  @@map("files")
+}
+
+// ---------- GEM TENDER ----------
+model GemTender {
+  id Int @id @default(autoincrement())
+
+  fileId Int
+  file   File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  referenceNo String  @unique
+  tenderBrief String?
+
+  value              String?
+  deadline           DateTime?
+  location           String?
+  organization       String?
+  documentFees       String?
+  emd                String?
+  msmeExemption      String?
+  startupExemption   String?
+  quantity           String?
+  bidOpeningDateTime String?
+  bidOfferValidity   String?
+
+  ministryStateName String?
+  departmentName    String?
+  officeName        String?
+
+  size String?
+
+  minimumAverageAnnualTurnover String?
+  yearsOfPastExperience        String?
+  oemAverageTurnover           String?
+  contractPeriod               String?
+
+  financialDocumentPriceBreakupRequired String?
+  similarCategory                       String?
+  pastExperienceSimilarServicesRequired String?
+
+  documentRequiredFromSeller String?
+  pastPerformance            String?
+  bidToRaEnabled             String?
+  raQualificationRule        String?
+
+  boqTitle   String?
+  bidDetails String?
+
+  comprehensiveMaintenanceChargesRequired String?
+  typeOfBid                               String?
+
+  technicalClarificationTimeAllowed String?
+  inspectionRequired                String?
+
+  estimatedBidValue String?
+  evaluationMethod  String?
+  advisoryBank      String?
+
+  ePbgPercentage     String?
+  ePbgDurationMonths String?
+
+  msePurchasePreference String?
+  miiPurchasePreference String?
+
+  consigneesReportingOfficer String?
+  mediationClause            String?
+  arbitrationClause          String?
+
+  checklist String?
+
+  t247Id       String?
+  scrapedDate  String?
+  source       String?
+  assignedTo   String?
+  markedStatus String?
+  sheetStatus  String?
+  ready        String?
+  searchKey    String?
+  downloadLink String?
+  currency     String?
+
+  excludedCategory String?
+
+  aiRelevanceValid  Boolean?
+  aiRelevanceReason String?
+
+  tenderFileUrl String?
+
+  parseStatus String? @map("parse_status")
+  parseError  String? @map("parse_error")
+
+  resultAutomationStatus String? @map("result_automation_status")
+  resultAutomationError  String? @map("result_automation_error")
+
+  itemCategory  String?
+  totalQuantity String?
+
+  bidStatus              String?
+  differenceBetweenRank1 String?
+  nameOfRank1            String?
+  valueOfRank1           String?
+
+  differenceBetweenRank2 String?
+  nameOfRank2            String?
+  valueOfRank2           String?
+
+  evaluationTableData String?
+
+  docketNo      String?
+  attachmentUrl String?
+  remarks       String?
+
+  app Decision @default(NOT_DECIDED)
+  aps Decision @default(NOT_DECIDED)
+  apm Decision @default(NOT_DECIDED)
+
+  tenderStatusId Int?
+  tenderStatus   TenderStatusTable? @relation("GemTenderStatus", fields: [tenderStatusId], references: [id], onDelete: SetNull)
+  state          String?
+  website        String?
+  locationCount  Int?
+
+  utilityMappingId Int?
+  utilityMapping   UtilityMapping? @relation(fields: [utilityMappingId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  extraFields        TenderExtraField[]
+  tenderAssociations TenderAssociation[]
+  reportings         Reporting[]
+  evaluations        Evaluation[]
+
+  @@index([fileId])
+  @@index([utilityMappingId])
+  @@map("gem_tenders")
+}
+
+// ---------- NON GEM ----------
+model NonGemTender {
+  id Int @id @default(autoincrement())
+
+  fileId Int
+  file   File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  referenceNo String  @unique
+  tenderBrief String?
+
+  estimatedBidValue String?
+  deadline          DateTime?
+  location          String?
+  organization      String?
+
+  documentFees String?
+  emd          String?
+
+  msmeExemption    String?
+  startupExemption String?
+
+  quantity String?
+
+  checklist String?
+
+  t247Id       String?
+  scrapedDate  String?
+  source       String?
+  assignedTo   String?
+  markedStatus String?
+  sheetStatus  String?
+  ready        String?
+  searchKey    String?
+  downloadLink String?
+  currency     String?
+
+  excludedCategory String?
+
+  aiRelevanceValid  Boolean?
+  aiRelevanceReason String?
+
+  tenderFileUrl String?
+
+  docketNo      String?
+  attachmentUrl String?
+  remarks       String?
+
+  app Decision @default(NOT_DECIDED)
+  aps Decision @default(NOT_DECIDED)
+  apm Decision @default(NOT_DECIDED)
+
+  tenderStatusId Int?
+  tenderStatus   TenderStatusTable? @relation("NonGemTenderStatus", fields: [tenderStatusId], references: [id], onDelete: SetNull)
+  state          String?
+  website        String?
+  locationCount  Int?
+
+  utilityMappingId Int?
+  utilityMapping   UtilityMapping? @relation(fields: [utilityMappingId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  extraFields        TenderExtraField[]
+  tenderAssociations TenderAssociation[]
+
+  @@index([fileId])
+  @@index([utilityMappingId])
+  @@map("non_gem_tenders")
+}
+
+model TenderExtraField {
+  id Int @id @default(autoincrement())
+
+  gemTenderId Int?
+  gemTender   GemTender? @relation(fields: [gemTenderId], references: [id], onDelete: Cascade)
+
+  nonGemTenderId Int?
+  nonGemTender   NonGemTender? @relation(fields: [nonGemTenderId], references: [id], onDelete: Cascade)
+
+  tenderMergedId Int?
+  tenderMerged   TenderMerged? @relation(fields: [tenderMergedId], references: [id], onDelete: Cascade)
+
+  fieldName  String
+  fieldValue String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([gemTenderId])
+  @@index([nonGemTenderId])
+  @@index([tenderMergedId])
+  @@map("tender_extra_fields")
+}
+
+model ColumnMapping {
+  id          Int      @id @default(autoincrement())
+  excelHeader String
+  dbField     String
+  displayName String?
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([excelHeader, dbField])
+  @@index([dbField])
+  @@map("column_mappings")
+}
+
+model ColumnGroup {
+  id        Int      @id @default(autoincrement())
+  label     String
+  separator String   @default(" @ ")
+  fields    String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("column_groups")
+}
+
+// ---------- COLUMN INDEX ----------
+model ColumnIndex {
+  id           Int      @id @default(autoincrement())
+  columnName   String
+  displayOrder Int
+  displayName  String?
+  visible      Boolean  @default(true)
+  width        Int?
+  frozen       Boolean  @default(false)
+  status       String   @default("active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([columnName])
+  @@map("column_indices")
+}
+
+model ExlusionKeywords {
+  id Int @id @default(autoincrement())
+
+  category String  @unique
+  keywords String? @default("cable")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- ASSOCIATION ----------
+model Association {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenderAssociations TenderAssociation[]
+
+  @@map("associations")
+}
+
+model TenderAssociation {
+  id Int @id @default(autoincrement())
+
+  gemTenderId Int?
+  gemTender   GemTender? @relation(fields: [gemTenderId], references: [id], onDelete: Cascade)
+
+  nonGemTenderId Int?
+  nonGemTender   NonGemTender? @relation(fields: [nonGemTenderId], references: [id], onDelete: Cascade)
+
+  tenderMergedId Int?
+  tenderMerged   TenderMerged? @relation(fields: [tenderMergedId], references: [id], onDelete: Cascade)
+
+  associationId Int
+  association   Association @relation(fields: [associationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gemTenderId, associationId])
+  @@unique([nonGemTenderId, associationId])
+  @@unique([tenderMergedId, associationId])
+  @@index([gemTenderId])
+  @@index([nonGemTenderId])
+  @@index([tenderMergedId])
+  @@index([associationId])
+  @@map("tender_associations")
+}
+
+// ---------- REPORTING ----------
+model Reporting {
+  id          Int        @id @default(autoincrement())
+  gemTenderId Int?
+  gemTender   GemTender? @relation(fields: [gemTenderId], references: [id], onDelete: Cascade)
+
+  tenderMergedId Int?
+  tenderMerged   TenderMerged? @relation(fields: [tenderMergedId], references: [id], onDelete: Cascade)
+
+  officer  String
+  address  String?
+  quantity String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([gemTenderId])
+  @@index([tenderMergedId])
+  @@map("reportings")
+}
+
+// ---------- TENDER STATUS TABLE ----------
+model TenderStatusTable {
+  id              Int      @id @default(autoincrement())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  state           String?
+  website         String?
+  type            String   @default("GEM")
+  userId          String?
+  password        String?
+  mobileNo        String?
+  profilePassword String?
+  dscName         String?
+  dscPassword     String?
+
+  gemTenders       GemTender[]    @relation("GemTenderStatus")
+  nonGemTenders    NonGemTender[] @relation("NonGemTenderStatus")
+  tenderMergedList TenderMerged[]
+
+  @@map("tender_status_table")
+}
+
+// ---------- EVALUATION ----------
+model Evaluation {
+  id          Int        @id @default(autoincrement())
+  gemTenderId Int?
+  gemTender   GemTender? @relation(fields: [gemTenderId], references: [id], onDelete: Cascade)
+
+  tenderMergedId Int?
+  tenderMerged   TenderMerged? @relation(fields: [tenderMergedId], references: [id], onDelete: Cascade)
+
+  sellerName  String
+  offeredItem String?
+  totalPrice  String?
+  rank        String?
+  status      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([gemTenderId])
+  @@index([tenderMergedId])
+  @@map("evaluations")
+}
+
+// ---------- AI FEEDBACK ----------
+model AiFeedback {
+  id             String   @id @default(uuid())
+  tenderId       Int
+  tenderType     String
+  briefText      String
+  originalAi     String
+  correctedAi    String
+  feedbackReason String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([tenderId, tenderType])
+  @@map("ai_feedback")
+}
+
+// ---------- UTILITY MAPPING ----------
+model UtilityMapping {
+  id           Int      @id @default(autoincrement())
+  organization String
+  website      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  gemTenders       GemTender[]
+  nonGemTenders    NonGemTender[]
+  tenderMergedList TenderMerged[]
+
+  @@map("utility_mappings")
+}
+
+model CostingSheetDetails {
+  id Int @id @default(autoincrement())
+
+  itemCode            String
+  itemSchedule        String?
+  proposedErpItemName String?
+  proposedErpQuantity String?
+  priceOfFullQuantity String?
+  cva                 String?
+  location            String?
+  bomType             String?
+  bomCode             String?
+
+  tenderMergedId Int?
+  TenderMerged   TenderMerged? @relation(fields: [tenderMergedId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- TENDER FILES ----------
+model TenderFile {
+  id        Int      @id @default(autoincrement())
+  name      String
+  extension String
+  url       String
+  source    String
+  tags      String[] @default([])
+
+  tenderMergedId Int?
+  tenderMerged   TenderMerged? @relation(fields: [tenderMergedId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenderMergedId])
+  @@map("tender_files")
+}
+
+model SupplyDoc {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  saleBillNumber String
+  fileName       String
+  extension      String
+  filePath       String // raw absolute network path, encrypted at response time
+  fileSize       Int?
+  lastModified   DateTime?
+
+  @@index([saleBillNumber])
+  @@map("supply_docs")
+}
+
+model Items {
+  id           Int      @id @default(autoincrement())
+  itemcode     String   @unique
+  itemName     String
+  itemSchedule String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ---------- TENDER MERGED ----------
+model TenderMerged {
+  id         Int        @id @default(autoincrement())
+  tenderType TenderType
+  originalId Int?
+
+  referenceNo       String          @unique
+  tenderBrief       String?
+  deadline          DateTime?
+  location          String?
+  organization      String?
+  documentFees      String?
+  emd               String?
+  msmeExemption     String?
+  startupExemption  String?
+  quantity          String?
+  checklist         String?
+  t247Id            String?
+  scrapedDate       String?
+  source            String?
+  assignedTo        String?
+  markedStatus      String?
+  sheetStatus       String?
+  ready             String?
+  searchKey         String?
+  downloadLink      String?
+  currency          String?
+  excludedCategory  String?
+  aiRelevanceValid  Boolean?
+  aiRelevanceReason String?
+  tenderFileUrl     String?
+  docketNo          String?
+  attachmentUrl     String?
+  remarks           String?
+  app               Decision        @default(NOT_DECIDED)
+  aps               Decision        @default(NOT_DECIDED)
+  apm               Decision        @default(NOT_DECIDED)
+  catalogueDone     Decision        @default(NOT_DECIDED)
+  state             String?
+  statusCategory    StatusCategory?
+  website           String?
+  locationCount     Int?
+  size              String?
+
+  slNo               Int?
+  tenderFor          String?
+  tenderOpeningDate  DateTime?
+  bidValidityDays    Int?
+  contractPeriodDays Int?
+  participated       Boolean?
+  currentStatus      String?   @default("NOT EVALUATED")
+
+  reverseAuctionApplicable       Boolean?
+  reverseAuctionDate             DateTime?
+  reverseAuctionStartDate        DateTime?
+  reverseAuctionEndDate          DateTime?
+  reverseAuctionAutomationStatus String?
+  expectedRaDate                 String?
+
+  emdPaymentMode       String?
+  bgNoUtrNo            String?
+  bgDate               String?
+  bgExpiryDate         String?
+  claimDate            String?
+  bgStatus             String?
+  emdValidity          DateTime?
+  loiPoNoAndDate       String?
+  bidValidityExpired   Boolean?
+  price                PriceType?
+  diffPercentFromL1    Float?
+  diffPercentFromL2    Float?
+  reason               String?
+  reasonForNotAPM      String?
+  finalRemarks         String?
+  tenderUpdateStatus   TenderUpdateStatus?
+  nextAction           NextAction?
+  diffL1ManuallyEdited Boolean?
+  diffL2ManuallyEdited Boolean?
+  cva                  String?
+  quotationNo          String?
+  rawMaterials         String?
+
+  value                                   String?
+  bidOpeningDateTime                      String?
+  bidOfferValidity                        String?
+  ministryStateName                       String?
+  departmentName                          String?
+  officeName                              String?
+  minimumAverageAnnualTurnover            String?
+  yearsOfPastExperience                   String?
+  oemAverageTurnover                      String?
+  contractPeriod                          String?
+  financialDocumentPriceBreakupRequired   String?
+  similarCategory                         String?
+  pastExperienceSimilarServicesRequired   String?
+  documentRequiredFromSeller              String?
+  pastPerformance                         String?
+  bidToRaEnabled                          String?
+  raQualificationRule                     String?
+  boqTitle                                String?
+  boqSummary                              String?
+  bidDetails                              String?
+  comprehensiveMaintenanceChargesRequired String?
+  typeOfBid                               String?
+  technicalClarificationTimeAllowed       String?
+  inspectionRequired                      String?
+  inspectionAgency                        String?
+  estimatedBidValue                       String?
+  evaluationMethod                        String?
+  advisoryBank                            String?
+  ePbgPercentage                          String?
+  ePbgDurationMonths                      String?
+  msePurchasePreference                   String?
+  miiPurchasePreference                   String?
+  consigneesReportingOfficer              String?
+  mediationClause                         String?
+  arbitrationClause                       String?
+  itemCategory                            String?
+  totalQuantity                           String?
+  bidStatus                               String?
+
+  differenceBetweenRank1 String?
+  nameOfRank1            String?
+  valueOfRank1           String?
+  differenceBetweenRank2 String?
+  nameOfRank2            String?
+  valueOfRank2           String?
+  evaluationTableData    String?
+  parseStatus            String?
+  parseError             String?
+  resultAutomationStatus String?
+  resultAutomationError  String?
+  notificationStatus     String?
+  beneficiaryBankDetails String?
+  issuingBank            String?
+
+  ourRank  String?
+  ourValue String?
+
+  proposedErpItemName String?
+  proposedErpQuantity String?
+  erpPartyName        String?
+  contractNo          String?
+  typetest String?
+
+  competitors     String?
+  agentReport     String?
+  
+  applicableIndex String?
+  publishedDate   DateTime?
+
+  baseDate     DateTime?
+  buyerDetails String?
+  divisionOrDepartment String?
+
+  fileId Int
+  file   File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  tenderStatusId Int?
+  tenderStatus   TenderStatusTable? @relation(fields: [tenderStatusId], references: [id], onDelete: SetNull)
+
+  utilityMappingId Int?
+  utilityMapping   UtilityMapping? @relation(fields: [utilityMappingId], references: [id])
+
+  extraFields         TenderExtraField[]
+  tenderAssociations  TenderAssociation[]
+  reportings          Reporting[]
+  evaluations         Evaluation[]
+  tenderFiles         TenderFile[]
+  CostingSheetDetails CostingSheetDetails[]
+  emdMergeds          EmdMerged[]         @relation("EmdMergedToTenderMerged")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fileId])
+  @@index([tenderStatusId])
+  @@index([utilityMappingId])
+  @@map("tender_merged")
+}
+
+model EmdDetailsBG {
+  id                 String    @id @db.VarChar(100)
+  trantype           String?
+  bankName           String?
+  partyCode          String?
+  partyName          String?
+  staffName          String?
+  bgNo               String?
+  bgDate             String?
+  bgAmtLocal         String?
+  bgAmtFc            String?
+  expiryDate         String?
+  claimDate          String?
+  remark             String?
+  status             String?
+  remarks            String?
+  contactNo          String?
+  contactEmailId     String?
+  address            String?
+  tenderNo1          String?
+  tenderNo           String?
+  tenderNo2          String?
+  match              String?
+  bgMatch            String?
+  statusPriceAssDone String?
+  tmNo               String?
+  docketNo           String?
+  lastEmailSent      String?
+  emailDraft         String?   @db.Text
+  lastEmailSentAt    DateTime?
+  reason             String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmdDetailsCash {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customerName                     String?
+  issueDt                          DateTime?
+  emdAmt                           String?
+  permanent                        String?
+  tenderNo                         String?
+  chDdNo                           String?
+  acHolder                         String?
+  statusAsPerSujibDaAndOther       String?
+  canBeRefunded                    String?
+  tmNo                             String?
+  rank                             String?
+  poIssueStatus                    String?
+  aocAwardOfContractStatus         String?
+  refundableOrNot                  String?
+  statusRefundedPending            String?
+  expectedRefundDateOrRefundedDate DateTime?
+  statusOfTender                   String?
+  conditionsForRefund              String?
+  remarks                          String?
+  certificateByParty               String?
+  certificateByUtility             String?
+  emailDraft                       String?   @db.Text
+  lastEmailSentAt                  DateTime?
+  reason                           String?   @db.Text
+  contactEmailId                   String?
+
+  // @@index([tenderNo])
+  // @@index([tmNo])
+  @@index([customerName])
+  @@map("emd_details_cash")
+}
+
+model EmdMerged {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  emdType   EmdType?
+
+  // Shared / Match (18 logical -> 21 physical incl. synonyms)
+  tenderNo                         String?
+  tmNo                             String?
+  remarks                          String?
+  contactEmailId                   String?
+  emailDraft                       String?   @db.Text
+  lastEmailSent                    String?
+  lastEmailSentAt                  DateTime?
+  reason                           String?   @db.Text
+  contactNo                        String?
+  address                          String?
+  docketNo                         String?
+  bgNo                             String?
+  customerName                     String? // partyName / customerName
+  emdAmt                           String?
+  bgAmtLocal                       String?
+  bgAmtFc                          String?
+  issueDt                          DateTime?
+  bgDate                           String?
+  expectedRefundDateOrRefundedDate DateTime?
+  expiryDate                       String?
+  claimDate                        String?
+
+  // BG only (8)
+  trantype           String?
+  bankName           String?
+  partyCode          String?
+  staffName          String?
+  status             String?
+  match              String?
+  bgMatch            String?
+  statusPriceAssDone String?
+
+  // Cash only (14)
+  permanent                    String?
+  chDdNo                       String?
+  acHolder                     String?
+  statusAsPerSujibDaAndOther   String?
+  canBeRefunded                String?
+  rank                         String?
+  poIssueStatus                String?
+  aocAwardOfContractStatus     String?
+  refundableOrNot              String?
+  statusRefundedPending        String?
+  statusOfTender               String?
+  conditionsForRefund          String?
+  certificateByParty           String?
+  certificateByUtility         String?
+
+  // M:N with TenderMerged via implicit join table, populated by docketNo matching
+  tenderMergeds TenderMerged[] @relation("EmdMergedToTenderMerged")
+
+  @@index([docketNo])
+  @@index([tenderNo])
+  @@index([tmNo])
+  @@index([customerName])
+  @@index([emdType])
+  @@index([bgNo])
+  @@map("emd_merged")
+}
+
+model Bom {
+  id                        Int      @id @default(autoincrement())
+  itemCode                  String
+  itemScheduleName          String
+  itemName                  String?
+  sheetTotalDiff            String?
+  bomType                   String?
+  bomId                     String
+  // option2                   String?
+  option2Diff               String?
+  ccvSioplas                String?
+  ccvSioplasDiff            String?
+  cuTape                    String?
+  cuTapePlusMinus           String?
+  cuTapeDiff                String?
+  alCu                      String?
+  alCuPlusMinus             String?
+  alCuDiff                  String?
+  alloy                     String?
+  alloyPlusMinus            String?
+  alloyDiff                 String?
+  armour                    String?
+  armourPlusMinus           String?
+  armourDiff                String?
+  semicon                   String?
+  semiconPlusMinus          String?
+  semiconDiff               String?
+  insulation                String?
+  insulationPlusMinus       String?
+  insulationDiff            String?
+  pvcInner                  String?
+  pvcInnerPlusMinus         String?
+  pvcInnerDiff              String?
+  pvcOuter                  String?
+  pvcOuterPlusMinus         String?
+  pvcOuterDiff              String?
+  pvcOuterInnerDiff         String?
+  filler                    String?
+  fillerPlusMinus           String?
+  fillerDiff                String?
+  polyt                     String?
+  polytPlusMinus            String?
+  polytDiff                 String?
+  rubberCottonTape          String?
+  rubberCottonTapePlusMinus String?
+  rubberCottonTapeDiff      String?
+  spclConstruction          String?
+  spclConstructionPlusMinus String?
+  spclConstructionDiff      String?
+  finalOutput               String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@unique([itemCode, bomId])
+  @@index([itemName])
+}
+
+model TypeTest {
+  id                   Int         @id @default(autoincrement())
+  itemCode             String
+  testCertificateNo    String
+  testCertificateUrl   String?     @db.Text
+  lab                  TypeTestLab?
+  issuedAt             DateTime?
+  expiredAt            DateTime?
+  validity             String?
+
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  @@unique([itemCode, testCertificateNo])
+  @@index([itemCode])
+  @@index([testCertificateNo])
+  @@map("type_tests")
+}
+
+model SopResponsibility {
+  id          Int      @id @default(autoincrement())
+  columnName  String  
+  description String?  @db.Text
+  allocatedTo String?  
+  email       String?
+  dailyLog    String?  @db.Text
+  date        DateTime? @db.Date
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  logs SopDailyLog[]
+  source String? 
+  doneFromWhere String?
+  isManual Boolean @default(false)
+  dailyLogEnabled Boolean @default(true)
+  dateEnabled Boolean @default(true)
+  @@index([source])
+  @@index([columnName])
+  @@index([date])
+  @@map("sop_responsibilities")
+}
+model SopDailyLog {
+  id                  Int      @id @default(autoincrement())
+  sopResponsibilityId Int
+  sopResponsibility   SopResponsibility @relation(fields: [sopResponsibilityId], references: [id], onDelete: Cascade)
+  date                DateTime @db.Date // IST day 00:00
+  isChecked           Boolean  @default(false)
+  checkedBy           String?  // session.user.email
+  checkedAt           DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  @@unique([sopResponsibilityId, date])
+  @@index([date])
+  @@index([sopResponsibilityId])
+  @@map("sop_daily_logs")
+}
+model Credential {
+  id              String   @id @default(uuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  category        String?
+  websites        String?
+  states          String?
+  userId          String?
+  password        String?
+  mobileNo        String?
+  profilePassword String?
+  dscName         String?
+  dscPassword     String?
+  otherRef        String?  @db.Text
+
+  @@index([category])
+  @@map("credentials")
+}
+
+// ---------- RAILWAYS ----------
+model Railways {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  financialYear          String?
+  railway                String?
+  tenderNo               String?
+  erpTenderNo            String?
+  qtnNo                  String?
+  dueDate                DateTime?
+  erpItemSchedule        String?
+  erpCode                String?
+  item                   String?
+  qtyInKms               Float?
+  participated           String?
+  reverseAuction         String?
+  bidOpened              String?
+  reverseAuctionDone     String?
+  comparativeAvailable   String?
+  raAnnounced            String?
+  raAnnouncedOnDate      DateTime?
+  expectedContractStatus String?
+
+  @@index([tenderNo])
+}
+
+model ContractReview {
+  id                               String   @id @default(cuid())
+  contractNo                       String
+  itemCode                         String
+  mcNo                             String?
+  itemName                         String?
+  partyItemName                    String?
+  rate                             String?
+  cv                               String?
+  vaPercent                        String?
+  orderQty                         String?
+  freeStock                        String?
+  finalReq                         String?
+  mcQty                            String?
+  balanceMc                        String?
+  prodOrdQty                       String?
+  balanceToProdOrd                 String?
+  balanceToProdEnt                 String?
+  diQty                            String?
+  billedQty                        String?
+  balBillAgMc                      String?
+  balBillAgCont                    String?
+  item                             String?
+  value                            String?
+  size                             String?
+  pnRating                         String?
+  dateOfContract                   String?
+  clearanceStatus                  String?
+  actuator                         String?
+  rmCodeForActuator                String?
+  rmCodeForGb                      String?
+  paymentTerms                     String?
+  lcRtgsRefNo                      String?
+  lcDateRtgsDate                   String?
+  lastDateOfShipmentDateOfLc       String?
+  issuingBankName                  String?
+  bomFormulaTrial                  String?
+  erpPartyNameFromGmdSupplyHistory String?
+  itemType                         String?
+  jobCode                          String?
+  balDiQty                         String?
+  balMcVal                         String?
+  balProdOrdVal                    String?
+  balToProdOrdEntVal               String?
+  balBillAgMcVal                   String?
+  balBillAgContVal                 String?
+  balDiVal                         String?
+  state                            String?
+  utility                          String?
+  projectReference                 String?
+  diVal                            String?
+  icQty                            String?
+  bomId                            String?
+  noUse                            String?
+  partyNameDump                    String?
+  status                           String?
+  mcReceivedPending                String?
+  inspection                       String?
+  offerPendingDone       String?
+  remarks                          String?
+  offerNumber                      String[] @default([])
+  inspectionNumber                 String[] @default([])
+  diDate                           String[] @default([])
+  costfromQuotation                String?
+  vaPercentfromcost                String?
+  productionOrderNumber            String?
+  diagramUrl                       String?
+  diagramVerdict                   String?
+
+  poNo      String? //sync from sheetid = 1sf-uCfCSAUovNAWJSiSyojTPFvUSzmp23keF0ymkjIE
+  orderList String[] @default([]) //sync from sheetid = 1sf-uCfCSAUovNAWJSiSyojTPFvUSzmp23keF0ymkjIE
+
+  syncedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

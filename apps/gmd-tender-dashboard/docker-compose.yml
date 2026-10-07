@@ -1,0 +1,119 @@
+services:
+  gmd-tender-dashboard:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    image: ghcr.io/laser-power-infra/gmd-tender-dashboard:${APP_VERSION:-latest}
+    # ghcr.io/laser-power-infra/laser-tender:${APP_VERSION:-latest}
+    container_name: gmd-tender-dashboard
+    ports:
+      - "4126:4126"
+
+    env_file:
+      - .env.production
+
+    environment:
+      NODE_ENV: production
+      PORT: 4126
+      HOSTNAME: 0.0.0.0
+      
+      # Paths inside the container
+      CONDUTOR_PATH: /mnt/condutor/Tenders-bd/Condutor
+      INDEXER_NETWORK_PATH: /mnt/indexer/COSTING & INVOLVEMENT
+      SUPPLY_NETWORK_PATH: /mnt/supply
+      COSTING_FILE_NETWORK_HOST_PATH: /mnt/costing/COSTING & INVOLVEMENT
+      OLD_RA_EXCEL_PATH: /mnt/old-files/TENDER 2023-2024
+      OLD_FILES: /mnt/old-files/TENDER 2023-2024
+      TYPE_TEST_FILES_PATH: /mnt/condutor/Updated TTR
+
+    volumes:
+      - condutor:/mnt/condutor
+      - indexer:/mnt/indexer
+      - supply:/mnt/supply
+      - costing:/mnt/costing
+      - old-files:/mnt/old-files
+      - ./credentials.json:/app/credentials.json:ro
+      - ./token.json:/app/token.json:rw
+
+    restart: unless-stopped
+
+    networks:
+      - infra
+
+  # evolution-api:
+  #   image: evoapicloud/evolution-api:latest
+  #   container_name: evolution-api
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3127:8080"
+  #   env_file:
+  #     - ./evolution/.env.production
+  #   environment:
+  #     DOCKER_ENV: "true"
+
+  #   volumes:
+  #     - ./evolution:/evolution/instances
+  #   networks:
+  #     - infra
+
+  # kestra-ted:
+  #   build:
+  #     context: ./kestra
+  #     dockerfile: Dockerfile
+  #   container_name: kestra-ted
+  #   restart: unless-stopped
+
+  #   ports:
+  #     - "3128:8080"
+
+  #   user: root
+
+  #   environment:
+  #     SECRET_KESTRA_EXTERNAL_API_KEY: ${KESTRA_EXTERNAL_API_KEY}
+
+  #     KESTRA_CONFIGURATION: |
+  #       micronaut:
+  #         io:
+  #           watch:
+  #             enabled: true
+  #             paths:
+  #               - /flows
+
+  #   volumes:
+  #     - ./kestra/flows:/flows
+  #     - ./kestra/storage:/app/storage
+  #     - ./kestra/data:/app/data
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - /tmp:/tmp
+
+  #   command: server local
+
+  #   networks:
+  #     - infra
+
+
+volumes:
+  condutor:
+    external: true
+    name: infrastructure_condutor
+
+  indexer:
+    external: true
+    name: infrastructure_indexer
+
+  supply:
+    external: true
+    name: infrastructure_supply
+
+  costing:
+    external: true
+    name: infrastructure_costing
+
+  old-files:
+    external: true
+    name: infrastructure_old-files
+
+
+networks:
+  infra:
+    external: true
