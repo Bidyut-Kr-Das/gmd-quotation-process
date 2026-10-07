@@ -51,3 +51,10 @@ export {
   type ScheduledJobError,
   type ScheduledJobResult,
 } from "./run-gmd-update";
+
+export {
+  runDocketFollowupSync,
+  detectDocketNumber,
+  extractAttachmentNamesText,
+  type DocketFollowupSyncResult,
+} from "./docket-followup-sync";
