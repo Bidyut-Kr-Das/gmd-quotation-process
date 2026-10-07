@@ -23,7 +23,10 @@ import { parseAndValidateProdOrderNumber } from "@/lib/contractValidation";
 import { matchPnRating } from "@/lib/pnRatingMatcher";
 import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
 import { getFiscalPrefix, nextDocketSerials } from "@/lib/docketNumber";
-import { buildEmailPartyMap, resolvePartyForThread } from "@/lib/pendingDocketMaterializer";
+import { buildEmailPartyMap, resolvePartyForThread, threadPreferredEmails, isDeletableDuplicate } from "@/lib/pendingDocketMaterializer";
+import { parseThreadAttachments } from "@/lib/docketSnapshot";
+import { buildSnapshotAttachment } from "@/lib/docketSnapshotPdf";
+import { extractEmailsFromValue } from "@/lib/enquiryEmailParty";
 import {
   uploadToS3,
   deleteFromS3,
@@ -841,6 +844,78 @@ export async function deleteEnquiryItemsAction(itemIds: string[]) {
   }
 }
 
+/**
+ * Deletes a blank docket that was flagged as a duplicate of another docket.
+ *
+ * Safety: only allowed when `duplicate === "Yes"`, a `duplicateOfDocket` is set,
+ * and the docket has NO items. The source thread (matched by docketNo) is
+ * re-pointed at the original docket so the mail links there and the blank docket
+ * is never recreated.
+ */
+export async function deleteEnquiryAction(enquiryId: string) {
+  try {
+    const enquiry = await prisma.enquiry.findUnique({
+      where: { id: enquiryId },
+      select: {
+        id: true,
+        docketNumber: true,
+        duplicate: true,
+        duplicateOfDocket: true,
+        _count: { select: { items: true } },
+      },
+    });
+    if (!enquiry) {
+      return { success: false as const, error: "Docket not found." };
+    }
+
+    if (
+      !isDeletableDuplicate({
+        duplicate: enquiry.duplicate,
+        duplicateOfDocket: enquiry.duplicateOfDocket,
+        itemCount: enquiry._count.items,
+      })
+    ) {
+      return {
+        success: false as const,
+        error:
+          enquiry._count.items > 0
+            ? "Cannot delete: this docket has items."
+            : "Only a blank docket flagged as Duplicate = Yes with a selected original can be deleted.",
+      };
+    }
+
+    const original = String(enquiry.duplicateOfDocket).trim();
+    const originalExists = await prisma.enquiry.findUnique({
+      where: { docketNumber: original },
+      select: { id: true },
+    });
+    if (!originalExists) {
+      return { success: false as const, error: `Original docket "${original}" no longer exists.` };
+    }
+
+    // Link the source mail(s) to the original docket, then remove the blank one.
+    await prisma.docketQuotationThread.updateMany({
+      where: { docketNo: enquiry.docketNumber },
+      data: { docketNo: original, pendingDocket: false },
+    });
+
+    await prisma.enquiry.delete({ where: { id: enquiryId } });
+
+    console.log(
+      `[Server] deleteEnquiry (duplicate) ${enquiry.docketNumber} -> original ${original}`,
+    );
+
+    return {
+      success: true as const,
+      data: { enquiryId, docketNumber: enquiry.docketNumber, duplicateOfDocket: original },
+    };
+  } catch (error: unknown) {
+    console.error("Error deleting duplicate enquiry:", error);
+    const message = error instanceof Error ? error.message : "Failed to delete docket.";
+    return { success: false as const, error: message };
+  }
+}
+
 // Update a specific field of an enquiry directly (for inline cell editing)
 export async function updateEnquiryFieldAction(
   enquiryId: string,
@@ -858,6 +933,12 @@ export async function updateEnquiryFieldAction(
       }
       if (value !== null && value !== "" && value !== "Yes" && value !== "No") {
         return { success: false, error: "APM must be Yes, No, or blank." }
+      }
+    }
+    // Duplicate flag is a plain Yes/No marker.
+    if (field === "duplicate") {
+      if (value !== null && value !== "" && value !== "Yes" && value !== "No") {
+        return { success: false, error: "Duplicate must be Yes, No, or blank." }
       }
     }
     const prev = await prisma.enquiry.findUnique({
@@ -991,6 +1072,11 @@ export async function createPendingDocketsAction(options?: { dryRun?: boolean })
         toDetails: true,
         ccDetails: true,
         date: true,
+        subject: true,
+        body: true,
+        bodyPreview: true,
+        attachNames: true,
+        attachLinks: true,
       },
     });
 
@@ -1027,6 +1113,14 @@ export async function createPendingDocketsAction(options?: { dryRun?: boolean })
         docketNumber: docketNumbers[index],
         partyName: resolved.partyName,
         source: resolved.source,
+        emailAddress: threadPreferredEmails(thread).join(", ") || null,
+        // Mail file attachments (linked as-is) + data for the snapshot PDF.
+        attachments: parseThreadAttachments(thread.attachNames, thread.attachLinks),
+        subject: thread.subject,
+        body: thread.body || thread.bodyPreview,
+        sender: thread.sender,
+        to: extractEmailsFromValue(thread.toDetails).join(", "),
+        cc: extractEmailsFromValue(thread.ccDetails).join(", "),
       };
     });
 
@@ -1050,12 +1144,34 @@ export async function createPendingDocketsAction(options?: { dryRun?: boolean })
     const created: PendingDocketCreated[] = [];
     for (const p of plan) {
       try {
+        // Mail file attachments (linked as-is) + a generated snapshot PDF.
+        const attachmentRows: { name: string; url: string; type: string | null; size: number | null }[] =
+          p.attachments.map((a) => ({ name: a.name, url: a.url, type: a.type, size: null }));
+        try {
+          const snapshot = await buildSnapshotAttachment({
+            docketNumber: p.docketNumber,
+            partyName: p.partyName,
+            date: p.date ? p.date.toISOString() : null,
+            subject: p.subject,
+            sender: p.sender,
+            to: p.to,
+            cc: p.cc,
+            body: p.body,
+            attachments: p.attachments.map((a) => ({ name: a.name, url: a.url })),
+          });
+          attachmentRows.push({ name: snapshot.name, url: snapshot.url, type: snapshot.type, size: snapshot.size });
+        } catch (e) {
+          console.warn(`[createPendingDockets] snapshot failed for ${p.docketNumber}:`, e);
+        }
+
         await prisma.$transaction([
           prisma.enquiry.create({
             data: {
               docketNumber: p.docketNumber,
               partyName: p.partyName,
               enquiryDate: p.date ?? new Date(),
+              emailAddress: p.emailAddress,
+              attachments: { create: attachmentRows },
             },
           }),
           prisma.docketQuotationThread.update({

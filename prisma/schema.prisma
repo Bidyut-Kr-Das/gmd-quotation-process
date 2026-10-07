@@ -62,6 +62,8 @@ model Enquiry {
   offerPdfGeneratedBy String?
   emailAddress        String?
   contactNo           String?
+  duplicate String?
+  duplicateOfDocket String?
 
   attachments Attachment[]
   items       EnquiryItem[]
