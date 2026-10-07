@@ -25,7 +25,7 @@ async function deriveOne(
   itemCode: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const item = await prisma.gMDUpdateItem.findFirst({
+    const item = await prisma.rawMaterial.findFirst({
       where: { erpItemCode: itemCode },
       select: {
         id: true,

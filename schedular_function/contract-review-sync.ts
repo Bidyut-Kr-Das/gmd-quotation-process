@@ -84,6 +84,9 @@ const SKIP_FIELDS = new Set([
   "diagramVerdict",
   "cBatch",
   "nBatch",
+  // Owned by `runContractReviewItemNameSync` (ITEM MASTER ERP); the sheet's
+  // ITEM_NAME must not overwrite it.
+  "itemName",
 ]);
 
 function normalizeKey(value: string): string {

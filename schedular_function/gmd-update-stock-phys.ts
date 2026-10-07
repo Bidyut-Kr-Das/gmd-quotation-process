@@ -187,7 +187,7 @@ export async function runStockPhysSync(
       const settled = await Promise.allSettled(
         chunk.map((row) =>
           limit(() =>
-            prisma.gMDUpdateItem.update({
+            prisma.rawMaterial.update({
               where: { id: row.id },
               data: { availableStock: row.to },
             }),

@@ -53,7 +53,6 @@ const AVAILABLE_STOCK_IDX = 11;
  * user-owned and is never touched.
  */
 const NON_EDITABLE_FIELDS = [
-  "itemNameAuto",
   "l1",
   "l2ValveType",
   "l3Dia",
@@ -270,7 +269,7 @@ export async function runGmdCatalogueSync(
     const settled = await Promise.allSettled(
       chunk.map((u) =>
         limit(() =>
-          prisma.gMDUpdateItem.update({ where: { id: u.id }, data: u.data }),
+          prisma.rawMaterial.update({ where: { id: u.id }, data: u.data }),
         ),
       ),
     );

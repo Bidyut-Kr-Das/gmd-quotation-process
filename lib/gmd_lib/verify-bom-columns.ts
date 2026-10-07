@@ -52,6 +52,21 @@ export function cBatchBadges(onColumn: string) {
   ];
 }
 
+/**
+ * Checkbox presence filter for the C batch flag, rendered in the item-code
+ * column header by `GMDUpdateTable`. Mirrors {@link cBatchBadges} so pages
+ * declare the filter the same way they declare the chip.
+ */
+export function cBatchFilter() {
+  return {
+    key: "cBatch",
+    label: "C Batch",
+    column: C_BATCH_HEADER,
+    value: C_BATCH_VALUE,
+    title: "Show only rows closed in ITEM MASTER ERP (ITEM_STATUS = C)",
+  };
+}
+
 function normalizeHeader(h: string): string {
   return h.trim().toUpperCase().replace(/[\s_]+/g, " ").trim();
 }

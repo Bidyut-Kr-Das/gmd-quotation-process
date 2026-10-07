@@ -33,6 +33,12 @@ export {
 } from "./derived-item-name";
 
 export {
+  runContractReviewItemNameSync,
+  runRawMaterialItemNameSync,
+  type ItemNameSyncResult,
+} from "./item-name-sync";
+
+export {
   runGmdCatalogueSync,
   type CatalogueSyncResult,
 } from "./gmd-update-catalogue";

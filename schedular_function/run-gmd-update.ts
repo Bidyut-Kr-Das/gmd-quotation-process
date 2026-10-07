@@ -3,12 +3,14 @@
  *
  * Each job is a sequential pipeline of steps. `gmd-update` runs:
  *
- *   1. `runGmdCatalogueSync()`  GMD UPDATION -> GMDUpdateItem (create + diff)
- *   2. `runStockPhysSync()`     stock-phys   -> GMDUpdateItem.availableStock
+ *   1. `runGmdCatalogueSync()`      GMD UPDATION -> RawMaterial (create + diff)
+ *   2. `runStockPhysSync()`         stock-phys   -> RawMaterial.availableStock
+ *   3. `runRawMaterialItemNameSync()` ITEM MASTER ERP -> RawMaterial.itemNameAuto
  *
  * Step 2 only makes sense once step 1 has landed, so the steps are strictly
  * sequential: a fatal failure in step 1 aborts before step 2 runs rather than
- * refreshing stock against a half-synced table.
+ * refreshing stock against a half-synced table. Step 3 fills `itemNameAuto`,
+ * which step 1 no longer owns (it is excluded from NON_EDITABLE_FIELDS).
  *
  * All logic lives in this folder. `app/api/scheduler/**` contains nothing but
  * thin HTTP shims, because Next.js only routes `route.ts` files that sit under
@@ -24,6 +26,7 @@ import {
   type StockPhysSyncOptions,
   type StockPhysSyncResult,
 } from "./gmd-update-stock-phys";
+import { runRawMaterialItemNameSync, type ItemNameSyncResult } from "./item-name-sync";
 
 export type JobName = "gmd-update";
 
@@ -35,6 +38,7 @@ export type ScheduledJobResult = {
   steps: {
     catalogue?: CatalogueSyncResult;
     stock?: StockPhysSyncResult;
+    itemNames?: ItemNameSyncResult;
   };
 };
 
@@ -112,12 +116,16 @@ export async function runScheduledGmdUpdate(
     }
     steps.stock = await runStockPhysSync(stockOptions);
 
+    // Step 3 — item names from ITEM MASTER ERP -> RawMaterial.itemNameAuto.
+    steps.itemNames = await runRawMaterialItemNameSync();
+
     const elapsedMs = Date.now() - startedAtMs;
 
     console.log(
       `[scheduler] ${job} finished in ${elapsedMs}ms — ` +
         `catalogue(created=${steps.catalogue.created}, updated=${steps.catalogue.updated}, unchanged=${steps.catalogue.unchanged}) ` +
-        `stock(updated=${steps.stock.updatedRows}, changed=${steps.stock.changed})`,
+        `stock(updated=${steps.stock.updatedRows}, changed=${steps.stock.changed}) ` +
+        `itemNames(updated=${steps.itemNames.updated}, unmatched=${steps.itemNames.unmatched})`,
     );
     console.log(`########## [SCHEDULER] ${job} done ##########\n`);
 

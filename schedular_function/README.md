@@ -32,17 +32,22 @@ column, which no other scheduled job touches.
 
 ## `raw-material`
 
-Two sequential steps in `run-gmd-update.ts`:
+Three sequential steps in `run-gmd-update.ts`:
 
 1. **`runGmdCatalogueSync()`** (`gmd-update-catalogue.ts`) — `GMD UPDATION`
-   tab → `GMDUpdateItem`. Creates rows for ERP codes not yet in the DB; on
-   existing codes overwrites **only** the 12 sheet-owned fields, and only when
+   tab → `RawMaterial`. Creates rows for ERP codes not yet in the DB; on
+   existing codes overwrites **only** the sheet-owned fields, and only when
    the sheet value is non-blank and differs. Rows whose `NEW ITEM STATUS` is
    `CLOSED` / `TO BE CLOSED` / `TO BE LOCKED` are dropped. Never deletes.
    Recomputes `ITEM NAME (derived)` for created and changed rows.
 2. **`runStockPhysSync()`** (`gmd-update-stock-phys.ts`) — `stock-phys` tab's
-   `SUM OF PHYSICAL STOCK` → `GMDUpdateItem.availableStock`, overwriting stored
+   `SUM OF PHYSICAL STOCK` → `RawMaterial.availableStock`, overwriting stored
    values.
+3. **`runRawMaterialItemNameSync()`** (`item-name-sync.ts`) — `ITEM MASTER ERP`
+   (gid 253020709) `ITEM_NAME` → `RawMaterial.itemNameAuto`, matched on
+   `erpItemCode` (trim + upper-case). Writes only when the name differs.
+   `itemNameAuto` is excluded from step 1's overwrite set, so this step is the
+   sole writer.
 
 Steps are strictly sequential: a fatal failure in step 1 aborts before step 2,
 because refreshing stock against a half-synced table is not useful.
@@ -59,24 +64,28 @@ pivot/QUERY result). Nothing here sums anything itself.
 
 ## `contract-review`
 
-Four sequential steps in `run-contract-review.ts`:
+Five sequential steps in `run-contract-review.ts`:
 
 | # | Step | File | What it writes |
 |---|---|---|---|
 | 1 | `runContractReviewSheetSync()` | `contract-review-sync.ts` | `ContractReview` (all mapped sheet columns) + owned side-effects `Enquiry.contractNo` and the not-current-reqt marks |
+| 1b | `runContractReviewItemNameSync()` | `item-name-sync.ts` | `ContractReview.itemName` from `ITEM MASTER ERP` |
 | 2 | `runContractReviewEnquirySync()` | `contract-review-enquiry.ts` | `ContractReview.state` / `.utility` / `.projectReference` |
 | 3 | `runContractReviewRmAvailSync()` | `contract-review-rm-avail.ts` | `RawMaterial.availableStock`, `VerifyBom`, `ContractReview.noUse`, `ContractReview.rmPhysicalStock` |
 | 4 | `runIcDumpSync()` | `contract-review-ic-dump.ts` | `ContractReview.offerNumber` / `.inspectionNumber` / `.diDate` |
 
 Step 1 reads `CONTRACTS` (GID 734728893, header row 4) and `DUMP` (GID
-1604813523, header row 1) from `CONTRACT_REVIEW_SPREADSHEET_ID`. Step 3 reads
+1604813523, header row 1) from `CONTRACT_REVIEW_SPREADSHEET_ID`. Step 1b reads
+`ITEM MASTER ERP` (gid 253020709) from the BOM MAST ERP workbook. Step 3 reads
 `stock-phys` from `GOOGLE_SPREADSHEET_ID`. Step 4 reads `INSPECTION OFFER DUMP`
 (GID 148043829) from the BOM MAST ERP workbook.
 
 The order is a real dependency chain: step 3's RM AVAIL reads `VerifyBom`, whose
 `itemName` is sourced from `ContractReview.itemName` ordered by `syncedAt desc`
-(`lib/verifyBomLookup.ts:236`), so a stale sheet sync means stale names. Step 4
-joins on the `mcNo` + `itemCode` pair that step 1 populates.
+(`lib/verifyBomLookup.ts:236`), so step 1b runs before step 3 to expose the ITEM
+MASTER name. `ContractReview.itemName` is in step 1's `SKIP_FIELDS`, so step 1b
+is its sole writer. Step 4 joins on the `mcNo` + `itemCode` pair that step 1
+populates.
 
 **Nothing in this job runs twice.** The manual SYNC route also performs the
 VerifyBom and RM AVAIL recomputes, but here they are owned by step 3 only. Step
