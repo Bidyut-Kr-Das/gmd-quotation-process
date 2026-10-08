@@ -145,3 +145,10 @@ export {
   collectAttachmentTexts,
   type CollectedAttachmentText,
 } from "./docket-attachments";
+
+export {
+  runDocketFollowupSync,
+  detectDocketNumber,
+  extractAttachmentNamesText,
+  type DocketFollowupSyncResult,
+} from "./docket-followup-sync";

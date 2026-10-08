@@ -21,6 +21,7 @@ import { resolveImportedInhouse } from "@/lib/importInhouseMapping";
 import { makeImageKey } from "@/lib/imageKey";
 import { parseAndValidateProdOrderNumber } from "@/lib/contractValidation";
 import { matchPnRating } from "@/lib/pnRatingMatcher";
+import { withHardcodedL7Options } from "@/lib/gmd_lib/sheet-columns";
 import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
 // LEGACY — superseded by the hourly `docket-creation` scheduler job
 // (schedular_function/docket-creation.ts). The imports below were used only by
@@ -3338,7 +3339,7 @@ export async function getTradingValveOptionsAction() {
       );
     return {
       success: true,
-      data: {
+      data: withHardcodedL7Options({
         L1: collect(rows.map((r) => r.l1)),
         "L2-VALVE TYPE": collect(rows.map((r) => r.l2ValveType)),
         "L3-DIA": collect(rows.map((r) => r.l3Dia)),
@@ -3346,7 +3347,7 @@ export async function getTradingValveOptionsAction() {
         "L4-COMPONENT": collect(rows.map((r) => r.l4Component)),
         "L5- MATERIAL": collect(rows.map((r) => r.l5Material)),
         "L6-STD": collect(rows.map((r) => r.l6Std)),
-      },
+      }),
     };
   } catch (error: any) {
     console.error("Error fetching trading valve options:", error);
@@ -3521,6 +3522,110 @@ export async function updateGMDUpdateFieldAction(
     field,
     value,
     itemNameDerived: updated.itemNameDerived,
+  };
+}
+
+/** NEW ITEM STATUS values that place a row in the "New Items" table. */
+const NEW_ITEM_STATUS_VALUES = new Set(["", "-", "UPDATED"]);
+
+function isNewItemsStatus(value: string | null): boolean {
+  return NEW_ITEM_STATUS_VALUES.has((value ?? "").trim().toUpperCase());
+}
+
+/**
+ * Sets NEW ITEM STATUS but, when the new value would move a row up into the
+ * "New Items" table and the row's ITEM NAME (proposed)-AUTO already exists on a
+ * New Item, it instead copies this row's cost onto that/those New Item(s) and
+ * flags this row `costMerged` so it stays in Filtered (blank status) rather
+ * than duplicating the New Item.
+ */
+export async function setNewItemStatusWithCostMergeAction(
+  id: string,
+  value: string | null,
+) {
+  "use server";
+  const stored = value == null || value.trim() === "" ? null : value;
+
+  const empty = {
+    merged: false,
+    noCost: false,
+    sourceId: id,
+    newItemStatus: stored,
+    targetIds: [] as string[],
+    cost: null as number | null,
+  };
+
+  // Any value that keeps the row in Filtered is a plain write.
+  if (!isNewItemsStatus(stored)) {
+    await prisma.rawMaterial.update({
+      where: { id },
+      data: { newItemStatus: stored },
+    });
+    return { success: true, data: empty };
+  }
+
+  const source = await prisma.rawMaterial.findUnique({
+    where: { id },
+    select: { itemNameAuto: true, cost: true },
+  });
+  if (!source) return { success: false, error: "Item not found." };
+
+  const name = (source.itemNameAuto ?? "").trim();
+  const targets = name
+    ? await prisma.rawMaterial.findMany({
+        where: {
+          id: { not: id },
+          transferred: false,
+          costMerged: false,
+          OR: [
+            { newItemStatus: null },
+            { newItemStatus: "" },
+            { newItemStatus: "-" },
+            { newItemStatus: "Updated" },
+          ],
+          itemNameAuto: { equals: name, mode: "insensitive" },
+        },
+        select: { id: true },
+      })
+    : [];
+
+  if (targets.length === 0) {
+    await prisma.rawMaterial.update({
+      where: { id },
+      data: { newItemStatus: stored },
+    });
+    return { success: true, data: empty };
+  }
+
+  const targetIds = targets.map((t) => t.id);
+  const sourceCost = source.cost == null ? null : Number(source.cost);
+  const hasCost = sourceCost != null && sourceCost !== 0;
+
+  await prisma.$transaction([
+    ...(hasCost
+      ? [
+          prisma.rawMaterial.updateMany({
+            where: { id: { in: targetIds } },
+            data: { cost: sourceCost },
+          }),
+        ]
+      : []),
+    prisma.rawMaterial.update({
+      where: { id },
+      data: { newItemStatus: stored, costMerged: true },
+    }),
+  ]);
+
+  return {
+    success: true,
+    data: {
+      merged: true,
+      noCost: !hasCost,
+      sourceId: id,
+      newItemStatus: stored,
+      targetIds,
+      cost: hasCost ? sourceCost : null,
+    },
   };
 }
 

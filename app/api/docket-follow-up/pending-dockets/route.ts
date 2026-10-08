@@ -1,5 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  buildPartyMatcher,
+  buildPartySearchText,
+  extractEmailsFromValue,
+  hasDocketCreationKeyword,
+  isGenuineGmdClientThread,
+  isSentToLaserEntry,
+} from "@/lib/docketPending";
 
 export const dynamic = "force-dynamic";
 
@@ -111,24 +119,6 @@ function parseThreadMessages(bodyText: string | null | undefined): ParsedMessage
   return messages;
 }
 
-function extractEmailsFromValue(val: any): string[] {
-  if (!val) return [];
-  let str = "";
-  if (typeof val === "string") {
-    str = val;
-  } else if (typeof val === "object") {
-    if (typeof val.value === "string") {
-      str = val.value;
-    } else {
-      str = JSON.stringify(val);
-    }
-  }
-  const matches = str.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
-  if (!matches) return [];
-  const unique = Array.from(new Set(matches.map((e) => e.toLowerCase())));
-  return unique.filter((e) => !e.includes("mailer-daemon") && !e.includes("postmaster") && !e.includes("googlemail.com"));
-}
-
 export async function GET() {
   try {
     const threads = await prisma.docketQuotationThread.findMany({
@@ -155,65 +145,38 @@ export async function GET() {
         actionTag: true,
         msgCount: true,
         company: true,
+        ocrText: true,
+        pendingDocket: true,
+        partyName: true,
       },
     });
 
     const laserentryEmail = "laserentry.four@gmail.com";
-    const docketCreationPatterns = [
-      /create\s+(?:a\s+|the\s+)?docket/i,
-      /docket\s+creation/i,
-      /request\s+(?:for|to)\s+(?:create\s+)?(?:a\s+)?docket/i,
-      /generate\s+(?:a\s+|the\s+)?docket/i,
-      /make\s+(?:a\s+|the\s+)?docket/i,
-      /docket\s+request/i,
-      /open\s+(?:a\s+|the\s+)?docket/i,
-      /pls\s+create\s+docket/i,
-      /plz\s+create\s+docket/i,
-      /kindly\s+create\s+docket/i,
-      /please\s+create\s+docket/i,
-      /request\s+for\s+create\s+a\s+docket/i,
-      /request\s+to\s+create\s+a\s+docket/i,
-      /requesting\s+for\s+docket\s+creation/i,
-    ];
 
-    const pendingRows: any[] = [];
+    const partyRows = await prisma.lookupOption.findMany({
+      where: { type: "PARTY", isActive: true },
+      orderBy: { sortOrder: "asc" },
+      select: { value: true },
+    });
+    const matchPartyName = buildPartyMatcher(partyRows.map((r) => r.value));
+    const pendingDocketWriteIds: number[] = [];
+    const partyNameWrites: { id: number; partyName: string }[] = [];
+
+    const pendingRows: Record<string, unknown>[] = [];
     let unrepliedRequestsCount = 0;
     let noDocketAssignedCount = 0;
     let docketAssignedLaterCount = 0;
 
     for (const t of threads) {
-      const labelsStr = JSON.stringify(t.userLabels || "").toUpperCase();
-      const hasGmdClientsLabel =
-        labelsStr.includes("GMD CLIENTS") ||
-        labelsStr.includes("GMD-CLIENTS") ||
-        labelsStr.includes("GMD_CLIENTS");
-
-      // Strictly exclude E-TENDERS, TENDERS, LOGISTICS, ACCOUNTS, ERP/IT and non-GMD company mails
-      const isNonGmdLabel =
-        labelsStr.includes("E-TENDERS") ||
-        labelsStr.includes("TENDERS") ||
-        labelsStr.includes("LOGISTICS") ||
-        labelsStr.includes("ACCOUNTS") ||
-        labelsStr.includes("ERP");
-
-      const isGenuineGmdClient =
-        hasGmdClientsLabel ||
-        (t.isGmdClient === true && !isNonGmdLabel && (t.company === "GMD" || labelsStr.includes("GMD") || !t.company));
-
       // Strictly only show mails where GMD Client is genuinely true
-      if (!isGenuineGmdClient) continue;
+      if (!isGenuineGmdClientThread(t)) continue;
 
       const text = `${t.subject || ""} ${t.body || ""} ${t.bodyPreview || ""}`;
-      const hasCreationKeyword = docketCreationPatterns.some((p) => p.test(text));
+      const hasCreationKeyword = hasDocketCreationKeyword(text);
 
       const toEmails = extractEmailsFromValue(t.toDetails);
       const ccEmails = extractEmailsFromValue(t.ccDetails);
-      const isSentToLaserentry =
-        toEmails.includes(laserentryEmail) ||
-        ccEmails.includes(laserentryEmail) ||
-        toEmails.includes("enquiry5.laserpowerinfra@gmail.com") ||
-        ccEmails.includes("enquiry5.laserpowerinfra@gmail.com") ||
-        text.toLowerCase().includes(laserentryEmail);
+      const isSentToLaserentry = isSentToLaserEntry(t.toDetails, t.ccDetails, text);
 
       const isSenderInternal = isInternalEmail(t.sender);
 
@@ -303,8 +266,23 @@ export async function GET() {
       }
       if (!hasDocketInDb) {
         noDocketAssignedCount++;
+        if (t.pendingDocket !== true) {
+          pendingDocketWriteIds.push(t.id);
+        }
       } else {
         docketAssignedLaterCount++;
+      }
+
+      const matchedParty = matchPartyName(
+        buildPartySearchText({
+          subject: t.subject,
+          body: t.body,
+          bodyPreview: t.bodyPreview,
+          ocrText: t.ocrText,
+        })
+      );
+      if (matchedParty && !t.partyName) {
+        partyNameWrites.push({ id: t.id, partyName: matchedParty });
       }
 
       pendingRows.push({
@@ -338,6 +316,24 @@ export async function GET() {
       });
     }
 
+    try {
+      for (let i = 0; i < pendingDocketWriteIds.length; i += 500) {
+        const chunk = pendingDocketWriteIds.slice(i, i + 500);
+        await prisma.docketQuotationThread.updateMany({
+          where: { id: { in: chunk } },
+          data: { pendingDocket: true },
+        });
+      }
+      for (const row of partyNameWrites) {
+        await prisma.docketQuotationThread.update({
+          where: { id: row.id },
+          data: { partyName: row.partyName },
+        });
+      }
+    } catch (err) {
+      console.warn("Pending dockets: enrichment write-back failed:", err);
+    }
+
     return NextResponse.json({
       summary: {
         totalPending: pendingRows.length,
@@ -347,10 +343,14 @@ export async function GET() {
       },
       rows: pendingRows,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in GET /api/docket-follow-up/pending-dockets:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to fetch pending dockets data" },
+      {
+        error:
+          (error instanceof Error ? error.message : "") ||
+          "Failed to fetch pending dockets data",
+      },
       { status: 500 }
     );
   }
