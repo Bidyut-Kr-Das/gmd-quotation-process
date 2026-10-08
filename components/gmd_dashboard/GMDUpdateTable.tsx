@@ -2299,14 +2299,14 @@ castingRateInputs,
   return (
     <div className={`flex flex-col w-full max-w-full min-w-0 bg-card border border-border rounded-lg shadow-sm ${fullHeight ? "flex-1 min-h-0 overflow-hidden h-full" : ""}`}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-border bg-muted">
         <div className="flex items-center gap-2">
           {title && (
             <span className="text-xs font-bold uppercase tracking-wider text-">
               {title}
             </span>
           )}
-          <span className="text-xs font-semibold text-foreground/60">
+          <span className="text-xs font-semibold text-foreground/60 mr-10">
             Showing {filteredRows.length} of {rows.length} records
           </span>
           {toolbarExtra}

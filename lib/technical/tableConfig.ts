@@ -131,6 +131,19 @@ const FLANGE_COLUMNS = [
   "BODY PRESSURE",
   "STANDARDS",
   "FLANGE TYPE",
+  // Display-only columns (sheet AA..AK). Not read by the sync; shown blank in
+  // the Technical > Flange table and intended to be editable later.
+  "DENSITY (gm/cm^3)",
+  "Total Waight in KG",
+  "TOTAL WEIGHT WITH (+)TOLERANCE",
+  "TOTAL .WEIGHT (KG) Approx AS PER IS",
+  "TOTAL WEIGHT WITH (-)TOLERANCE",
+  "COST AS PER IS",
+  "BOLT LENGTH (MM)",
+  "BOLT DIA (MM)",
+  "BOLT WEIGHT FOR CS (KG)",
+  "BOLT WEIGHT FOR SS (KG)",
+  "BOLT WEIGHT FOR AS (KG)",
 ];
 
 const FLANGE_NUMERIC = new Set([
@@ -156,6 +169,17 @@ const FLANGE_NUMERIC = new Set([
   "RAISED FACE THICKNESS TOLERANCE (- MM)",
   "SEAT PRESSURE",
   "BODY PRESSURE",
+  "DENSITY (gm/cm^3)",
+  "Total Waight in KG",
+  "TOTAL WEIGHT WITH (+)TOLERANCE",
+  "TOTAL .WEIGHT (KG) Approx AS PER IS",
+  "TOTAL WEIGHT WITH (-)TOLERANCE",
+  "COST AS PER IS",
+  "BOLT LENGTH (MM)",
+  "BOLT DIA (MM)",
+  "BOLT WEIGHT FOR CS (KG)",
+  "BOLT WEIGHT FOR SS (KG)",
+  "BOLT WEIGHT FOR AS (KG)",
 ]);
 
 /* -------------------------------------------------------------------------- */

@@ -772,6 +772,19 @@ model Flange {
   bodyPressure                      String?
   standards                         String?
   flangeType                        String?
+  // Display-only columns (sheet AA..AK). Not populated by the sheet sync; kept
+  // in the DB and shown in the Technical > Flange table.
+  densityGmCm3                      String?
+  totalWeightKg                     String?
+  totalWeightTolerancePlus          String?
+  totalWeightApproxAsPerIs          String?
+  totalWeightToleranceMinus         String?
+  costAsPerIs                       String?
+  boltLengthMm                      String?
+  boltDiaMm                         String?
+  boltWeightCsKg                    String?
+  boltWeightSsKg                    String?
+  boltWeightAsKg                    String?
   syncedAt                          DateTime @default(now())
   createdAt                         DateTime @default(now())
   updatedAt                         DateTime @updatedAt

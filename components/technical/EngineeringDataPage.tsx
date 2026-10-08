@@ -29,12 +29,8 @@ export default function EngineeringDataPage() {
   const searchParams = useSearchParams();
   const [densityPairs, setDensityPairs] = useState<DensityPair[]>([]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/engineering-data/density", {
-      signal: controller.signal,
-      cache: "no-store",
-    })
+  const loadDensity = useCallback(() => {
+    fetch("/api/engineering-data/density", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((body: { rows?: unknown[][] } | null) => {
         const rows = body?.rows ?? [];
@@ -50,8 +46,11 @@ export default function EngineeringDataPage() {
       // Supplementary reference: if it fails, the tables still work and the
       // strip simply does not render.
       .catch(() => undefined);
-    return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    loadDensity();
+  }, [loadDensity]);
 
   const activeKey = resolveTab(searchParams.get("tab")).key;
 
@@ -92,6 +91,7 @@ export default function EngineeringDataPage() {
             key={activeTab.key}
             tab={activeTab}
             densityPairs={densityPairs}
+            onDensityRefresh={loadDensity}
           />
         </div>
       </div>
