@@ -11,14 +11,23 @@ import {
   isInternalEmail,
   isSpamOrBotEmail,
   PARTY_SENTINELS,
-  threadSenderEmails,
-  threadCcEmails,
 } from "./enquiryEmailParty";
 
 // Sender / cc split helpers live with the other pure email helpers; re-exported
 // here so scheduled-job code has a single import surface.
-export { threadSenderEmails, threadCcEmails };
-export type { ThreadEmailFields } from "./enquiryEmailParty";
+export {
+  threadSenderEmails,
+  threadCcEmails,
+  splitThreadEmails,
+  threadEmailLists,
+  partyKey,
+} from "./enquiryEmailParty";
+export type {
+  ThreadEmailFields,
+  EmailListEntry,
+  EmailSplitSource,
+  ThreadEmailSplit,
+} from "./enquiryEmailParty";
 
 export type PartyNameSource = "email" | "partyName" | "subCategory" | "unknown";
 

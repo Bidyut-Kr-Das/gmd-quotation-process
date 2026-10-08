@@ -7,6 +7,7 @@ import {
   threadPreferredEmails,
   threadSenderEmails,
   threadCcEmails,
+  splitThreadEmails,
   buildEmailPartyMap,
   resolvePartyForThread,
   isDeletableDuplicate,
@@ -87,6 +88,55 @@ test('threadCcEmails returns external to/cc minus the sender', () => {
       ccDetails: { value: 'tridip@gmdalui.co.in, pm@acme.com' },
     }),
     ['accounts@acme.com', 'pm@acme.com'],
+  )
+})
+
+test('splitThreadEmails picks one sender and puts the rest in cc', () => {
+  assert.deepEqual(
+    splitThreadEmails({
+      sender: 'buyer@acme.com, boss@acme.com',
+      toDetails: { value: 'tridip@gmdalui.co.in' },
+      ccDetails: { value: 'accounts@acme.com' },
+    }),
+    { senderEmail: 'buyer@acme.com', ccEmails: ['boss@acme.com', 'accounts@acme.com'], source: 'thread' },
+  )
+})
+
+test('splitThreadEmails falls back to to/cc when the sender is internal', () => {
+  assert.deepEqual(
+    splitThreadEmails({
+      sender: 'tridip@gmdalui.co.in',
+      toDetails: { value: 'buyer@acme.com, other@acme.com' },
+      ccDetails: null,
+    }),
+    { senderEmail: 'buyer@acme.com', ccEmails: ['other@acme.com'], source: 'thread' },
+  )
+})
+
+test('splitThreadEmails uses the party emails when the thread is internal-only', () => {
+  assert.deepEqual(
+    splitThreadEmails(
+      { sender: 'tridip@gmdalui.co.in', toDetails: { value: 'laserentry.four@gmail.com' }, ccDetails: null },
+      ['procurement@acme.com', 'accounts@acme.com'],
+    ),
+    { senderEmail: 'procurement@acme.com', ccEmails: ['accounts@acme.com'], source: 'party' },
+  )
+})
+
+test('splitThreadEmails never returns internal addresses', () => {
+  assert.deepEqual(
+    splitThreadEmails({ sender: 'tridip@gmdalui.co.in', toDetails: { value: 'laserentry.four@gmail.com' }, ccDetails: null }),
+    { senderEmail: null, ccEmails: [], source: 'none' },
+  )
+})
+
+test('splitThreadEmails prefers the party when any source is internal', () => {
+  assert.deepEqual(
+    splitThreadEmails(
+      { sender: 'buyer@acme.com', toDetails: { value: 'tridip@gmdalui.co.in' }, ccDetails: { value: 'pm@acme.com' } },
+      ['party@acme.com', 'accounts@acme.com'],
+    ),
+    { senderEmail: 'party@acme.com', ccEmails: ['accounts@acme.com'], source: 'party' },
   )
 })
 

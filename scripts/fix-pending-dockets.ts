@@ -21,7 +21,7 @@
 
 import "dotenv/config";
 import { prisma } from "@/lib/prisma";
-import { threadSenderEmails, threadCcEmails } from "@/lib/pendingDocketMaterializer";
+import { splitThreadEmails } from "@/lib/pendingDocketMaterializer";
 
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
@@ -66,8 +66,9 @@ async function main() {
       toDelete.push({ id: e.id, docketNumber: e.docketNumber, partyName: e.partyName, date });
       continue;
     }
-    const senderEmail = threadSenderEmails(t).join(", ");
-    const ccEmails = threadCcEmails(t).join(", ");
+    const split = splitThreadEmails(t);
+    const senderEmail = split.senderEmail ?? "";
+    const ccEmails = split.ccEmails.join(", ");
     const hasEmail = !!(e.senderEmail && e.senderEmail.trim()) || !!(e.emailAddress && e.emailAddress.trim());
     if ((senderEmail || ccEmails) && !hasEmail) {
       toFill.push({ id: e.id, docketNumber: e.docketNumber, senderEmail, emailAddress: ccEmails, date });
