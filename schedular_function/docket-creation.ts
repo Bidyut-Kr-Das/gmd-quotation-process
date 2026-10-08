@@ -19,6 +19,13 @@
  * a mail-snapshot PDF is generated and uploaded to Google Drive per docket. A
  * failed snapshot is contained (counted in `snapshotFailures`) and never aborts
  * the docket itself.
+ *
+ * Item extraction: the subject, every message body, the attachment OCR text and
+ * every attachment file are parsed for `{ itemName, quantity }` pairs, which are
+ * created as `EnquiryItem` rows on the new docket. The deterministic parser runs
+ * first; an opt-in AI fallback (`docket-item-extraction.ts`) runs only when the
+ * parser finds nothing. A thread with no extractable items still gets a
+ * header-only docket, exactly as before.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -32,12 +39,20 @@ import {
 import { parseThreadAttachments } from "@/lib/docketSnapshot";
 import { buildSnapshotAttachment } from "@/lib/docketSnapshotPdf";
 import { extractEmailsFromValue } from "@/lib/enquiryEmailParty";
+import { extractDocketItems } from "./docket-item-extraction";
+import type { ParsedDocketItem } from "./docket-item-parser";
+import pLimit from "p-limit";
+
+/** Bounded extraction concurrency: attachment downloads + optional AI calls. */
+const EXTRACTION_CONCURRENCY = 3;
 
 export interface PendingDocketCreated {
   docketNumber: string;
   partyName: string;
   threadId: string;
   source: PartyNameSource;
+  /** EnquiryItem rows created from the mail content. */
+  itemCount: number;
 }
 
 export interface PendingDocketCreationResult {
@@ -49,6 +64,18 @@ export interface PendingDocketCreationResult {
   failed: number;
   /** Snapshots that could not be rendered/uploaded; the docket still exists. */
   snapshotFailures: number;
+  /** Total `EnquiryItem` rows extracted across all dockets. */
+  itemsExtracted: number;
+  /** Dockets that received at least one extracted item. */
+  threadsWithItems: number;
+  /** Dockets created header-only because nothing was extracted. */
+  threadsWithoutItems: number;
+  /** Dockets whose items came from the deterministic parser. */
+  parserHits: number;
+  /** Dockets whose items came from the AI fallback. */
+  aiFallbacks: number;
+  /** Attachments that could not be fetched or parsed (contained per file). */
+  attachmentFetchFailures: number;
   dryRun: boolean;
   dockets: PendingDocketCreated[];
 }
@@ -89,6 +116,7 @@ export async function runPendingDocketCreation(
       subject: true,
       body: true,
       bodyPreview: true,
+      ocrText: true,
       attachNames: true,
       attachLinks: true,
     },
@@ -96,7 +124,20 @@ export async function runPendingDocketCreation(
 
   if (pending.length === 0) {
     console.log("[docket-creation] no pendingDocket threads to convert.");
-    return { pending: 0, created: 0, failed: 0, snapshotFailures: 0, dryRun, dockets: [] };
+    return {
+      pending: 0,
+      created: 0,
+      failed: 0,
+      snapshotFailures: 0,
+      itemsExtracted: 0,
+      threadsWithItems: 0,
+      threadsWithoutItems: 0,
+      parserHits: 0,
+      aiFallbacks: 0,
+      attachmentFetchFailures: 0,
+      dryRun,
+      dockets: [],
+    };
   }
 
   const fiscalPrefix = getFiscalPrefix(new Date());
@@ -139,19 +180,61 @@ export async function runPendingDocketCreation(
     };
   });
 
+  // Extract line items from each thread's mail content (bodies + attachments).
+  const extractionLimit = pLimit(EXTRACTION_CONCURRENCY);
+  const extractions = await Promise.all(
+    pending.map((thread) =>
+      extractionLimit(() =>
+        extractDocketItems({
+          subject: thread.subject,
+          body: thread.body,
+          bodyPreview: thread.bodyPreview,
+          ocrText: thread.ocrText,
+          attachNames: thread.attachNames,
+          attachLinks: thread.attachLinks,
+        }),
+      ),
+    ),
+  );
+
+  const enriched = plan.map((p, index) => ({ ...p, items: extractions[index].items }));
+
+  let itemsExtracted = 0;
+  let threadsWithItems = 0;
+  let parserHits = 0;
+  let aiFallbacks = 0;
+  let attachmentFetchFailures = 0;
+  for (const e of extractions) {
+    itemsExtracted += e.items.length;
+    if (e.items.length > 0) threadsWithItems++;
+    if (e.source === "parser") parserHits++;
+    if (e.aiUsed) aiFallbacks++;
+    attachmentFetchFailures += e.attachmentFailures;
+  }
+  const threadsWithoutItems = enriched.length - threadsWithItems;
+
   if (dryRun) {
-    console.log(`[docket-creation] dryRun pending=${pending.length} wouldCreate=${plan.length}`);
+    console.log(
+      `[docket-creation] dryRun pending=${pending.length} wouldCreate=${enriched.length} items=${itemsExtracted}`,
+    );
     return {
       pending: pending.length,
-      created: plan.length,
+      created: enriched.length,
       failed: 0,
       snapshotFailures: 0,
+      itemsExtracted,
+      threadsWithItems,
+      threadsWithoutItems,
+      parserHits,
+      aiFallbacks,
+      attachmentFetchFailures,
       dryRun,
-      dockets: plan.map((p) => ({
+      dockets: enriched.map((p) => ({
         docketNumber: p.docketNumber,
         partyName: p.partyName,
         threadId: p.threadId,
         source: p.source,
+        itemCount: p.items.length,
       })),
     };
   }
@@ -160,7 +243,7 @@ export async function runPendingDocketCreation(
   let failed = 0;
   let snapshotFailures = 0;
 
-  for (const p of plan) {
+  for (const p of enriched) {
     try {
       // Mail file attachments (linked as-is) + a generated snapshot PDF.
       const attachmentRows: { name: string; url: string; type: string | null; size: number | null }[] =
@@ -191,6 +274,7 @@ export async function runPendingDocketCreation(
             enquiryDate: p.date ?? new Date(),
             emailAddress: p.emailAddress,
             attachments: { create: attachmentRows },
+            items: { create: itemCreates(p.items) },
           },
         }),
         prisma.docketQuotationThread.update({
@@ -203,6 +287,7 @@ export async function runPendingDocketCreation(
         partyName: p.partyName,
         threadId: p.threadId,
         source: p.source,
+        itemCount: p.items.length,
       });
     } catch (e) {
       failed++;
@@ -211,7 +296,10 @@ export async function runPendingDocketCreation(
   }
 
   console.log(
-    `[docket-creation] pending=${pending.length} created=${created.length} failed=${failed} snapshotFailures=${snapshotFailures}`,
+    `[docket-creation] pending=${pending.length} created=${created.length} failed=${failed} ` +
+      `items=${itemsExtracted} withItems=${threadsWithItems} withoutItems=${threadsWithoutItems} ` +
+      `parserHits=${parserHits} aiFallbacks=${aiFallbacks} snapshotFailures=${snapshotFailures} ` +
+      `attachmentFetchFailures=${attachmentFetchFailures}`,
   );
 
   return {
@@ -219,7 +307,23 @@ export async function runPendingDocketCreation(
     created: created.length,
     failed,
     snapshotFailures,
+    itemsExtracted,
+    threadsWithItems,
+    threadsWithoutItems,
+    parserHits,
+    aiFallbacks,
+    attachmentFetchFailures,
     dryRun,
     dockets: created,
   };
+}
+
+/** Maps parsed items to `EnquiryItem` create rows, keyed by position. */
+function itemCreates(items: ParsedDocketItem[]) {
+  return items.map((item, index) => ({
+    position: index,
+    itemName: item.itemName,
+    quantity: item.quantity,
+    erpItemCode: null,
+  }));
 }

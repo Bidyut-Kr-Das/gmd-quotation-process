@@ -60,6 +60,7 @@ model Enquiry {
   apm                 String?
   offerPdfGeneratedAt DateTime?
   offerPdfGeneratedBy String?
+  senderEmail String?
   emailAddress        String?
   contactNo           String?
   duplicate String?
