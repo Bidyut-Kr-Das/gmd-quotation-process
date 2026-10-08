@@ -326,19 +326,60 @@ columns, so the job is cheaper than the original — but `ContractReview` and
 
 Single step: `runPendingDocketCreation()` in `docket-creation.ts`. For every
 `DocketQuotationThread` row with `pendingDocket = true` **and** `docketNo = null`
-it creates a header-only `Enquiry` (no items):
+it creates an `Enquiry`, extracting line items from the mail content:
 
 1. Allocates the next fiscal docket number(s) via `nextDocketSerials`
    (`lib/docketNumber`) from the current fiscal year's existing dockets.
 2. Resolves the party name via `resolvePartyForThread`
    (`lib/pendingDocketMaterializer`): first email match against previous dockets,
    then the thread's own `partyName`, then `sub_category`, else `"Unknown"`.
-3. Links the mail file attachments as-is (`parseThreadAttachments`) and renders a
+3. Extracts `{ itemName, quantity }` pairs from the mail content — see *Item
+   extraction* below.
+4. Links the mail file attachments as-is (`parseThreadAttachments`) and renders a
    mail-snapshot PDF, uploading it to Google Drive (`buildSnapshotAttachment`).
-4. In one `$transaction`, creates the `Enquiry` and stamps the thread with the
-   new `docketNo` + clears `pendingDocket`.
+5. In one `$transaction`, creates the `Enquiry` **with its `EnquiryItem` rows**
+   and stamps the thread with the new `docketNo` + clears `pendingDocket`.
 
 Idempotent: a stamped thread leaves the pending set, so a re-run is a no-op.
+
+### Item extraction
+
+`docket-item-extraction.ts` runs two stages over the thread's content: every
+message body (`body` + `bodyPreview`), `ocrText`, and every attachment file.
+
+- **Stage 1 — deterministic parser** (`docket-item-parser.ts`, pure and unit
+  tested in `tests/docketItemParser.test.ts`). The email **body** is parsed
+  line-by-line **and** as tables; `ocrText` and attachment text are parsed as
+  **tables only**, so free-form OCR fragments (specs, inspection reports) cannot
+  masquerade as line items. It handles numbered/bulleted lines with quantity
+  units (`2 Nos`, `4 pcs`, `3 SET`), `Qty: 6` / `Quantity = 10` labels, tight
+  ranges (`2-3 Nos` → 2), and pipe/tab tables with description + qty columns
+  (preferring `Total Qty`, and folding an adjacent `Size / DN` column into the
+  name). `itemName` is preserved verbatim; email headers, totals, rates,
+  pressure/serial fragments, signatures and quoted lines are dropped. **A line
+  with no explicit quantity is skipped.** Quoted reply history is de-duplicated
+  on `itemName`+`quantity`.
+- **Stage 2 — AI fallback** runs only when the parser finds **zero** items. It is
+  off unless `AI_FALLBACK_ENABLED=true` and `OPENAI_API_KEY` is set. Model is
+  `AI_EXTRACTION_MODEL` (default `gpt-4o-mini`), `temperature: 0`, strict zod
+  schema via `Output.object`, and it also drops items without a quantity.
+
+Attachments are read by `docket-attachments.ts`: Drive links are downloaded via
+the OAuth client, S3/public links via `fetch`. PDFs use `unpdf`, Excel/CSV use
+`xlsx`, text files are read as utf8, and images are covered by `ocrText`. Each
+file is bounded (max 10 files, 10 MB, 20 s); a failure is counted in
+`attachmentFetchFailures` and never aborts the docket.
+
+A thread with nothing extractable still gets a header-only docket, exactly as
+before.
+
+### Backfilling existing blank dockets
+
+Dockets created before item extraction existed are backfilled by
+`scripts/backfill-pending-docket-items.ts` (`npm run docket:backfill-items` /
+`:apply`). It targets every `Enquiry` with zero items that has a source thread,
+runs the same extraction pipeline, and inserts the items. Dry run by default;
+`--apply` writes. Idempotent: a docket that already has items is not a target.
 
 ### `pendingDocket` is set upstream
 
@@ -423,8 +464,9 @@ Stock-step edge cases:
 
 | Table | Column | Rule |
 |---|---|---|
-| `Enquiry` | `docketNumber`, `partyName`, `enquiryDate`, `emailAddress` | **create only** — a new header-only docket per pending thread. Existing dockets are never touched. |
+| `Enquiry` | `docketNumber`, `partyName`, `enquiryDate`, `emailAddress` | **create only** — a new docket per pending thread. Existing dockets are never touched. |
 | `Enquiry` | attachments | mail attachments linked as-is + one generated snapshot PDF. |
+| `EnquiryItem` | `itemName`, `quantity`, `position` | **create only** — one row per extracted line item. A thread with nothing extractable gets no items. `erpItemCode` is left null. |
 | `DocketQuotationThread` | `docketNo`, `pendingDocket` | stamped with the new number and `pendingDocket` set to `false`. Never cleared or re-pointed. |
 | deletions | — | none. |
 
@@ -505,6 +547,26 @@ not "allow".
       "verifyBomElapsedMs": 45000, "rmAvailUpdated": 3,
       "physicalStockUpdated": 2, "physicalStockCleared": 0,
       "failedWrites": 0, "elapsedMs": 60000
+    }
+  }
+}
+```
+
+`docket-creation`:
+
+```json
+{
+  "success": true,
+  "job": "docket-creation",
+  "startedAt": "2026-10-05T04:20:00.000Z",
+  "elapsedMs": 15320,
+  "steps": {
+    "creation": {
+      "pending": 3, "created": 3, "failed": 0, "snapshotFailures": 0,
+      "itemsExtracted": 11, "threadsWithItems": 2, "threadsWithoutItems": 1,
+      "parserHits": 2, "aiFallbacks": 0, "attachmentFetchFailures": 0,
+      "dryRun": false,
+      "dockets": [{ "docketNumber": "GMD/2026-27/431", "partyName": "ACME", "threadId": "...", "source": "email", "itemCount": 6 }]
     }
   }
 }

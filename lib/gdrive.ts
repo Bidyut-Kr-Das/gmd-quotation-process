@@ -70,3 +70,26 @@ export async function uploadFileToDrive(fileName: string, mimeType: string, base
     throw error;
   }
 }
+
+/** Extracts the Drive file id from a `webViewLink` / `file/d/<id>` URL. */
+export function driveFileIdFromUrl(url: string): string | null {
+  if (!url) return null;
+  const m =
+    url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+    url.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
+    url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Downloads a Drive file's bytes. Used by the docket-creation job to read
+ * attachment contents (PDF / spreadsheet / text).
+ */
+export async function downloadFileFromDrive(fileId: string): Promise<Buffer> {
+  const driveApi = getDriveClient();
+  const response = await driveApi.files.get(
+    { fileId, alt: "media" },
+    { responseType: "arraybuffer" },
+  );
+  return Buffer.from(response.data as ArrayBuffer);
+}
