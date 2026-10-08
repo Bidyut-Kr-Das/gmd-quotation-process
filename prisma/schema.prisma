@@ -675,3 +675,178 @@ model DocketQuotationThread {
   @@index([company], map: "idx_dqt_company")
   @@map("docket_quotation_threads")
 }
+
+// ─────────────────────────────────────────────────────────────
+// Engineering Data ("GMD Technical Master Data"). Synced from the sheet by
+// lib/technical/syncEngineering.ts and read back by
+// lib/technical/engineeringData.ts (these tables -> the UI). The read path
+// never talks to Google; only the sync does.
+//
+// Every value column is String? rather than a number/date so the sheet's own
+// formatting survives verbatim ("2.0", "PN - 10", "IS 6392 TABLE 13"). Column
+// order is declared in lib/technical/engineeringModels.ts and must stay in step
+// with the tab's captions in lib/technical/tableConfig.ts.
+// ─────────────────────────────────────────────────────────────
+
+/// "GATE VALVE" — gid 531982553
+model GateValve {
+  id                        String   @id @default(cuid())
+  rowIndex                  Int
+  sizeMm                    String?
+  pnRatingClass             String?
+  diaOfBonnetMin            String?
+  diaOfBonnetMax            String?
+  heightOfBonnetMm          String?
+  faceToFaceLengthMm        String?
+  faceToFaceLengthTolerance String?
+  flangeOdMm                String?
+  flangeOdTolerance         String?
+  pcdMm                     String?
+  pcdTolerance              String?
+  numberOfBolts             String?
+  boltDiameterMm            String?
+  source                    String?
+  material                  String?
+  bodyPressure              String?
+  durationBody              String?
+  seatPressure              String?
+  durationSeat              String?
+  approxWeightKg            String?
+  syncedAt                  DateTime @default(now())
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@index([syncedAt])
+  @@map("gate_valve")
+}
+
+/// "FLANGE" — gid 0
+model Flange {
+  id                                String   @id @default(cuid())
+  rowIndex                          Int
+  size                              String?
+  moc                               String?
+  pnRatingClass                     String?
+  wallThicknessMm                   String?
+  idMm                              String?
+  idTolerance                       String?
+  odMm                              String?
+  odTolerancePlus                   String?
+  odToleranceMinus                  String?
+  pcdMm                             String?
+  pcdTolerance                      String?
+  noOfHoleNos                       String?
+  holeDia                           String?
+  holeDiaTolerancePlus              String?
+  holeDiaToleranceMinus             String?
+  thicknessOfFlange                 String?
+  thicknessTolerancePlus            String?
+  thicknessToleranceMinus           String?
+  raisedFaceThicknessOfFlange       String?
+  raisedFaceThicknessTolerancePlus  String?
+  raisedFaceThicknessToleranceMinus String?
+  seatPressure                      String?
+  bodyPressure                      String?
+  standards                         String?
+  flangeType                        String?
+  syncedAt                          DateTime @default(now())
+  createdAt                         DateTime @default(now())
+  updatedAt                         DateTime @updatedAt
+
+  @@index([syncedAt])
+  @@map("flange")
+}
+
+/// "GEAR BOX" — gid 1266518282
+model GearBox {
+  id                     String   @id @default(cuid())
+  rowIndex               Int
+  typeOfValve            String?
+  sizeOfValve            String?
+  pnRating               String?
+  torqueOfValve          String?
+  torqueWithSafetyFactor String?
+  turnsToCloseValves     String?
+  std                    String?
+  pcd                    String?
+  shaftLength            String?
+  shaftDiaStemDia        String?
+  sizeOfBase             String?
+  boreDia                String?
+  drillingDimension      String?
+  gearBoxType            String?
+  nmReqdRange            String?
+  rmCode                 String?
+  approved               String?
+  reqdBase               String?
+  gearboxSerialNoEmerson String?
+  gearboxSerialNoViral   String?
+  gearBoxOutputTorque    String?
+  turnsToClose           String?
+  mechAdvantage          String?
+  ratio                  String?
+  maxDriveBore           String?
+  weight                 String?
+  recommendedHandwheelMm String?
+  gearboxPriceEmerson    String?
+  gearboxViral           String?
+  actuatorModelNo        String?
+  actuatorRpm            String?
+  syncedAt               DateTime @default(now())
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@index([syncedAt])
+  @@map("gear_box")
+}
+
+/// "ACUATOR-MODEL NO" — gid 962975923
+model Actuator {
+  id                 String   @id @default(cuid())
+  rowIndex           Int
+  model              String?
+  speed              String?
+  ratedTq            String?
+  size               String?
+  poles              String?
+  lrtCurrentInA      String?
+  ratedTqCurrentInA  String?
+  avgLoadCurrentInA  String?
+  nominalKw          String?
+  powerFactor        String?
+  efficiency         String?
+  olrSet             String?
+  withInchingDuty    String?
+  withoutInchingDuty String?
+  syncedAt           DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([syncedAt])
+  @@map("actuator")
+}
+
+/// "DENSITY" — gid 166133048. Hidden from the subtab bar but still synced, so
+/// the material -> density values are available to the other tabs.
+model Density {
+  id           String   @id @default(cuid())
+  rowIndex     Int
+  material     String   @unique
+  densityGmCm3 String?
+  syncedAt     DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([syncedAt])
+  @@map("density")
+}
+
+/// Sync bookkeeping — one row per tab. Its absence is what marks a tab as
+/// "never synced", which the read API reports to the UI.
+model EngineeringSync {
+  tabKey    String   @id
+  syncedAt  DateTime @default(now())
+  totalRows Int
+
+  @@map("engineering_sync")
+}
