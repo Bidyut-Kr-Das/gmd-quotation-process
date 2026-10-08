@@ -467,7 +467,7 @@ export function ParticipationCards({
               onClearAssociation?.();
             }}
             className={`text-[10px] font-medium cursor-pointer ${
-              isDark ? "text-white/50 hover:text-white/80" : "text-slate-400 hover:text-slate-600"
+              isDark ? "text-white/50 hover:text-white/80" : "text-muted-foreground/80 hover:text-muted-foreground"
             }`}
           >
             Clear all ({participationFilters.length})
@@ -500,7 +500,7 @@ export function ParticipationCards({
                   : `flex w-full flex-col rounded-sm border px-4 py-3 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light ${
                       active
                         ? "bg-brand-light border-brand-light shadow-sm"
-                        : "bg-white border-slate-200 hover:border-slate-300"
+                        : "bg-card border-border hover:border-border"
                     }`
               }
             >
@@ -515,7 +515,7 @@ export function ParticipationCards({
                     className={
                       isDark
                         ? "text-xs font-medium text-white/80 truncate"
-                        : "text-xs font-medium text-slate-600 truncate"
+                        : "text-xs font-medium text-muted-foreground truncate"
                     }
                   >
                     {card.label}
@@ -525,7 +525,7 @@ export function ParticipationCards({
                   className={
                     isDark
                       ? "text-xl font-bold text-white tabular-nums"
-                      : "text-xl font-bold text-slate-800 tabular-nums"
+                      : "text-xl font-bold text-foreground tabular-nums"
                   }
                 >
                   {card.count}

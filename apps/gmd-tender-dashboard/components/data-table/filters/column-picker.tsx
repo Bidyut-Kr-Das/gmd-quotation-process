@@ -37,14 +37,14 @@ export function ColumnPicker<TData>({
               setSearch("");
             }}
           />
-          <div className="absolute right-0 top-full mt-1 z-50 w-64 rounded-sm bg-white shadow-md ring-1 ring-slate-200 p-2 flex flex-col max-h-80">
-            <p className="text-[11px] font-medium text-slate-500 px-1 py-1.5 uppercase tracking-wider flex items-center justify-between">
+          <div className="absolute right-0 top-full mt-1 z-50 w-64 rounded-sm bg-card shadow-md ring-1 ring-border p-2 flex flex-col max-h-80">
+            <p className="text-[11px] font-medium text-muted-foreground px-1 py-1.5 uppercase tracking-wider flex items-center justify-between">
               <span>Toggle Columns</span>
               {(() => {
                 const all = table.getAllLeafColumns().filter((c) => c.getCanHide());
                 const visible = all.filter((c) => c.getIsVisible()).length;
                 return (
-                  <span className="text-[10px] font-normal normal-case tracking-normal text-slate-400">
+                  <span className="text-[10px] font-normal normal-case tracking-normal text-muted-foreground/80">
                     {visible}/{all.length}
                   </span>
                 );
@@ -52,20 +52,20 @@ export function ColumnPicker<TData>({
             </p>
             {/* Search */}
             <div className="relative mb-2">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/80" />
               <input
                 type="text"
                 placeholder="Search columns..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-7 pr-7 py-1.5 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-slate-400"
+                className="w-full pl-7 pr-7 py-1.5 text-xs border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/80"
                 autoFocus
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted text-muted-foreground/80 hover:text-muted-foreground"
                   aria-label="Clear search"
                 >
                   <X className="size-3" />
@@ -151,13 +151,13 @@ export function ColumnPicker<TData>({
                   });
                 if (filtered.length === 0) {
                   return (
-                    <p className="text-xs text-slate-400 text-center py-4">No columns found</p>
+                    <p className="text-xs text-muted-foreground/80 text-center py-4">No columns found</p>
                   );
                 }
                 return filtered.map((column) => (
                   <label
                     key={column.id}
-                    className="flex items-center gap-2 py-1.5 px-1.5 hover:bg-slate-50 rounded cursor-pointer text-xs"
+                    className="flex items-center gap-2 py-1.5 px-1.5 hover:bg-muted rounded cursor-pointer text-xs"
                   >
                     <input
                       type="checkbox"

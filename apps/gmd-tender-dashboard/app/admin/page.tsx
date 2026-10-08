@@ -1,7 +1,8 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { RefreshCw, Columns, ListOrdered, GitMerge, ClipboardList } from "lucide-react";
+import { RefreshCw, Columns, ListOrdered, GitMerge, ClipboardList, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
 
 export default function AdminPage() {
@@ -16,7 +17,7 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/refresh-all", { method: "POST" });
       const data = await res.json();
-      setSyncResult(data.success ? "Sync completed successfully!" : `Sync failed: ${data.error}`);
+      setSyncResult(data.success ? "Sync completed successfully." : `Sync failed: ${data.error}`);
     } catch (err) {
       setSyncResult(`Error: ${(err as Error).message}`);
     } finally {
@@ -24,129 +25,63 @@ export default function AdminPage() {
     }
   };
 
-  return (
-    <div style={{ padding: "24px", maxWidth: "900px", margin: "0 auto" }}>
-      <h1 style={{ color: "var(--color-brand)", marginBottom: "24px" }}>Admin Panel</h1>
+  const ok = syncResult?.startsWith("Sync completed");
 
-      <div style={{ display: "flex", gap: "16px", marginBottom: "24px", flexWrap: "wrap" }}>
-        <Link href="/admin/mappings" style={{ textDecoration: "none", flex: "1", minWidth: "200px" }}>
-          <div style={{
-            background: "#fff",
-            border: "1px solid #e0e0e0",
-            borderRadius: "8px",
-            padding: "20px",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            transition: "box-shadow 0.15s",
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
-          >
-            <Columns size={24} style={{ color: "var(--color-brand)" }} />
-            <div>
-              <div style={{ fontWeight: 600, color: "var(--color-brand)", fontSize: "14px" }}>Column Mappings</div>
-              <div style={{ color: "#888", fontSize: "12px" }}>Map Excel headers to DB fields</div>
-            </div>
-          </div>
-        </Link>
-        <Link href="/admin/indices" style={{ textDecoration: "none", flex: "1", minWidth: "200px" }}>
-          <div style={{
-            background: "#fff",
-            border: "1px solid #e0e0e0",
-            borderRadius: "8px",
-            padding: "20px",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            transition: "box-shadow 0.15s",
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
-          >
-            <ListOrdered size={24} style={{ color: "var(--color-brand)" }} />
-            <div>
-              <div style={{ fontWeight: 600, color: "var(--color-brand)", fontSize: "14px" }}>Column Order</div>
-              <div style={{ color: "#888", fontSize: "12px" }}>Reorder & configure columns</div>
-            </div>
-          </div>
-        </Link>
-        <Link href="/admin/merging" style={{ textDecoration: "none", flex: "1", minWidth: "200px" }}>
-          <div style={{
-            background: "#fff",
-            border: "1px solid #e0e0e0",
-            borderRadius: "8px",
-            padding: "20px",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            transition: "box-shadow 0.15s",
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
-          >
-            <GitMerge size={24} style={{ color: "var(--color-brand)" }} />
-            <div>
-              <div style={{ fontWeight: 600, color: "var(--color-brand)", fontSize: "14px" }}>Column Merging</div>
-              <div style={{ color: "#888", fontSize: "12px" }}>Merge multiple fields into one</div>
-            </div>
-          </div>
-        </Link>
-        <Link href="/admin/sop" style={{ textDecoration: "none", flex: "1", minWidth: "200px" }}>
-          <div style={{
-            background: "#fff",
-            border: "1px solid #e0e0e0",
-            borderRadius: "8px",
-            padding: "20px",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            transition: "box-shadow 0.15s",
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
-          >
-            <ClipboardList size={24} style={{ color: "var(--color-brand)" }} />
-            <div>
-              <div style={{ fontWeight: 600, color: "var(--color-brand)", fontSize: "14px" }}>SOP Responsibilities</div>
-              <div style={{ color: "#888", fontSize: "12px" }}>Manage SOP columns & daily logs</div>
-            </div>
-          </div>
-        </Link>
-      </div>
-      <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "8px", padding: "24px" }}>
-        <h2 style={{ margin: "0 0 16px", fontSize: "18px", color: "#333" }}>Data Synchronization</h2>
-        <p style={{ color: "#666", fontSize: "14px", marginBottom: "16px" }}>
-          Trigger a full refresh from all data sources (Google Sheets, Smartsheet, Supply History).
-          This will pull the latest data and update the database.
-        </p>
+  return (
+    <div className="flex-1 overflow-auto">
+      <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 lg:px-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Admin</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Configure how uploaded tender sheets map into the dashboard.</p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {ADMIN_SECTIONS.map(({ href, label, description, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="group flex items-center gap-3 rounded-[10px] border border-border bg-card p-4 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:text-foreground">
+                <Icon size={18} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-foreground">{label}</span>
+                <span className="block truncate text-xs text-muted-foreground">{description}</span>
+              </span>
+              <ChevronRight size={16} className="text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          ))}
+        </div>
+
+        <section className="rounded-[10px] border border-border bg-card p-5">
+          <h2 className="text-base font-semibold text-foreground">Data synchronisation</h2>
+          <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+            Pull the latest data from Google Sheets, Smartsheet and Supply History, then update the database.
+          </p>
           {canSync && (
-            <button
-            onClick={handleRefreshAll}
-            disabled={syncing}
-            style={{
-              padding: "10px 24px",
-              background: syncing ? "#999" : "var(--color-brand)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "6px",
-              cursor: syncing ? "not-allowed" : "pointer",
-              fontSize: "14px",
-              fontWeight: 600,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            {syncing ? <><RefreshCw size={14} /> Syncing All Sources...</> : <><RefreshCw size={14} /> Refresh All Data</>}
-          </button>
+            <Button className="mt-4" onClick={handleRefreshAll} disabled={syncing}>
+              <RefreshCw className={syncing ? "animate-spin" : undefined} />
+              {syncing ? "Syncing all sources..." : "Refresh all data"}
+            </Button>
           )}
-        {syncResult && (
-          <div style={{ marginTop: "16px", padding: "12px", background: syncResult.startsWith("Sync completed") ? "#e6f4ea" : "#fce8e6", borderRadius: "4px", fontSize: "14px" }}>
-            {syncResult}
-          </div>
-        )}
+          {syncResult && (
+            <p
+              role="status"
+              className={`mt-4 rounded-lg px-3 py-2 text-sm ${ok ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-destructive/10 text-destructive"}`}
+            >
+              {syncResult}
+            </p>
+          )}
+        </section>
       </div>
     </div>
   );
 }
+
+const ADMIN_SECTIONS = [
+  { href: "/admin/mappings", label: "Column mappings", description: "Map Excel headers to DB fields", icon: Columns },
+  { href: "/admin/indices", label: "Column order", description: "Reorder and configure columns", icon: ListOrdered },
+  { href: "/admin/merging", label: "Column merging", description: "Merge multiple fields into one", icon: GitMerge },
+  { href: "/admin/sop", label: "SOP responsibilities", description: "Manage SOP columns and daily logs", icon: ClipboardList },
+];

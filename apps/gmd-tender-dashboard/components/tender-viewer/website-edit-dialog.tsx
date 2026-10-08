@@ -44,16 +44,16 @@ export default function WebsiteEditDialog({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
     >
       <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 p-6"
+        className="bg-card rounded-lg shadow-xl w-full max-w-lg mx-4 p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-slate-800">
+          <h3 className="text-sm font-semibold text-foreground">
             Edit Website URL
           </h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+            className="text-muted-foreground/80 hover:text-muted-foreground text-lg leading-none"
           >
             ×
           </button>
@@ -61,27 +61,27 @@ export default function WebsiteEditDialog({
 
         <div className="space-y-3 text-sm">
           <div>
-            <span className="text-slate-500 text-[11px]">TENDER BRIEF</span>
-            <p className="text-slate-700 mt-0.5 text-[12px] leading-snug">
+            <span className="text-muted-foreground text-[11px]">TENDER BRIEF</span>
+            <p className="text-foreground mt-0.5 text-[12px] leading-snug">
               {briefPreview}
             </p>
           </div>
 
           <div>
-            <span className="text-slate-500 text-[11px]">ORGANIZATION</span>
-            <p className="text-slate-700 mt-0.5 text-[13px] font-medium">
+            <span className="text-muted-foreground text-[11px]">ORGANIZATION</span>
+            <p className="text-foreground mt-0.5 text-[13px] font-medium">
               {organization || "-"}
             </p>
           </div>
 
           <div>
-            <span className="text-slate-500 text-[11px]">WEBSITE URL</span>
+            <span className="text-muted-foreground text-[11px]">WEBSITE URL</span>
             <input
               type="url"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://example.com"
-              className="mt-1 w-full border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+              className="mt-1 w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-brand-accent"
             />
           </div>
         </div>
@@ -89,7 +89,7 @@ export default function WebsiteEditDialog({
         <div className="flex justify-end gap-2 mt-5">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 text-[13px] text-slate-600 hover:text-slate-800 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
+            className="px-4 py-1.5 text-[13px] text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-muted transition-colors"
           >
             Cancel
           </button>

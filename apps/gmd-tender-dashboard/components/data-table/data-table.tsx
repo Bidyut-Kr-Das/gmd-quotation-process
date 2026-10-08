@@ -241,7 +241,7 @@ export function DataTable<TData>({
   if (data.length === 0) {
     if (emptyState) return <>{emptyState}</>;
     return (
-      <div className="flex items-center justify-center rounded-sm border border-slate-200 bg-white p-12 text-sm text-slate-400">
+      <div className="flex items-center justify-center rounded-sm border border-border bg-card p-12 text-sm text-muted-foreground/80">
         No data available
       </div>
     );
@@ -249,9 +249,9 @@ export function DataTable<TData>({
 
   /* ---- render ---- */
   return (
-    <div className="rounded-sm border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <div className="rounded-sm border border-border bg-card shadow-sm overflow-hidden">
       {/* ======== TOOLBAR ======== */}
-      <div className="bg-white px-5 py-3 text-primary flex items-center justify-between gap-4">
+      <div className="bg-card px-5 py-3 text-primary flex items-center justify-between gap-4">
         {/* left: title */}
         <div className="flex items-center gap-3 min-w-0">
           {titleIcon ?? <DefaultTitleIcon />}
@@ -275,7 +275,7 @@ export function DataTable<TData>({
             <ColumnPicker table={table} formatHeader={formatHeader} />
           )}
           {toolbarActions && (
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+            <div className="flex items-center gap-2 pl-2 border-l border-border">
               {toolbarActions}
             </div>
           )}
@@ -353,7 +353,7 @@ export function DataTable<TData>({
               <TableRow>
                 <TableCell
                   colSpan={table.getAllLeafColumns().length}
-                  className="h-24 text-center text-sm text-slate-400"
+                  className="h-24 text-center text-sm text-muted-foreground/80"
                 >
                   {emptyMessage}
                 </TableCell>
@@ -364,15 +364,15 @@ export function DataTable<TData>({
                   key={row.id}
                   className={cn(
                     "transition-colors h-[52px]",
-                    "hover:bg-slate-100/50",
-                    "bg-white",
+                    "hover:bg-muted/50",
+                    "bg-card",
                   )}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
                       className={cn(
-                        "px-3 py-0 text-xs text-slate-600 border-b border-r border-slate-200 last:border-r-0",
+                        "px-3 py-0 text-xs text-muted-foreground border-b border-r border-border last:border-r-0",
                         "whitespace-normal break-words leading-relaxed overflow-hidden h-[52px]",
                       )}
                       style={{ width: cell.column.getSize() }}
@@ -391,8 +391,8 @@ export function DataTable<TData>({
       </div>
 
       {/* ======== PAGINATION ======== */}
-      <div className="flex items-center justify-between px-5 py-2.5 border-t border-slate-200 bg-white">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
+      <div className="flex items-center justify-between px-5 py-2.5 border-t border-border bg-card">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>
             Showing{" "}
             {table.getState().pagination.pageIndex *
@@ -442,7 +442,7 @@ export function DataTable<TData>({
           >
             <ChevronLeft className="size-3" />
           </Button>
-          <span className="text-xs text-slate-500 px-2 min-w-[80px] text-center">
+          <span className="text-xs text-muted-foreground px-2 min-w-[80px] text-center">
             Page {table.getState().pagination.pageIndex + 1} of{" "}
             {table.getPageCount()}
           </span>

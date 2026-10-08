@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { setAnalyticsFilter } from "@/lib/slices/filtersSlice";
+import { BarChart3 } from "lucide-react";
 
 interface AnalyticsCardsProps {
   rows: Record<string, string>[];
@@ -63,28 +64,16 @@ export default function AnalyticsCards({
   ];
 
   return (
-    <div className="flex flex-col w-96 rounded-sm bg-white border border-slate-200 shadow-sm overflow-hidden h-full">
-      <div className="bg-linear-to-r from-primary to-primary/80 px-4 py-3 flex items-center gap-2.5">
-        <div className="flex items-center justify-center w-6 h-6 rounded-sm bg-white/10">
-          <svg
-            className="size-3.5 text-primary-foreground/80"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
-            />
-          </svg>
+    <div className="flex flex-col w-96 rounded-sm bg-card border border-border shadow-sm overflow-hidden h-full">
+      <div className="bg-muted/60 border-b border-border px-4 py-3 flex items-center gap-2.5">
+        <div className="flex items-center justify-center w-6 h-6 rounded-md bg-card ring-1 ring-border">
+          <BarChart3 className="size-3.5 text-muted-foreground" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-white tracking-wide">
+          <h3 className="text-sm font-semibold text-foreground">
             Analytics Dashboard
           </h3>
-          <p className="text-[11px] text-primary-foreground/60">
+          <p className="text-[11px] text-muted-foreground">
             Key metrics at a glance
           </p>
         </div>
@@ -102,10 +91,10 @@ export default function AnalyticsCards({
                 className={`w-full flex items-center justify-between py-1.5 px-2.5 rounded-sm text-sm transition-colors cursor-pointer ${
                   active
                     ? "bg-brand-light border border-brand-light shadow-sm"
-                    : "bg-slate-50 border border-transparent hover:bg-slate-100"
+                    : "bg-muted border border-transparent hover:bg-muted"
                 }`}
               >
-                <span className="text-slate-700">{card.label}</span>
+                <span className="text-foreground">{card.label}</span>
                 <span className={`font-semibold ${card.colorClass}`}>
                   {card.valueNum}
                 </span>
@@ -116,7 +105,7 @@ export default function AnalyticsCards({
 
         {personCounts.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Assigned Tenders by Person
             </h4>
             <div className="space-y-1">
@@ -134,10 +123,10 @@ export default function AnalyticsCards({
                     className={`w-full flex items-center justify-between py-1.5 px-2.5 rounded-sm text-sm transition-colors cursor-pointer ${
                       isActive
                         ? "bg-brand-light border border-brand-light shadow-sm"
-                        : "bg-slate-50 border border-transparent hover:bg-slate-100"
+                        : "bg-muted border border-transparent hover:bg-muted"
                     }`}
                   >
-                    <span className="text-slate-700">{p.name}</span>
+                    <span className="text-foreground">{p.name}</span>
                     <span className="font-semibold text-primary">{p.count}</span>
                   </button>
                 );

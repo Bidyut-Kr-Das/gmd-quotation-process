@@ -141,94 +141,94 @@ export default function SopResponsibilityDialog({ open, onClose, onSave, initial
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-xl mx-4 p-6 max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-card rounded-lg shadow-xl w-full max-w-xl mx-4 p-6 max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-slate-800">{isEditing ? "Edit SOP Responsibility" : "Add SOP Responsibility"}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <h3 className="text-sm font-semibold text-foreground">{isEditing ? "Edit SOP Responsibility" : "Add SOP Responsibility"}</h3>
+          <button onClick={onClose} className="text-muted-foreground/80 hover:text-muted-foreground">
             <X size={16} />
           </button>
         </div>
         <div className="space-y-3 text-sm">
           <div>
-            <label className="text-slate-500 text-[11px] block mb-1">COLUMN NAME *</label>
+            <label className="text-muted-foreground text-[11px] block mb-1">COLUMN NAME *</label>
             <input
               value={columnName}
               onChange={(e) => setColumnName(e.target.value)}
               placeholder="e.g. Tender Uploading"
-              className="w-full border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+              className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-brand-accent"
             />
           </div>
           <div>
-            <label className="text-slate-500 text-[11px] block mb-1">DESCRIPTION</label>
+            <label className="text-muted-foreground text-[11px] block mb-1">DESCRIPTION</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description of SOP"
               rows={2}
-              className="w-full border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+              className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-brand-accent"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-slate-500 text-[11px] block mb-1">ALLOCATED TO</label>
+              <label className="text-muted-foreground text-[11px] block mb-1">ALLOCATED TO</label>
               <input
                 value={allocatedTo}
                 onChange={(e) => setAllocatedTo(e.target.value)}
                 placeholder="e.g. Arpan Pal"
-                className="w-full border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+                className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-brand-accent"
               />
             </div>
             <div>
-              <label className="text-slate-500 text-[11px] block mb-1">EMAIL</label>
+              <label className="text-muted-foreground text-[11px] block mb-1">EMAIL</label>
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="e.g. sales@uicwires.com"
-                className="w-full border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+                className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-brand-accent"
               />
             </div>
           </div>
           <div>
-            <label className="text-slate-500 text-[11px] block mb-1">DAILY LOG</label>
+            <label className="text-muted-foreground text-[11px] block mb-1">DAILY LOG</label>
             <textarea
               value={dailyLog}
               onChange={(e) => setDailyLog(e.target.value)}
               placeholder="Daily log note (optional)"
               rows={2}
-              className="w-full border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+              className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-brand-accent"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-slate-500 text-[11px] block mb-1">SOURCE</label>
-              <select value={source} onChange={(e)=>{const v=e.target.value; setSource(v); if(["AI","DOCUMENT_PARSE","RA_AUTOMATION","SCRAPE_247"].includes(v)){ setDailyLogEnabled(false); setDateEnabled(false);} }} className="w-full border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-accent">
+              <label className="text-muted-foreground text-[11px] block mb-1">SOURCE</label>
+              <select value={source} onChange={(e)=>{const v=e.target.value; setSource(v); if(["AI","DOCUMENT_PARSE","RA_AUTOMATION","SCRAPE_247"].includes(v)){ setDailyLogEnabled(false); setDateEnabled(false);} }} className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-brand-accent">
                 <option value="">Select source</option>
                 {SOURCE_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-slate-500 text-[11px] block mb-1">DATE</label>
+              <label className="text-muted-foreground text-[11px] block mb-1">DATE</label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+                className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-brand-accent"
               />
             </div>
           </div>
           <div>
-            <label className="text-slate-500 text-[11px] block mb-1">DONE FROM WHERE</label>
-            <input value={doneFromWhere} onChange={(e)=>setDoneFromWhere(e.target.value)} placeholder="e.g. Excel upload / Manual via TenderTable" className="w-full border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-brand-accent" />
+            <label className="text-muted-foreground text-[11px] block mb-1">DONE FROM WHERE</label>
+            <input value={doneFromWhere} onChange={(e)=>setDoneFromWhere(e.target.value)} placeholder="e.g. Excel upload / Manual via TenderTable" className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-brand-accent" />
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <label className="flex items-center gap-2 text-xs text-slate-700"><input type="checkbox" checked={isManual} onChange={(e)=>setIsManual(e.target.checked)} /> Manual?</label>
-            <label className="flex items-center gap-2 text-xs text-slate-700"><input type="checkbox" checked={dailyLogEnabled} onChange={(e)=>setDailyLogEnabled(e.target.checked)} /> DailyLog</label>
-            <label className="flex items-center gap-2 text-xs text-slate-700"><input type="checkbox" checked={dateEnabled} onChange={(e)=>setDateEnabled(e.target.checked)} /> Date</label>
+            <label className="flex items-center gap-2 text-xs text-foreground"><input type="checkbox" checked={isManual} onChange={(e)=>setIsManual(e.target.checked)} /> Manual?</label>
+            <label className="flex items-center gap-2 text-xs text-foreground"><input type="checkbox" checked={dailyLogEnabled} onChange={(e)=>setDailyLogEnabled(e.target.checked)} /> DailyLog</label>
+            <label className="flex items-center gap-2 text-xs text-foreground"><input type="checkbox" checked={dateEnabled} onChange={(e)=>setDateEnabled(e.target.checked)} /> Date</label>
           </div>
           {error && <p className="text-red-500 text-[12px]">{error}</p>}
         </div>
         <div className="flex justify-end gap-2 mt-5">
-          <button onClick={onClose} className="px-4 py-1.5 text-[13px] text-slate-600 hover:text-slate-800 border border-slate-200 rounded-md hover:bg-slate-50">
+          <button onClick={onClose} className="px-4 py-1.5 text-[13px] text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-muted">
             Cancel
           </button>
           <button

@@ -1,5 +1,7 @@
 "use client";
 
+import { DataEmptyState } from "@/components/ui/data-state";
+import { Button } from "@/components/ui/button";
 import React, {
   useEffect,
   useCallback,
@@ -21,7 +23,7 @@ import {
   updateTenderReasonForNotAPM,
 } from "@/lib/slices/tendersSlice";
 import { REASON_FOR_NOT_APM_OPTIONS } from "@/lib/reason-for-not-apm";
-import { useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { setExclusionFilter } from "@/lib/slices/filtersSlice";
 import {
   OptimizedTenderTable,
@@ -65,6 +67,7 @@ import {
 } from "@/components/ui/select";
 import {
   Loader2,
+  LogIn,
   MessageSquare,
   Pencil,
   Check,
@@ -137,7 +140,7 @@ function RemarksCell({
   if (!canEdit) {
     return (
       <div style={{ height: "100%", minHeight: 160, whiteSpace: "normal" }}>
-        {val || <span className="text-slate-300">-</span>}
+        {val || <span className="text-muted-foreground/60">-</span>}
       </div>
     );
   }
@@ -190,7 +193,7 @@ function RemarksCell({
   return (
     <div className="relative group/cell h-full">
       <div style={{ height: "100%", minHeight: 160, whiteSpace: "normal" }}>
-        {val || <span className="text-slate-300">-</span>}
+        {val || <span className="text-muted-foreground/60">-</span>}
       </div>
       <button
         className="opacity-0 group-hover/cell:opacity-100 transition-all absolute top-0 right-0 w-8 h-8 rounded-full flex items-center justify-center bg-brand hover:bg-brand-accent p-1 shadow-sm cursor-pointer"
@@ -213,13 +216,13 @@ function RemarksCell({
 
 function DivisionOrDepartmentCell({ value }: { value: unknown }) {
   const raw = String(value ?? "").trim();
-  if (!raw) return <span className="text-slate-300">-</span>;
+  if (!raw) return <span className="text-muted-foreground/60">-</span>;
   const key = raw.toUpperCase();
   const map: Record<string, string> = {
-    "LASER PROJECTS": "bg-brand-light text-brand border-brand-light",
+    "LASER PROJECTS": "bg-brand-light text-signal border-signal/40",
     "LASER MANUFACTURING": "bg-emerald-50 text-emerald-700 border-emerald-200",
   };
-  const cls = map[key] ?? "bg-slate-100 text-slate-600 border-slate-200";
+  const cls = map[key] ?? "bg-muted text-muted-foreground border-border";
   return (
     <Badge className={`text-[10px] font-medium border ${cls}`}>{raw}</Badge>
   );
@@ -233,7 +236,7 @@ const AgentReportCell = memo(function AgentReportCell({
   onOpen: (report: string) => void;
 }) {
   const raw = String(value ?? "").trim();
-  if (!raw) return <span className="text-slate-300">-</span>;
+  if (!raw) return <span className="text-muted-foreground/60">-</span>;
   return (
     <button
       type="button"
@@ -914,10 +917,10 @@ export default function Dashboard() {
                     }
                     className={`w-7 h-7 rounded text-xs font-bold border-2 transition-colors cursor-pointer ${
                       isUpdating
-                        ? "opacity-50 cursor-not-allowed bg-slate-200 text-slate-400 border-slate-300"
+                        ? "opacity-50 cursor-not-allowed bg-muted text-muted-foreground/80 border-border"
                         : isYes
                           ? "bg-green-500 text-white border-green-600"
-                          : "bg-white text-slate-400 border-slate-300 hover:border-slate-400"
+                          : "bg-card text-muted-foreground/80 border-border hover:border-input"
                     }`}
                   >
                     {isUpdating ? (
@@ -934,10 +937,10 @@ export default function Dashboard() {
                     }
                     className={`w-7 h-7 rounded text-xs font-bold border-2 transition-colors cursor-pointer ${
                       isUpdating
-                        ? "opacity-50 cursor-not-allowed bg-slate-200 text-slate-400 border-slate-300"
+                        ? "opacity-50 cursor-not-allowed bg-muted text-muted-foreground/80 border-border"
                         : isNo
                           ? "bg-red-500 text-white border-red-600"
-                          : "bg-white text-slate-400 border-slate-300 hover:border-slate-400"
+                          : "bg-card text-muted-foreground/80 border-border hover:border-input"
                     }`}
                   >
                     {isUpdating ? (
@@ -1053,7 +1056,7 @@ export default function Dashboard() {
             renderCell: (_value: unknown, row: Record<string, unknown>) => {
               const valid = String(row.aiRelevanceValid ?? "");
               const reason = String(row.aiRelevanceReason ?? "");
-              if (!valid) return <span className="text-slate-300">-</span>;
+              if (!valid) return <span className="text-muted-foreground/60">-</span>;
               const isYes = valid === "true";
               const hasFeedback = !!row.aiFeedbackCorrected;
               const feedbackKey = `${row.id}-${row.type === "Gem" ? "Gem" : "NonGem"}`;
@@ -1078,7 +1081,7 @@ export default function Dashboard() {
                       >
                         {isYes ? "YES" : "NO"}
                       </Badge>
-                      <span className="text-[11px] text-slate-500 leading-snug">
+                      <span className="text-[11px] text-muted-foreground leading-snug">
                         {reason}
                       </span>
                       {hasFeedback && (
@@ -1301,7 +1304,7 @@ export default function Dashboard() {
             RATE_LIMITED:
               "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50",
             PROCESSING:
-              "bg-brand-light text-brand border-brand-light hover:bg-brand-light",
+              "bg-brand-light text-signal border-signal/40 hover:bg-brand-light",
           };
           return {
             header: "Parse Status",
@@ -1320,10 +1323,10 @@ export default function Dashboard() {
             renderCell: (_value: unknown, row: Record<string, unknown>) => {
               const status = String(row.parseStatus ?? "");
               const error = String(row.parseError ?? "");
-              if (!status) return <span className="text-slate-300">-</span>;
+              if (!status) return <span className="text-muted-foreground/60">-</span>;
               const colorClass =
                 statusColors[status] ??
-                "bg-slate-50 text-slate-600 border-slate-200";
+                "bg-muted text-muted-foreground border-border";
               return (
                 <div className="flex flex-col gap-0.5" title={error}>
                   <Badge
@@ -1430,7 +1433,7 @@ export default function Dashboard() {
                         Show Tender Documents
                       </button>
                     ) : (
-                      <span className="text-slate-300">-</span>
+                      <span className="text-muted-foreground/60">-</span>
                     )}
                     <button
                       className="opacity-0 group-hover/cell:opacity-100 transition-all w-8 h-8 rounded-full flex items-center justify-center bg-brand hover:bg-brand-accent p-1 shadow-sm cursor-pointer shrink-0"
@@ -1475,7 +1478,7 @@ export default function Dashboard() {
             },
             renderCell: (_value: unknown, row: Record<string, unknown>) => {
               const raw = String(row[col] ?? "");
-              if (!raw) return <span className="text-slate-300">-</span>;
+              if (!raw) return <span className="text-muted-foreground/60">-</span>;
               let entries: {
                 officer: string;
                 address?: string;
@@ -1484,10 +1487,10 @@ export default function Dashboard() {
               try {
                 entries = JSON.parse(raw);
               } catch {
-                return <span className="text-slate-300">-</span>;
+                return <span className="text-muted-foreground/60">-</span>;
               }
               if (!entries.length)
-                return <span className="text-slate-300">-</span>;
+                return <span className="text-muted-foreground/60">-</span>;
               return (
                 <div
                   className="flex flex-col gap-1 text-xs"
@@ -1501,7 +1504,7 @@ export default function Dashboard() {
                     <div key={i} className="flex gap-2">
                       <span className="font-medium">{e.officer}</span>
                       {e.quantity && (
-                        <span className="text-slate-500">
+                        <span className="text-muted-foreground">
                           qty: {e.quantity}
                         </span>
                       )}
@@ -1568,7 +1571,7 @@ export default function Dashboard() {
                         ))}
                       </div>
                     ) : (
-                      <span className="text-slate-300">-</span>
+                      <span className="text-muted-foreground/60">-</span>
                     )}
                   </div>
                   <button
@@ -1641,7 +1644,7 @@ export default function Dashboard() {
                 } catch {}
               }
               if (addresses.length === 0) {
-                return <span className="text-slate-300">-</span>;
+                return <span className="text-muted-foreground/60">-</span>;
               }
               return (
                 <div
@@ -1688,7 +1691,7 @@ export default function Dashboard() {
                   badge = {
                     label: "PRE",
                     className:
-                      "bg-brand-light text-brand border-brand-light hover:bg-brand-light",
+                      "bg-brand-light text-signal border-signal/40 hover:bg-brand-light",
                   };
                 }
               }
@@ -1698,7 +1701,7 @@ export default function Dashboard() {
                   {val ? (
                     <span className="text-xs font-mono">{val}</span>
                   ) : (
-                    <span className="text-slate-300">-</span>
+                    <span className="text-muted-foreground/60">-</span>
                   )}
                   {badge && (
                     <Badge
@@ -1729,14 +1732,14 @@ export default function Dashboard() {
             frozen: true,
             renderCell: (value: unknown) => {
               const val = String(value ?? "");
-              if (!val) return <span className="text-slate-300">-</span>;
+              if (!val) return <span className="text-muted-foreground/60">-</span>;
               const isGem = val === "Gem";
               return (
                 <Badge
                   className={`text-[10px] font-medium ${
                     isGem
-                      ? "bg-brand-light text-brand border-brand-light"
-                      : "bg-slate-100 text-slate-600 border-slate-200"
+                      ? "bg-brand-light text-signal border-signal/40"
+                      : "bg-muted text-muted-foreground border-border"
                   }`}
                 >
                   {val}
@@ -2032,12 +2035,12 @@ export default function Dashboard() {
               const org = String(row.organization ?? "");
               const dept = String(row.departmentName ?? "");
               if (!org && !dept)
-                return <span className="text-slate-300">-</span>;
+                return <span className="text-muted-foreground/60">-</span>;
               return (
                 <div className="flex flex-col leading-tight">
                   <span className="text-xs font-medium">{org || "-"}</span>
                   {dept && (
-                    <span className="text-[11px] text-slate-500">{dept}</span>
+                    <span className="text-[11px] text-muted-foreground">{dept}</span>
                   )}
                 </div>
               );
@@ -2330,7 +2333,7 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="flex flex-1 overflow-hidden bg-[#f4f6f8]">
+    <div className="flex flex-1 min-h-0 overflow-hidden bg-background">
       <TenderSidebar
         rows={filteredRows}
         analytics={sidebarAnalytics}
@@ -2341,28 +2344,10 @@ export default function Dashboard() {
       />
 
       <div className="flex flex-col flex-1 min-w-0">
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex flex-1 flex-col overflow-auto p-4">
           {loadingFiles && (
-            <div className="flex items-center justify-center py-12 text-sm text-slate-400">
-              <svg
-                className="size-5 animate-spin mr-2 text-primary"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground/80">
+              <Loader2 className="size-5 animate-spin mr-2 text-muted-foreground" />
               Loading files...
             </div>
           )}
@@ -2380,19 +2365,30 @@ export default function Dashboard() {
                 rows={rowsWithMergedValues as Record<string, unknown>[]}
                 associations={tenderData.associations ?? []}
                 disableDefaultDeadlineFilter={participationFilters.length > 0}
-                title="Tender Table"
+                title="Tenders"
               />
             </div>
           )}
 
           {!loadingFiles &&
-            files.length > 0 &&
             !tenderData &&
-            !loadingTenders && (
-              <div className="flex items-center justify-center py-12 text-sm text-slate-400 bg-white rounded-sm border border-slate-200">
-                No tender data found
-              </div>
-            )}
+            !loadingTenders &&
+            (isLoggedIn ? (
+              <DataEmptyState
+                label="No tenders yet"
+                description="Upload tender files from the sidebar to see them here."
+              />
+            ) : (
+              <DataEmptyState
+                label="Sign in to view tenders"
+                description="Tender data is only available to signed-in users."
+                action={
+                  <Button size="sm" onClick={() => signIn()}>
+                    <LogIn /> Sign in
+                  </Button>
+                }
+              />
+            ))}
         </main>
       </div>
     </div>

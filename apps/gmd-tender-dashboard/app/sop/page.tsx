@@ -67,7 +67,7 @@ export default function SopPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col p-6 gap-4 min-h-0" style={{paddingTop:"12px", height:"calc(100vh - 42px)", display:"flex"}}>
+    <div className="flex flex-1 flex-col p-6 gap-4 min-h-0" style={{paddingTop:"12px", display:"flex"}}>
       <div className="flex items-center gap-2 shrink-0">
         <FileText className="size-5 text-brand"/><h1 className="text-xl font-bold text-brand">SOP</h1>
         <span className="text-xs text-gray-500">Roles & Responsibilities — Column Name | Description | Done From Where | Source | Manual? | Allocated | Daily Log (IST)</span>

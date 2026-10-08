@@ -72,16 +72,16 @@ export default function TenderDocumentUploadDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
       <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 p-6"
+        className="bg-card rounded-lg shadow-xl w-full max-w-lg mx-4 p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-slate-800">
+          <h3 className="text-sm font-semibold text-foreground">
             Upload Tender File
           </h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+            className="text-muted-foreground/80 hover:text-muted-foreground text-lg leading-none"
           >
             ×
           </button>
@@ -89,21 +89,21 @@ export default function TenderDocumentUploadDialog({
 
         <div className="space-y-3 text-sm">
           <div>
-            <span className="text-slate-500 text-[11px]">TENDER BRIEF</span>
-            <p className="text-slate-700 mt-0.5 text-[12px] leading-snug">
+            <span className="text-muted-foreground text-[11px]">TENDER BRIEF</span>
+            <p className="text-foreground mt-0.5 text-[12px] leading-snug">
               {briefPreview}
             </p>
           </div>
 
           <div>
-            <span className="text-slate-500 text-[11px]">ORGANIZATION</span>
-            <p className="text-slate-700 mt-0.5 text-[13px] font-medium">
+            <span className="text-muted-foreground text-[11px]">ORGANIZATION</span>
+            <p className="text-foreground mt-0.5 text-[13px] font-medium">
               {organization || "-"}
             </p>
           </div>
 
           <div>
-            <span className="text-slate-500 text-[11px]">FILE TYPE</span>
+            <span className="text-muted-foreground text-[11px]">FILE TYPE</span>
             <Select
               value={fileType}
               onValueChange={(v) => {
@@ -124,7 +124,7 @@ export default function TenderDocumentUploadDialog({
           </div>
 
           <div>
-            <span className="text-slate-500 text-[11px]">FILE</span>
+            <span className="text-muted-foreground text-[11px]">FILE</span>
             <input
               ref={inputRef}
               type="file"
@@ -133,10 +133,10 @@ export default function TenderDocumentUploadDialog({
               onChange={handleFileChange}
             />
             {file ? (
-              <div className="mt-1 flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
-                <span className="inline-flex items-center gap-2 text-[13px] text-slate-700 truncate">
+              <div className="mt-1 flex items-center justify-between rounded-md border border-border px-3 py-2">
+                <span className="inline-flex items-center gap-2 text-[13px] text-foreground truncate">
                   {file.name.toLowerCase().endsWith(".zip") ? (
-                    <FileArchive className="w-4 h-4 text-slate-400 shrink-0" />
+                    <FileArchive className="w-4 h-4 text-muted-foreground/80 shrink-0" />
                   ) : (
                     <FileIcon
                       extension={file.name.includes(".")
@@ -149,7 +149,7 @@ export default function TenderDocumentUploadDialog({
                 </span>
                 <button
                   onClick={() => setFile(null)}
-                  className="text-xs text-slate-400 hover:text-red-500 ml-2 shrink-0"
+                  className="text-xs text-muted-foreground/80 hover:text-red-500 ml-2 shrink-0"
                 >
                   Remove
                 </button>
@@ -157,7 +157,7 @@ export default function TenderDocumentUploadDialog({
             ) : (
               <button
                 onClick={handleChoose}
-                className="mt-1 w-full flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-md px-3 py-4 text-[13px] text-slate-400 hover:border-brand-light hover:bg-brand-light hover:text-brand transition-colors"
+                className="mt-1 w-full flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-md px-3 py-4 text-[13px] text-muted-foreground/80 hover:border-brand-light hover:bg-brand-light hover:text-brand transition-colors"
               >
                 <Upload className="w-4 h-4" />
                 Choose file
@@ -169,7 +169,7 @@ export default function TenderDocumentUploadDialog({
         <div className="flex justify-end gap-2 mt-5">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 text-[13px] text-slate-600 hover:text-slate-800 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
+            className="px-4 py-1.5 text-[13px] text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-muted transition-colors"
           >
             Cancel
           </button>

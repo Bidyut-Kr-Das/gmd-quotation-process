@@ -1,5 +1,5 @@
 import { DataLoadingState } from "@/components/ui/data-state";
 
 export default function Loading() {
-  return <DataLoadingState label="Loading activity..." />;
+  return <DataLoadingState label="Loading contract review..." />;
 }

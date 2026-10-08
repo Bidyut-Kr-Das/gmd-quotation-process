@@ -468,7 +468,7 @@ export default function EmdDetailsCashPage() {
   }
 
   return (
-    <div className="supply-layout-container" style={{ height: "calc(100vh - 42px)" }}>
+    <div className="supply-layout-container" style={{ flex: 1, minHeight: 0 }}>
       <aside className="supply-sidebar">
         <div className="supply-sidebar-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span>EMD Cash</span>

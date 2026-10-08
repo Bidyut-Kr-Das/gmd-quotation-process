@@ -1,4 +1,5 @@
 "use client";
+import { DataLoadingState } from "@/components/ui/data-state";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Plus, Search, Pencil, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -113,10 +114,10 @@ export default function ColumnIndicesPage() {
   if (loading) {
     return (
       <div style={{ padding: "24px" }}>
-        <h1 style={{ color: "var(--color-brand)", marginBottom: "24px" }}>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Column Index
         </h1>
-        <p style={{ color: "#999" }}>Loading column indices...</p>
+        <DataLoadingState label="Loading column indices..." />
       </div>
     );
   }
@@ -131,7 +132,7 @@ export default function ColumnIndicesPage() {
           marginBottom: "16px",
         }}
       >
-        <h1 style={{ color: "var(--color-brand)", margin: 0, fontSize: "22px" }}>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Column Index
         </h1>
         <button
@@ -165,7 +166,7 @@ export default function ColumnIndicesPage() {
             left: "12px",
             top: "50%",
             transform: "translateY(-50%)",
-            color: "#999",
+            color: "var(--muted-foreground)",
           }}
         />
         <input
@@ -175,10 +176,10 @@ export default function ColumnIndicesPage() {
           style={{
             width: "100%",
             padding: "8px 12px 8px 36px",
-            border: "1px solid #e0e0e0",
+            border: "1px solid var(--border)",
             borderRadius: "8px",
             fontSize: "14px",
-            color: "#333",
+            color: "var(--foreground)",
             outline: "none",
             boxSizing: "border-box",
           }}
@@ -188,12 +189,12 @@ export default function ColumnIndicesPage() {
       {filteredIndices.length === 0 ? (
         <div
           style={{
-            background: "#fff",
-            border: "1px solid #e0e0e0",
+            background: "var(--card)",
+            border: "1px solid var(--border)",
             borderRadius: "8px",
             padding: "40px",
             textAlign: "center",
-            color: "#999",
+            color: "var(--muted-foreground)",
             fontSize: "14px",
           }}
         >
@@ -204,8 +205,8 @@ export default function ColumnIndicesPage() {
       ) : (
         <div
           style={{
-            background: "#fff",
-            border: "1px solid #e0e0e0",
+            background: "var(--card)",
+            border: "1px solid var(--border)",
             borderRadius: "8px",
             overflow: "hidden",
           }}
@@ -216,11 +217,11 @@ export default function ColumnIndicesPage() {
               gridTemplateColumns: "60px 2fr 2fr 100px 120px",
               gap: "8px",
               padding: "10px 16px",
-              background: "#f8f9fb",
-              borderBottom: "1px solid #e0e0e0",
+              background: "var(--muted)",
+              borderBottom: "1px solid var(--border)",
               fontSize: "12px",
               fontWeight: 600,
-              color: "#666",
+              color: "var(--muted-foreground)",
               textTransform: "uppercase",
               letterSpacing: "0.5px",
             }}
@@ -239,13 +240,13 @@ export default function ColumnIndicesPage() {
                 gridTemplateColumns: "60px 2fr 2fr 100px 120px",
                 gap: "8px",
                 padding: "8px 16px",
-                borderBottom: "1px solid #f0f0f0",
+                borderBottom: "1px solid var(--border)",
                 alignItems: "center",
                 fontSize: "13px",
-                background: idx % 2 === 0 ? "#fff" : "#fafafa",
+                background: idx % 2 === 0 ? "#fff" : "var(--muted)",
               }}
             >
-              <span style={{ color: "#bbb", fontSize: "12px" }}>
+              <span style={{ color: "var(--muted-foreground)", fontSize: "12px" }}>
                 {idx + 1}
               </span>
               <span
@@ -257,14 +258,14 @@ export default function ColumnIndicesPage() {
               >
                 {item.columnName}
               </span>
-              <span style={{ color: "#666", fontSize: "12px" }}>
+              <span style={{ color: "var(--muted-foreground)", fontSize: "12px" }}>
                 {item.displayName ?? "-"}
               </span>
               <span
                 style={{
                   fontFamily: "monospace",
                   fontSize: "13px",
-                  color: "#333",
+                  color: "var(--foreground)",
                   fontWeight: 600,
                 }}
               >
@@ -286,10 +287,10 @@ export default function ColumnIndicesPage() {
                   style={{
                     padding: "6px 10px",
                     background: "none",
-                    border: "1px solid #e0e0e0",
+                    border: "1px solid var(--border)",
                     borderRadius: "4px",
                     cursor: "pointer",
-                    color: "#666",
+                    color: "var(--muted-foreground)",
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "4px",
@@ -304,10 +305,10 @@ export default function ColumnIndicesPage() {
                   style={{
                     padding: "6px 10px",
                     background: "none",
-                    border: "1px solid #e0e0e0",
+                    border: "1px solid var(--border)",
                     borderRadius: "4px",
                     cursor: "pointer",
-                    color: "#d32f2f",
+                    color: "var(--destructive)",
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "4px",
@@ -326,7 +327,7 @@ export default function ColumnIndicesPage() {
         style={{
           marginTop: "12px",
           fontSize: "12px",
-          color: "#999",
+          color: "var(--muted-foreground)",
           textAlign: "center",
         }}
       >

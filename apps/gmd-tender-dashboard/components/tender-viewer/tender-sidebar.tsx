@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Download, FileText, Upload } from "lucide-react";
+import { CalendarIcon, Download, FileText, Upload, X } from "lucide-react";
 import { type DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
@@ -173,19 +173,19 @@ export default function TenderSidebar({
 
   return (
     <>
-      <aside className="w-65 min-w-65 bg-linear-to-b from-brand to-brand flex flex-col overflow-y-auto shrink-0">
-        <div className="px-5 py-4.5 pb-3.5 flex items-center gap-2 border-b border-white/10">
-          <div className="flex items-center justify-center w-6 h-6 rounded-sm bg-white/10">
-            <FileText size={14} className="text-white/80" />
+      <aside className="w-65 min-w-65 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col overflow-y-auto shrink-0">
+        <div className="px-5 py-4.5 pb-3.5 flex items-center gap-2 border-b border-sidebar-border">
+          <div className="flex items-center justify-center w-6 h-6 rounded-sm bg-muted">
+            <FileText size={14} className="text-muted-foreground" />
           </div>
-          <span className="text-xs font-bold text-white tracking-wider uppercase">
+          <span className="text-xs font-semibold text-foreground tracking-wider uppercase">
             Tender Dashboard
           </span>
         </div>
 
         <div className="flex-1 p-4 space-y-5 overflow-y-auto">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-white mb-2.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
               Upload Tenders
             </div>
             <button
@@ -194,7 +194,7 @@ export default function TenderSidebar({
                 setUploadDialogMode("parse");
                 setShowUploadDialog(true);
               }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-md bg-white/10 text-white/80 text-xs font-medium hover:bg-white/20 transition-colors border border-dashed border-white/20 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-md bg-card text-foreground text-xs font-medium hover:bg-muted transition-colors border border-dashed border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px cursor-pointer"
             >
               <Upload size={14} />
               Upload Files
@@ -205,7 +205,7 @@ export default function TenderSidebar({
                 setUploadDialogMode("result");
                 setShowUploadDialog(true);
               }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-md bg-emerald-600/20 text-emerald-300 text-xs font-medium hover:bg-emerald-600/30 transition-colors border border-dashed border-emerald-400/30 cursor-pointer mt-2"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-medium hover:bg-emerald-500/15 transition-colors border border-dashed border-emerald-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px cursor-pointer mt-2"
             >
               <Upload size={14} />
               Upload Result
@@ -213,7 +213,7 @@ export default function TenderSidebar({
           </div>
 
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-white mb-2.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
               Uploaded At
             </div>
             <Popover>
@@ -221,7 +221,7 @@ export default function TenderSidebar({
                 render={
                   <Button
                     variant="outline"
-                    className="w-full justify-start gap-2 px-3 py-2 h-auto text-xs font-normal rounded-md bg-white/10 text-white/80 border-white/20 hover:bg-white/20 hover:text-white"
+                    className="w-full justify-start gap-2 px-3 py-2 h-auto text-xs font-normal rounded-md bg-card"
                   >
                     <CalendarIcon size={14} />
                     {selectedRange?.from ? (
@@ -266,7 +266,7 @@ export default function TenderSidebar({
           </div>
 
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-white mb-2.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
               Assigned To
             </div>
             <Select
@@ -275,7 +275,7 @@ export default function TenderSidebar({
             >
               <SelectTrigger
                 size="sm"
-                className="w-full justify-start gap-2 px-3 py-2 h-auto text-xs font-normal rounded-md bg-white/10 text-white/80 border-white/20 hover:bg-white/20 hover:text-white [&_svg]:text-white/70"
+                className="w-full justify-start gap-2 px-3 py-2 h-auto text-xs font-normal rounded-md bg-card"
               >
                 <SelectValue placeholder="All People" />
               </SelectTrigger>
@@ -295,70 +295,74 @@ export default function TenderSidebar({
               <button
                 type="button"
                 onClick={() => handleAnalyticsCardClick("aiYes")}
-                className={`w-full rounded-lg p-3 text-left transition-colors cursor-pointer ${
+                aria-pressed={analyticsFilter === "aiYes"}
+                className={`w-full rounded-lg p-3 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   analyticsFilter === "aiYes"
-                    ? "bg-brand/20 border border-brand-accent/50"
-                    : "bg-white/10 border border-transparent hover:bg-white/20"
+                    ? "bg-signal/10 border border-signal/40"
+                    : "bg-card border border-border hover:bg-muted"
                 }`}
               >
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-white mb-1">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   AI Relevance Yes
                 </div>
-                <div className="text-xl font-bold text-lime-500 leading-tight">
+                <div className="text-xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400 leading-tight">
                   {analytics.aiYes}
                 </div>
               </button>
               <button
                 type="button"
                 onClick={() => handleAnalyticsCardClick("aiYesUnallocated")}
-                className={`w-full rounded-lg p-3 text-left transition-colors cursor-pointer ${
+                aria-pressed={analyticsFilter === "aiYesUnallocated"}
+                className={`w-full rounded-lg p-3 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   analyticsFilter === "aiYesUnallocated"
-                    ? "bg-brand/20 border border-brand-accent/50"
-                    : "bg-white/10 border border-transparent hover:bg-white/20"
+                    ? "bg-signal/10 border border-signal/40"
+                    : "bg-card border border-border hover:bg-muted"
                 }`}
               >
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-white mb-1">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   AI Relevance Yes (Unallocated)
                 </div>
-                <div className="text-xl font-bold text-rose-500 leading-tight">
+                <div className="text-xl font-semibold tabular-nums text-rose-600 dark:text-rose-400 leading-tight">
                   {analytics.aiYesUnallocated}
                 </div>
               </button>
               <button
                 type="button"
                 onClick={() => handleAnalyticsCardClick("apmYesAllocated")}
-                className={`w-full rounded-lg p-3 text-left transition-colors cursor-pointer ${
+                aria-pressed={analyticsFilter === "apmYesAllocated"}
+                className={`w-full rounded-lg p-3 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   analyticsFilter === "apmYesAllocated"
-                    ? "bg-brand/20 border border-brand-accent/50"
-                    : "bg-white/10 border border-transparent hover:bg-white/20"
+                    ? "bg-signal/10 border border-signal/40"
+                    : "bg-card border border-border hover:bg-muted"
                 }`}
               >
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-white mb-1">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   APM Yes (Allocated)
                 </div>
-                <div className="text-xl font-bold text-yellow-500 leading-tight">
+                <div className="text-xl font-semibold tabular-nums text-amber-600 dark:text-amber-400 leading-tight">
                   {analytics.apmYesAllocated}
                 </div>
               </button>
               <button
                 type="button"
                 onClick={() => handleAnalyticsCardClick("apmYesUnallocated")}
-                className={`w-full rounded-lg p-3 text-left transition-colors cursor-pointer ${
+                aria-pressed={analyticsFilter === "apmYesUnallocated"}
+                className={`w-full rounded-lg p-3 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   analyticsFilter === "apmYesUnallocated"
-                    ? "bg-brand/20 border border-brand-accent/50"
-                    : "bg-white/10 border border-transparent hover:bg-white/20"
+                    ? "bg-signal/10 border border-signal/40"
+                    : "bg-card border border-border hover:bg-muted"
                 }`}
               >
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-white mb-1">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   APM Yes (Unallocated)
                 </div>
-                <div className="text-xl font-bold text-brand-light leading-tight">
+                <div className="text-xl font-semibold tabular-nums text-signal leading-tight">
                   {analytics.apmYesUnallocated}
                 </div>
               </button>
               {analytics.personCounts.length > 0 && (
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-white mb-2.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
                     Assigned Tenders by Person
                   </div>
                   <div className="space-y-1.5">
@@ -368,19 +372,20 @@ export default function TenderSidebar({
                         <button
                           key={p.id}
                           type="button"
+                          aria-pressed={isActive}
                           onClick={() =>
                             onAssociationFilterChange?.(
                               isActive ? null : String(p.id),
                             )
                           }
-                          className={`w-full flex items-center justify-between py-1.5 px-2.5 rounded-lg transition-colors cursor-pointer ${
+                          className={`w-full flex items-center justify-between py-1.5 px-2.5 rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                             isActive
-                              ? "bg-brand/20 border border-brand-accent/50"
-                              : "bg-white/10 border border-transparent hover:bg-white/20"
+                              ? "bg-signal/10 border border-signal/40"
+                              : "bg-card border border-border hover:bg-muted"
                           }`}
                         >
-                          <span className="text-xs text-white/70">{p.name}</span>
-                          <span className="text-xs font-semibold text-white">
+                          <span className="text-xs text-muted-foreground">{p.name}</span>
+                          <span className="text-xs font-semibold tabular-nums text-foreground">
                             {p.count}
                           </span>
                         </button>
@@ -400,18 +405,20 @@ export default function TenderSidebar({
           onClick={closeDialog}
         >
           <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 p-6"
+            className="bg-card rounded-lg shadow-xl w-full max-w-2xl mx-4 p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-800">
+              <h3 className="text-sm font-semibold text-foreground">
                 {uploadDialogMode === "parse" ? "Upload Tenders" : "Upload Result"}
               </h3>
               <button
+                type="button"
                 onClick={closeDialog}
-                className="text-slate-400 hover:text-slate-600 text-lg leading-none cursor-pointer"
+                aria-label="Close"
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                ×
+                <X size={16} />
               </button>
             </div>
             <FileUpload mode={uploadDialogMode} />

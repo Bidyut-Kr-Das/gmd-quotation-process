@@ -22,10 +22,10 @@ export default function LoginForm() {
   const signupSuccess = searchParams.get("signup") === "success"
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
       <div className="mb-6 text-center">
         <h1 className="text-xl font-bold text-brand">G M DALUI</h1>
-        <p className="mt-1 text-sm text-gray-500">Executive Dashboard</p>
+        <p className="mt-1 text-sm text-muted-foreground">Executive Dashboard</p>
       </div>
 
       {signupSuccess && (
@@ -37,7 +37,7 @@ export default function LoginForm() {
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="redirectTo" value={callbackUrl} />
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-sm font-medium text-foreground">
             Email
           </label>
           <input
@@ -45,13 +45,13 @@ export default function LoginForm() {
             name="email"
             type="email"
             required
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             placeholder="you@example.com"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="block text-sm font-medium text-foreground">
             Password
           </label>
           <input
@@ -59,7 +59,7 @@ export default function LoginForm() {
             name="password"
             type="password"
             required
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             placeholder="Enter your password"
           />
         </div>
@@ -86,7 +86,7 @@ export default function LoginForm() {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
         <Link href="/auth/signup" className="font-semibold text-brand hover:underline">
           Sign Up

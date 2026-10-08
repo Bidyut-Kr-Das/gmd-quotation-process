@@ -77,10 +77,10 @@ export function DateRangeFilter({
             }}
           />
           <div
-            className="fixed z-50 rounded-sm bg-white shadow-md ring-1 ring-slate-200 p-3"
+            className="fixed z-50 rounded-sm bg-card shadow-md ring-1 ring-border p-3"
             style={{ top: pickerPos.top, left: pickerPos.left }}
           >
-            <p className="text-[11px] font-medium text-slate-500 mb-2 uppercase tracking-wider">
+            <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wider">
               Quick Select
             </p>
             <div className="flex gap-1 mb-3">
@@ -105,7 +105,7 @@ export function DateRangeFilter({
                 ),
               )}
             </div>
-            <p className="text-[11px] font-medium text-slate-500 mb-2 uppercase tracking-wider">
+            <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wider">
               Custom Range
             </p>
             <Calendar

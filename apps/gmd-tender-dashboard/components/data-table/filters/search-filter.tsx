@@ -18,7 +18,7 @@ export function SearchFilter({
 }: SearchFilterProps) {
   return (
     <div className={cn("relative", className)}>
-      <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-slate-400 pointer-events-none" />
+      <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/80 pointer-events-none" />
       <input
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}

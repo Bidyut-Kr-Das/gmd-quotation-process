@@ -1,21 +1,21 @@
 "use client";
 
-import { AlertCircle, Inbox, RefreshCw } from "lucide-react";
+import { AlertCircle, Inbox, Loader2, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 /**
- * Shared loading / error / empty states.
- *
- * These replace the hand-rolled inline-styled spinner and error blocks that
- * were copy-pasted into each page (including a duplicated @keyframes spin
- * definition per page). The visual language is unchanged - navy text, blue
- * spinner - just centralised.
+ * Shared loading / error / empty states, styled to the quotation app's
+ * neutral chassis: muted icon, foreground title, muted description.
  */
 
 export function DataLoadingState({ label = "Loading..." }: { label?: string }) {
   return (
-    <div className="flex min-h-[500px] flex-1 flex-col items-center justify-center gap-4 text-brand">
-      <span className="size-10 animate-spin rounded-full border-4 border-[#e1e6eb] border-t-brand-accent" />
-      <span className="text-[15px] font-bold tracking-[0.5px]">{label}</span>
+    <div
+      role="status"
+      className="flex min-h-[320px] flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"
+    >
+      <Loader2 className="size-6 animate-spin" />
+      <span className="text-sm font-medium">{label}</span>
     </div>
   );
 }
@@ -30,20 +30,18 @@ export function DataErrorState({
   label?: string;
 }) {
   return (
-    <div className="flex min-h-[400px] flex-col items-center justify-center gap-3 px-6 text-center">
-      <AlertCircle className="text-[#c5221f]" size={28} />
-      <p className="font-semibold text-[#c5221f]">
-        {label}
-        {message ? `: ${message}` : ""}
-      </p>
+    <div role="alert" className="flex min-h-[320px] flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+      <span className="flex size-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+        <AlertCircle size={20} />
+      </span>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        {message && <p className="max-w-md text-sm text-pretty text-muted-foreground">{message}</p>}
+      </div>
       {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-brand px-4 py-2 font-semibold text-white transition-opacity hover:opacity-90"
-        >
-          <RefreshCw size={14} /> Retry
-        </button>
+        <Button size="sm" onClick={onRetry}>
+          <RefreshCw /> Try again
+        </Button>
       )}
     </div>
   );
@@ -51,13 +49,23 @@ export function DataErrorState({
 
 export function DataEmptyState({
   label = "No matching records found.",
+  description,
+  action,
 }: {
   label?: string;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 px-6 py-10 text-center text-black/40">
-      <Inbox size={22} />
-      <span className="text-[13px]">{label}</span>
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+      <span className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+        <Inbox size={20} />
+      </span>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        {description && <p className="max-w-md text-sm text-pretty text-muted-foreground">{description}</p>}
+      </div>
+      {action}
     </div>
   );
 }
@@ -74,7 +82,7 @@ export function RefreshingBar({ active }: { active: boolean }) {
       aria-label="Refreshing"
       className="pointer-events-none absolute inset-x-0 top-0 z-50 h-0.5 overflow-hidden bg-transparent"
     >
-      <div className="h-full w-1/3 animate-[dataStateSlide_1.1s_ease-in-out_infinite] rounded-full bg-brand-accent" />
+      <div className="h-full w-1/3 animate-[dataStateSlide_1.1s_ease-in-out_infinite] rounded-full bg-signal" />
       <style>{`@keyframes dataStateSlide{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}`}</style>
     </div>
   );

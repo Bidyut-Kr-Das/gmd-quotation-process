@@ -915,7 +915,7 @@ export default function EmdMergedPage() {
   return (
     <div
       className="supply-layout-container"
-      style={{ height: "calc(100vh - 42px)", position: "relative" }}
+      style={{ flex: 1, minHeight: 0, position: "relative" }}
     >
       <RefreshingBar active={refreshing} />
       <aside className="supply-sidebar">

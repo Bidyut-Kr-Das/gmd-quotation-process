@@ -107,16 +107,16 @@ export default function ColumnIndexDialog({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 p-6"
+        className="bg-card rounded-lg shadow-xl w-full max-w-lg mx-4 p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-slate-800">
+          <h3 className="text-sm font-semibold text-foreground">
             {isEditing ? "Edit Column Index" : "Add Column Index"}
           </h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+            className="text-muted-foreground/80 hover:text-muted-foreground text-lg leading-none"
           >
             <X size={16} />
           </button>
@@ -124,7 +124,7 @@ export default function ColumnIndexDialog({
 
         <div className="space-y-4 text-sm">
           <div>
-            <label className="text-slate-500 text-[11px] block mb-1">
+            <label className="text-muted-foreground text-[11px] block mb-1">
               COLUMN NAME
             </label>
             <Select
@@ -133,7 +133,7 @@ export default function ColumnIndexDialog({
               disabled={isEditing}
             >
               <SelectTrigger
-                className="w-full border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-accent disabled:bg-slate-50 disabled:text-slate-500 data-placeholder:text-slate-400"
+                className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-brand-accent disabled:bg-muted disabled:text-muted-foreground data-placeholder:text-muted-foreground/80"
               >
                 <SelectValue placeholder="Select a column..." />
               </SelectTrigger>
@@ -148,7 +148,7 @@ export default function ColumnIndexDialog({
           </div>
 
           <div>
-            <label className="text-slate-500 text-[11px] block mb-1">
+            <label className="text-muted-foreground text-[11px] block mb-1">
               DISPLAY ORDER (Index)
             </label>
             <input
@@ -157,23 +157,23 @@ export default function ColumnIndexDialog({
               value={displayOrder}
               onChange={(e) => setDisplayOrder(e.target.value)}
               placeholder="e.g. 1, 2, 3..."
-              className="w-full border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+              className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-brand-accent"
             />
-            <p className="text-[11px] text-slate-400 mt-1">
+            <p className="text-[11px] text-muted-foreground/80 mt-1">
               If two columns have the same index, they are sorted by creation date.
             </p>
           </div>
 
           <div>
-            <label className="text-slate-500 text-[11px] block mb-1">
+            <label className="text-muted-foreground text-[11px] block mb-1">
               DISPLAY NAME{" "}
-              <span className="text-slate-300 font-normal">(optional)</span>
+              <span className="text-muted-foreground/60 font-normal">(optional)</span>
             </label>
             <input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="UI column header override"
-              className="w-full border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-brand-accent"
+              className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-brand-accent"
             />
           </div>
 
@@ -185,9 +185,9 @@ export default function ColumnIndexDialog({
                 onChange={(e) => setVisible(e.target.checked)}
                 className="accent-brand w-4 h-4"
               />
-              <span className="text-[13px] text-slate-700">Visible by default</span>
+              <span className="text-[13px] text-foreground">Visible by default</span>
             </label>
-            <p className="text-[11px] text-slate-400 mt-0.5 ml-6">
+            <p className="text-[11px] text-muted-foreground/80 mt-0.5 ml-6">
               When unchecked, the column is hidden in the table until toggled via the column picker.
             </p>
           </div>
@@ -200,7 +200,7 @@ export default function ColumnIndexDialog({
         <div className="flex justify-end gap-2 mt-5">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 text-[13px] text-slate-600 hover:text-slate-800 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
+            className="px-4 py-1.5 text-[13px] text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-muted transition-colors"
           >
             Cancel
           </button>

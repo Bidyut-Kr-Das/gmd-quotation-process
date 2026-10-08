@@ -59,10 +59,10 @@ export default function FilterTray() {
   };
 
   return (
-    <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-3">
+    <div className="border-b border-border bg-muted/80 px-5 py-3">
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-4">
-          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider w-24 shrink-0">
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-24 shrink-0">
             Type
           </span>
           <div className="flex gap-1">
@@ -74,7 +74,7 @@ export default function FilterTray() {
                 onClick={() => dispatch(setTypeFilter(key))}
                 className={cn(
                   "text-xs capitalize",
-                  typeFilter === key && "bg-brand-light text-brand hover:bg-brand-light",
+                  typeFilter === key && "bg-brand-light text-signal hover:bg-brand-light",
                 )}
               >
                 {key === "all" ? "All" : key}
@@ -84,7 +84,7 @@ export default function FilterTray() {
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider w-24 shrink-0">
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-24 shrink-0">
             Hide
           </span>
           <div className="flex gap-1">
@@ -96,7 +96,7 @@ export default function FilterTray() {
                 onClick={() => dispatch(setExclusionFilter(exclusionFilter === key ? null : key))}
                 className={cn(
                   "text-xs capitalize",
-                  exclusionFilter === key && "bg-brand-light text-brand hover:bg-brand-light",
+                  exclusionFilter === key && "bg-brand-light text-signal hover:bg-brand-light",
                 )}
               >
                 {key === "both" ? "Both" : key}
@@ -106,7 +106,7 @@ export default function FilterTray() {
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider w-24 shrink-0">
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-24 shrink-0">
             Deadline
           </span>
           <div className="flex gap-1">
@@ -118,7 +118,7 @@ export default function FilterTray() {
                 onClick={() => dispatch(setDeadlinePreset(deadlinePreset === preset ? null : preset))}
                 className={cn(
                   "text-xs",
-                  deadlinePreset === preset && "bg-brand-light text-brand hover:bg-brand-light",
+                  deadlinePreset === preset && "bg-brand-light text-signal hover:bg-brand-light",
                 )}
               >
                 {preset === "thisWeek" ? "This Week" : preset === "thisMonth" ? "This Month" : "This Year"}
@@ -131,7 +131,7 @@ export default function FilterTray() {
                 onClick={() => setShowDeadlinePopup((v) => !v)}
                 className={cn(
                   "text-xs",
-                  deadlineDateFrom && "bg-brand-light text-brand hover:bg-brand-light",
+                  deadlineDateFrom && "bg-brand-light text-signal hover:bg-brand-light",
                 )}
               >
                 <ListFilter className="size-3" />
@@ -140,7 +140,7 @@ export default function FilterTray() {
               {showDeadlinePopup && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowDeadlinePopup(false)} />
-                  <div className="absolute right-0 top-full mt-1 z-50 rounded-sm bg-white shadow-md ring-1 ring-slate-200 p-3">
+                  <div className="absolute right-0 top-full mt-1 z-50 rounded-sm bg-card shadow-md ring-1 ring-border p-3">
                     <Calendar
                       mode="range"
                       defaultMonth={new Date()}
@@ -180,7 +180,7 @@ export default function FilterTray() {
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider w-24 shrink-0">
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-24 shrink-0">
             AI Relevance
           </span>
           <div className="flex gap-1">
@@ -192,7 +192,7 @@ export default function FilterTray() {
                 onClick={() => dispatch(setAiRelevanceFilter(key))}
                 className={cn(
                   "text-xs",
-                  aiRelevanceFilter === key && "bg-brand-light text-brand hover:bg-brand-light",
+                  aiRelevanceFilter === key && "bg-brand-light text-signal hover:bg-brand-light",
                 )}
               >
                 {key === "all" ? "All" : key === "yes" ? "Yes" : key === "no" ? "No" : "Not Analysed"}
@@ -208,7 +208,7 @@ export default function FilterTray() {
               size="xs"
               variant="ghost"
               onClick={handleReset}
-              className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1"
+              className="text-xs text-muted-foreground/80 hover:text-red-500 flex items-center gap-1"
             >
               <RotateCcw className="size-3" />
               Reset all filters

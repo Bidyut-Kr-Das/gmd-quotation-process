@@ -79,7 +79,7 @@ export default function CredentialsPage() {
   }
 
   return (
-    <div className="supply-layout-container" style={{ height: "calc(100vh - 42px)", position: "relative" }}>
+    <div className="supply-layout-container" style={{ flex: 1, minHeight: 0, position: "relative" }}>
       <RefreshingBar active={refreshing} />
       <aside className="supply-sidebar">
         <div className="supply-sidebar-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

@@ -1183,7 +1183,7 @@ function OptimizedTenderTableInner<T extends Record<string, unknown>>({
               options={mergedOptions}
               placeholder={col.filter.placeholder}
               searchable={col.filter.searchable}
-              triggerClassName="!w-full !justify-between !bg-white !text-foreground !border-input"
+              triggerClassName="!w-full !justify-between !bg-card !text-foreground !border-input"
               onSearchChange={
                 col.filter?.searchable
                   ? (text) => {
@@ -1553,7 +1553,7 @@ function OptimizedTenderTableInner<T extends Record<string, unknown>>({
                         {col.provenance.map((badge) => {
                           const badgeClass =
                             badge === "PRE"
-                              ? "bg-brand-light text-brand border-brand-light hover:bg-brand-light"
+                              ? "bg-brand-light text-signal border-signal/40 hover:bg-brand-light"
                               : badge === "POST"
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
                                 : "bg-rose-100 text-rose-800 border-rose-300 hover:bg-rose-100";
