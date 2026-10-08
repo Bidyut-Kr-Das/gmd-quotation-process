@@ -16,14 +16,16 @@ async function main() {
   const result = await syncEnquiryEmailAddresses({ onlyBlank: true, dryRun: !APPLY });
 
   console.log(`Threads scanned:                    ${result.threadCount}`);
+  console.log(`Distinct parties with external email: ${result.partyCount}`);
   console.log(`Enquiries scanned:                  ${result.scanned}`);
-  console.log(`Rows that would change (fill blank): ${result.proposals.length}`);
+  console.log(`Rows that would change (fill blank): ${result.proposals.length} (docket ${result.proposals.length - result.matchedByParty}, party fallback ${result.matchedByParty})`);
   console.log(`Rows skipped (has value / no match): ${result.skipped}\n`);
 
   if (result.proposals.length > 0) {
     console.log("--- PREVIEW (docket -> email address) ---");
     for (const p of result.proposals) {
-      console.log(`[CHANGE] ${p.docketNumber.padEnd(24)} -> ${show(p.emailAddress)}`);
+      const tag = p.source === "party" ? "[PARTY] " : "[CHANGE]";
+      console.log(`${tag} ${p.docketNumber.padEnd(24)} -> ${show(p.emailAddress)}`);
     }
   }
 

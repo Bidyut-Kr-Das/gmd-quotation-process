@@ -33,6 +33,12 @@ export {
 } from "./derived-item-name";
 
 export {
+  runContractReviewItemNameSync,
+  runRawMaterialItemNameSync,
+  type ItemNameSyncResult,
+} from "./item-name-sync";
+
+export {
   runGmdCatalogueSync,
   type CatalogueSyncResult,
 } from "./gmd-update-catalogue";
@@ -108,3 +114,16 @@ export {
   type IcDumpSyncOptions,
   type IcDumpSyncResult,
 } from "./contract-review-ic-dump";
+
+export {
+  runPendingDocketCreation,
+  type PendingDocketCreationOptions,
+  type PendingDocketCreationResult,
+  type PendingDocketCreated,
+} from "./docket-creation";
+
+export {
+  runScheduledDocketCreation,
+  type RunDocketCreationOptions,
+  type ScheduledDocketCreationResult,
+} from "./run-docket-creation";

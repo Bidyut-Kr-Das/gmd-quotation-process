@@ -29,7 +29,6 @@ const EDITABLE_FIELDS = new Set([
 
 // Non-editable sheet fields — overwritten when the sheet has a value that differs.
 const NON_EDITABLE_FIELDS = [
-  "itemNameAuto",
   "l1",
   "l2ValveType",
   "l3Dia",

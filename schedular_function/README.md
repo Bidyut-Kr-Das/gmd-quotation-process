@@ -12,37 +12,45 @@ Where an algorithm already existed there, it was copied rather than imported
 
 ## Jobs
 
-Four hourly jobs, staggered 15 minutes apart so no two heavy ones collide.
+Five hourly jobs, staggered so no two heavy ones collide.
 
-| :00 | :15 | :30 | :45 |
-|---|---|---|---|
-| `raw-material` | `supply-history` | `contract-review` | `c-batch` |
+| :00 | :15 | :20 | :30 | :45 |
+|---|---|---|---|---|
+| `raw-material` | `supply-history` | `docket-creation` | `contract-review` | `c-batch` |
 
 | Job | Endpoint | Ofelia job name | Reads |
 |---|---|---|---|
 | Raw Material sync | `POST /api/scheduler/raw-material` | `raw-material-sync` | `GMD UPDATION`, `stock-phys` |
 | Supply History MASTER sync | `POST /api/scheduler/supply-history` | `supply-history-sync` | `MASTER`, GMD Clientwise ORDER LIST |
+| Pending docket creation | `POST /api/scheduler/docket-creation` | `docket-creation-sync` | `docket_quotation_threads`, `enquiries` |
 | Contract Review sync | `POST /api/scheduler/contract-review` | `contract-review-sync` | `CONTRACTS`, `DUMP`, `stock-phys`, `INSPECTION OFFER DUMP` |
 | C Batch marks | `POST /api/scheduler/c-batch` | `c-batch-sync` | `ITEM MASTER ERP` |
 
 The stagger is deliberate. `raw-material`, `supply-history` and
 `contract-review` each full-table-read the tables the others write. `c-batch`
 runs last and can safely overlap any of them: it writes **only** the `cBatch`
-column, which no other scheduled job touches.
+column, which no other scheduled job touches. `docket-creation` runs at `:20`,
+between `supply-history` and `contract-review`, so contract-review's same-hour
+pass can backfill `contractNo` on the dockets it creates.
 
 ## `raw-material`
 
-Two sequential steps in `run-gmd-update.ts`:
+Three sequential steps in `run-gmd-update.ts`:
 
 1. **`runGmdCatalogueSync()`** (`gmd-update-catalogue.ts`) — `GMD UPDATION`
-   tab → `GMDUpdateItem`. Creates rows for ERP codes not yet in the DB; on
-   existing codes overwrites **only** the 12 sheet-owned fields, and only when
+   tab → `RawMaterial`. Creates rows for ERP codes not yet in the DB; on
+   existing codes overwrites **only** the sheet-owned fields, and only when
    the sheet value is non-blank and differs. Rows whose `NEW ITEM STATUS` is
    `CLOSED` / `TO BE CLOSED` / `TO BE LOCKED` are dropped. Never deletes.
    Recomputes `ITEM NAME (derived)` for created and changed rows.
 2. **`runStockPhysSync()`** (`gmd-update-stock-phys.ts`) — `stock-phys` tab's
-   `SUM OF PHYSICAL STOCK` → `GMDUpdateItem.availableStock`, overwriting stored
+   `SUM OF PHYSICAL STOCK` → `RawMaterial.availableStock`, overwriting stored
    values.
+3. **`runRawMaterialItemNameSync()`** (`item-name-sync.ts`) — `ITEM MASTER ERP`
+   (gid 253020709) `ITEM_NAME` → `RawMaterial.itemNameAuto`, matched on
+   `erpItemCode` (trim + upper-case). Writes only when the name differs.
+   `itemNameAuto` is excluded from step 1's overwrite set, so this step is the
+   sole writer.
 
 Steps are strictly sequential: a fatal failure in step 1 aborts before step 2,
 because refreshing stock against a half-synced table is not useful.
@@ -59,24 +67,28 @@ pivot/QUERY result). Nothing here sums anything itself.
 
 ## `contract-review`
 
-Four sequential steps in `run-contract-review.ts`:
+Five sequential steps in `run-contract-review.ts`:
 
 | # | Step | File | What it writes |
 |---|---|---|---|
 | 1 | `runContractReviewSheetSync()` | `contract-review-sync.ts` | `ContractReview` (all mapped sheet columns) + owned side-effects `Enquiry.contractNo` and the not-current-reqt marks |
+| 1b | `runContractReviewItemNameSync()` | `item-name-sync.ts` | `ContractReview.itemName` from `ITEM MASTER ERP` |
 | 2 | `runContractReviewEnquirySync()` | `contract-review-enquiry.ts` | `ContractReview.state` / `.utility` / `.projectReference` |
 | 3 | `runContractReviewRmAvailSync()` | `contract-review-rm-avail.ts` | `RawMaterial.availableStock`, `VerifyBom`, `ContractReview.noUse`, `ContractReview.rmPhysicalStock` |
 | 4 | `runIcDumpSync()` | `contract-review-ic-dump.ts` | `ContractReview.offerNumber` / `.inspectionNumber` / `.diDate` |
 
 Step 1 reads `CONTRACTS` (GID 734728893, header row 4) and `DUMP` (GID
-1604813523, header row 1) from `CONTRACT_REVIEW_SPREADSHEET_ID`. Step 3 reads
+1604813523, header row 1) from `CONTRACT_REVIEW_SPREADSHEET_ID`. Step 1b reads
+`ITEM MASTER ERP` (gid 253020709) from the BOM MAST ERP workbook. Step 3 reads
 `stock-phys` from `GOOGLE_SPREADSHEET_ID`. Step 4 reads `INSPECTION OFFER DUMP`
 (GID 148043829) from the BOM MAST ERP workbook.
 
 The order is a real dependency chain: step 3's RM AVAIL reads `VerifyBom`, whose
 `itemName` is sourced from `ContractReview.itemName` ordered by `syncedAt desc`
-(`lib/verifyBomLookup.ts:236`), so a stale sheet sync means stale names. Step 4
-joins on the `mcNo` + `itemCode` pair that step 1 populates.
+(`lib/verifyBomLookup.ts:236`), so step 1b runs before step 3 to expose the ITEM
+MASTER name. `ContractReview.itemName` is in step 1's `SKIP_FIELDS`, so step 1b
+is its sole writer. Step 4 joins on the `mcNo` + `itemCode` pair that step 1
+populates.
 
 **Nothing in this job runs twice.** The manual SYNC route also performs the
 VerifyBom and RM AVAIL recomputes, but here they are owned by step 3 only. Step
@@ -310,6 +322,45 @@ Three of the four code columns have **no index**: `SupplyHistoryItem.erpItemCode
 columns, so the job is cheaper than the original — but `ContractReview` and
 `EnquiryItem` are still full scans.
 
+## `docket-creation`
+
+Single step: `runPendingDocketCreation()` in `docket-creation.ts`. For every
+`DocketQuotationThread` row with `pendingDocket = true` **and** `docketNo = null`
+it creates a header-only `Enquiry` (no items):
+
+1. Allocates the next fiscal docket number(s) via `nextDocketSerials`
+   (`lib/docketNumber`) from the current fiscal year's existing dockets.
+2. Resolves the party name via `resolvePartyForThread`
+   (`lib/pendingDocketMaterializer`): first email match against previous dockets,
+   then the thread's own `partyName`, then `sub_category`, else `"Unknown"`.
+3. Links the mail file attachments as-is (`parseThreadAttachments`) and renders a
+   mail-snapshot PDF, uploading it to Google Drive (`buildSnapshotAttachment`).
+4. In one `$transaction`, creates the `Enquiry` and stamps the thread with the
+   new `docketNo` + clears `pendingDocket`.
+
+Idempotent: a stamped thread leaves the pending set, so a re-run is a no-op.
+
+### `pendingDocket` is set upstream
+
+Nothing in this repo ever sets `pendingDocket = true` — the external mail
+ingestion does. This job only **consumes** the flag. If no ingestion is running,
+the job reports `pending: 0` and does nothing.
+
+### Snapshot failures never abort a docket
+
+A snapshot that cannot be rendered or uploaded is caught per docket, counted in
+`snapshotFailures`, and the docket is still created with its mail attachments.
+A failure of the `$transaction` itself is counted in `failed`, which is what
+`docket-creation-sync.sh` greps for.
+
+### Relationship to the old manual action
+
+The manual `createPendingDocketsAction` in `app/actions.ts` and the two "Create
+Pending Dockets" buttons (`EnquiryTable.tsx`, `app/docket_follow_up/page.tsx`)
+were **removed**. The action is retained as a commented-out `LEGACY` block in
+`app/actions.ts`, with its now-unused imports commented alongside it. This folder
+is the source of truth for scheduled docket creation.
+
 ## Write policy
 
 ### `raw-material`
@@ -367,6 +418,15 @@ Stock-step edge cases:
 | Table | Column | Rule |
 |---|---|---|
 | `RawMaterial`, `ContractReview`, `SupplyHistoryItem`, `EnquiryItem` | `cBatch` | set to `"C"` when any code column matches. **Set-only** — never cleared, never overwritten once marked. No other column is touched, and `VerifyBom` is not touched at all. |
+
+### `docket-creation`
+
+| Table | Column | Rule |
+|---|---|---|
+| `Enquiry` | `docketNumber`, `partyName`, `enquiryDate`, `emailAddress` | **create only** — a new header-only docket per pending thread. Existing dockets are never touched. |
+| `Enquiry` | attachments | mail attachments linked as-is + one generated snapshot PDF. |
+| `DocketQuotationThread` | `docketNo`, `pendingDocket` | stamped with the new number and `pendingDocket` set to `false`. Never cleared or re-pointed. |
+| deletions | — | none. |
 
 ## Auth
 

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getActiveLookupValuesByType } from "@/lib/lookup";
 import { getBatchDistinctBomIds, getNoUseBomIdSet } from "@/lib/verifyBomLookup";
 import { syncClosureStatuses } from "@/lib/closureStatusSync";
+import { getFiscalPrefix, nextDocketSerials } from "@/lib/docketNumber";
 
 // The dashboard reads live data on every request. It used to be dynamic implicitly because
 // it awaited searchParams for ?search=; search is client-side now, so say it explicitly.
@@ -84,38 +85,16 @@ export default async function Page() {
   });
 
   // Find the latest docket number in the database to auto-populate the next one
-  const getFiscalYear = (date: Date) => {
-    const month = date.getMonth(); // 0-indexed, April is 3
-    const year = date.getFullYear();
-    const startYear = month >= 3 ? year : year - 1;
-    const endYearStr = String(startYear + 1).slice(-2);
-    return `${startYear}-${endYearStr}`;
-  };
-
-  const currentFiscalYear = getFiscalYear(new Date());
-  const fiscalPrefix = `GMD/${currentFiscalYear}/`;
-
+  const fiscalPrefix = getFiscalPrefix(new Date());
   const enquiriesInFiscal = await prisma.enquiry.findMany({
-    where: {
-      docketNumber: {
-        startsWith: fiscalPrefix,
-      },
-    },
-    select: {
-      docketNumber: true,
-    },
+    where: { docketNumber: { startsWith: fiscalPrefix } },
+    select: { docketNumber: true },
   });
-
-  let nextSerial = 1;
-  if (enquiriesInFiscal.length > 0) {
-    const serials = enquiriesInFiscal.map((e) => {
-      const parts = e.docketNumber.split("/");
-      const lastPart = parts[parts.length - 1];
-      return parseInt(lastPart) || 0;
-    });
-    nextSerial = Math.max(...serials) + 1;
-  }
-  const nextDocketNumber = `${fiscalPrefix}${nextSerial}`;
+  const [nextDocketNumber] = nextDocketSerials(
+    enquiriesInFiscal.map((e) => e.docketNumber),
+    1,
+    new Date(),
+  );
 
   const lookup = await getActiveLookupValuesByType();
 

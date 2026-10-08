@@ -1,6 +1,7 @@
 #!/bin/sh
 # Usage: raw-material-sync.sh  -- POSTs to $GMD_APP_SERVER/api/scheduler/raw-material/
-# Runs the Raw Material sync: GMD UPDATION catalogue, then stock-phys physical stock.
+# Runs the Raw Material sync: GMD UPDATION catalogue, stock-phys physical stock,
+# then item names (ITEM MASTER ERP -> RawMaterial.itemNameAuto).
 #
 # Failure modes, all of which must fail the job:
 #   - Non-200: wget itself exits non-zero, and `set -e` aborts the script.

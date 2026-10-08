@@ -1,0 +1,126 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {
+  isRealPartyName,
+  threadExternalEmails,
+  threadInternalEmails,
+  threadPreferredEmails,
+  buildEmailPartyMap,
+  resolvePartyForThread,
+  isDeletableDuplicate,
+} from '../lib/pendingDocketMaterializer.js'
+
+test('isRealPartyName rejects blanks and sentinels', () => {
+  assert.equal(isRealPartyName('ACME VALVES PVT LTD'), true)
+  assert.equal(isRealPartyName('OUTSIDER'), false)
+  assert.equal(isRealPartyName('internal'), false)
+  assert.equal(isRealPartyName(''), false)
+  assert.equal(isRealPartyName(null), false)
+})
+
+test('threadExternalEmails drops internal addresses and de-duplicates', () => {
+  const emails = threadExternalEmails({
+    subCategory: 'Acme',
+    sender: 'Buyer <buyer@acme.com>',
+    toDetails: { value: 'sales@laserpowerinfra.com, buyer@acme.com, info@acme.co.in' },
+    ccDetails: null,
+  })
+  assert.deepEqual(emails, ['buyer@acme.com', 'info@acme.co.in'])
+})
+
+test('threadInternalEmails returns internal addresses only', () => {
+  const emails = threadInternalEmails({
+    subCategory: null,
+    sender: 'Tridip <tridip@gmdalui.co.in>',
+    toDetails: { value: 'buyer@acme.com, puja.agarwal@laserpowerinfra.com' },
+    ccDetails: null,
+  })
+  assert.deepEqual(emails, ['tridip@gmdalui.co.in', 'puja.agarwal@laserpowerinfra.com'])
+})
+
+test('threadPreferredEmails uses external when present, internal when internal-only', () => {
+  const external = threadPreferredEmails({
+    subCategory: null,
+    sender: 'buyer@acme.com',
+    toDetails: { value: 'tridip@gmdalui.co.in' },
+    ccDetails: null,
+  })
+  assert.deepEqual(external, ['buyer@acme.com'])
+
+  const internalOnly = threadPreferredEmails({
+    subCategory: null,
+    sender: 'tridip@gmdalui.co.in',
+    toDetails: { value: 'laserentry.four@gmail.com' },
+    ccDetails: null,
+  })
+  assert.deepEqual(internalOnly, ['tridip@gmdalui.co.in', 'laserentry.four@gmail.com'])
+})
+
+test('buildEmailPartyMap maps previous dockets and assigned threads', () => {
+  const map = buildEmailPartyMap({
+    enquiries: [
+      { emailAddress: 'a@party.com, b@party.com', partyName: 'PARTY ONE' },
+      { emailAddress: null, partyName: 'IGNORED' },
+    ],
+    assignedThreads: [
+      {
+        subCategory: 'PARTY TWO',
+        sender: 'x@party2.com',
+        toDetails: null,
+        ccDetails: { value: 'y@party2.com' },
+      },
+      // sentinel sub_category must not contribute
+      { subCategory: 'OUTSIDER', sender: 'o@outside.com', toDetails: null, ccDetails: null },
+    ],
+  })
+  assert.equal(map.get('a@party.com'), 'PARTY ONE')
+  assert.equal(map.get('b@party.com'), 'PARTY ONE')
+  assert.equal(map.get('x@party2.com'), 'PARTY TWO')
+  assert.equal(map.get('y@party2.com'), 'PARTY TWO')
+  assert.equal(map.has('o@outside.com'), false)
+})
+
+test('resolvePartyForThread prefers an email match', () => {
+  const map = new Map([['buyer@acme.com', 'ACME VALVES']])
+  const r = resolvePartyForThread(
+    { subCategory: 'SOME OTHER NAME', sender: 'b <buyer@acme.com>', toDetails: null, ccDetails: null },
+    map,
+  )
+  assert.deepEqual(r, { partyName: 'ACME VALVES', source: 'email' })
+})
+
+test('resolvePartyForThread falls back to the thread partyName before subCategory', () => {
+  const r = resolvePartyForThread(
+    { subCategory: 'OUTSIDER', partyName: 'Acme Valves', sender: 'b@x.com', toDetails: null, ccDetails: null },
+    new Map(),
+  )
+  assert.deepEqual(r, { partyName: 'Acme Valves', source: 'partyName' })
+})
+
+test('resolvePartyForThread falls back to a real subCategory', () => {
+  const r = resolvePartyForThread(
+    { subCategory: 'ACME VALVES', sender: 'b <buyer@unknown.com>', toDetails: null, ccDetails: null },
+    new Map(),
+  )
+  assert.deepEqual(r, { partyName: 'ACME VALVES', source: 'subCategory' })
+})
+
+test('isDeletableDuplicate requires Yes + a target + zero items', () => {
+  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: 'GMD/2026-27/1', itemCount: 0 }), true)
+  assert.equal(isDeletableDuplicate({ duplicate: 'yes', duplicateOfDocket: 'GMD/2026-27/1', itemCount: 0 }), true)
+  assert.equal(isDeletableDuplicate({ duplicate: 'No', duplicateOfDocket: 'GMD/2026-27/1', itemCount: 0 }), false)
+  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: '', itemCount: 0 }), false)
+  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: null, itemCount: 0 }), false)
+  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: 'GMD/2026-27/1', itemCount: 3 }), false)
+})
+
+test('resolvePartyForThread falls back to Unknown for sentinels / no data', () => {
+  assert.deepEqual(
+    resolvePartyForThread({ subCategory: 'OUTSIDER', sender: 'b@x.com', toDetails: null, ccDetails: null }, new Map()),
+    { partyName: 'Unknown', source: 'unknown' },
+  )
+  assert.deepEqual(
+    resolvePartyForThread({ subCategory: null, sender: null, toDetails: null, ccDetails: null }, new Map()),
+    { partyName: 'Unknown', source: 'unknown' },
+  )
+})

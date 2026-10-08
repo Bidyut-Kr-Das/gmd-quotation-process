@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { prisma } from "@/lib/prisma";
 import { uploadFileToDrive } from "@/lib/gdrive";
@@ -22,6 +22,14 @@ import { makeImageKey } from "@/lib/imageKey";
 import { parseAndValidateProdOrderNumber } from "@/lib/contractValidation";
 import { matchPnRating } from "@/lib/pnRatingMatcher";
 import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
+// LEGACY — superseded by the hourly `docket-creation` scheduler job
+// (schedular_function/docket-creation.ts). The imports below were used only by
+// the commented-out `createPendingDocketsAction`; restore them when re-enabling.
+// import { getFiscalPrefix, nextDocketSerials } from "@/lib/docketNumber";
+import { isDeletableDuplicate } from "@/lib/pendingDocketMaterializer";
+// import { parseThreadAttachments } from "@/lib/docketSnapshot";
+// import { buildSnapshotAttachment } from "@/lib/docketSnapshotPdf";
+// import { extractEmailsFromValue } from "@/lib/enquiryEmailParty";
 import {
   uploadToS3,
   deleteFromS3,
@@ -839,6 +847,78 @@ export async function deleteEnquiryItemsAction(itemIds: string[]) {
   }
 }
 
+/**
+ * Deletes a blank docket that was flagged as a duplicate of another docket.
+ *
+ * Safety: only allowed when `duplicate === "Yes"`, a `duplicateOfDocket` is set,
+ * and the docket has NO items. The source thread (matched by docketNo) is
+ * re-pointed at the original docket so the mail links there and the blank docket
+ * is never recreated.
+ */
+export async function deleteEnquiryAction(enquiryId: string) {
+  try {
+    const enquiry = await prisma.enquiry.findUnique({
+      where: { id: enquiryId },
+      select: {
+        id: true,
+        docketNumber: true,
+        duplicate: true,
+        duplicateOfDocket: true,
+        _count: { select: { items: true } },
+      },
+    });
+    if (!enquiry) {
+      return { success: false as const, error: "Docket not found." };
+    }
+
+    if (
+      !isDeletableDuplicate({
+        duplicate: enquiry.duplicate,
+        duplicateOfDocket: enquiry.duplicateOfDocket,
+        itemCount: enquiry._count.items,
+      })
+    ) {
+      return {
+        success: false as const,
+        error:
+          enquiry._count.items > 0
+            ? "Cannot delete: this docket has items."
+            : "Only a blank docket flagged as Duplicate = Yes with a selected original can be deleted.",
+      };
+    }
+
+    const original = String(enquiry.duplicateOfDocket).trim();
+    const originalExists = await prisma.enquiry.findUnique({
+      where: { docketNumber: original },
+      select: { id: true },
+    });
+    if (!originalExists) {
+      return { success: false as const, error: `Original docket "${original}" no longer exists.` };
+    }
+
+    // Link the source mail(s) to the original docket, then remove the blank one.
+    await prisma.docketQuotationThread.updateMany({
+      where: { docketNo: enquiry.docketNumber },
+      data: { docketNo: original, pendingDocket: false },
+    });
+
+    await prisma.enquiry.delete({ where: { id: enquiryId } });
+
+    console.log(
+      `[Server] deleteEnquiry (duplicate) ${enquiry.docketNumber} -> original ${original}`,
+    );
+
+    return {
+      success: true as const,
+      data: { enquiryId, docketNumber: enquiry.docketNumber, duplicateOfDocket: original },
+    };
+  } catch (error: unknown) {
+    console.error("Error deleting duplicate enquiry:", error);
+    const message = error instanceof Error ? error.message : "Failed to delete docket.";
+    return { success: false as const, error: message };
+  }
+}
+
 // Update a specific field of an enquiry directly (for inline cell editing)
 export async function updateEnquiryFieldAction(
   enquiryId: string,
@@ -856,6 +936,12 @@ export async function updateEnquiryFieldAction(
       }
       if (value !== null && value !== "" && value !== "Yes" && value !== "No") {
         return { success: false, error: "APM must be Yes, No, or blank." }
+      }
+    }
+    // Duplicate flag is a plain Yes/No marker.
+    if (field === "duplicate") {
+      if (value !== null && value !== "" && value !== "Yes" && value !== "No") {
+        return { success: false, error: "Duplicate must be Yes, No, or blank." }
       }
     }
     const prev = await prisma.enquiry.findUnique({
@@ -936,7 +1022,7 @@ export async function syncEnquiryEmailAddressesAction() {
   try {
     const result = await syncEnquiryEmailAddresses({ onlyBlank: true, dryRun: false });
     console.log(
-      `[Server] syncEnquiryEmailAddresses scanned=${result.scanned} updated=${result.updated} skipped=${result.skipped}`
+      `[Server] syncEnquiryEmailAddresses scanned=${result.scanned} updated=${result.updated} skipped=${result.skipped} matchedByParty=${result.matchedByParty}`
     );
     return {
       success: true as const,
@@ -945,6 +1031,8 @@ export async function syncEnquiryEmailAddressesAction() {
         updated: result.updated,
         skipped: result.skipped,
         threadCount: result.threadCount,
+        partyCount: result.partyCount,
+        matchedByParty: result.matchedByParty,
         enquiries: result.proposals.map((p) => ({ id: p.id, emailAddress: p.emailAddress })),
       },
     };
@@ -953,6 +1041,181 @@ export async function syncEnquiryEmailAddressesAction() {
     return { success: false as const, error: error.message || "Failed to sync email addresses." };
   }
 }
+
+// ============================================================================
+// LEGACY — superseded by the hourly `docket-creation` scheduler job.
+// Source of truth: schedular_function/docket-creation.ts (+ run-docket-creation.ts,
+// app/api/scheduler/docket-creation/route.ts). The manual "Create Pending
+// Dockets" buttons were removed from EnquiryTable and the docket-follow-up page.
+// Kept commented for reference. To re-enable, uncomment this block AND the
+// matching imports near the top of this file.
+// ============================================================================
+//
+// export interface PendingDocketCreated {
+//   docketNumber: string;
+//   partyName: string;
+//   threadId: string;
+//   source: "email" | "partyName" | "subCategory" | "unknown";
+// }
+//
+// /**
+//  * Materializes dockets for `DocketQuotationThread` rows flagged
+//  * `pendingDocket = true`. For each thread it creates a header-only `Enquiry`
+//  * (no items) with an auto-generated docket number, resolving the party name by
+//  * matching the thread's external emails against previous dockets (falling back
+//  * to the thread's `sub_category`, then "Unknown"), then stamps the thread with
+//  * the new docket number and clears `pendingDocket`.
+//  *
+//  * Manual trigger only. Idempotent: a stamped thread leaves the pending set.
+//  */
+// export async function createPendingDocketsAction(options?: { dryRun?: boolean }) {
+//   try {
+//     const dryRun = options?.dryRun ?? false;
+//
+//     const pending = await prisma.docketQuotationThread.findMany({
+//       where: { pendingDocket: true, docketNo: null },
+//       orderBy: { date: "asc" },
+//       select: {
+//         id: true,
+//         threadId: true,
+//         subCategory: true,
+//         partyName: true,
+//         sender: true,
+//         toDetails: true,
+//         ccDetails: true,
+//         date: true,
+//         subject: true,
+//         body: true,
+//         bodyPreview: true,
+//         attachNames: true,
+//         attachLinks: true,
+//       },
+//     });
+//
+//     if (pending.length === 0) {
+//       return { success: true as const, data: { created: 0, skipped: 0, dryRun, dockets: [] as PendingDocketCreated[] } };
+//     }
+//
+//     const fiscalPrefix = getFiscalPrefix(new Date());
+//     const [enquiries, assignedThreads, fiscalRows] = await Promise.all([
+//       prisma.enquiry.findMany({ select: { emailAddress: true, partyName: true } }),
+//       prisma.docketQuotationThread.findMany({
+//         where: { docketNo: { not: null } },
+//         select: { subCategory: true, partyName: true, sender: true, toDetails: true, ccDetails: true },
+//       }),
+//       prisma.enquiry.findMany({
+//         where: { docketNumber: { startsWith: fiscalPrefix } },
+//         select: { docketNumber: true },
+//       }),
+//     ]);
+//
+//     const emailPartyMap = buildEmailPartyMap({ enquiries, assignedThreads });
+//     const docketNumbers = nextDocketSerials(
+//       fiscalRows.map((r) => r.docketNumber),
+//       pending.length,
+//       new Date(),
+//     );
+//
+//     const plan = pending.map((thread, index) => {
+//       const resolved = resolvePartyForThread(thread, emailPartyMap);
+//       return {
+//         threadId: thread.threadId,
+//         threadRowId: thread.id,
+//         date: thread.date,
+//         docketNumber: docketNumbers[index],
+//         partyName: resolved.partyName,
+//         source: resolved.source,
+//         emailAddress: threadPreferredEmails(thread).join(", ") || null,
+//         // Mail file attachments (linked as-is) + data for the snapshot PDF.
+//         attachments: parseThreadAttachments(thread.attachNames, thread.attachLinks),
+//         subject: thread.subject,
+//         body: thread.body || thread.bodyPreview,
+//         sender: thread.sender,
+//         to: extractEmailsFromValue(thread.toDetails).join(", "),
+//         cc: extractEmailsFromValue(thread.ccDetails).join(", "),
+//       };
+//     });
+//
+//     if (dryRun) {
+//       return {
+//         success: true as const,
+//         data: {
+//           created: plan.length,
+//           skipped: 0,
+//           dryRun,
+//           dockets: plan.map((p) => ({
+//             docketNumber: p.docketNumber,
+//             partyName: p.partyName,
+//             threadId: p.threadId,
+//             source: p.source,
+//           })) as PendingDocketCreated[],
+//         },
+//       };
+//     }
+//
+//     const created: PendingDocketCreated[] = [];
+//     for (const p of plan) {
+//       try {
+//         // Mail file attachments (linked as-is) + a generated snapshot PDF.
+//         const attachmentRows: { name: string; url: string; type: string | null; size: number | null }[] =
+//           p.attachments.map((a) => ({ name: a.name, url: a.url, type: a.type, size: null }));
+//         try {
+//           const snapshot = await buildSnapshotAttachment({
+//             docketNumber: p.docketNumber,
+//             partyName: p.partyName,
+//             date: p.date ? p.date.toISOString() : null,
+//             subject: p.subject,
+//             sender: p.sender,
+//             to: p.to,
+//             cc: p.cc,
+//             body: p.body,
+//             attachments: p.attachments.map((a) => ({ name: a.name, url: a.url })),
+//           });
+//           attachmentRows.push({ name: snapshot.name, url: snapshot.url, type: snapshot.type, size: snapshot.size });
+//         } catch (e) {
+//           console.warn(`[createPendingDockets] snapshot failed for ${p.docketNumber}:`, e);
+//         }
+//
+//         await prisma.$transaction([
+//           prisma.enquiry.create({
+//             data: {
+//               docketNumber: p.docketNumber,
+//               partyName: p.partyName,
+//               enquiryDate: p.date ?? new Date(),
+//               emailAddress: p.emailAddress,
+//               attachments: { create: attachmentRows },
+//             },
+//           }),
+//           prisma.docketQuotationThread.update({
+//             where: { id: p.threadRowId },
+//             data: { docketNo: p.docketNumber, pendingDocket: false },
+//           }),
+//         ]);
+//         created.push({
+//           docketNumber: p.docketNumber,
+//           partyName: p.partyName,
+//           threadId: p.threadId,
+//           source: p.source,
+//         });
+//       } catch (e) {
+//         console.error(`[createPendingDockets] failed for thread ${p.threadId}:`, e);
+//       }
+//     }
+//
+//     console.log(
+//       `[createPendingDockets] pending=${pending.length} created=${created.length} skipped=${plan.length - created.length}`,
+//     );
+//
+//     return {
+//       success: true as const,
+//       data: { created: created.length, skipped: plan.length - created.length, dryRun, dockets: created },
+//     };
+//   } catch (error: unknown) {
+//     console.error("Error creating pending dockets:", error);
+//     const message = error instanceof Error ? error.message : "Failed to create pending dockets.";
+//     return { success: false as const, error: message };
+//   }
+// }
 
 /**
  * Back-calculates and populates BOM ID from a selected rmType on an EnquiryItem.
@@ -1272,22 +1535,67 @@ export async function updateItemFieldAction(
             },
             fresh.erpItemCode
           );
-          // If code actually changed, sync availableBomIds (always) and maybe update productCost when null
+          // If code actually changed, sync availableBomIds and re-align/clear stale bomId
           if (recomputed.changed) {
             const afterCode = await prisma.enquiryItem.findUnique({
               where: { id: itemId },
-              select: { productCost: true, erpItemCode: true, availableBomIds: true },
+              select: { productCost: true, erpItemCode: true, availableBomIds: true, bomId: true },
             });
-            // Sync availableBomIds even if productCost not null
+            let validCandidates: string[] = [];
             if (afterCode?.erpItemCode) {
-              await syncAvailableBomIds(itemId, afterCode.erpItemCode);
+              validCandidates = await syncAvailableBomIds(itemId, afterCode.erpItemCode);
             } else {
               await syncAvailableBomIds(itemId, null);
             }
-            const refreshedAfterSync = await prisma.enquiryItem.findUnique({ where: { id: itemId }, select: { productCost: true, erpItemCode: true } });
-            if (refreshedAfterSync?.erpItemCode && refreshedAfterSync.productCost === null) {
-              await maybeUpdateProductCostFromNewCode(itemId, refreshedAfterSync.erpItemCode, refreshedAfterSync.productCost);
+
+            const currentBomId = afterCode?.bomId;
+            const isStaleBom = currentBomId && !validCandidates.includes(currentBomId);
+
+            if (isStaleBom || !currentBomId) {
+              if (validCandidates.length === 1 && afterCode?.erpItemCode) {
+                const candidateBom = validCandidates[0];
+                const vbRow = await prisma.verifyBom.findFirst({
+                  where: { itemCode: afterCode.erpItemCode, bomId: candidateBom },
+                  select: { bomId: true, rmItemCode: true, bomIdType: true },
+                });
+                if (vbRow?.rmItemCode) {
+                  const bomType = vbRow.bomIdType || DIRECT_M2M;
+                  const dataToUpdate: any = { bomId: vbRow.bomId, rmItemCode: vbRow.rmItemCode, bomType };
+                  const rmTypeMap = await getRmTypeMap([vbRow.rmItemCode]);
+                  const rmTypeVal = rmTypeMap.get(vbRow.rmItemCode);
+                  if (rmTypeVal !== undefined) dataToUpdate.rmType = rmTypeVal;
+                  if (bomType === DIRECT_M2M) {
+                    const stockMap = await getRmStockMap([vbRow.rmItemCode]);
+                    const stock = stockMap.get(vbRow.rmItemCode);
+                    if (stock !== undefined) dataToUpdate.availableStock = stock;
+                  }
+                  await prisma.enquiryItem.update({ where: { id: itemId }, data: dataToUpdate });
+
+                  // Re-derive cost for the new raw material
+                  const rawMap = await buildRawMaterialsCostMap([vbRow.rmItemCode]);
+                  let cost = rawMap.get(vbRow.rmItemCode);
+                  if (cost === undefined) {
+                    const supplyMap = await buildRmCostMap([vbRow.rmItemCode]);
+                    cost = supplyMap.get(vbRow.rmItemCode);
+                  }
+                  if (cost !== undefined && cost !== null) {
+                    await recalculateItem(itemId, { productCost: cost });
+                  }
+                }
+              } else {
+                // 0 or >1 candidates: clear stale BOM linkage so dropdown or blank shows
+                await prisma.enquiryItem.update({
+                  where: { id: itemId },
+                  data: { bomId: null, bomType: null, rmItemCode: null, rmType: null, availableStock: null },
+                });
+              }
+            } else {
+              const refreshedAfterSync = await prisma.enquiryItem.findUnique({ where: { id: itemId }, select: { productCost: true, erpItemCode: true } });
+              if (refreshedAfterSync?.erpItemCode && refreshedAfterSync.productCost === null) {
+                await maybeUpdateProductCostFromNewCode(itemId, refreshedAfterSync.erpItemCode, refreshedAfterSync.productCost);
+              }
             }
+
             // Refresh updatedItem to return latest
             const latest = await prisma.enquiryItem.findUnique({ where: { id: itemId } });
             if (latest) updatedItem = serializeItem(latest);
@@ -1295,6 +1603,68 @@ export async function updateItemFieldAction(
         }
       } catch (e) {
         console.warn(`[updateItemField] auto-recompute code failed for ${itemId}:`, e);
+      }
+    }
+
+    // Auto-sync availableBomIds and re-align bomId if erpItemCode was updated directly
+    if (field === "erpItemCode" && updatedItem) {
+      try {
+        const itemCodeVal = parsedVal ? String(parsedVal).trim() : null;
+        let validCandidates: string[] = [];
+        if (itemCodeVal) {
+          validCandidates = await syncAvailableBomIds(itemId, itemCodeVal);
+        } else {
+          await syncAvailableBomIds(itemId, null);
+        }
+
+        const freshItem = await prisma.enquiryItem.findUnique({
+          where: { id: itemId },
+          select: { bomId: true },
+        });
+        const currentBomId = freshItem?.bomId;
+        const isStaleBom = currentBomId && !validCandidates.includes(currentBomId);
+
+        if (isStaleBom || !currentBomId) {
+          if (validCandidates.length === 1 && itemCodeVal) {
+            const candidateBom = validCandidates[0];
+            const vbRow = await prisma.verifyBom.findFirst({
+              where: { itemCode: itemCodeVal, bomId: candidateBom },
+              select: { bomId: true, rmItemCode: true, bomIdType: true },
+            });
+            if (vbRow?.rmItemCode) {
+              const bomType = vbRow.bomIdType || DIRECT_M2M;
+              const dataToUpdate: any = { bomId: vbRow.bomId, rmItemCode: vbRow.rmItemCode, bomType };
+              const rmTypeMap = await getRmTypeMap([vbRow.rmItemCode]);
+              const rmTypeVal = rmTypeMap.get(vbRow.rmItemCode);
+              if (rmTypeVal !== undefined) dataToUpdate.rmType = rmTypeVal;
+              if (bomType === DIRECT_M2M) {
+                const stockMap = await getRmStockMap([vbRow.rmItemCode]);
+                const stock = stockMap.get(vbRow.rmItemCode);
+                if (stock !== undefined) dataToUpdate.availableStock = stock;
+              }
+              await prisma.enquiryItem.update({ where: { id: itemId }, data: dataToUpdate });
+
+              const rawMap = await buildRawMaterialsCostMap([vbRow.rmItemCode]);
+              let cost = rawMap.get(vbRow.rmItemCode);
+              if (cost === undefined) {
+                const supplyMap = await buildRmCostMap([vbRow.rmItemCode]);
+                cost = supplyMap.get(vbRow.rmItemCode);
+              }
+              if (cost !== undefined && cost !== null) {
+                await recalculateItem(itemId, { productCost: cost });
+              }
+            }
+          } else {
+            await prisma.enquiryItem.update({
+              where: { id: itemId },
+              data: { bomId: null, bomType: null, rmItemCode: null, rmType: null, availableStock: null },
+            });
+          }
+        }
+        const latest = await prisma.enquiryItem.findUnique({ where: { id: itemId } });
+        if (latest) updatedItem = serializeItem(latest);
+      } catch (e) {
+        console.warn(`[updateItemField] erpItemCode bom sync failed for ${itemId}:`, e);
       }
     }
 

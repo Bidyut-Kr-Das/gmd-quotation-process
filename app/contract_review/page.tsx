@@ -33,8 +33,9 @@ import {
   CONTRACT_REVIEW_COLUMN_GROUPS,
   CONTRACT_REVIEW_COLUMN_WIDTHS,
   nBatchBadges,
+  nBatchFilter,
 } from "@/lib/gmd_lib/contract-review-columns";
-import { cBatchBadges } from "@/lib/gmd_lib/verify-bom-columns";
+import { cBatchBadges, cBatchFilter } from "@/lib/gmd_lib/verify-bom-columns";
 import type { ContractReviewImage } from "@/lib/gmd_lib/contract-review-image-lookup";
 import {
   BOM_ID_COLUMN,
@@ -146,6 +147,10 @@ const OFFER_PENDING_DONE_IDX =
 const UPLOAD_DIAGRAM_COLUMN = "Upload Drawing";
 const UPLOAD_DIAGRAM_IDX =
   CONTRACT_REVIEW_HEADERS.indexOf(UPLOAD_DIAGRAM_COLUMN);
+
+// Stable descriptor list so the sidebar/graph filter mirror keeps a stable
+// dependency and the batch checkboxes + cascading share one definition.
+const CR_BATCH_FILTERS = [cBatchFilter(), nBatchFilter()];
 
 type RateTileKey =
   | "rateXOrderQty"
@@ -555,6 +560,7 @@ export default function ContractReviewPage() {
   const [multiFilters, setMultiFilters] = useState<Record<string, string[]>>(
     {},
   );
+  const [batchFilters, setBatchFilters] = useState<Record<string, boolean>>({});
   const [globalSearch, setGlobalSearch] = useState("");
   const [dateRanges, setDateRanges] = useState<
     Record<string, { from: string; to: string; blank?: boolean }>
@@ -576,6 +582,7 @@ export default function ContractReviewPage() {
     () => ({
       columnFilters,
       multiFilters,
+      batchFilters,
       dateRanges,
       globalSearch,
       currentPage,
@@ -584,6 +591,7 @@ export default function ContractReviewPage() {
     [
       columnFilters,
       multiFilters,
+      batchFilters,
       dateRanges,
       globalSearch,
       currentPage,
@@ -600,6 +608,13 @@ export default function ContractReviewPage() {
           const next = { ...prev };
           if (values.length) next[header] = values;
           else delete next[header];
+          return next;
+        }),
+      onBatchFilter: (key: string, value: boolean) =>
+        setBatchFilters((prev) => {
+          const next = { ...prev };
+          if (value) next[key] = true;
+          else delete next[key];
           return next;
         }),
       onDateRange: (header: string, from: string, to: string) =>
@@ -624,6 +639,7 @@ export default function ContractReviewPage() {
       onResetFilters: () => {
         setColumnFilters({});
         setMultiFilters({});
+        setBatchFilters({});
         setGlobalSearch("");
         setDateRanges({});
         setActiveRateTile(null);
@@ -1374,19 +1390,32 @@ export default function ContractReviewPage() {
       dateRanges?: Record<string, { from: string; to: string; blank?: boolean }>,
       excludeHeader?: string,
       ignoreColumns?: Set<string>,
-    ) =>
-      matchesTableFilters(
-        row,
-        headers,
-        columnFilters,
-        multiFilters,
-        globalSearch,
-        dateRanges,
-        excludeHeader,
-        ignoreColumns,
-        bomCategoryByRow,
-      ),
-    [bomCategoryByRow],
+    ) => {
+      if (
+        !matchesTableFilters(
+          row,
+          headers,
+          columnFilters,
+          multiFilters,
+          globalSearch,
+          dateRanges,
+          excludeHeader,
+          ignoreColumns,
+          bomCategoryByRow,
+        )
+      )
+        return false;
+      // Batch presence filters (C / N) cascade through every sidebar, graph and
+      // option-metadata call site because they all route through this mirror.
+      for (const bf of CR_BATCH_FILTERS) {
+        if (!batchFilters[bf.key]) continue;
+        const idx = headers.indexOf(bf.column);
+        if (idx === -1 || String(row[idx] ?? "").trim() !== bf.value)
+          return false;
+      }
+      return true;
+    },
+    [bomCategoryByRow, batchFilters],
   );
 
   const sidebarBaseRows = useMemo(
@@ -3392,7 +3421,7 @@ tileSize,
           </button>
         </aside>
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
-          {/* <GMDUpdateHeader
+          <GMDUpdateHeader
             title="CONTRACT REVIEW"
             totalRows={data?.totalRows ?? 0}
             syncedAt={data?.syncedAt ?? undefined}
@@ -3415,7 +3444,7 @@ tileSize,
               </button>
             }
           />
-          {error && <div className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</div>} */}
+          {error && <div className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</div>}
           <ResizablePanelGroup
             orientation="vertical"
             id="contract-review-vertical"
@@ -3530,6 +3559,8 @@ tileSize,
                   ...cBatchBadges("ITEM_CODE"),
                   ...nBatchBadges("ITEM_CODE"),
                 ]}
+                batchFilterHeader="ITEM_CODE"
+                batchPresenceFilters={CR_BATCH_FILTERS}
                 wrapCells
                 attachmentColumn={UPLOAD_DIAGRAM_COLUMN}
                 attachmentAccept=".pdf,application/pdf"

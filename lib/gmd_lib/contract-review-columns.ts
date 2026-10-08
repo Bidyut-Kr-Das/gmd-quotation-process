@@ -106,6 +106,20 @@ export function nBatchBadges(onColumn: string) {
 }
 
 /**
+ * Checkbox presence filter for the N batch flag, rendered in the item-code
+ * column header by `GMDUpdateTable`. Mirrors {@link nBatchBadges}.
+ */
+export function nBatchFilter() {
+  return {
+    key: "nBatch",
+    label: "N Batch",
+    column: N_BATCH_HEADER,
+    value: N_BATCH_VALUE,
+    title: "Show only rows NOT in CURRENT REQT (GMD Item Creation Form)",
+  };
+}
+
+/**
  * Default rendered width, in px, for each column on the Contract Review
  * dashboard. Sizes are driven by the widest of the two things a cell can hold:
  * the truncated header caption, or the value.

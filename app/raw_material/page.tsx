@@ -25,7 +25,7 @@ import {
   COL_INDEX_TO_DB_FIELD,
   resolveGMDUpdateField,
 } from "@/lib/gmd_lib/sheet-columns";
-import { C_BATCH_HEADER, cBatchBadges } from "@/lib/gmd_lib/verify-bom-columns";
+import { C_BATCH_HEADER, C_BATCH_VALUE, cBatchBadges, cBatchFilter } from "@/lib/gmd_lib/verify-bom-columns";
 import {
   getUsdInrRateAction,
   getGMDCastingRatesAction,
@@ -78,6 +78,9 @@ interface SheetData {
 }
 
 const NEW_STATUS_COL = "NEW ITEM STATUS";
+
+// Stable descriptor list so GMDUpdateTable's row predicate keeps a stable dep.
+const RAW_MATERIAL_BATCH_FILTERS = [cBatchFilter()];
 
 type CastingKey = "DI" | "CS" | "CI" | "SS" | "Bronze";
 
@@ -857,6 +860,7 @@ export default function Home() {
   const [multiFilters, setMultiFilters] = useState<Record<string, string[]>>(
     {},
   );
+  const [batchFilters, setBatchFilters] = useState<Record<string, boolean>>({});
   const [globalSearch, setGlobalSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -867,6 +871,7 @@ export default function Home() {
     () => ({
       columnFilters,
       multiFilters,
+      batchFilters,
       dateFrom,
       dateTo,
       globalSearch,
@@ -876,6 +881,7 @@ export default function Home() {
     [
       columnFilters,
       multiFilters,
+      batchFilters,
       dateFrom,
       dateTo,
       globalSearch,
@@ -895,12 +901,20 @@ export default function Home() {
           else delete next[header];
           return next;
         }),
+      onBatchFilter: (key: string, value: boolean) =>
+        setBatchFilters((prev) => {
+          const next = { ...prev };
+          if (value) next[key] = true;
+          else delete next[key];
+          return next;
+        }),
       onDateFrom: setDateFrom,
       onDateTo: setDateTo,
       onGlobalSearch: setGlobalSearch,
       onResetFilters: () => {
         setColumnFilters({});
         setMultiFilters({});
+        setBatchFilters({});
         setGlobalSearch("");
         setDateFrom("");
         setDateTo("");
@@ -917,6 +931,7 @@ export default function Home() {
     colFilters: Record<string, string>,
     mFilters: Record<string, string[]>,
     gSearch: string,
+    bFilters: Record<string, boolean> = {},
   ): boolean {
     if (gSearch.trim()) {
       const q = gSearch.toLowerCase();
@@ -943,6 +958,11 @@ export default function Home() {
       const cellVal = String(row[colIdx] ?? "").trim();
       const matchesBlank = selected.includes("(Blank)") && cellVal === "";
       if (!(matchesBlank || selected.includes(cellVal))) return false;
+    }
+    if (bFilters.cBatch) {
+      const idx = hdrs.indexOf(C_BATCH_HEADER);
+      if (idx === -1 || String(row[idx] ?? "").trim() !== C_BATCH_VALUE)
+        return false;
     }
     return true;
   }
@@ -1041,9 +1061,10 @@ export default function Home() {
         columnFilters,
         multiFilters,
         globalSearch,
+        batchFilters,
       ),
     );
-  }, [newItems, headers, columnFilters, multiFilters, globalSearch]);
+  }, [newItems, headers, columnFilters, multiFilters, globalSearch, batchFilters]);
 
   const cardStats = useMemo(() => {
     const empty = { count: 0, sum: 0 };
@@ -1332,6 +1353,8 @@ export default function Home() {
                       C_BATCH_HEADER,
                     ]}
                     cellBadges={cBatchBadges("ERP ITEM CODE")}
+                    batchFilterHeader="ERP ITEM CODE"
+                    batchPresenceFilters={RAW_MATERIAL_BATCH_FILTERS}
                     fullHeight
                   />
                 </ResizablePanel>
@@ -1365,6 +1388,8 @@ export default function Home() {
                       C_BATCH_HEADER,
                     ]}
                     cellBadges={cBatchBadges("ERP ITEM CODE")}
+                    batchFilterHeader="ERP ITEM CODE"
+                    batchPresenceFilters={RAW_MATERIAL_BATCH_FILTERS}
                     fullHeight
                   />
                 </ResizablePanel>
@@ -1395,6 +1420,8 @@ export default function Home() {
                     onRefreshRate={refreshRate}
                     hiddenColumns={["BOM ID", C_BATCH_HEADER]}
                     cellBadges={cBatchBadges("ERP ITEM CODE")}
+                    batchFilterHeader="ERP ITEM CODE"
+                    batchPresenceFilters={RAW_MATERIAL_BATCH_FILTERS}
                     onCellUpdate={handleTransferredCellUpdate}
                     pasteErpCodes={{
                       draft: pasteDraft,

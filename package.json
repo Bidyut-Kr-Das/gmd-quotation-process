@@ -52,6 +52,8 @@
     "rmtype:common:apply": "tsx scripts/backfill-rmtype-common.ts --apply",
     "email:backfill": "tsx scripts/backfill-enquiry-email-addresses.ts",
     "email:backfill:apply": "tsx scripts/backfill-enquiry-email-addresses.ts --apply",
+    "bom:fix-stale": "tsx scripts/fix-stale-bom-ids.ts",
+    "bom:fix-stale:apply": "tsx scripts/fix-stale-bom-ids.ts --apply",
     "rm:cost:round10": "tsx scripts/round-raw-material-cost-to-10.ts",
     "rm:cost:round10:apply": "tsx scripts/round-raw-material-cost-to-10.ts --apply"
   },
