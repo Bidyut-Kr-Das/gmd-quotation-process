@@ -61,6 +61,18 @@ export const TAB_FIELDS: Record<string, readonly string[]> = {
     "bodyPressure",
     "standards",
     "flangeType",
+    // Display-only columns (sheet AA..AK), mirroring FLANGE_COLUMNS order.
+    "densityGmCm3",
+    "totalWeightKg",
+    "totalWeightTolerancePlus",
+    "totalWeightApproxAsPerIs",
+    "totalWeightToleranceMinus",
+    "costAsPerIs",
+    "boltLengthMm",
+    "boltDiaMm",
+    "boltWeightCsKg",
+    "boltWeightSsKg",
+    "boltWeightAsKg",
   ],
   "gear-box": [
     "typeOfValve",
