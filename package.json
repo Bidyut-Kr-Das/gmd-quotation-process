@@ -54,6 +54,8 @@
     "docket:pending:backfill:apply": "tsx scripts/backfill-docket-pending-party.ts --apply",
     "email:backfill": "tsx scripts/backfill-enquiry-email-addresses.ts",
     "email:backfill:apply": "tsx scripts/backfill-enquiry-email-addresses.ts --apply",
+    "email:backfill-sender": "tsx scripts/backfill-enquiry-sender-email.ts",
+    "email:backfill-sender:apply": "tsx scripts/backfill-enquiry-sender-email.ts --apply",
     "bom:fix-stale": "tsx scripts/fix-stale-bom-ids.ts",
     "bom:fix-stale:apply": "tsx scripts/fix-stale-bom-ids.ts --apply",
     "docket:backfill-items": "tsx scripts/backfill-pending-docket-items.ts",

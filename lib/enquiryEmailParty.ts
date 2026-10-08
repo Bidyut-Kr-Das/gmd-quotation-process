@@ -136,3 +136,87 @@ export function resolveEmailsForParty(
   if (!partyName) return [];
   return emailsByPartyKey.get(partyKey(partyName)) ?? [];
 }
+
+/** The subset of thread columns needed to split sender vs cc. */
+export interface ThreadEmailFields {
+  sender: string | null;
+  toDetails: unknown;
+  ccDetails: unknown;
+}
+
+function uniqLower(emails: string[]): string[] {
+  return Array.from(new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean)));
+}
+
+/**
+ * Emails that identify the thread's sender (future email "To").
+ *
+ * Priority: external addresses on `sender`, then external on `to`, then `cc`;
+ * only when the whole thread is internal does it fall back to internal
+ * addresses. This keeps the meaningful counterparty as the sender even when a
+ * GMD/Laser mailbox forwarded the enquiry.
+ */
+export function threadSenderEmails(thread: ThreadEmailFields): string[] {
+  const externalFrom = (value: unknown) => uniqLower(extractEmailsFromValue(value).filter(isExternalEmail));
+
+  const fromSender = externalFrom(thread.sender);
+  if (fromSender.length > 0) return fromSender;
+  const fromTo = externalFrom(thread.toDetails);
+  if (fromTo.length > 0) return fromTo;
+  const fromCc = externalFrom(thread.ccDetails);
+  if (fromCc.length > 0) return fromCc;
+
+  const internal = [
+    ...extractEmailsFromValue(thread.sender),
+    ...extractEmailsFromValue(thread.toDetails),
+    ...extractEmailsFromValue(thread.ccDetails),
+  ].filter((e) => isInternalEmail(e) && !isSpamOrBotEmail(e));
+  return uniqLower(internal);
+}
+
+/**
+ * External `to`/`cc` addresses that are not the sender — the future email "Cc".
+ */
+export function threadCcEmails(thread: ThreadEmailFields): string[] {
+  const senderSet = new Set(threadSenderEmails(thread));
+  const emails = [
+    ...extractEmailsFromValue(thread.toDetails),
+    ...extractEmailsFromValue(thread.ccDetails),
+  ].filter(isExternalEmail);
+  return uniqLower(emails).filter((e) => !senderSet.has(e));
+}
+
+export interface PartyEmailSplitIndex {
+  senderByPartyKey: Map<string, string[]>;
+  ccByPartyKey: Map<string, string[]>;
+}
+
+/**
+ * Split counterpart of `buildPartyEmailIndex`: groups a party's sender emails
+ * and its (non-sender) cc emails separately, so the party fallback can fill
+ * both `senderEmail` and the cc list.
+ */
+export function buildPartyEmailSplitIndex(rows: PartyThreadRow[]): PartyEmailSplitIndex {
+  const senderByPartyKey = new Map<string, string[]>();
+  const ccByPartyKey = new Map<string, string[]>();
+
+  const push = (map: Map<string, string[]>, key: string, emails: string[]) => {
+    if (emails.length === 0) return;
+    const existing = map.get(key) ?? [];
+    for (const email of emails) if (!existing.includes(email)) existing.push(email);
+    map.set(key, existing);
+  };
+
+  for (const t of rows) {
+    const party = String(t.subCategory ?? "").trim();
+    if (!party) continue;
+    if (PARTY_SENTINELS.has(party.toUpperCase())) continue;
+    const key = partyKey(party);
+    if (!key) continue;
+
+    push(senderByPartyKey, key, threadSenderEmails(t));
+    push(ccByPartyKey, key, threadCcEmails(t));
+  }
+
+  return { senderByPartyKey, ccByPartyKey };
+}

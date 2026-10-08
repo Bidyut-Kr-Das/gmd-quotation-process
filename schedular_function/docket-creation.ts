@@ -33,7 +33,8 @@ import { getFiscalPrefix, nextDocketSerials } from "@/lib/docketNumber";
 import {
   buildEmailPartyMap,
   resolvePartyForThread,
-  threadPreferredEmails,
+  threadSenderEmails,
+  threadCcEmails,
   type PartyNameSource,
 } from "@/lib/pendingDocketMaterializer";
 import { parseThreadAttachments } from "@/lib/docketSnapshot";
@@ -142,7 +143,7 @@ export async function runPendingDocketCreation(
 
   const fiscalPrefix = getFiscalPrefix(new Date());
   const [enquiries, assignedThreads, fiscalRows] = await Promise.all([
-    prisma.enquiry.findMany({ select: { emailAddress: true, partyName: true } }),
+    prisma.enquiry.findMany({ select: { emailAddress: true, senderEmail: true, partyName: true } }),
     prisma.docketQuotationThread.findMany({
       where: { docketNo: { not: null } },
       select: { subCategory: true, partyName: true, sender: true, toDetails: true, ccDetails: true },
@@ -169,7 +170,8 @@ export async function runPendingDocketCreation(
       docketNumber: docketNumbers[index],
       partyName: resolved.partyName,
       source: resolved.source,
-      emailAddress: threadPreferredEmails(thread).join(", ") || null,
+      emailAddress: threadCcEmails(thread).join(", ") || null,
+      senderEmail: threadSenderEmails(thread).join(", ") || null,
       // Mail file attachments (linked as-is) + data for the snapshot PDF.
       attachments: parseThreadAttachments(thread.attachNames, thread.attachLinks),
       subject: thread.subject,
@@ -273,6 +275,7 @@ export async function runPendingDocketCreation(
             partyName: p.partyName,
             enquiryDate: p.date ?? new Date(),
             emailAddress: p.emailAddress,
+            senderEmail: p.senderEmail,
             attachments: { create: attachmentRows },
             items: { create: itemCreates(p.items) },
           },

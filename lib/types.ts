@@ -78,6 +78,7 @@ export interface EnquiryData {
   apm?: string | null;
   offerPdfGeneratedAt?: string | Date | null;
   offerPdfGeneratedBy?: string | null;
+  senderEmail?: string | null;
   emailAddress?: string | null;
   contactNo?: string | null;
   duplicate?: string | null;

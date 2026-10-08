@@ -473,6 +473,7 @@ const enquiriesSlice = createSlice({
           for (const u of updates) {
             const existing = state.enquiries.entities[u.id];
             if (existing) {
+              existing.senderEmail = u.senderEmail;
               existing.emailAddress = u.emailAddress;
             }
           }
