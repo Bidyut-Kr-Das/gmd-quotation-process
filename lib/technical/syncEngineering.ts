@@ -164,13 +164,25 @@ async function syncTabs(
   }
 }
 
-/** Syncs a single tab. Throws if the key is unknown. */
+/**
+ * Syncs a single tab. Throws if the key is unknown.
+ *
+ * DENSITY is hidden from the subtab bar and so has no Sync button of its own.
+ * It is refreshed alongside every tab sync (the requested tab first, so
+ * `results[0]` is always the tab the caller asked for) so the inline density
+ * reference strip stays populated without a dedicated control.
+ */
 export async function syncEngineeringTab(
   tabKey: string,
 ): Promise<TabSyncResult[]> {
   const tab = findTab(tabKey);
   if (!tab) throw new Error(`Unknown engineering tab: ${tabKey}`);
-  return syncTabs([tab], tab.key);
+
+  const density = findTab("density");
+  const tabs =
+    tab.key === "density" || !density ? [tab] : [tab, density];
+
+  return syncTabs(tabs, tab.key);
 }
 
 /** Syncs all tabs. */

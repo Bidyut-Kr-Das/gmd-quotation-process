@@ -32,9 +32,11 @@ import type {
 export default function TechnicalTablePanel({
   tab,
   densityPairs = [],
+  onDensityRefresh,
 }: {
   tab: EngineeringTab;
   densityPairs?: DensityPair[];
+  onDensityRefresh?: () => void;
 }) {
   const [state, setState] = useState<EngineeringDataState>({
     status: "loading",
@@ -78,7 +80,14 @@ export default function TechnicalTablePanel({
 
   const reload = () => setReloadNonce((n) => n + 1);
 
-  const syncAction = <SyncButton tabKey={tab.key} onSynced={reload} />;
+  // A sync also refreshes DENSITY (see syncEngineeringTab), so re-read the
+  // inline strip's pairs as well as this tab.
+  const handleSynced = () => {
+    reload();
+    onDensityRefresh?.();
+  };
+
+  const syncAction = <SyncButton tabKey={tab.key} onSynced={handleSynced} />;
 
   return (
     <div
