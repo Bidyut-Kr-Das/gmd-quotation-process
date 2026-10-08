@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@source "../../../packages/*/src";
+/* Shared packages register their own sources with Tailwind. */
+@import "@gmd/contract-review/styles.css";
 
 @custom-variant dark (&:is(.dark *));
 

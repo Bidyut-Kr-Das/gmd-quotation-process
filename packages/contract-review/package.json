@@ -10,7 +10,8 @@
     "./columns": "./src/lib/columns.ts",
     "./validation": "./src/lib/contractValidation.ts",
     "./pn-rating": "./src/lib/pnRatingMatcher.ts",
-    "./flags": "./src/flags.ts"
+    "./flags": "./src/flags.ts",
+    "./styles.css": "./src/styles.css"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1131.0",
