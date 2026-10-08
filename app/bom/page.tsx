@@ -869,8 +869,7 @@ export default function BomPage() {
             diffHighlight={{ columns: ["ITEM NAME", "NEW ITEM NAME"], tone:"amber" }}
             fullHeight
           />
-        </div>
-
+        </div> 
         <Dialog open={confirmItemName} onOpenChange={setConfirmItemName}>
           <DialogContent className="sm:max-w-130 max-h-[85vh] overflow-y-auto">
             <DialogHeader>
