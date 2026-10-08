@@ -676,6 +676,29 @@ model DocketQuotationThread {
   @@map("docket_quotation_threads")
 }
 
+model PbgData {
+  id            BigInt    @id @default(autoincrement())
+  clientName    String?   @map("client_name")
+  project       String?
+  poNumber      String?   @map("po_number")
+  poDate        DateTime? @map("po_date") @db.Date
+  bgNo          String?   @map("bg_no")
+  bgDate        DateTime? @map("bg_date") @db.Date
+  bgAmtFc       Decimal?  @map("bg_amt_fc") @db.Decimal(18, 2)
+  expiryDate    DateTime? @map("expiry_date") @db.Date
+  claimDate     DateTime? @map("claim_date") @db.Date
+  marginPct     Decimal?  @map("margin_pct") @db.Decimal(8, 2)
+  marginAmount  Decimal?  @map("margin_amount") @db.Decimal(18, 2)
+  contactPerson String?   @map("contact_person")
+  contactNumber String?   @map("contact_number")
+  remark        String?
+  status        String?
+  syncedAt      DateTime  @default(now()) @map("synced_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@map("pbg_data")
+}
+
 // ─────────────────────────────────────────────────────────────
 // Engineering Data ("GMD Technical Master Data"). Synced from the sheet by
 // lib/technical/syncEngineering.ts and read back by
