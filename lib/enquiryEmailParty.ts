@@ -136,3 +136,123 @@ export function resolveEmailsForParty(
   if (!partyName) return [];
   return emailsByPartyKey.get(partyKey(partyName)) ?? [];
 }
+
+/** The subset of thread columns needed to split sender vs cc. */
+export interface ThreadEmailFields {
+  sender: string | null;
+  toDetails: unknown;
+  ccDetails: unknown;
+}
+
+export function uniqLower(emails: string[]): string[] {
+  return Array.from(new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean)));
+}
+
+/**
+ * Emails that identify the thread's sender (future email "To").
+ *
+ * Priority: external addresses on `sender`, then external on `to`, then `cc`;
+ * only when the whole thread is internal does it fall back to internal
+ * addresses. This keeps the meaningful counterparty as the sender even when a
+ * GMD/Laser mailbox forwarded the enquiry.
+ */
+export function threadSenderEmails(thread: ThreadEmailFields): string[] {
+  const externalFrom = (value: unknown) => uniqLower(extractEmailsFromValue(value).filter(isExternalEmail));
+
+  const fromSender = externalFrom(thread.sender);
+  if (fromSender.length > 0) return fromSender;
+  const fromTo = externalFrom(thread.toDetails);
+  if (fromTo.length > 0) return fromTo;
+  const fromCc = externalFrom(thread.ccDetails);
+  if (fromCc.length > 0) return fromCc;
+
+  const internal = [
+    ...extractEmailsFromValue(thread.sender),
+    ...extractEmailsFromValue(thread.toDetails),
+    ...extractEmailsFromValue(thread.ccDetails),
+  ].filter((e) => isInternalEmail(e) && !isSpamOrBotEmail(e));
+  return uniqLower(internal);
+}
+
+/**
+ * External `to`/`cc` addresses that are not the sender — the future email "Cc".
+ */
+export function threadCcEmails(thread: ThreadEmailFields): string[] {
+  const senderSet = new Set(threadSenderEmails(thread));
+  const emails = [
+    ...extractEmailsFromValue(thread.toDetails),
+    ...extractEmailsFromValue(thread.ccDetails),
+  ].filter(isExternalEmail);
+  return uniqLower(emails).filter((e) => !senderSet.has(e));
+}
+
+/** External + internal email lists for a thread (external ordered sender→to→cc). */
+export interface EmailListEntry {
+  external: string[];
+  internal: string[];
+}
+
+export function threadEmailLists(thread: ThreadEmailFields): EmailListEntry {
+  const all = [
+    ...extractEmailsFromValue(thread.sender),
+    ...extractEmailsFromValue(thread.toDetails),
+    ...extractEmailsFromValue(thread.ccDetails),
+  ];
+  return {
+    external: uniqLower(all.filter(isExternalEmail)),
+    internal: uniqLower(all.filter((e) => isInternalEmail(e) && !isSpamOrBotEmail(e))),
+  };
+}
+
+export type EmailSplitSource = "thread" | "party" | "none";
+
+export interface ThreadEmailSplit {
+  /** Exactly one address (future email "To"), or null when nothing resolved. */
+  senderEmail: string | null;
+  /** The remaining addresses (future email "Cc"). */
+  ccEmails: string[];
+  source: EmailSplitSource;
+}
+
+/**
+ * Picks a single sender and the remaining cc list from already-collected lists.
+ * Internal addresses are never returned.
+ *
+ * When any of the thread's sources (`sender` / `to` / `cc`) carry an internal
+ * address, the party's external emails are preferred (party match first);
+ * otherwise the thread's own external emails are used. The first address
+ * becomes the sender; the rest cc.
+ */
+export function pickSenderAndCc(input: {
+  external: string[];
+  internal: string[];
+  partyExternal?: string[];
+}): ThreadEmailSplit {
+  const external = uniqLower(input.external);
+  const party = uniqLower((input.partyExternal ?? []).filter(isExternalEmail));
+  const hasInternal = uniqLower(input.internal).length > 0;
+
+  const useParty = (hasInternal && party.length > 0) || external.length === 0;
+  const chosen = useParty ? party : external;
+  if (chosen.length === 0) return { senderEmail: null, ccEmails: [], source: "none" };
+
+  const [senderEmail, ...ccEmails] = chosen;
+  return { senderEmail, ccEmails, source: useParty ? "party" : "thread" };
+}
+
+/**
+ * Splits one thread into a single sender + cc. When the thread has no external
+ * address, the caller may pass the party's external emails (from other threads)
+ * so the party's address is stored instead of the internal mailbox.
+ */
+export function splitThreadEmails(
+  thread: ThreadEmailFields,
+  partyExternalEmails?: string[],
+): ThreadEmailSplit {
+  const lists = threadEmailLists(thread);
+  return pickSenderAndCc({
+    external: lists.external,
+    internal: lists.internal,
+    partyExternal: partyExternalEmails,
+  });
+}

@@ -16,6 +16,22 @@ function getAuth() {
   return getOAuthClient();
 }
 
+function toInt(v: string | null): number | null {
+  const s = String(v ?? "").replace(/,/g, "").trim();
+  if (!s || s === "-") return null;
+  const n = Number.parseInt(s, 10);
+  return isNaN(n) ? null : n;
+}
+
+function clean(v: string | null): string | null {
+  const s = String(v ?? "").trim();
+  return s === "" ? null : s;
+}
+
+// Reads the VERIFY BOM tab and materialises the relational chain:
+// FullItem -> Bom -> BomItem -> (RawMaterial | FullItem). Each sheet row is a
+// component of a BOM. Existing rows are matched by (bom, component) and their
+// quantity refreshed; nothing else is clobbered.
 export async function POST() {
   try {
     if (!SPREADSHEET_ID) {
@@ -52,7 +68,6 @@ export async function POST() {
     const columnMap = buildVerifyBomColumnMap(sheetHeaders);
     const statusIdx = findVerifyBomColumnIndex(sheetHeaders, "STATUS OF BOM");
 
-    const syncedAt = new Date();
     const rawRows = allRows
       .slice(1)
       .filter((r) => r.some((c) => c !== null && c !== ""))
@@ -61,36 +76,104 @@ export async function POST() {
         return String(r[statusIdx] ?? "").trim().toLowerCase() !== "closed";
       });
 
-    let upserted = 0;
-    for (const rawRow of rawRows) {
-      const mapped = mapVerifyBomRow(rawRow, columnMap, syncedAt);
+    const mapped = rawRows
+      .map((rawRow) => mapVerifyBomRow(rawRow, columnMap, new Date()))
+      .filter((m) => m.bomId && m.itemCode && m.rmItemCode);
 
-      if (!mapped.bomId || !mapped.itemCode || !mapped.rmItemCode) continue;
+    // Resolve all referenced codes once.
+    const itemCodes = [...new Set(mapped.map((m) => m.itemCode))];
+    const rmCodes = [...new Set(mapped.map((m) => m.rmItemCode))];
 
-      await prisma.verifyBom.upsert({
-        where: {
-          bomId_itemCode_rmItemCode: {
-            bomId: mapped.bomId,
-            itemCode: mapped.itemCode,
-            rmItemCode: mapped.rmItemCode,
-          },
-        },
-        update: {
-          bomIdType: mapped.bomIdType,
-          bomItemQty: mapped.bomItemQty,
-          syncedAt,
-        },
-        create: mapped,
+    // 1. FullItem per ITEM CODE (create stub; never clobber existing meta).
+    for (const itemCode of itemCodes) {
+      await prisma.fullItem.upsert({
+        where: { itemCode },
+        create: { itemCode },
+        update: {},
       });
+    }
+
+    const fullItems = await prisma.fullItem.findMany({
+      where: { itemCode: { in: itemCodes } },
+      select: { id: true, itemCode: true },
+    });
+    const fullItemByCode = new Map(
+      fullItems
+        .filter((f) => f.itemCode)
+        .map((f) => [f.itemCode!.trim(), f.id]),
+    );
+
+    const rawMaterials = await prisma.rawMaterial.findMany({
+      where: { erpItemCode: { in: rmCodes } },
+      select: { id: true, erpItemCode: true },
+    });
+    const rawMaterialByCode = new Map(
+      rawMaterials
+        .filter((r) => r.erpItemCode)
+        .map((r) => [r.erpItemCode!.trim(), r.id]),
+    );
+
+    // 2. Bom per BOM ID, owned by its FullItem.
+    let upserted = 0;
+    const bomIdByCode = new Map<string, string>();
+    for (const m of mapped) {
+      const fullItemId = fullItemByCode.get(m.itemCode.trim());
+      if (!fullItemId) continue;
+      if (bomIdByCode.has(m.bomId)) continue;
+      const bom = await prisma.bom.upsert({
+        where: { bomId: m.bomId },
+        create: {
+          bomId: m.bomId,
+          bomIdType: clean(m.bomIdType),
+          fullItemId,
+        },
+        update: { bomIdType: clean(m.bomIdType), fullItemId },
+        select: { id: true },
+      });
+      bomIdByCode.set(m.bomId, bom.id);
+    }
+
+    // 3. BomItem per (bom, component). Component resolves to RawMaterial first,
+    //    then FullItem. Unknown components are skipped.
+    for (const m of mapped) {
+      const bomDbId = bomIdByCode.get(m.bomId);
+      if (!bomDbId) continue;
+
+      const rmId = rawMaterialByCode.get(m.rmItemCode.trim());
+      const fiId = rmId ? null : fullItemByCode.get(m.rmItemCode.trim());
+      if (!rmId && !fiId) continue;
+
+      const where = rmId
+        ? { bomId: bomDbId, rawMaterialId: rmId }
+        : { bomId: bomDbId, fullItemId: fiId! };
+
+      const existing = await prisma.bomItem.findFirst({
+        where,
+        select: { id: true },
+      });
+
+      const quantity = toInt(m.bomItemQty);
+      if (existing) {
+        await prisma.bomItem.update({
+          where: { id: existing.id },
+          data: { quantity },
+        });
+      } else {
+        await prisma.bomItem.create({
+          data: { bomId: bomDbId, quantity, ...(rmId ? { rawMaterialId: rmId } : { fullItemId: fiId! }) },
+        });
+      }
       upserted++;
     }
 
-    console.log(`Upserted ${upserted} rows into verify_bom table from sheet "${SHEET_NAME}"`);
+    console.log(
+      `Upserted ${upserted} BomItem(s) from sheet "${SHEET_NAME}"`,
+    );
 
     return NextResponse.json({
       count: upserted,
-      totalInSheet: rawRows.length,
-      syncedAt: syncedAt.toISOString(),
+      totalInSheet: mapped.length,
+      syncedAt: new Date().toISOString(),
     });
   } catch (error) {
     const message =

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { FileText, ChevronDown, ChevronRight, Search, Download, Upload, Edit2, Sparkles, Percent, Plus, RefreshCw, DollarSign, Trash2, X, PackageCheck, ExternalLink, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import ActionsDropdown from "./ActionsDropdown";
+import DocketAttachmentsCell from "@/components/attachment/DocketAttachmentsCell";
 import Pagination from "./Pagination";
 import MultiSelectFilter, { BLANK, AVAILABLE } from "./MultiSelectFilter";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
@@ -160,13 +161,13 @@ function matchesText(filterVal: string, actual: unknown): boolean {
 }
 
 const ALL_DROPDOWN_FIELDS = [
-  "enquiryType", "state", "paymentTerms", "inspection", "pbg", "utility", "orderStatus", "closureStatus", "apm",
+  "enquiryType", "state", "paymentTerms", "inspection", "pbg", "utility", "orderStatus", "closureStatus", "duplicate", "apm",
   "itemType", "moc", "size", "pnRating", "operationType", "extension", "bypass", "others",
   "validation", "vaPercent", "erpItemCode", "bomId", "productCost", "costRefCode", "cost", "contractReviewRate", "pdcostValidation", "availableStock", "rmType", "deliverySchedule",
   "contractNo", "itemNameMerge",
 ] as const;
 
-const ENQUIRY_DROPDOWN_SET = new Set(["enquiryType", "state", "paymentTerms", "inspection", "pbg", "utility", "orderStatus", "closureStatus", "apm", "contractNo"]);
+const ENQUIRY_DROPDOWN_SET = new Set(["enquiryType", "state", "paymentTerms", "inspection", "pbg", "utility", "orderStatus", "closureStatus", "duplicate", "apm", "contractNo"]);
 
 // One header filter box. Owning its own Redux read and its own debounce keeps every
 // keystroke inside this leaf instead of re-rendering the whole table body.
@@ -392,7 +393,6 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
 
   // Debounced filter inputs
   const [filterProjectReference, setFilterProjectReference] = useState("");
-  const [filterAttachment, setFilterAttachment] = useState("");
   const [editingItemNameId, setEditingItemNameId] = useState<string | null>(null);
   const [autoFillStatus, setAutoFillStatus] = useState<"idle" | "running">("idle");
   const [vaStatus, setVaStatus] = useState<"idle" | "running">("idle");
@@ -663,13 +663,8 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
         if (new Date(enquiry.enquiryDate) > limit) return false;
       }
       if (excludeField !== "projectReference" && filterProjectReference && !matchesText(filterProjectReference, enquiry.projectReference || "")) return false;
-      if (excludeField !== "emailAddress" && filters.emailAddress && !matchesText(filters.emailAddress, enquiry.emailAddress || "")) return false;
+      if (excludeField !== "emailAddress" && filters.emailAddress && !matchesText(filters.emailAddress, enquiry.senderEmail || "")) return false;
       if (excludeField !== "contactNo" && filters.contactNo && !matchesText(filters.contactNo, enquiry.contactNo || "")) return false;
-      if (excludeField !== "attachment" && filters.attachment) {
-        if (!enquiry.attachments || enquiry.attachments.length===0) return false;
-        const match = enquiry.attachments.some((a)=> a.name.toLowerCase().includes(filters.attachment.toLowerCase()));
-        if (!match) return false;
-      }
       return true;
     };
 
@@ -1450,6 +1445,9 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     if (!matchesMultiCI(filters.closureStatus, enquiry.closureStatus)) {
       return false;
     }
+    if (!matchesMulti(filters.duplicate, enquiry.duplicate)) {
+      return false;
+    }
     if (!matchesMulti(filters.apm, (enquiry as any).apm)) {
       return false;
     }
@@ -1465,10 +1463,10 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
       return false;
     }
 
-    // Email Address (Text Search)
+    // Email Address (Text Search) — matches the sender only
     if (
       filters.emailAddress &&
-      !(enquiry.emailAddress || "").toLowerCase().includes(filters.emailAddress.toLowerCase())
+      !(enquiry.senderEmail || "").toLowerCase().includes(filters.emailAddress.toLowerCase())
     ) {
       return false;
     }
@@ -1702,15 +1700,6 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     }
     if (pendingOnly && (enquiry.items?.length ?? 0) > 0) return false;
 
-    // 25. Attachment
-    if (filters.attachment) {
-      if (!enquiry.attachments || enquiry.attachments.length === 0) return false;
-      const match = enquiry.attachments.some((att) =>
-        att.name.toLowerCase().includes(filters.attachment.toLowerCase())
-      );
-      if (!match) return false;
-    }
-
     return true;
   }), [enquiries, filters, filterProjectReference, globalSearch, getItemImage, hasActiveFilters, pendingOnly]);
 
@@ -1727,10 +1716,6 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
       return (enquiry as unknown as Record<string, unknown>)[field] as string | number | Date | null | undefined;
     }
     
-    if (field === "attachment") {
-      return enquiry.attachments ? enquiry.attachments.length : 0;
-    }
-
     if (field === "image") {
       const items = getFilteredItems(enquiry);
       if (items.length === 0) return 0;
@@ -2318,7 +2303,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     }
   }
 
-  const TOTAL_COLUMNS = 41;
+  const TOTAL_COLUMNS = 39;
   const SELECT_COL_WIDTH = 44;
   const getColWidth = (idx: number) => columnWidths[idx] ?? DEFAULT_COLUMN_WIDTHS[idx] ?? 120;
   const totalTableWidth =
@@ -2861,22 +2846,38 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
               </div>
             </th>
 
-            {/* Closure Status */}
+            {/* Closure Status / Duplicate */}
             <th className="relative py-2.5 px-3 sticky top-0 z-30 bg-muted/90 text-[10px] font-bold tracking-wider text-muted-foreground uppercase border-r border-b border-border last:border-r-0">
               <div className="flex items-center justify-between">
-                <span>Closure Status</span>
+                <span>Closure Status/Duplicate</span>
                 {renderSortArrow("closureStatus")}
               </div>
-              <div className="relative mt-1.5 normal-case font-normal text-left text-foreground">
+              <div className="grid grid-cols-2 gap-1 mt-1.5 normal-case font-normal text-left text-foreground">
                 <MultiSelectFilter
                   label="Closure Status"
-                  allLabel="All"
+                  allLabel="Closure"
+                  renderButtonLabel={(sel) => (sel.length === 0 ? "Closure" : `Closure (${sel.length})`)}
                   options={dropdownOptions.closureStatuses}
                   cascadedOptions={cascadedOptions.closureStatus}
                   selected={filters.closureStatus}
                   onChange={(v) => dispatch(setFilter({ field: "closureStatus", value: v }))}
                   includeBlank
                   searchPlaceholder="Search closure status..."
+                  className="h-6 px-1.5 py-0 text-[9px] font-normal leading-none"
+                  align="start"
+                />
+                <MultiSelectFilter
+                  label="Duplicate"
+                  allLabel="Duplicate"
+                  renderButtonLabel={(sel) => (sel.length === 0 ? "Duplicate" : `Dup (${sel.length})`)}
+                  options={["Yes", "No"]}
+                  cascadedOptions={cascadedOptions.duplicate ?? []}
+                  selected={filters.duplicate}
+                  onChange={(v) => dispatch(setFilter({ field: "duplicate", value: v }))}
+                  includeBlank
+                  searchPlaceholder="Search duplicate..."
+                  className="h-6 px-1.5 py-0 text-[9px] font-normal leading-none"
+                  align="end"
                 />
               </div>
               <div
@@ -3732,29 +3733,6 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
               </div>
             </th>
 
-            {/* 41. Attachment */}
-            <th className="relative py-2.5 px-3 sticky top-0 z-30 bg-muted/90 text-[10px] font-bold tracking-wider text-muted-foreground uppercase border-r border-b border-border last:border-r-0">
-              <div className="flex items-center justify-between">
-                <span>Attachment</span>
-                {renderSortArrow("attachment")}
-              </div>
-              <input
-                type="text"
-                placeholder="Search..."
-                value={filterAttachment}
-                onChange={(e) => setFilterAttachment(e.target.value)}
-                className={inputClass}
-              />
-              <div
-                onMouseDown={(e) => handleMouseDown(35, e)}
-                className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-20 group"
-                style={{ marginRight: "-3px" }}
-              >
-                <div className="absolute top-0 left-[-4px] w-[14px] h-full" />
-                <div className="absolute right-[2px] top-0 w-[2px] h-full bg-transparent group-hover:bg-[#0f62fe] group-active:bg-[#0f62fe] dark:group-hover:bg-blue-500 dark:group-active:bg-blue-500 transition-colors" />
-              </div>
-            </th>
-
             {/* 43. Delivery Schedule */}
             <th className="relative py-2.5 px-3 sticky top-0 z-30 bg-muted/90 text-[10px] font-bold tracking-wider text-muted-foreground uppercase border-r border-b border-border last:border-r-0">
               <div className="flex items-center justify-between">
@@ -3773,7 +3751,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                 />
               </div>
               <div
-                onMouseDown={(e) => handleMouseDown(36, e)}
+                onMouseDown={(e) => handleMouseDown(35, e)}
                 className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-20 group"
                 style={{ marginRight: "-3px" }}
               >
@@ -3829,7 +3807,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                 </button>
               </div>
               <div
-                onMouseDown={(e) => handleMouseDown(37, e)}
+                onMouseDown={(e) => handleMouseDown(36, e)}
                 className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-20 group"
                 style={{ marginRight: "-3px" }}
               >
@@ -3845,23 +3823,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
               </div>
               <div className="h-7 mt-1.5" />
               <div
-                onMouseDown={(e) => handleMouseDown(38, e)}
-                className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-20 group"
-                style={{ marginRight: "-3px" }}
-              >
-                <div className="absolute top-0 left-[-4px] w-[14px] h-full" />
-                <div className="absolute right-[2px] top-0 w-[2px] h-full bg-transparent group-hover:bg-[#0f62fe] group-active:bg-[#0f62fe] dark:group-hover:bg-blue-500 dark:group-active:bg-blue-500 transition-colors" />
-              </div>
-            </th>
-
-            {/* 46. Duplicate */}
-            <th className="relative sticky top-0 z-30 bg-muted/90 py-2.5 px-3 text-[10px] font-bold tracking-wider text-muted-foreground uppercase border-r border-b border-border last:border-r-0">
-              <div className="flex items-center justify-between">
-                <span>Duplicate</span>
-              </div>
-              <div className="h-7 mt-1.5" />
-              <div
-                onMouseDown={(e) => handleMouseDown(39, e)}
+                onMouseDown={(e) => handleMouseDown(37, e)}
                 className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-20 group"
                 style={{ marginRight: "-3px" }}
               >
@@ -3875,7 +3837,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
               <div>Actions</div>
               <div className="h-7 mt-1.5" />
               <div
-                onMouseDown={(e) => handleMouseDown(40, e)}
+                onMouseDown={(e) => handleMouseDown(38, e)}
                 className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-20 group"
                 style={{ marginRight: "-3px" }}
               >
@@ -3980,6 +3942,20 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                         <span className="hover:underline cursor-pointer truncate">
                           {enquiry.docketNumber}
                         </span>
+                        <DocketAttachmentsCell
+                          docketNumber={enquiry.docketNumber}
+                          attachments={enquiry.attachments}
+                          onAddClick={() => attachInputRefs.current[enquiry.id]?.click()}
+                        />
+                        <input
+                          ref={(el) => {
+                            if (el) attachInputRefs.current[enquiry.id] = el;
+                          }}
+                          type="file"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => handleAddAttachments(e, enquiry.id)}
+                        />
                         {(!enquiry.items || enquiry.items.length === 0) && (
                           <span
                             className="ml-1 px-1.5 py-0.5 text-[9px] font-semibold bg-amber-50 text-amber-700 rounded-full border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/25 shrink-0"
@@ -4268,9 +4244,9 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                       </div>
                     </td>
 
-                    {/* Email Address */}
+                    {/* Email Address (sender) */}
                     <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
-                      {enquiry.emailAddress && isInternalEmail(enquiry.emailAddress) && (
+                      {enquiry.senderEmail && isInternalEmail(enquiry.senderEmail) && (
                         <span
                           className="inline-block mb-0.5 px-1.5 py-0.5 text-[9px] font-semibold bg-slate-100 text-slate-600 rounded-full border border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/25"
                           title="Internal (GMD / Laser) email address"
@@ -4279,12 +4255,12 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                         </span>
                       )}
                       <input
-                        key={enquiry.id + "-emailAddress-" + (enquiry.emailAddress || "")}
+                        key={enquiry.id + "-senderEmail-" + (enquiry.senderEmail || "")}
                         type="text"
-                        defaultValue={enquiry.emailAddress || ""}
+                        defaultValue={enquiry.senderEmail || ""}
                         onBlur={(e) => {
-                          if (e.target.value !== (enquiry.emailAddress || "")) {
-                            handleEnquiryFieldChange(enquiry.id, "emailAddress", e.target.value);
+                          if (e.target.value !== (enquiry.senderEmail || "")) {
+                            handleEnquiryFieldChange(enquiry.id, "senderEmail", e.target.value);
                           }
                         }}
                         onKeyDown={(e) => {
@@ -4332,34 +4308,87 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                       </select>
                     </td>
 
-                    {/* Closure Status */}
+                    {/* Closure Status / Duplicate */}
                     <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
-                      <select
-                        value={enquiry.closureStatus || ""}
-                        onChange={(e) => handleEnquiryFieldChange(enquiry.id, "closureStatus", e.target.value)}
-                        className={cn(
-                          cellSelectClass,
-                          enquiry.closureStatus === "Sent" && autoSentSet.has(enquiry.docketNumber) &&
-                            "text-blue-600 font-semibold bg-blue-50/60 dark:bg-blue-950/30",
-                          enquiry.closureStatus === "Pending" && autoPendingSet.has(enquiry.docketNumber) &&
-                            "text-amber-600 font-semibold bg-amber-50/60 dark:bg-amber-950/30"
+                      <div className="flex flex-col gap-1">
+                        <select
+                          value={enquiry.closureStatus || ""}
+                          onChange={(e) => handleEnquiryFieldChange(enquiry.id, "closureStatus", e.target.value)}
+                          className={cn(
+                            cellSelectClass,
+                            enquiry.closureStatus === "Sent" && autoSentSet.has(enquiry.docketNumber) &&
+                              "text-blue-600 font-semibold bg-blue-50/60 dark:bg-blue-950/30",
+                            enquiry.closureStatus === "Pending" && autoPendingSet.has(enquiry.docketNumber) &&
+                              "text-amber-600 font-semibold bg-amber-50/60 dark:bg-amber-950/30"
+                          )}
+                          title={
+                            enquiry.closureStatus === "Sent" && autoSentSet.has(enquiry.docketNumber)
+                              ? "Auto-detected from thread attachments/OCR"
+                              : enquiry.closureStatus === "Pending" && autoPendingSet.has(enquiry.docketNumber)
+                                ? "No email found for this docket"
+                                : undefined
+                          }
+                        >
+                          <option value="">-</option>
+                          {dropdownOptions.closureStatuses.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                          {enquiry.closureStatus && !dropdownOptions.closureStatuses.includes(enquiry.closureStatus) && (
+                            <option value={enquiry.closureStatus}>{enquiry.closureStatus}</option>
+                          )}
+                        </select>
+                        <select
+                          value={enquiry.duplicate || ""}
+                          onChange={(e) => handleEnquiryFieldChange(enquiry.id, "duplicate", e.target.value)}
+                          className={cellSelectClass}
+                          title="Mark this docket as a duplicate"
+                        >
+                          <option value="">-</option>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                        </select>
+                        {enquiry.duplicate === "Yes" && (
+                          <>
+                            <select
+                              value={enquiry.duplicateOfDocket || ""}
+                              onChange={(e) =>
+                                handleEnquiryFieldChange(enquiry.id, "duplicateOfDocket", e.target.value)
+                              }
+                              className={cellSelectClass}
+                              title="Select the original docket this duplicates"
+                            >
+                              <option value="">- original -</option>
+                              {enquiries
+                                .filter((e) => e.id !== enquiry.id)
+                                .map((e) => (
+                                  <option key={e.id} value={e.docketNumber}>
+                                    {e.docketNumber}
+                                  </option>
+                                ))}
+                            </select>
+                            <button
+                              type="button"
+                              disabled={
+                                deletingEnquiryId === enquiry.id ||
+                                !enquiry.duplicateOfDocket ||
+                                (enquiry.items?.length ?? 0) > 0
+                              }
+                              onClick={() => handleDeleteDuplicate(enquiry)}
+                              className="inline-flex items-center justify-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:hover:bg-rose-500/20 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={
+                                (enquiry.items?.length ?? 0) > 0
+                                  ? "Cannot delete: this docket has items"
+                                  : !enquiry.duplicateOfDocket
+                                    ? "Select the original docket first"
+                                    : "Delete this blank duplicate docket"
+                              }
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              Delete duplicate
+                            </button>
+                          </>
                         )}
-                        title={
-                          enquiry.closureStatus === "Sent" && autoSentSet.has(enquiry.docketNumber)
-                            ? "Auto-detected from thread attachments/OCR"
-                            : enquiry.closureStatus === "Pending" && autoPendingSet.has(enquiry.docketNumber)
-                              ? "No email found for this docket"
-                              : undefined
-                        }
-                      >
-                        <option value="">-</option>
-                        {dropdownOptions.closureStatuses.map((opt) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                        {enquiry.closureStatus && !dropdownOptions.closureStatuses.includes(enquiry.closureStatus) && (
-                          <option value={enquiry.closureStatus}>{enquiry.closureStatus}</option>
-                        )}
-                      </select>
+                      </div>
                     </td>
 
                     {/* Project Reference */}
@@ -4958,48 +4987,6 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                       )}
                     </td>
 
-                    {/* Attachment - like Item Name, self scrollable */}
-                    <td className="py-2 px-2 text-xs border-r border-b border-border last:border-r-0 align-top overflow-hidden">
-                      <div className="flex flex-col gap-1 w-full min-w-0">
-                        <div className="max-h-12 overflow-y-auto w-full pr-1 cell-scrollable wrap-break-word whitespace-normal leading-normal flex flex-col gap-1 min-w-0">
-                          {enquiry.attachments && enquiry.attachments.length > 0 ? (
-                            enquiry.attachments.map((att) => (
-                              <a
-                                key={att.id}
-                                href={att.url || "#"}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={att.name}
-                                className="flex items-start gap-1.5 text-xs font-semibold text-[#0f62fe] dark:text-blue-300 hover:underline wrap-break-word whitespace-normal leading-normal break-all min-w-0"
-                              >
-                                <FileText className="h-3.5 w-3.5 text-[#0f62fe] dark:text-blue-300 stroke-2 shrink-0 mt-0.5" />
-                                <span className="wrap-break-word whitespace-normal break-all min-w-0">{att.name}</span>
-                              </a>
-                            ))
-                          ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => attachInputRefs.current[enquiry.id]?.click()}
-                          className="inline-flex items-center gap-0.5 self-start shrink-0 text-[10px] font-semibold text-[#0f62fe] dark:text-blue-300 hover:underline cursor-pointer"
-                        >
-                          <Plus className="h-3 w-3 stroke-[2.5]" />
-                          Add
-                        </button>
-                        <input
-                          ref={(el) => {
-                            if (el) attachInputRefs.current[enquiry.id] = el;
-                          }}
-                          type="file"
-                          multiple
-                          className="hidden"
-                          onChange={(e) => handleAddAttachments(e, enquiry.id)}
-                        />
-                      </div>
-                    </td>
-
                     {/* Delivery Schedule */}
                     <td className="py-2 px-2 border-r border-b border-border last:border-r-0">
                       {firstItem ? (
@@ -5054,63 +5041,6 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                     {/* Offer PDF */}
                     <td className="py-2 px-2 border-r border-b border-border last:border-r-0">
                       <OfferPdfCell enquiry={enquiry} />
-                    </td>
-
-                    {/* Duplicate */}
-                    <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
-                      <div className="flex flex-col gap-1">
-                        <select
-                          value={enquiry.duplicate || ""}
-                          onChange={(e) => handleEnquiryFieldChange(enquiry.id, "duplicate", e.target.value)}
-                          className={cellSelectClass}
-                          title="Mark this docket as a duplicate"
-                        >
-                          <option value="">-</option>
-                          <option value="Yes">Yes</option>
-                          <option value="No">No</option>
-                        </select>
-                        {enquiry.duplicate === "Yes" && (
-                          <>
-                            <select
-                              value={enquiry.duplicateOfDocket || ""}
-                              onChange={(e) =>
-                                handleEnquiryFieldChange(enquiry.id, "duplicateOfDocket", e.target.value)
-                              }
-                              className={cellSelectClass}
-                              title="Select the original docket this duplicates"
-                            >
-                              <option value="">- original -</option>
-                              {enquiries
-                                .filter((e) => e.id !== enquiry.id)
-                                .map((e) => (
-                                  <option key={e.id} value={e.docketNumber}>
-                                    {e.docketNumber}
-                                  </option>
-                                ))}
-                            </select>
-                            <button
-                              type="button"
-                              disabled={
-                                deletingEnquiryId === enquiry.id ||
-                                !enquiry.duplicateOfDocket ||
-                                (enquiry.items?.length ?? 0) > 0
-                              }
-                              onClick={() => handleDeleteDuplicate(enquiry)}
-                              className="inline-flex items-center justify-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:hover:bg-rose-500/20 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={
-                                (enquiry.items?.length ?? 0) > 0
-                                  ? "Cannot delete: this docket has items"
-                                  : !enquiry.duplicateOfDocket
-                                    ? "Select the original docket first"
-                                    : "Delete this blank duplicate docket"
-                              }
-                            >
-                              <Trash2 className="h-3 w-3" />
-                              Delete duplicate
-                            </button>
-                          </>
-                        )}
-                      </div>
                     </td>
 
                     {/* Actions */}
@@ -5691,9 +5621,6 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                           </div>
                         </td>
 
-                      {/* Empty attachment column (enquiry-level) */}
-                        <td className="py-3 px-4 border-r border-b border-border last:border-r-0"></td>
-
                         {/* Delivery Schedule */}
                         <td className="py-2 px-2 border-r border-b border-border last:border-r-0">
                           <select
@@ -5714,9 +5641,6 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                         <td className="py-3 px-4 border-r border-b border-border last:border-r-0"></td>
 
                       {/* Empty Offer PDF column */}
-                        <td className="py-3 px-4 border-r border-b border-border last:border-r-0"></td>
-
-                      {/* Empty Duplicate column (enquiry-based, only parent row has controls) */}
                         <td className="py-3 px-4 border-r border-b border-border last:border-r-0"></td>
 
                         {/* Actions on this item */}

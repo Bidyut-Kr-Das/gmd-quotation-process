@@ -135,6 +135,13 @@ SALE_BILL_SPREADSHEET_ID=...         # optional scripts/import-sale-bill.ts
 OPENAI_API_KEY=
 GEMINI_API_KEY=
 GDRIVE_...
+# AI toggles: AI_VALIDATION_ENABLED=false disables the item auto-detection pass.
+# AI_FALLBACK_ENABLED=true enables the model fallback for docket item extraction
+# (used only when the deterministic parser finds nothing); AI_EXTRACTION_MODEL
+# overrides the model (default gpt-4o-mini).
+AI_VALIDATION_ENABLED=true
+AI_FALLBACK_ENABLED=false
+AI_EXTRACTION_MODEL=gpt-4o-mini
 
 # VA Alert
 N8N_WEBHOOK_URL=

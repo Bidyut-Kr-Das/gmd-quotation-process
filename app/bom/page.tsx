@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Database, Loader2, Tags } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Database, Loader2, Tags, ChevronDown } from "lucide-react";
 import { RefreshCw } from "lucide-react";
 import GMDUpdateHeader from "../../components/gmd_dashboard/GMDUpdateHeader";
 import GMDUpdateTable from "../../components/gmd_dashboard/GMDUpdateTable";
@@ -13,8 +13,6 @@ import {
   syncNullVerifyBomStockAction,
   syncBomMastItemNamesAction,
   checkBomMastSyncAction,
-  deriveVerifyBomItemNameBatchAction,
-  recomputeVerifyBomBomQtyCostBatchAction,
 } from "@/app/actions";
 import { VERIFY_BOM_HEADER_TO_DB_FIELD, cBatchBadges } from "@/lib/gmd_lib/verify-bom-columns";
 import { Button } from "@/components/ui/button";
@@ -26,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 type ItemNamePlan = {
   phase1: {
@@ -136,6 +135,78 @@ interface BomData {
   syncedAt: string | null;
 }
 
+type SearchKey = "itemCode" | "itemName" | "rmItemCode" | "rmItemName" | "bomId";
+type PickKey = "bomNature" | "bomIdType" | "bomItemNature" | "rmItemNature";
+
+const SEARCH_CARDS: { key: SearchKey; label: string }[] = [
+  { key: "itemCode", label: "BOM Item Code" },
+  { key: "itemName", label: "BOM Item Name" },
+  { key: "rmItemCode", label: "RM Item Code" },
+  { key: "rmItemName", label: "RM Item Name" },
+  { key: "bomId", label: "BOM ID" },
+];
+
+const NATURE_OPTIONS = ["FG", "RM"];
+
+// BOM/RM nature is defined by the first character of the item code: F = FG,
+// R = RM.
+function itemNature(code: string): string {
+  const c = code.trim().charAt(0).toUpperCase();
+  return c === "F" ? "FG" : c === "R" ? "RM" : "";
+}
+
+function FilterDropdown({
+  label,
+  options,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+}) {
+  return (
+    <details className="group rounded-lg border border-border">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground [&::-webkit-details-marker]:hidden">
+        <span>{label}</span>
+        <span className="flex items-center gap-1.5">
+          {selected.length > 0 && (
+            <span className="rounded-full bg-emerald-500/15 px-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-300">
+              {selected.length}
+            </span>
+          )}
+          <ChevronDown className="size-3.5 transition-transform group-open:rotate-180" />
+        </span>
+      </summary>
+      <div className="flex flex-wrap gap-1 px-3 pt-1 pb-3">
+        {options.length === 0 ? (
+          <span className="text-[11px] text-muted-foreground">No values</span>
+        ) : (
+          options.map((opt) => {
+            const active = selected.includes(opt);
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => onToggle(opt)}
+                className={
+                  "rounded-full border px-2 py-0.5 text-[11px] transition-colors " +
+                  (active
+                    ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
+                    : "border-border text-muted-foreground hover:bg-accent")
+                }
+              >
+                {opt}
+              </button>
+            );
+          })
+        )}
+      </div>
+    </details>
+  );
+}
+
 export default function BomPage() {
   const [data, setData] = useState<BomData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,6 +222,47 @@ export default function BomPage() {
   const [selectedGroupedIndex, setSelectedGroupedIndex] = useState<
     number | null
   >(null);
+  const [search, setSearch] = useState<Record<SearchKey, string>>({
+    itemCode: "",
+    itemName: "",
+    rmItemCode: "",
+    rmItemName: "",
+    bomId: "",
+  });
+  const [picked, setPicked] = useState<Record<PickKey, string[]>>({
+    bomNature: [],
+    bomIdType: [],
+    bomItemNature: [],
+    rmItemNature: [],
+  });
+
+  const togglePick = useCallback((key: PickKey, value: string) => {
+    setPicked((prev) => {
+      const cur = prev[key];
+      return {
+        ...prev,
+        [key]: cur.includes(value)
+          ? cur.filter((v) => v !== value)
+          : [...cur, value],
+      };
+    });
+  }, []);
+
+  const resetFilters = useCallback(() => {
+    setSearch({
+      itemCode: "",
+      itemName: "",
+      rmItemCode: "",
+      rmItemName: "",
+      bomId: "",
+    });
+    setPicked({
+      bomNature: [],
+      bomIdType: [],
+      bomItemNature: [],
+      rmItemNature: [],
+    });
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -309,109 +421,123 @@ export default function BomPage() {
   const headers = data?.headers ?? [];
   const ids = data?.ids ?? [];
 
-  const autoItemNameRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!data) return;
-    const itemTypeIdx = headers.indexOf("ITEM TYPE");
-    const mocIdx = headers.indexOf("MOC");
-    const operationIdx = headers.indexOf("OPERATION");
-    const sizeIdx = headers.indexOf("SIZE");
-    const pnGmdIdx = headers.indexOf("PN-GMD");
-    const newItemNameIdx = headers.indexOf("NEW ITEM NAME");
-    if (
-      [itemTypeIdx, mocIdx, operationIdx, sizeIdx, pnGmdIdx, newItemNameIdx].some(
-        (i) => i < 0,
-      )
-    ) {
-      return;
-    }
-    const pending: string[] = [];
-    data.rows.forEach((row, i) => {
-      const id = data.ids[i];
-      if (!id || autoItemNameRef.current.has(id)) return;
-      const parts = [row[itemTypeIdx], row[mocIdx], row[operationIdx], row[sizeIdx], row[pnGmdIdx]].map(
-        (v) => String(v ?? "").trim(),
+  const filterOptions = useMemo(() => {
+    const srcRows = data?.rows ?? [];
+    const srcHeaders = data?.headers ?? [];
+    const uniq = (idx: number): string[] => {
+      if (idx < 0) return [];
+      const s = new Set<string>();
+      for (const row of srcRows) {
+        const v = String(row[idx] ?? "").trim();
+        if (v) s.add(v);
+      }
+      return [...s].sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true }),
       );
-      const derived = parts.some((p) => p === "") ? "" : parts.join("_");
-      const current = String(row[newItemNameIdx] ?? "").trim();
-      if (current === derived) return;
-      autoItemNameRef.current.add(id);
-      pending.push(id);
-    });
-    if (!pending.length) return;
-    deriveVerifyBomItemNameBatchAction(pending).then((res) => {
-      if (!res?.success) return;
-      setData((prev) => {
-        if (!prev) return prev;
-        const map = new Map((res.data ?? []).map((d) => [d.id, d.merged ?? ""]));
-        return {
-          ...prev,
-          rows: prev.rows.map((row, i) => {
-            const v = map.get(prev.ids[i]);
-            if (v === undefined) return row;
-            const next = [...row];
-            next[newItemNameIdx] = v;
-            return next;
-          }),
+    };
+    return {
+      bomNature: uniq(srcHeaders.indexOf("BOM NATURE")),
+      bomIdType: uniq(srcHeaders.indexOf("BOM ID TYPE")),
+    };
+  }, [data]);
+
+  // Every sidebar filter acts on the BOM, not the row: a BOM is kept when its
+  // parent or any of its components matches, then all components of a kept BOM
+  // are shown (e.g. select FG and the BOM's FG + RM subs both appear).
+  const visibleData = useMemo(() => {
+    const srcRows = data?.rows ?? [];
+    const srcIds = data?.ids ?? [];
+    const srcHeaders = data?.headers ?? [];
+    const itemCodeIdx = srcHeaders.indexOf("ITEM CODE");
+    const itemNameIdx = srcHeaders.indexOf("ITEM NAME");
+    const rmCodeIdx = srcHeaders.indexOf("RM ITEM CODE");
+    const rmNameIdx = srcHeaders.indexOf("RM ITEM NAME");
+    const bomIdIdx = srcHeaders.indexOf("BOM ID");
+    const bomNatureIdx = srcHeaders.indexOf("BOM NATURE");
+    const bomIdTypeIdx = srcHeaders.indexOf("BOM ID TYPE");
+    const cell = (row: unknown[], idx: number) =>
+      idx >= 0 ? String(row[idx] ?? "").trim() : "";
+    const has = (value: string, query: string) =>
+      value.toLowerCase().includes(query.trim().toLowerCase());
+
+    type Group = {
+      bomId: string;
+      parentCode: string;
+      parentName: string;
+      nature: string;
+      idType: string;
+      comps: { code: string; name: string }[];
+      idx: number[];
+    };
+    const groups = new Map<string, Group>();
+    srcRows.forEach((row, i) => {
+      const bomId = cell(row, bomIdIdx);
+      // A FullItem with no BOM emits a blank BOM ID. Keying on that would merge
+      // every no-BOM item into one group, so fall back to its own item code.
+      const groupKey = bomId || `__item__${cell(row, itemCodeIdx)}`;
+      let g = groups.get(groupKey);
+      if (!g) {
+        g = {
+          bomId,
+          parentCode: cell(row, itemCodeIdx),
+          parentName: cell(row, itemNameIdx),
+          nature: cell(row, bomNatureIdx),
+          idType: cell(row, bomIdTypeIdx),
+          comps: [],
+          idx: [],
         };
-      });
+        groups.set(groupKey, g);
+      }
+      if (!g.parentCode) g.parentCode = cell(row, itemCodeIdx);
+      if (!g.parentName) g.parentName = cell(row, itemNameIdx);
+      if (!g.nature) g.nature = cell(row, bomNatureIdx);
+      if (!g.idType) g.idType = cell(row, bomIdTypeIdx);
+      g.comps.push({ code: cell(row, rmCodeIdx), name: cell(row, rmNameIdx) });
+      g.idx.push(i);
     });
-  }, [data, headers]);
 
-  const autoBomQtyCostRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!data) return;
-    const bomItemQtyIdx = headers.indexOf("BOM ITEM QTY");
-    const costIdx = headers.indexOf("COST");
-    const bomItemQtyCostIdx = headers.indexOf("BOM ITEM QTY * COST");
-    if ([bomItemQtyIdx, costIdx, bomItemQtyCostIdx].some((i) => i < 0)) {
-      return;
+    const keep = new Set<number>();
+    for (const g of groups.values()) {
+      if (search.itemCode && !has(g.parentCode, search.itemCode)) continue;
+      if (search.itemName && !has(g.parentName, search.itemName)) continue;
+      if (search.bomId && !has(g.bomId, search.bomId)) continue;
+      if (
+        search.rmItemCode &&
+        !g.comps.some((c) => has(c.code, search.rmItemCode))
+      )
+        continue;
+      if (
+        search.rmItemName &&
+        !g.comps.some((c) => has(c.name, search.rmItemName))
+      )
+        continue;
+      if (picked.bomNature.length && !picked.bomNature.includes(g.nature))
+        continue;
+      if (picked.bomIdType.length && !picked.bomIdType.includes(g.idType))
+        continue;
+      if (
+        picked.bomItemNature.length &&
+        !picked.bomItemNature.includes(itemNature(g.parentCode))
+      )
+        continue;
+      if (
+        picked.rmItemNature.length &&
+        !g.comps.some((c) => picked.rmItemNature.includes(itemNature(c.code)))
+      )
+        continue;
+      for (const i of g.idx) keep.add(i);
     }
-    const parseNum = (v: unknown): number | null => {
-      const s = String(v ?? "").replace(/,/g, "").trim();
-      if (!s || s === "-") return null;
-      const n = parseFloat(s);
-      return isNaN(n) ? null : n;
-    };
-    const compute = (row: unknown[]): string => {
-      const qty = parseNum(row[bomItemQtyIdx]);
-      const cost = parseNum(row[costIdx]);
-      if (qty === null) return "";
-      if (cost === null) return "RM COST NOT AVAILABLE";
-      return (Math.round(qty * cost * 100) / 100).toString();
-    };
-    const pending: string[] = [];
-    data.rows.forEach((row, i) => {
-      const id = data.ids[i];
-      if (!id || autoBomQtyCostRef.current.has(id)) return;
-      const current = String(row[bomItemQtyCostIdx] ?? "").trim();
-      if (current === compute(row)) return;
-      autoBomQtyCostRef.current.add(id);
-      pending.push(id);
+
+    const rows: unknown[][] = [];
+    const outIds: string[] = [];
+    srcRows.forEach((row, i) => {
+      if (keep.has(i)) {
+        rows.push(row);
+        outIds.push(srcIds[i]);
+      }
     });
-    if (!pending.length) return;
-    recomputeVerifyBomBomQtyCostBatchAction(pending).then((res) => {
-      if (!res?.success) return;
-      setData((prev) => {
-        if (!prev) return prev;
-        const map = new Map(
-          (res.data ?? []).map((d) => [d.id, d.bomItemQtyCost ?? ""]),
-        );
-        return {
-          ...prev,
-          rows: prev.rows.map((row, i) => {
-            const v = map.get(prev.ids[i]);
-            if (v === undefined) return row;
-            const next = [...row];
-            next[bomItemQtyCostIdx] = v;
-            return next;
-          }),
-        };
-      });
-    });
-  }, [data, headers]);
+    return { rows, ids: outIds, headers: srcHeaders };
+  }, [data, search, picked]);
 
   const { yesRows, yesIds, noRows, noIds } = useMemo(() => {
     const yesRows: unknown[][] = [];
@@ -440,9 +566,9 @@ export default function BomPage() {
   // BOM ID so equal BOM IDs sit on consecutive rows. GMDUpdateTable only merges
   // consecutive rows, so this ordering is what makes the BOM cells collapse.
   const groupedData = useMemo(() => {
-    const srcRows = data?.rows ?? [];
-    const srcIds = data?.ids ?? [];
-    const srcHeaders = data?.headers ?? [];
+    const srcRows = visibleData.rows;
+    const srcIds = visibleData.ids;
+    const srcHeaders = visibleData.headers;
     const itemCodeIdx = srcHeaders.indexOf("ITEM CODE");
     const bomIdIdx = srcHeaders.indexOf("BOM ID");
     const colMap = GROUPED_HEADER_ORDER.map((h) => srcHeaders.indexOf(h));
@@ -494,7 +620,7 @@ export default function BomPage() {
       rows: decorated.map((d) => d.row) as unknown[][],
       ids: decorated.map((d) => d.id),
     };
-  }, [data]);
+  }, [visibleData]);
 
   const handleCellUpdate = useCallback(
     async (id: string, colIndex: number, value: string) => {
@@ -579,7 +705,63 @@ export default function BomPage() {
 
   return (
     <main className="flex-1 min-h-0 flex flex-col bg-background overflow-hidden">
-      <div className="flex-1 flex flex-col p-6 min-h-0">
+      <div className="flex-1 flex min-h-0">
+        <aside className="w-72 shrink-0 overflow-y-auto border-r border-border bg-muted/20">
+          <div className="flex flex-col gap-4 p-4">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-semibold">Search &amp; Filters</span>
+              <span className="text-[11px] text-muted-foreground">
+                Filters apply per BOM — every component of a matching BOM is
+                shown.
+              </span>
+            </div>
+            {SEARCH_CARDS.map((card) => (
+              <div key={card.key} className="flex flex-col gap-1">
+                <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {card.label}
+                </label>
+                <Input
+                  value={search[card.key]}
+                  onChange={(e) =>
+                    setSearch((prev) => ({
+                      ...prev,
+                      [card.key]: e.target.value,
+                    }))
+                  }
+                  placeholder={`Search ${card.label}...`}
+                />
+              </div>
+            ))}
+            <FilterDropdown
+              label="BOM Nature"
+              options={filterOptions.bomNature}
+              selected={picked.bomNature}
+              onToggle={(v) => togglePick("bomNature", v)}
+            />
+            <FilterDropdown
+              label="BOM ID Type"
+              options={filterOptions.bomIdType}
+              selected={picked.bomIdType}
+              onToggle={(v) => togglePick("bomIdType", v)}
+            />
+            <FilterDropdown
+              label="BOM Item Nature"
+              options={NATURE_OPTIONS}
+              selected={picked.bomItemNature}
+              onToggle={(v) => togglePick("bomItemNature", v)}
+            />
+            <FilterDropdown
+              label="RM Item Nature"
+              options={NATURE_OPTIONS}
+              selected={picked.rmItemNature}
+              onToggle={(v) => togglePick("rmItemNature", v)}
+            />
+            <Button variant="outline" onClick={resetFilters}>
+              Reset
+            </Button>
+          </div>
+        </aside>
+        <div className="flex-1 flex flex-col p-6 min-h-0 min-w-0">
         <GMDUpdateHeader
           title="VERIFY BOM"
           totalRows={data?.totalRows ?? 0}
@@ -636,7 +818,7 @@ export default function BomPage() {
         {error && (
           <div className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</div>
         )}
-        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4 pr-1 mt-4">
+        <div className="flex-1 overflow-y-auto min-h-0 min-w-0 flex flex-col gap-4 pr-1 mt-4">
           {/*
           <GMDUpdateTable
             headers={headers}
@@ -815,6 +997,7 @@ export default function BomPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
     </main>
   );

@@ -127,3 +127,28 @@ export {
   type RunDocketCreationOptions,
   type ScheduledDocketCreationResult,
 } from "./run-docket-creation";
+
+export {
+  parseDocketItems,
+  htmlToText,
+  type ParsedDocketItem,
+  type DocketParserInput,
+} from "./docket-item-parser";
+
+export {
+  extractDocketItems,
+  type DocketItemExtractionInput,
+  type DocketItemExtractionResult,
+} from "./docket-item-extraction";
+
+export {
+  collectAttachmentTexts,
+  type CollectedAttachmentText,
+} from "./docket-attachments";
+
+export {
+  runDocketFollowupSync,
+  detectDocketNumber,
+  extractAttachmentNamesText,
+  type DocketFollowupSyncResult,
+} from "./docket-followup-sync";

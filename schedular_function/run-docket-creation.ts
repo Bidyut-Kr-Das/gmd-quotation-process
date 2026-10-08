@@ -66,7 +66,10 @@ export async function runScheduledDocketCreation(
     console.log(
       `[scheduler] ${job} finished in ${elapsedMs}ms — pending=${steps.creation.pending} ` +
         `created=${steps.creation.created} failed=${steps.creation.failed} ` +
-        `snapshotFailures=${steps.creation.snapshotFailures}`,
+        `items=${steps.creation.itemsExtracted} withItems=${steps.creation.threadsWithItems} ` +
+        `parserHits=${steps.creation.parserHits} aiFallbacks=${steps.creation.aiFallbacks} ` +
+        `snapshotFailures=${steps.creation.snapshotFailures} ` +
+        `attachmentFetchFailures=${steps.creation.attachmentFetchFailures}`,
     );
     console.log(`########## [SCHEDULER] ${job} done ##########\n`);
 

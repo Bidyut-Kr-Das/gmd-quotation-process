@@ -21,6 +21,7 @@ import { resolveImportedInhouse } from "@/lib/importInhouseMapping";
 import { makeImageKey } from "@/lib/imageKey";
 import { parseAndValidateProdOrderNumber } from "@/lib/contractValidation";
 import { matchPnRating } from "@/lib/pnRatingMatcher";
+import { withHardcodedL7Options } from "@/lib/gmd_lib/sheet-columns";
 import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
 // LEGACY — superseded by the hourly `docket-creation` scheduler job
 // (schedular_function/docket-creation.ts). The imports below were used only by
@@ -1033,7 +1034,7 @@ export async function syncEnquiryEmailAddressesAction() {
         threadCount: result.threadCount,
         partyCount: result.partyCount,
         matchedByParty: result.matchedByParty,
-        enquiries: result.proposals.map((p) => ({ id: p.id, emailAddress: p.emailAddress })),
+        enquiries: result.proposals.map((p) => ({ id: p.id, senderEmail: p.senderEmail, emailAddress: p.emailAddress })),
       },
     };
   } catch (error: any) {
@@ -3338,7 +3339,7 @@ export async function getTradingValveOptionsAction() {
       );
     return {
       success: true,
-      data: {
+      data: withHardcodedL7Options({
         L1: collect(rows.map((r) => r.l1)),
         "L2-VALVE TYPE": collect(rows.map((r) => r.l2ValveType)),
         "L3-DIA": collect(rows.map((r) => r.l3Dia)),
@@ -3346,7 +3347,7 @@ export async function getTradingValveOptionsAction() {
         "L4-COMPONENT": collect(rows.map((r) => r.l4Component)),
         "L5- MATERIAL": collect(rows.map((r) => r.l5Material)),
         "L6-STD": collect(rows.map((r) => r.l6Std)),
-      },
+      }),
     };
   } catch (error: any) {
     console.error("Error fetching trading valve options:", error);
@@ -3521,6 +3522,110 @@ export async function updateGMDUpdateFieldAction(
     field,
     value,
     itemNameDerived: updated.itemNameDerived,
+  };
+}
+
+/** NEW ITEM STATUS values that place a row in the "New Items" table. */
+const NEW_ITEM_STATUS_VALUES = new Set(["", "-", "UPDATED"]);
+
+function isNewItemsStatus(value: string | null): boolean {
+  return NEW_ITEM_STATUS_VALUES.has((value ?? "").trim().toUpperCase());
+}
+
+/**
+ * Sets NEW ITEM STATUS but, when the new value would move a row up into the
+ * "New Items" table and the row's ITEM NAME (proposed)-AUTO already exists on a
+ * New Item, it instead copies this row's cost onto that/those New Item(s) and
+ * flags this row `costMerged` so it stays in Filtered (blank status) rather
+ * than duplicating the New Item.
+ */
+export async function setNewItemStatusWithCostMergeAction(
+  id: string,
+  value: string | null,
+) {
+  "use server";
+  const stored = value == null || value.trim() === "" ? null : value;
+
+  const empty = {
+    merged: false,
+    noCost: false,
+    sourceId: id,
+    newItemStatus: stored,
+    targetIds: [] as string[],
+    cost: null as number | null,
+  };
+
+  // Any value that keeps the row in Filtered is a plain write.
+  if (!isNewItemsStatus(stored)) {
+    await prisma.rawMaterial.update({
+      where: { id },
+      data: { newItemStatus: stored },
+    });
+    return { success: true, data: empty };
+  }
+
+  const source = await prisma.rawMaterial.findUnique({
+    where: { id },
+    select: { itemNameAuto: true, cost: true },
+  });
+  if (!source) return { success: false, error: "Item not found." };
+
+  const name = (source.itemNameAuto ?? "").trim();
+  const targets = name
+    ? await prisma.rawMaterial.findMany({
+        where: {
+          id: { not: id },
+          transferred: false,
+          costMerged: false,
+          OR: [
+            { newItemStatus: null },
+            { newItemStatus: "" },
+            { newItemStatus: "-" },
+            { newItemStatus: "Updated" },
+          ],
+          itemNameAuto: { equals: name, mode: "insensitive" },
+        },
+        select: { id: true },
+      })
+    : [];
+
+  if (targets.length === 0) {
+    await prisma.rawMaterial.update({
+      where: { id },
+      data: { newItemStatus: stored },
+    });
+    return { success: true, data: empty };
+  }
+
+  const targetIds = targets.map((t) => t.id);
+  const sourceCost = source.cost == null ? null : Number(source.cost);
+  const hasCost = sourceCost != null && sourceCost !== 0;
+
+  await prisma.$transaction([
+    ...(hasCost
+      ? [
+          prisma.rawMaterial.updateMany({
+            where: { id: { in: targetIds } },
+            data: { cost: sourceCost },
+          }),
+        ]
+      : []),
+    prisma.rawMaterial.update({
+      where: { id },
+      data: { newItemStatus: stored, costMerged: true },
+    }),
+  ]);
+
+  return {
+    success: true,
+    data: {
+      merged: true,
+      noCost: !hasCost,
+      sourceId: id,
+      newItemStatus: stored,
+      targetIds,
+      cost: hasCost ? sourceCost : null,
+    },
   };
 }
 
@@ -4915,58 +5020,38 @@ export async function syncNullVerifyBomStockAction() {
 
     const stockPhysMap = await fetchStockPhysicalSheet();
 
-    const nullRows = await prisma.verifyBom.findMany({
+    // Stock now lives on RawMaterial. Gap-fill only: rows whose erpItemCode has
+    // no availableStock yet.
+    const nullRows = await prisma.rawMaterial.findMany({
       where: {
-        OR: [
-          { availableStock: null },
-          { availableStock: "" },
-        ],
+        OR: [{ availableStock: null }, { availableStock: "" }],
       },
-      select: {
-        id: true,
-        bomId: true,
-        itemCode: true,
-        rmItemCode: true,
-        availableStock: true,
-      },
+      select: { id: true, erpItemCode: true },
     });
 
     const updates: { id: string; stock: string }[] = [];
     const unmatchedSamples: string[] = [];
     let matchedByRmCode = 0;
-    let matchedByItemCode = 0;
     let unmatched = 0;
 
     for (const row of nullRows) {
-      const currentStock = (row.availableStock ?? "").trim();
-      if (currentStock !== "") continue;
-
-      const rmCode = (row.rmItemCode ?? "").trim().toUpperCase();
-      const itemCode = (row.itemCode ?? "").trim().toUpperCase();
-
-      let foundStock: string | null = null;
-      let source: "rmItemCode" | "itemCode" | null = null;
-
-      if (rmCode && rmCode in stockPhysMap) {
-        foundStock = stockPhysMap[rmCode];
-        source = "rmItemCode";
-      } else if (itemCode && itemCode in stockPhysMap) {
-        foundStock = stockPhysMap[itemCode];
-        source = "itemCode";
+      const code = (row.erpItemCode ?? "").trim().toUpperCase();
+      if (!code) {
+        unmatched++;
+        continue;
       }
+
+      const foundStock = stockPhysMap[code];
 
       // A sheet value of "0" is a real count and must be kept; only a blank
       // (or a code missing from the sheet) counts as no match.
-      if (foundStock !== null && foundStock.trim() !== "") {
+      if (foundStock !== undefined && foundStock.trim() !== "") {
         updates.push({ id: row.id, stock: foundStock });
-        if (source === "rmItemCode") matchedByRmCode++;
-        else if (source === "itemCode") matchedByItemCode++;
+        matchedByRmCode++;
       } else {
         unmatched++;
         if (unmatchedSamples.length < 20) {
-          unmatchedSamples.push(
-            `${row.bomId || "-"} :: ${row.itemCode || "-"} :: ${row.rmItemCode || "<empty>"}`,
-          );
+          unmatchedSamples.push(`RM: ${row.erpItemCode || "<empty>"}`);
         }
       }
     }
@@ -4977,7 +5062,7 @@ export async function syncNullVerifyBomStockAction() {
         const chunk = updates.slice(i, i + chunkSize);
         await prisma.$transaction(
           chunk.map((u) =>
-            prisma.verifyBom.update({
+            prisma.rawMaterial.update({
               where: { id: u.id },
               data: { availableStock: u.stock },
             }),
@@ -4991,7 +5076,7 @@ export async function syncNullVerifyBomStockAction() {
       updatedCount: updates.length,
       totalNullCount: nullRows.length,
       matchedByRmCode,
-      matchedByItemCode,
+      matchedByItemCode: 0,
       unmatched,
       unmatchedSamples,
     };
@@ -5056,6 +5141,77 @@ type BomMastSyncPlan = {
  *   wins wherever it has a value. A null/empty sheet cell never replaces an
  *   existing name. Identical values are skipped so only real changes are written.
  */
+type BomComponentRow = {
+  id: string;
+  bomId: string;
+  itemCode: string;
+  rmItemCode: string;
+  noUse: string | null;
+  cBatch: string | null;
+  itemName: string | null;
+  rmItemName: string | null;
+};
+
+// Flattens the relational BOM chain (FullItem -> Bom -> BomItem -> RawMaterial |
+// FullItem) into the bomId||itemCode||rmItemCode shape the ERP syncs work with.
+async function loadBomComponentRows(): Promise<BomComponentRow[]> {
+  const components = await prisma.bomItem.findMany({
+    select: {
+      id: true,
+      noUse: true,
+      cBatch: true,
+      bom: {
+        select: {
+          bomId: true,
+          fullItem: { select: { itemCode: true, itemName: true } },
+        },
+      },
+      rawMaterial: { select: { erpItemCode: true, itemNameAuto: true } },
+      fullItem: { select: { itemCode: true, itemName: true } },
+    },
+  });
+  return components.map((c) => ({
+    id: c.id,
+    bomId: c.bom?.bomId ?? "",
+    itemCode: c.bom?.fullItem?.itemCode ?? "",
+    rmItemCode: c.rawMaterial?.erpItemCode ?? c.fullItem?.itemCode ?? "",
+    noUse: c.noUse,
+    cBatch: c.cBatch,
+    itemName: c.bom?.fullItem?.itemName ?? null,
+    rmItemName: c.rawMaterial?.itemNameAuto ?? c.fullItem?.itemName ?? null,
+  }));
+}
+
+async function resolveBomItemTarget(
+  bomId: string,
+  itemCode: string,
+  rmItemCode: string,
+): Promise<{
+  bomDbId: string;
+  rawMaterialId: string | null;
+  fullItemId: string | null;
+} | null> {
+  const bom = await prisma.bom.findFirst({
+    where: { bomId, fullItem: { itemCode } },
+    select: { id: true },
+  });
+  if (!bom) return null;
+
+  const rm = await prisma.rawMaterial.findFirst({
+    where: { erpItemCode: rmItemCode },
+    select: { id: true },
+  });
+  if (rm) return { bomDbId: bom.id, rawMaterialId: rm.id, fullItemId: null };
+
+  const fi = await prisma.fullItem.findFirst({
+    where: { itemCode: rmItemCode },
+    select: { id: true },
+  });
+  if (fi) return { bomDbId: bom.id, rawMaterialId: null, fullItemId: fi.id };
+
+  return null;
+}
+
 async function buildBomMastSyncPlan(): Promise<BomMastSyncPlan> {
   const { readBomMastErp, readItemMasterErp } = await import(
     "@/lib/gmd_lib/bomMastErp"
@@ -5083,23 +5239,9 @@ async function buildBomMastSyncPlan(): Promise<BomMastSyncPlan> {
     );
   }
 
-  const dbRows = await prisma.verifyBom.findMany({
-    select: {
-      id: true,
-      bomId: true,
-      itemCode: true,
-      rmItemCode: true,
-      noUse: true,
-      cBatch: true,
-      itemName: true,
-      rmItemName: true,
-    },
-  });
+  const dbRows = await loadBomComponentRows();
 
-  const byKey = new Map<
-    string,
-    (typeof dbRows)[number]
-  >();
+  const byKey = new Map<string, BomComponentRow>();
   for (const r of dbRows) {
     byKey.set(keyOf(norm(r.bomId), norm(r.itemCode), norm(r.rmItemCode)), r);
   }
@@ -5243,24 +5385,13 @@ export async function syncBomMastItemNamesAction() {
       );
     }
 
-    const dbRows = await prisma.verifyBom.findMany({
-      select: {
-        id: true,
-        bomId: true,
-        itemCode: true,
-        rmItemCode: true,
-        noUse: true,
-        cBatch: true,
-      },
-    });
+    const dbRows = await loadBomComponentRows();
     const idByKey = new Map<string, string>();
     for (const r of dbRows) {
       idByKey.set(keyOf(norm(r.bomId), norm(r.itemCode), norm(r.rmItemCode)), r.id);
     }
 
-    const syncedAt = new Date();
-    const updateOps: ReturnType<typeof prisma.verifyBom.update>[] = [];
-    const createOps: ReturnType<typeof prisma.verifyBom.upsert>[] = [];
+    const updateOps: ReturnType<typeof prisma.bomItem.update>[] = [];
     let marked = 0;
     let created = 0;
 
@@ -5268,33 +5399,29 @@ export async function syncBomMastItemNamesAction() {
       const existingId = idByKey.get(key);
       if (existingId) {
         updateOps.push(
-          prisma.verifyBom.update({
+          prisma.bomItem.update({
             where: { id: existingId },
             // only the two flag fields - never clobber names/stock/cost
             data: { noUse: BATCH_NO_USE, cBatch: BATCH_C },
           }),
         );
         marked++;
-      } else {
-        const [bomId, itemCode, rmItemCode] = key.split("||");
-        createOps.push(
-          prisma.verifyBom.upsert({
-            where: {
-              bomId_itemCode_rmItemCode: { bomId, itemCode, rmItemCode },
-            },
-            create: {
-              bomId,
-              itemCode,
-              rmItemCode,
-              noUse: BATCH_NO_USE,
-              cBatch: BATCH_C,
-              syncedAt,
-            },
-            update: { noUse: BATCH_NO_USE, cBatch: BATCH_C },
-          }),
-        );
-        created++;
+        continue;
       }
+
+      const [bomId, itemCode, rmItemCode] = key.split("||");
+      const target = await resolveBomItemTarget(bomId, itemCode, rmItemCode);
+      if (!target) continue;
+      await prisma.bomItem.create({
+        data: {
+          bomId: target.bomDbId,
+          rawMaterialId: target.rawMaterialId,
+          fullItemId: target.fullItemId,
+          noUse: BATCH_NO_USE,
+          cBatch: BATCH_C,
+        },
+      });
+      created++;
     }
 
     for (let i = 0; i < updateOps.length; i += CHUNK) {
@@ -5302,59 +5429,68 @@ export async function syncBomMastItemNamesAction() {
         timeout: 20000,
       });
     }
-    for (let i = 0; i < createOps.length; i += CHUNK) {
-      await prisma.$transaction(createOps.slice(i, i + CHUNK), {
-        timeout: 20000,
-      });
-    }
 
     // ---------------- Phase 2 ----------------
     const { nameByCode } = await readItemMasterErp();
 
-    const nameRows = await prisma.verifyBom.findMany({
-      select: {
-        id: true,
-        itemCode: true,
-        rmItemCode: true,
-        itemName: true,
-        rmItemName: true,
-      },
+    // Names live on FullItem (itemName) and RawMaterial (itemNameAuto). Only
+    // codes referenced by a BOM component are considered.
+    const itemCodes = [...new Set(dbRows.map((c) => c.itemCode).filter(Boolean))];
+    const rmCodes = [...new Set(dbRows.map((c) => c.rmItemCode).filter(Boolean))];
+
+    const fullItems = await prisma.fullItem.findMany({
+      where: { itemCode: { in: itemCodes } },
+      select: { id: true, itemCode: true, itemName: true },
+    });
+    const rawMaterials = await prisma.rawMaterial.findMany({
+      where: { erpItemCode: { in: rmCodes } },
+      select: { id: true, erpItemCode: true, itemNameAuto: true },
     });
 
-    const nameOps: ReturnType<typeof prisma.verifyBom.update>[] = [];
+    const nameOps: ReturnType<typeof prisma.fullItem.update>[] = [];
+    const rmNameOps: ReturnType<typeof prisma.rawMaterial.update>[] = [];
     const unmatchedCodes: string[] = [];
     let itemNameChanged = 0;
     let rmItemNameChanged = 0;
 
-    for (const row of nameRows) {
-      const data: { itemName?: string; rmItemName?: string } = {};
-
-      // A null/empty sheet cell never replaces an existing name.
+    // A null/empty sheet cell never replaces an existing name.
+    for (const row of fullItems) {
       const itemSheet = nameByCode.get(norm(row.itemCode));
       if (itemSheet !== undefined && itemSheet !== (row.itemName ?? "")) {
-        data.itemName = itemSheet;
+        nameOps.push(
+          prisma.fullItem.update({
+            where: { id: row.id },
+            data: { itemName: itemSheet },
+          }),
+        );
         itemNameChanged++;
       } else if (itemSheet === undefined && unmatchedCodes.length < 20) {
         unmatchedCodes.push(`itemCode: ${row.itemCode || "<empty>"}`);
       }
+    }
 
-      const rmSheet = nameByCode.get(norm(row.rmItemCode));
-      if (rmSheet !== undefined && rmSheet !== (row.rmItemName ?? "")) {
-        data.rmItemName = rmSheet;
+    for (const row of rawMaterials) {
+      const rmSheet = nameByCode.get(norm(row.erpItemCode));
+      if (rmSheet !== undefined && rmSheet !== (row.itemNameAuto ?? "")) {
+        rmNameOps.push(
+          prisma.rawMaterial.update({
+            where: { id: row.id },
+            data: { itemNameAuto: rmSheet },
+          }),
+        );
         rmItemNameChanged++;
       } else if (rmSheet === undefined && unmatchedCodes.length < 20) {
-        unmatchedCodes.push(`rmItemCode: ${row.rmItemCode || "<empty>"}`);
-      }
-
-      if (Object.keys(data).length > 0) {
-        nameOps.push(
-          prisma.verifyBom.update({ where: { id: row.id }, data }),
-        );
+        unmatchedCodes.push(`rmItemCode: ${row.erpItemCode || "<empty>"}`);
       }
     }
 
     for (let i = 0; i < nameOps.length; i += CHUNK) {
       await prisma.$transaction(nameOps.slice(i, i + CHUNK), {
+        timeout: 20000,
+      });
+    }
+    for (let i = 0; i < rmNameOps.length; i += CHUNK) {
+      await prisma.$transaction(rmNameOps.slice(i, i + CHUNK), {
         timeout: 20000,
       });
     }

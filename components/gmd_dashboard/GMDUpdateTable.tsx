@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, type ReactNode } from "react";
 import { ChevronUp, ChevronDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check, Highlighter } from "lucide-react";
 import GMDUpdateStatusBadge from "./GMDUpdateStatusBadge";
 import type { ContractReviewImage } from "@/lib/gmd_lib/contract-review-image-lookup";
@@ -980,6 +980,19 @@ interface GMDUpdateTableProps {
    * beside the contract number.
    */
   linkedFilesIconColumn?: string;
+  /**
+   * Extra captions to render right-aligned in a tabular-nums face, in addition
+   * to the built-in `NUMERIC_COLUMNS` set. Lets a dashboard whose columns are
+   * not part of the raw-material sheet (e.g. Engineering Data) opt its numeric
+   * columns in without touching this file.
+   */
+  numericColumns?: ReadonlySet<string>;
+  /**
+   * Extra content rendered in the toolbar immediately after the record count.
+   * The table does not fetch this itself — callers pass a ready-rendered node
+   * (e.g. a density reference strip).
+   */
+  toolbarExtra?: ReactNode;
 }
 
 type CellBadge = NonNullable<GMDUpdateTableProps["cellBadges"]>[number];
@@ -1081,6 +1094,8 @@ castingRateInputs,
   batchFilterHeader,
   batchPresenceFilters,
   diffHighlight,
+  numericColumns,
+  toolbarExtra,
 }: GMDUpdateTableProps) {
   const isControlled = !!filterState;
 
@@ -2100,7 +2115,7 @@ castingRateInputs,
       }
     } else if (STATUS_COLUMNS.has(header)) {
       cellContent = <GMDUpdateStatusBadge value={display || null} />;
-    } else if (NUMERIC_COLUMNS.has(header)) {
+    } else if (NUMERIC_COLUMNS.has(header) || numericColumns?.has(header)) {
       cellContent = (
         <span className="font-mono-md text-right text-foreground">
           {display || "—"}
@@ -2284,16 +2299,17 @@ castingRateInputs,
   return (
     <div className={`flex flex-col w-full max-w-full min-w-0 bg-card border border-border rounded-lg shadow-sm ${fullHeight ? "flex-1 min-h-0 overflow-hidden h-full" : ""}`}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-border bg-muted">
         <div className="flex items-center gap-2">
           {title && (
             <span className="text-xs font-bold uppercase tracking-wider text-">
               {title}
             </span>
           )}
-          <span className="text-xs font-semibold text-foreground/60">
+          <span className="text-xs font-semibold text-foreground/60 mr-10">
             Showing {filteredRows.length} of {rows.length} records
           </span>
+          {toolbarExtra}
           {usdInrRate != null && (
             <span className="flex items-center gap-1 text-xs font-semibold text-green-700 dark:text-green-300 bg-card border border-border rounded px-2 py-0.5">
               1 USD = ₹{usdInrRate.toFixed(2)}

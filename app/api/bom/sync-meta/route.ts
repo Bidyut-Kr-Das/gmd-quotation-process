@@ -92,33 +92,29 @@ export async function POST() {
       });
     }
 
-    const bomItemCodes = await prisma.verifyBom.findMany({
+    const matched = await prisma.fullItem.findMany({
       where: { itemCode: { in: [...itemMap.keys()] } },
       select: { itemCode: true },
-      distinct: ["itemCode"],
     });
 
-    const syncedAt = new Date();
     let updated = 0;
-    for (const { itemCode } of bomItemCodes) {
+    for (const { itemCode } of matched) {
+      if (!itemCode) continue;
       const data = itemMap.get(itemCode);
       if (!data) continue;
-      const res = await prisma.verifyBom.updateMany({
-        where: { itemCode },
-        data: { ...data, syncedAt },
-      });
-      updated += res.count;
+      await prisma.fullItem.update({ where: { itemCode }, data });
+      updated++;
     }
 
     console.log(
-      `[bom/sync-meta] matched ${bomItemCodes.length} item codes, updated ${updated} rows from "${tabTitle}"`,
+      `[bom/sync-meta] matched ${matched.length} item codes, updated ${updated} FullItem rows from "${tabTitle}"`,
     );
 
     return NextResponse.json({
       count: updated,
-      matchedItemCodes: bomItemCodes.length,
+      matchedItemCodes: matched.length,
       totalCodesInSheet: itemMap.size,
-      syncedAt: syncedAt.toISOString(),
+      syncedAt: new Date().toISOString(),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
