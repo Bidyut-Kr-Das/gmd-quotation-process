@@ -1034,7 +1034,7 @@ export async function syncEnquiryEmailAddressesAction() {
         threadCount: result.threadCount,
         partyCount: result.partyCount,
         matchedByParty: result.matchedByParty,
-        enquiries: result.proposals.map((p) => ({ id: p.id, emailAddress: p.emailAddress })),
+        enquiries: result.proposals.map((p) => ({ id: p.id, senderEmail: p.senderEmail, emailAddress: p.emailAddress })),
       },
     };
   } catch (error: any) {

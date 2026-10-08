@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import {
-  extractEmailsFromValue,
-  isExternalEmail,
-  buildPartyEmailIndex,
   resolveEmailsForParty,
+  threadSenderEmails,
+  threadCcEmails,
+  buildPartyEmailSplitIndex,
 } from "./enquiryEmailParty";
 
 // Re-exported so existing importers of this module keep working.
@@ -59,44 +59,47 @@ function docketKeys(docket: string): string[] {
 }
 
 export interface DocketEmailMap {
-  emailsByDocketKey: Map<string, string[]>;
+  senderByDocketKey: Map<string, string[]>;
+  ccByDocketKey: Map<string, string[]>;
   threadCount: number;
 }
 
 /**
- * Builds an in-memory map of docket number -> external party email addresses,
- * sourced from every thread's `sender`, `to_details` and `cc_details`.
+ * Builds in-memory maps of docket number -> sender emails and -> cc emails,
+ * split from every thread's `sender` vs `to_details` / `cc_details`.
  */
 export async function buildDocketEmailMap(): Promise<DocketEmailMap> {
   const threads = await prisma.docketQuotationThread.findMany({
     select: { docketNo: true, sender: true, toDetails: true, ccDetails: true },
   });
 
-  const emailsByDocketKey = new Map<string, string[]>();
+  const senderByDocketKey = new Map<string, string[]>();
+  const ccByDocketKey = new Map<string, string[]>();
+
+  const push = (map: Map<string, string[]>, key: string, emails: string[]) => {
+    if (emails.length === 0) return;
+    const existing = map.get(key) ?? [];
+    for (const email of emails) if (!existing.includes(email)) existing.push(email);
+    map.set(key, existing);
+  };
 
   for (const t of threads) {
     const dockets = splitDockets(t.docketNo);
     if (dockets.length === 0) continue;
 
-    const emails = [
-      ...extractEmailsFromValue(t.sender),
-      ...extractEmailsFromValue(t.toDetails),
-      ...extractEmailsFromValue(t.ccDetails),
-    ].filter(isExternalEmail);
-    if (emails.length === 0) continue;
+    const senderEmails = threadSenderEmails(t);
+    const ccEmails = threadCcEmails(t);
+    if (senderEmails.length === 0 && ccEmails.length === 0) continue;
 
     for (const docket of dockets) {
       for (const key of docketKeys(docket)) {
-        const existing = emailsByDocketKey.get(key) ?? [];
-        for (const email of emails) {
-          if (!existing.includes(email)) existing.push(email);
-        }
-        emailsByDocketKey.set(key, existing);
+        push(senderByDocketKey, key, senderEmails);
+        push(ccByDocketKey, key, ccEmails);
       }
     }
   }
 
-  return { emailsByDocketKey, threadCount: threads.length };
+  return { senderByDocketKey, ccByDocketKey, threadCount: threads.length };
 }
 
 export function resolveEmailsForDocket(
@@ -116,15 +119,17 @@ export function resolveEmailsForDocket(
 }
 
 export interface PartyEmailMap {
-  emailsByPartyKey: Map<string, string[]>;
-  /** Number of distinct parties that resolved to at least one external email. */
+  senderByPartyKey: Map<string, string[]>;
+  ccByPartyKey: Map<string, string[]>;
+  /** Number of distinct parties that resolved to at least one email. */
   partyCount: number;
 }
 
 /**
- * Builds an in-memory map of exact-normalized party name -> external emails,
- * sourced from every thread's `sub_category` (party name) plus its `sender`,
- * `to_details` and `cc_details`. `OUTSIDER` / `INTERNAL` rows are ignored.
+ * Builds in-memory maps of exact-normalized party name -> sender emails and ->
+ * cc emails, sourced from every thread's `sub_category` (party name) plus its
+ * `sender`, `to_details` and `cc_details`. `OUTSIDER` / `INTERNAL` rows are
+ * ignored.
  *
  * This is the fallback source for enquiries whose docket number does not match
  * any thread.
@@ -133,13 +138,15 @@ export async function buildPartyEmailMap(): Promise<PartyEmailMap> {
   const threads = await prisma.docketQuotationThread.findMany({
     select: { subCategory: true, sender: true, toDetails: true, ccDetails: true },
   });
-  const emailsByPartyKey = buildPartyEmailIndex(threads);
-  return { emailsByPartyKey, partyCount: emailsByPartyKey.size };
+  const { senderByPartyKey, ccByPartyKey } = buildPartyEmailSplitIndex(threads);
+  const partyCount = new Set([...senderByPartyKey.keys(), ...ccByPartyKey.keys()]).size;
+  return { senderByPartyKey, ccByPartyKey, partyCount };
 }
 
 export interface EmailSyncProposal {
   id: string;
   docketNumber: string;
+  senderEmail: string;
   emailAddress: string;
   /** Which join produced the value. */
   source: "docket" | "party";
@@ -176,45 +183,51 @@ export async function syncEnquiryEmailAddresses(options?: {
   const onlyBlank = options?.onlyBlank ?? true;
   const dryRun = options?.dryRun ?? false;
 
-  const [enquiries, { emailsByDocketKey, threadCount }, { emailsByPartyKey, partyCount }] =
-    await Promise.all([
-      prisma.enquiry.findMany({
-        select: { id: true, docketNumber: true, partyName: true, emailAddress: true },
-      }),
-      buildDocketEmailMap(),
-      buildPartyEmailMap(),
-    ]);
+  const [
+    enquiries,
+    { senderByDocketKey, ccByDocketKey, threadCount },
+    { senderByPartyKey, ccByPartyKey, partyCount },
+  ] = await Promise.all([
+    prisma.enquiry.findMany({
+      select: { id: true, docketNumber: true, partyName: true, emailAddress: true, senderEmail: true },
+    }),
+    buildDocketEmailMap(),
+    buildPartyEmailMap(),
+  ]);
 
   const proposals: EmailSyncProposal[] = [];
   let skipped = 0;
   let matchedByParty = 0;
 
   for (const e of enquiries) {
-    const hasValue = !!(e.emailAddress && e.emailAddress.trim());
+    const hasValue = !!(e.senderEmail && e.senderEmail.trim()) || !!(e.emailAddress && e.emailAddress.trim());
     if (onlyBlank && hasValue) {
       skipped++;
       continue;
     }
 
-    let emails = resolveEmailsForDocket(emailsByDocketKey, e.docketNumber);
+    let senderEmails = resolveEmailsForDocket(senderByDocketKey, e.docketNumber);
+    let ccEmails = resolveEmailsForDocket(ccByDocketKey, e.docketNumber);
     let source: "docket" | "party" = "docket";
-    if (emails.length === 0) {
-      emails = resolveEmailsForParty(emailsByPartyKey, e.partyName);
+    if (senderEmails.length === 0 && ccEmails.length === 0) {
+      senderEmails = resolveEmailsForParty(senderByPartyKey, e.partyName);
+      ccEmails = resolveEmailsForParty(ccByPartyKey, e.partyName);
       source = "party";
     }
-    if (emails.length === 0) {
+    if (senderEmails.length === 0 && ccEmails.length === 0) {
       skipped++;
       continue;
     }
 
-    const value = emails.join(", ");
-    if (e.emailAddress === value) {
+    const senderEmail = senderEmails.join(", ");
+    const emailAddress = ccEmails.join(", ");
+    if (e.senderEmail === senderEmail && e.emailAddress === emailAddress) {
       skipped++;
       continue;
     }
 
     if (source === "party") matchedByParty++;
-    proposals.push({ id: e.id, docketNumber: e.docketNumber, emailAddress: value, source });
+    proposals.push({ id: e.id, docketNumber: e.docketNumber, senderEmail, emailAddress, source });
   }
 
   if (dryRun || proposals.length === 0) {
@@ -229,7 +242,7 @@ export async function syncEnquiryEmailAddresses(options?: {
       chunk.map((p) =>
         prisma.enquiry.update({
           where: { id: p.id },
-          data: { emailAddress: p.emailAddress },
+          data: { senderEmail: p.senderEmail, emailAddress: p.emailAddress },
         })
       )
     );

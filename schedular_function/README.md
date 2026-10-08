@@ -333,11 +333,14 @@ it creates an `Enquiry`, extracting line items from the mail content:
 2. Resolves the party name via `resolvePartyForThread`
    (`lib/pendingDocketMaterializer`): first email match against previous dockets,
    then the thread's own `partyName`, then `sub_category`, else `"Unknown"`.
-3. Extracts `{ itemName, quantity }` pairs from the mail content — see *Item
+3. Splits the thread's addresses: `senderEmail` = `threadSenderEmails` (the
+   external sender, future email "To"); `emailAddress` = `threadCcEmails` (the
+   external to/cc list, future "Cc").
+4. Extracts `{ itemName, quantity }` pairs from the mail content — see *Item
    extraction* below.
-4. Links the mail file attachments as-is (`parseThreadAttachments`) and renders a
+5. Links the mail file attachments as-is (`parseThreadAttachments`) and renders a
    mail-snapshot PDF, uploading it to Google Drive (`buildSnapshotAttachment`).
-5. In one `$transaction`, creates the `Enquiry` **with its `EnquiryItem` rows**
+6. In one `$transaction`, creates the `Enquiry` **with its `EnquiryItem` rows**
    and stamps the thread with the new `docketNo` + clears `pendingDocket`.
 
 Idempotent: a stamped thread leaves the pending set, so a re-run is a no-op.
@@ -464,7 +467,7 @@ Stock-step edge cases:
 
 | Table | Column | Rule |
 |---|---|---|
-| `Enquiry` | `docketNumber`, `partyName`, `enquiryDate`, `emailAddress` | **create only** — a new docket per pending thread. Existing dockets are never touched. |
+| `Enquiry` | `docketNumber`, `partyName`, `enquiryDate`, `senderEmail`, `emailAddress` | **create only** — a new docket per pending thread. `senderEmail` holds the thread sender (future "To"); `emailAddress` holds the cc/rest list. Existing dockets are never touched. |
 | `Enquiry` | attachments | mail attachments linked as-is + one generated snapshot PDF. |
 | `EnquiryItem` | `itemName`, `quantity`, `position` | **create only** — one row per extracted line item. A thread with nothing extractable gets no items. `erpItemCode` is left null. |
 | `DocketQuotationThread` | `docketNo`, `pendingDocket` | stamped with the new number and `pendingDocket` set to `false`. Never cleared or re-pointed. |

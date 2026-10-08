@@ -22,10 +22,10 @@ async function main() {
   console.log(`Rows skipped (has value / no match): ${result.skipped}\n`);
 
   if (result.proposals.length > 0) {
-    console.log("--- PREVIEW (docket -> email address) ---");
+    console.log("--- PREVIEW (docket -> sender / cc) ---");
     for (const p of result.proposals) {
       const tag = p.source === "party" ? "[PARTY] " : "[CHANGE]";
-      console.log(`${tag} ${p.docketNumber.padEnd(24)} -> ${show(p.emailAddress)}`);
+      console.log(`${tag} ${p.docketNumber.padEnd(24)} sender: ${show(p.senderEmail)} | cc: ${show(p.emailAddress)}`);
     }
   }
 

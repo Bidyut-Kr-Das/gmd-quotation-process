@@ -5,6 +5,8 @@ import {
   threadExternalEmails,
   threadInternalEmails,
   threadPreferredEmails,
+  threadSenderEmails,
+  threadCcEmails,
   buildEmailPartyMap,
   resolvePartyForThread,
   isDeletableDuplicate,
@@ -54,6 +56,38 @@ test('threadPreferredEmails uses external when present, internal when internal-o
     ccDetails: null,
   })
   assert.deepEqual(internalOnly, ['tridip@gmdalui.co.in', 'laserentry.four@gmail.com'])
+})
+
+test('threadSenderEmails takes the external sender', () => {
+  assert.deepEqual(
+    threadSenderEmails({ sender: 'Buyer <buyer@acme.com>', toDetails: { value: 'tridip@gmdalui.co.in' }, ccDetails: null }),
+    ['buyer@acme.com'],
+  )
+})
+
+test('threadSenderEmails falls back to to/cc when the sender is internal', () => {
+  assert.deepEqual(
+    threadSenderEmails({ sender: 'tridip@gmdalui.co.in', toDetails: { value: 'buyer@acme.com, other@acme.com' }, ccDetails: null }),
+    ['buyer@acme.com', 'other@acme.com'],
+  )
+})
+
+test('threadSenderEmails uses internal addresses only for an internal-only thread', () => {
+  assert.deepEqual(
+    threadSenderEmails({ sender: 'tridip@gmdalui.co.in', toDetails: { value: 'laserentry.four@gmail.com' }, ccDetails: null }),
+    ['tridip@gmdalui.co.in', 'laserentry.four@gmail.com'],
+  )
+})
+
+test('threadCcEmails returns external to/cc minus the sender', () => {
+  assert.deepEqual(
+    threadCcEmails({
+      sender: 'buyer@acme.com',
+      toDetails: { value: 'buyer@acme.com, accounts@acme.com' },
+      ccDetails: { value: 'tridip@gmdalui.co.in, pm@acme.com' },
+    }),
+    ['accounts@acme.com', 'pm@acme.com'],
+  )
 })
 
 test('buildEmailPartyMap maps previous dockets and assigned threads', () => {

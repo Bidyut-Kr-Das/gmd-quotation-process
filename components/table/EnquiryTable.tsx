@@ -663,7 +663,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
         if (new Date(enquiry.enquiryDate) > limit) return false;
       }
       if (excludeField !== "projectReference" && filterProjectReference && !matchesText(filterProjectReference, enquiry.projectReference || "")) return false;
-      if (excludeField !== "emailAddress" && filters.emailAddress && !matchesText(filters.emailAddress, enquiry.emailAddress || "")) return false;
+      if (excludeField !== "emailAddress" && filters.emailAddress && !matchesText(filters.emailAddress, enquiry.senderEmail || "")) return false;
       if (excludeField !== "contactNo" && filters.contactNo && !matchesText(filters.contactNo, enquiry.contactNo || "")) return false;
       if (excludeField !== "attachment" && filters.attachment) {
         if (!enquiry.attachments || enquiry.attachments.length===0) return false;
@@ -1465,10 +1465,10 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
       return false;
     }
 
-    // Email Address (Text Search)
+    // Email Address (Text Search) — matches the sender only
     if (
       filters.emailAddress &&
-      !(enquiry.emailAddress || "").toLowerCase().includes(filters.emailAddress.toLowerCase())
+      !(enquiry.senderEmail || "").toLowerCase().includes(filters.emailAddress.toLowerCase())
     ) {
       return false;
     }
@@ -4268,9 +4268,9 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                       </div>
                     </td>
 
-                    {/* Email Address */}
+                    {/* Email Address (sender) */}
                     <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
-                      {enquiry.emailAddress && isInternalEmail(enquiry.emailAddress) && (
+                      {enquiry.senderEmail && isInternalEmail(enquiry.senderEmail) && (
                         <span
                           className="inline-block mb-0.5 px-1.5 py-0.5 text-[9px] font-semibold bg-slate-100 text-slate-600 rounded-full border border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/25"
                           title="Internal (GMD / Laser) email address"
@@ -4279,12 +4279,12 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                         </span>
                       )}
                       <input
-                        key={enquiry.id + "-emailAddress-" + (enquiry.emailAddress || "")}
+                        key={enquiry.id + "-senderEmail-" + (enquiry.senderEmail || "")}
                         type="text"
-                        defaultValue={enquiry.emailAddress || ""}
+                        defaultValue={enquiry.senderEmail || ""}
                         onBlur={(e) => {
-                          if (e.target.value !== (enquiry.emailAddress || "")) {
-                            handleEnquiryFieldChange(enquiry.id, "emailAddress", e.target.value);
+                          if (e.target.value !== (enquiry.senderEmail || "")) {
+                            handleEnquiryFieldChange(enquiry.id, "senderEmail", e.target.value);
                           }
                         }}
                         onKeyDown={(e) => {
