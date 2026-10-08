@@ -333,9 +333,14 @@ it creates an `Enquiry`, extracting line items from the mail content:
 2. Resolves the party name via `resolvePartyForThread`
    (`lib/pendingDocketMaterializer`): first email match against previous dockets,
    then the thread's own `partyName`, then `sub_category`, else `"Unknown"`.
-3. Splits the thread's addresses: `senderEmail` = `threadSenderEmails` (the
-   external sender, future email "To"); `emailAddress` = `threadCcEmails` (the
-   external to/cc list, future "Cc").
+3. Splits the thread's addresses via `splitThreadEmails`: `senderEmail` is the
+   **single** external sender (future email "To") and `emailAddress` is the
+   remaining cc list. Internal addresses are **never** stored. When the thread
+   has no usable external email (internal-only/empty) or any of its
+   `sender`/`to`/`cc` carries an internal address, the party's emails are taken
+   from the **most recent docket** of that party name (resolved from its source
+   thread, not the union across dockets); threads with the same `sub_category`
+   only bootstrap parties that have no docket.
 4. Extracts `{ itemName, quantity }` pairs from the mail content — see *Item
    extraction* below.
 5. Links the mail file attachments as-is (`parseThreadAttachments`) and renders a

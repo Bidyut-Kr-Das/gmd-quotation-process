@@ -33,10 +33,11 @@ import { getFiscalPrefix, nextDocketSerials } from "@/lib/docketNumber";
 import {
   buildEmailPartyMap,
   resolvePartyForThread,
-  threadSenderEmails,
-  threadCcEmails,
+  splitThreadEmails,
+  partyKey,
   type PartyNameSource,
 } from "@/lib/pendingDocketMaterializer";
+import { buildPartyEmailMap } from "@/lib/enquiryEmailSync";
 import { parseThreadAttachments } from "@/lib/docketSnapshot";
 import { buildSnapshotAttachment } from "@/lib/docketSnapshotPdf";
 import { extractEmailsFromValue } from "@/lib/enquiryEmailParty";
@@ -142,7 +143,7 @@ export async function runPendingDocketCreation(
   }
 
   const fiscalPrefix = getFiscalPrefix(new Date());
-  const [enquiries, assignedThreads, fiscalRows] = await Promise.all([
+  const [enquiries, assignedThreads, fiscalRows, partyEmailMap] = await Promise.all([
     prisma.enquiry.findMany({ select: { emailAddress: true, senderEmail: true, partyName: true } }),
     prisma.docketQuotationThread.findMany({
       where: { docketNo: { not: null } },
@@ -152,6 +153,7 @@ export async function runPendingDocketCreation(
       where: { docketNumber: { startsWith: fiscalPrefix } },
       select: { docketNumber: true },
     }),
+    buildPartyEmailMap(),
   ]);
 
   const emailPartyMap = buildEmailPartyMap({ enquiries, assignedThreads });
@@ -163,6 +165,10 @@ export async function runPendingDocketCreation(
 
   const plan = pending.map((thread, index) => {
     const resolved = resolvePartyForThread(thread, emailPartyMap);
+    // Single sender (future "To"); the rest go to cc. When the thread has only
+    // internal mailboxes, fall back to the party's most recent docket emails.
+    const partyExternal = partyEmailMap.byPartyKey.get(partyKey(resolved.partyName));
+    const split = splitThreadEmails(thread, partyExternal);
     return {
       threadId: thread.threadId,
       threadRowId: thread.id,
@@ -170,8 +176,8 @@ export async function runPendingDocketCreation(
       docketNumber: docketNumbers[index],
       partyName: resolved.partyName,
       source: resolved.source,
-      emailAddress: threadCcEmails(thread).join(", ") || null,
-      senderEmail: threadSenderEmails(thread).join(", ") || null,
+      senderEmail: split.senderEmail,
+      emailAddress: split.ccEmails.join(", ") || null,
       // Mail file attachments (linked as-is) + data for the snapshot PDF.
       attachments: parseThreadAttachments(thread.attachNames, thread.attachLinks),
       subject: thread.subject,

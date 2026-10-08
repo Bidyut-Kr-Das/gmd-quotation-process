@@ -144,7 +144,7 @@ export interface ThreadEmailFields {
   ccDetails: unknown;
 }
 
-function uniqLower(emails: string[]): string[] {
+export function uniqLower(emails: string[]): string[] {
   return Array.from(new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean)));
 }
 
@@ -186,37 +186,73 @@ export function threadCcEmails(thread: ThreadEmailFields): string[] {
   return uniqLower(emails).filter((e) => !senderSet.has(e));
 }
 
-export interface PartyEmailSplitIndex {
-  senderByPartyKey: Map<string, string[]>;
-  ccByPartyKey: Map<string, string[]>;
+/** External + internal email lists for a thread (external ordered sender→to→cc). */
+export interface EmailListEntry {
+  external: string[];
+  internal: string[];
+}
+
+export function threadEmailLists(thread: ThreadEmailFields): EmailListEntry {
+  const all = [
+    ...extractEmailsFromValue(thread.sender),
+    ...extractEmailsFromValue(thread.toDetails),
+    ...extractEmailsFromValue(thread.ccDetails),
+  ];
+  return {
+    external: uniqLower(all.filter(isExternalEmail)),
+    internal: uniqLower(all.filter((e) => isInternalEmail(e) && !isSpamOrBotEmail(e))),
+  };
+}
+
+export type EmailSplitSource = "thread" | "party" | "none";
+
+export interface ThreadEmailSplit {
+  /** Exactly one address (future email "To"), or null when nothing resolved. */
+  senderEmail: string | null;
+  /** The remaining addresses (future email "Cc"). */
+  ccEmails: string[];
+  source: EmailSplitSource;
 }
 
 /**
- * Split counterpart of `buildPartyEmailIndex`: groups a party's sender emails
- * and its (non-sender) cc emails separately, so the party fallback can fill
- * both `senderEmail` and the cc list.
+ * Picks a single sender and the remaining cc list from already-collected lists.
+ * Internal addresses are never returned.
+ *
+ * When any of the thread's sources (`sender` / `to` / `cc`) carry an internal
+ * address, the party's external emails are preferred (party match first);
+ * otherwise the thread's own external emails are used. The first address
+ * becomes the sender; the rest cc.
  */
-export function buildPartyEmailSplitIndex(rows: PartyThreadRow[]): PartyEmailSplitIndex {
-  const senderByPartyKey = new Map<string, string[]>();
-  const ccByPartyKey = new Map<string, string[]>();
+export function pickSenderAndCc(input: {
+  external: string[];
+  internal: string[];
+  partyExternal?: string[];
+}): ThreadEmailSplit {
+  const external = uniqLower(input.external);
+  const party = uniqLower((input.partyExternal ?? []).filter(isExternalEmail));
+  const hasInternal = uniqLower(input.internal).length > 0;
 
-  const push = (map: Map<string, string[]>, key: string, emails: string[]) => {
-    if (emails.length === 0) return;
-    const existing = map.get(key) ?? [];
-    for (const email of emails) if (!existing.includes(email)) existing.push(email);
-    map.set(key, existing);
-  };
+  const useParty = (hasInternal && party.length > 0) || external.length === 0;
+  const chosen = useParty ? party : external;
+  if (chosen.length === 0) return { senderEmail: null, ccEmails: [], source: "none" };
 
-  for (const t of rows) {
-    const party = String(t.subCategory ?? "").trim();
-    if (!party) continue;
-    if (PARTY_SENTINELS.has(party.toUpperCase())) continue;
-    const key = partyKey(party);
-    if (!key) continue;
+  const [senderEmail, ...ccEmails] = chosen;
+  return { senderEmail, ccEmails, source: useParty ? "party" : "thread" };
+}
 
-    push(senderByPartyKey, key, threadSenderEmails(t));
-    push(ccByPartyKey, key, threadCcEmails(t));
-  }
-
-  return { senderByPartyKey, ccByPartyKey };
+/**
+ * Splits one thread into a single sender + cc. When the thread has no external
+ * address, the caller may pass the party's external emails (from other threads)
+ * so the party's address is stored instead of the internal mailbox.
+ */
+export function splitThreadEmails(
+  thread: ThreadEmailFields,
+  partyExternalEmails?: string[],
+): ThreadEmailSplit {
+  const lists = threadEmailLists(thread);
+  return pickSenderAndCc({
+    external: lists.external,
+    internal: lists.internal,
+    partyExternal: partyExternalEmails,
+  });
 }

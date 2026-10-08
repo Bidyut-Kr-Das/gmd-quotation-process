@@ -124,6 +124,7 @@ export interface FiltersState {
   vaPercent: string[];
   orderStatus: string[];
   closureStatus: string[];
+  duplicate: string[];
   emailAddress: string;
   contactNo: string;
   itemName: string;
