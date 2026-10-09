@@ -7,7 +7,6 @@ import {
 import {
   getBatchDistinctBomIds,
   getBomRmAvailBatch,
-  recomputeVerifyBomValues,
   computeContractReviewRmAvail,
 } from "@/lib/verifyBomLookup";
 import { getContractReviewImagesByItemCode } from "@/lib/gmd_lib/contract-review-image-lookup";
@@ -15,8 +14,6 @@ import { normalizeContractKey } from "@/lib/gmd_lib/contract-review-enquiry-back
 
 export async function GET() {
   try {
-    await recomputeVerifyBomValues();
-
     const items = await loadContractReviewItems();
 
     const withBom = items.filter((i) => i.bomId);

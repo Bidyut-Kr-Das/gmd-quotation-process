@@ -1028,9 +1028,9 @@ const CONTRACT_REVIEW_SYNC: SyncOperation[] = [
     direction: "read-only",
     trigger: "page-load",
     triggerLabel: "Page load",
-    dbModels: ["ContractReview", "VerifyBom", "EnquiryItem", "GeneratedImage"],
+    dbModels: ["ContractReview", "Bom", "BomItem", "EnquiryItem", "GeneratedImage"],
     writePolicy:
-      "NOT a pure read: it calls recomputeVerifyBomValues() and persists ContractReview.noUse whenever the computed RM AVAIL differs. Orders by syncedAt desc.",
+      "NOT a pure read: it persists ContractReview.noUse whenever the computed RM AVAIL differs. Orders by syncedAt desc.",
     cadence: "every-page-load",
   },
   {
@@ -1049,34 +1049,10 @@ const CONTRACT_REVIEW_SYNC: SyncOperation[] = [
     sheetRange: "'<tab>'!A:ZZZ",
     headerRow: 4,
     columns: [...CONTRACTS_COLUMNS, ...DUMP_COLUMNS],
-    dbModels: ["ContractReview", "VerifyBom", "Enquiry"],
+    dbModels: ["ContractReview", "Bom", "BomItem", "Enquiry"],
     writePolicy:
       "Join key = ITEM_CODE + CONTRACT NO. ContractReview has NO @@unique on that pair (dropped in 20260905063935), so findFirst is non-deterministic when duplicates exist. 11 PRESERVE_UI_FIELDS are gap-fill only, 5 SKIP_FIELDS are never written, everything else overwrites when it differs. Blank sheet never clears. No deletes — row counts only grow.",
     cadence: "every-sync",
-  },
-  {
-    id: "cr-post-sync-verifybom",
-    name: "Post-sync VerifyBom recompute",
-    kind: "derived",
-    file: "lib/verifyBomLookup.ts:recomputeVerifyBomValues",
-    line: "203-391",
-    purpose:
-      "Pushes the current Raw Material stock and cost back onto every BOM row so VerifyBom stays consistent after a sync.",
-    direction: "db-to-db",
-    trigger: "button",
-    triggerLabel: "Sync button (side effect 1 of 4)",
-    dbModels: ["VerifyBom", "GMDUpdateItem", "ContractReview"],
-    columns: cols(
-      ["(GMDUpdateItem) ERP ITEM CODE", "rmItemName", "matched on erpItemCode or bomId"],
-      ["(GMDUpdateItem) ITEM NAME (proposed)-AUTO", "rmItemName"],
-      ["(GMDUpdateItem) cost", "cost", "4-tier precedence, stored value wins"],
-      ["(GMDUpdateItem) Available Stock", "availableStock", "live value wins over stored"],
-      ["(ContractReview) ITEM_NAME", "itemName", "newest syncedAt wins"],
-    ),
-    writePolicy:
-      "Writes availableStock, cost, rmItemName, itemName in 100-row transactions. USE/NO USE is deliberately NOT recomputed — the stored TO_DATE mark is authoritative.",
-    cadence: "every-sync",
-    sharedWith: "GET /api/bom, syncContractReviewRmAvailAction, backfill-verify-bom-item-name.ts",
   },
   {
     id: "cr-post-sync-rmavail",
@@ -1089,7 +1065,7 @@ const CONTRACT_REVIEW_SYNC: SyncOperation[] = [
     direction: "db-to-db",
     trigger: "button",
     triggerLabel: "Sync button (side effect 2 of 4)",
-    dbModels: ["ContractReview", "VerifyBom"],
+    dbModels: ["ContractReview", "Bom", "BomItem"],
     writePolicy:
       "Writes only ContractReview.noUse, only for rows that already have a bomId. Allocation starts from the lowest ORDER QTY.",
     cadence: "every-sync",
@@ -1147,10 +1123,10 @@ const CONTRACT_REVIEW_SYNC: SyncOperation[] = [
     direction: "db-to-db",
     trigger: "page-load",
     triggerLabel: "Page load (every visit)",
-    dbModels: ["ContractReview", "VerifyBom"],
+    dbModels: ["ContractReview", "Bom", "BomItem"],
     columns: cols(
       ["BOM ID", "bomId"],
-      ["BOM ID TYPE", "itemType", "VerifyBom.bomIdType, copied across"],
+      ["BOM ID TYPE", "itemType", "Bom.bomIdType, copied across"],
       ["RM AVAIL", "noUse", "recomputed after the assignment"],
     ),
     writePolicy:
@@ -1251,9 +1227,9 @@ const CONTRACT_REVIEW_SYNC: SyncOperation[] = [
       ...STOCK_PHYS_COLUMNS,
       { sheetHeader: "(derived)", dbField: "rmPhysicalStock", note: "resolved from costCodeRef" },
     ],
-    dbModels: ["GMDUpdateItem", "VerifyBom", "ContractReview"],
+    dbModels: ["GMDUpdateItem", "Bom", "BomItem", "ContractReview"],
     writePolicy:
-      "Gap-fills GMDUpdateItem.availableStock only where it is blank, then recomputes VerifyBom, then writes ContractReview.noUse and rmPhysicalStock.",
+      "Gap-fills GMDUpdateItem.availableStock only where it is blank, then writes ContractReview.noUse and rmPhysicalStock.",
     cadence: "on-demand",
   },
   {
@@ -1526,13 +1502,13 @@ const BOM_SYNC: SyncOperation[] = [
     file: "app/api/bom/route.ts",
     line: "14-59",
     purpose:
-      "Returns every VerifyBom row projected into the 26-column display grid, preferring live RM stock and cost over the stored values.",
+      "Returns FullItem -> Bom -> BomItem -> (RawMaterial | FullItem) projected into the 26-column display grid.",
     direction: "read-only",
     trigger: "page-load",
     triggerLabel: "Page load",
-    dbModels: ["VerifyBom", "GMDUpdateItem", "ContractReview"],
+    dbModels: ["Bom", "BomItem", "GMDUpdateItem", "ContractReview"],
     writePolicy:
-      "NOT a pure read: calls recomputeVerifyBomValues(), which writes availableStock / cost / rmItemName / itemName.",
+      "Pure read.",
     cadence: "every-page-load",
   },
   {
@@ -1639,59 +1615,17 @@ const BOM_SYNC: SyncOperation[] = [
     cadence: "every-sync",
   },
   {
-    id: "bom-derived-item-name",
-    name: "Derived NEW ITEM NAME",
-    kind: "derived",
-    file: "app/actions.ts:deriveVerifyBomItemNameBatchAction",
-    line: "4298-4358",
-    purpose:
-      "Builds the displayed NEW ITEM NAME by concatenating the item's descriptive columns.",
-    direction: "db-to-db",
-    trigger: "page-load",
-    triggerLabel: "Page load (every visit)",
-    dbModels: ["VerifyBom"],
-    columns: cols(
-      ["ITEM TYPE", "merged", "part 1"],
-      ["MOC", "merged", "part 2"],
-      ["OPERATION", "merged", "part 3"],
-      ["SIZE", "merged", "part 4"],
-      ["PN-GMD", "merged", "part 5"],
-    ),
-    writePolicy:
-      "Writes only merged = ITEM_TYPE_MOC_OPERATION_SIZE_PN-GMD. OVERWRITES the sheet's MERGED value from sync-meta. Any blank part writes null, which clears the name.",
-    cadence: "every-page-load",
-  },
-  {
-    id: "bom-qty-cost",
-    name: "BOM qty x cost",
-    kind: "derived",
-    file: "app/actions.ts:recomputeVerifyBomBomQtyCostBatchAction",
-    line: "4360-4429",
-    purpose: "Multiplies BOM ITEM QTY by COST to produce the extended cost column.",
-    direction: "db-to-db",
-    trigger: "page-load",
-    triggerLabel: "Page load (every visit)",
-    dbModels: ["VerifyBom"],
-    columns: cols(
-      ["BOM ITEM QTY", "bomItemQtyCost", "null qty => null result"],
-      ["COST", "bomItemQtyCost", "null cost => the literal string RM COST NOT AVAILABLE"],
-    ),
-    writePolicy:
-      "Writes only bomItemQtyCost, rounded to 2 decimals. Commas stripped; '' / '-' / NaN treated as null.",
-    cadence: "every-page-load",
-  },
-  {
     id: "bom-cell-edits",
     name: "Inline cell edits",
     kind: "edit",
     file: "app/actions.ts:updateVerifyBomFieldBatchAction",
     line: "4247-4296",
     purpose:
-      "Saves edits to the 16 whitelisted metadata columns. Currently unreachable — the editable tables on /bom are commented out.",
+      "Saves /bom edits: BOM ID TYPE -> Bom, BOM ITEM QTY (whole number) -> BomItem.quantity, the other columns -> FullItem.",
     direction: "db-to-db",
-    trigger: "none",
-    triggerLabel: "No live call site (page.tsx:640-677 is commented out)",
-    dbModels: ["VerifyBom"],
+    trigger: "button",
+    triggerLabel: "Cell edit on /bom",
+    dbModels: ["Bom", "BomItem", "FullItem"],
     columns: cols(
       ["BOM ID TYPE", "bomIdType"],
       ["BOM ITEM QTY", "bomItemQty"],
@@ -1736,23 +1670,6 @@ const BOM_SYNC: SyncOperation[] = [
     cadence: "manual",
     npmCommand: "npm run bom:cost:derive",
     dryRunDefault: true,
-  },
-  {
-    id: "bom-script-item-name",
-    name: "BOM item name backfill",
-    kind: "backfill",
-    file: "scripts/backfill-verify-bom-item-name.ts",
-    line: "1-37",
-    purpose:
-      "One-shot run of recomputeVerifyBomValues() to settle the BOM name, stock and cost columns.",
-    direction: "db-to-db",
-    trigger: "manual-script",
-    triggerLabel: "npm run bom:item-name",
-    dbModels: ["VerifyBom", "GMDUpdateItem", "ContractReview"],
-    writePolicy:
-      "Writes itemName (from ContractReview.itemName), rmItemName (from GMDUpdateItem.itemNameAuto), availableStock and cost. No dry-run flag.",
-    cadence: "manual",
-    npmCommand: "npm run bom:item-name",
   },
   {
     id: "bom-script-stock",
@@ -1888,7 +1805,7 @@ const QUOTATION_LINKAGE_SYNC: SyncOperation[] = [
     direction: "read-only",
     trigger: "page-load",
     triggerLabel: "Page load (server component, force-dynamic)",
-    dbModels: ["Enquiry", "EnquiryItem", "LookupOption", "VerifyBom"],
+    dbModels: ["Enquiry", "EnquiryItem", "LookupOption", "Bom", "BomItem"],
     writePolicy:
       "Pure read. Applies a read-time override to availableBomIds: NO-USE bomIds are filtered out on every render, so a stale stored array can never offer a retired BOM. Also derives nextDocketNumber from the current fiscal year (April–March).",
     cadence: "every-page-load",
@@ -2052,11 +1969,11 @@ const QUOTATION_LINKAGE_SYNC: SyncOperation[] = [
     direction: "db-to-db",
     trigger: "button",
     triggerLabel: "BOM ID dropdown",
-    dbModels: ["EnquiryItem", "VerifyBom", "GMDUpdateItem", "SupplyHistoryItem"],
+    dbModels: ["EnquiryItem", "Bom", "BomItem", "GMDUpdateItem", "SupplyHistoryItem"],
     columns: cols(
-      ["(VerifyBom) bomId", "bomId", "must already be in availableBomIds"],
-      ["(VerifyBom) bomIdType", "bomType", "defaults to DIRECT M2M when blank"],
-      ["(VerifyBom) rmItemCode", "rmItemCode"],
+      ["(Bom) bomId", "bomId", "must already be in availableBomIds"],
+      ["(Bom) bomIdType", "bomType", "defaults to DIRECT M2M when blank"],
+      ["(Bom) rmItemCode", "rmItemCode"],
       ["(GMDUpdateItem) rmType", "rmType"],
       ["(GMDUpdateItem) Available Stock", "availableStock", "DIRECT M2M only"],
       ["(GMDUpdateItem) cost -> SupplyHistory", "productCost", "only when productCost is null"],
@@ -2072,14 +1989,14 @@ const QUOTATION_LINKAGE_SYNC: SyncOperation[] = [
     file: "app/actions.ts:syncAvailableBomIds",
     line: "1320-1337",
     purpose:
-      "Populates the BOM dropdown options for an item from VerifyBom, minus the retired ones.",
+      "Populates the BOM dropdown options for an item from Bom (via FullItem.itemCode), minus the retired ones.",
     direction: "db-to-db",
     trigger: "button",
     triggerLabel: "Cell edit and Fetch Item Codes",
-    dbModels: ["EnquiryItem", "VerifyBom"],
+    dbModels: ["EnquiryItem", "Bom", "BomItem"],
     columns: cols(
-      ["(VerifyBom) bomId", "availableBomIds", "distinct bomIds for the itemCode"],
-      ["(VerifyBom) USE/NO USE", "(filtered)", 'rows with noUse = "NO USE" are excluded'],
+      ["(Bom) bomId", "availableBomIds", "distinct bomIds for the itemCode"],
+      ["(Bom) USE/NO USE", "(filtered)", 'BOMs with any BomItem.noUse = "NO USE" are excluded'],
     ),
     writePolicy:
       "Uses updateMany across EVERY row sharing the erpItemCode, so the same item code always shows the same list — this is what prevents blank-vs-dropdown divergence. Never reintroduces a NO-USE bomId. A null code clears the array.",
@@ -2096,16 +2013,16 @@ const QUOTATION_LINKAGE_SYNC: SyncOperation[] = [
     direction: "db-to-db",
     trigger: "button",
     triggerLabel: "Cell edit and Fetch Item Codes",
-    dbModels: ["EnquiryItem", "VerifyBom", "GMDUpdateItem", "IndentListing"],
+    dbModels: ["EnquiryItem", "Bom", "BomItem", "GMDUpdateItem", "IndentListing"],
     columns: cols(
-      ["(VerifyBom) bomId", "bomId / rmItemCode", "left null when several candidates exist"],
+      ["(Bom) bomId", "bomId / rmItemCode", "left null when several candidates exist"],
       ["(GMDUpdateItem) cost", "productCost"],
       ["(GMDUpdateItem) Available Stock", "availableStock"],
       ["(GMDUpdateItem) rmType", "bomType / rmType"],
       ["(EnquiryItem) costRefCode", "(ephemeral bomId)", "used as a stand-in when no BOM is selected"],
     ),
     writePolicy:
-      "FILL-ONLY — never overwrites a value that is already present. Defers when VerifyBom has several BOMs for the code, because the choice is the user's. costRefCode is treated as an ephemeral bomId, so bomId itself stays null.",
+      "FILL-ONLY — never overwrites a value that is already present. Defers when Bom has several BOMs for the code, because the choice is the user's. costRefCode is treated as an ephemeral bomId, so bomId itself stays null.",
     cadence: "on-demand",
   },
   {
@@ -2468,18 +2385,18 @@ const QUOTATION_CRUD_SYNC: SyncOperation[] = [
     file: "app/actions.ts:syncEnquiryEmailAddressesAction -> lib/enquiryEmailSync.ts",
     line: "933-1067",
     purpose:
-      "Fills each enquiry's party email address from the Supply History consignee details.",
+      "Fills each enquiry's senderEmail (the thread sender, future email To) and emailAddress (the cc/rest list, future Cc). Falls back to the most recent docket of the same party (resolved from its source thread) when the thread has no usable external email; internal addresses are never stored.",
     direction: "db-to-db",
     trigger: "button",
     triggerLabel: "Sync Email Addresses button",
-    dbModels: ["SupplyHistoryItem", "Enquiry"],
+    dbModels: ["DocketQuotationThread", "Enquiry"],
     columns: cols([
-      "(Supply History) Party Mail Address",
-      "Enquiry.emailAddress",
-      "matched on party name",
+      "(thread) sender / to_details / cc_details",
+      "Enquiry.senderEmail (To)",
+      "Enquiry.emailAddress (Cc)",
     ]),
     writePolicy:
-      "Blank-only by default in the script form (onlyBlank: true), so an address already on the enquiry is never replaced by an older supply record.",
+      "Blank-only by default in the button/script form (onlyBlank: true), so an address already on the enquiry is never replaced. The sender/cc split backfill (scripts/backfill-enquiry-sender-email.ts) re-derives both from the source thread and overwrites.",
     cadence: "on-demand",
   },
   {

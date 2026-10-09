@@ -2,7 +2,7 @@
  * Ofelia entry point for the Contract Review hourly sync.
  *
  * Runs four steps in order: CONTRACTS + DUMP sheet sync, Enquiry field
- * backfill, RM AVAIL / VerifyBom / physical stock, then the INSPECTION OFFER
+ * backfill, RM AVAIL / physical stock, then the INSPECTION OFFER
  * DUMP offer / inspection / DI union.
  *
  * Deliberately thin: all logic lives in `@/schedular_function`. This file only

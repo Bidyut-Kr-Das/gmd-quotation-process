@@ -124,6 +124,21 @@ const UPLOAD_DIAGRAM_IDX =
 // Stable descriptor list so the sidebar/graph filter mirror keeps a stable
 // dependency and the batch checkboxes + cascading share one definition.
 
+/**
+ * Sentinel option shown in the Actuator column's filter dropdown, right after
+ * `(Blank)`. Selects actuator item rows whose Actuator dropdown is still empty
+ * - i.e. the actuations still pending data entry.
+ */
+const PENDING_ACTUATIONS_FILTER = "Pending Actuations";
+
+/** Whether this row's item is an actuator (so its Actuator dropdown renders). */
+function isActuatorItemRow(row: unknown[]): boolean {
+  const n = String(row[ITEM_NAME_IDX] ?? "")
+    .toLowerCase()
+    .replace(/\s+/g, "");
+  return n.includes("actuator") || n.includes("_act") || n.includes("act+gb");
+}
+
 type RateTileKey =
   | "rateXOrderQty"
   | "rateXBalBillAgCont"
@@ -376,6 +391,11 @@ function matchesTableFilters(
     const matchesZero = selected.includes(FLOW_ZERO) && cellIsZero(cellVal);
     const matchesNonZero =
       selected.includes(FLOW_NON_ZERO) && !cellIsZero(cellVal);
+    const matchesPendingActuation =
+      colName === "Actuator" &&
+      selected.includes(PENDING_ACTUATIONS_FILTER) &&
+      isActuatorItemRow(row) &&
+      cellVal === "";
     if (
       !(
         matchesBlank ||
@@ -383,6 +403,7 @@ function matchesTableFilters(
         matchesNoValue ||
         matchesZero ||
         matchesNonZero ||
+        matchesPendingActuation ||
         selected.includes(cellVal)
       )
     )
@@ -581,6 +602,21 @@ export function ContractReviewPage({
     return map;
   }, [data, bomIdOptionsById]);
   const [actuatorOptions, setActuatorOptions] = useState<string[]>([]);
+  // Stable identity so GMDUpdateTable's filter memo isn't invalidated every render.
+  const actuatorExtraFilterOptions = useMemo(
+    () => ({
+      Actuator: [
+        {
+          value: PENDING_ACTUATIONS_FILTER,
+          label: "Pending Actuations",
+          match: (row: unknown[]) =>
+            isActuatorItemRow(row) &&
+            String(row[ACTUATOR_IDX] ?? "").trim() === "",
+        },
+      ],
+    }),
+    [],
+  );
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>(
     {},
   );
@@ -3493,7 +3529,7 @@ tileSize,
           </>)}
         </aside>
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
-          <GMDUpdateHeader
+          {/* <GMDUpdateHeader
             title="CONTRACT REVIEW"
             totalRows={data?.totalRows ?? 0}
             syncedAt={data?.syncedAt ?? undefined}
@@ -3516,7 +3552,7 @@ tileSize,
               </button>) : undefined
             }
           />
-          {error && <div className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</div>}
+          {error && <div className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</div>} */}
           <ResizablePanelGroup
             orientation="vertical"
             id="contract-review-vertical"
@@ -3575,17 +3611,10 @@ tileSize,
                     (c !== "Actuator" || !!saveActuatorWithRmCodeAction),
                 )}
                 blankOnlyEditableColumns={["DATE OF CONTRACT"].filter(isEditable)}
-                dropdownRowCondition={(header, row) => {
-                  if (header !== "Actuator") return true;
-                  const n = String(row[ITEM_NAME_IDX] ?? "")
-                    .toLowerCase()
-                    .replace(/\s+/g, "");
-                  return (
-                    n.includes("actuator") ||
-                    n.includes("_act") ||
-                    n.includes("act+gb")
-                  );
-                }}
+                dropdownRowCondition={(header, row) =>
+                  header !== "Actuator" || isActuatorItemRow(row)
+                }
+                extraFilterOptions={actuatorExtraFilterOptions}
                 categoryOptions={categoryOptions}
                 filterOptionsOverride={{
                   "CLEARANCE STATUS": clearanceOptions.filter(

@@ -1,25 +1,97 @@
-import { prisma as tenderPrisma } from "@gmd/db-tender";
+import type { Prisma } from "@gmd/db-quotation";
 import { prisma } from "@/lib/prisma";
-
-export type VerifyBomCandidate = {
-  bomId: string;
-  itemCode: string;
-  rmItemCode: string;
-  bomIdType: string | null;
-  bomItemQty: string | null;
-};
 
 /**
  * A stored value counts as present only when it is non-null and not blank.
- *
- * Both the recompute (which writes VerifyBom) and GET /api/bom (which renders
- * the grid) resolve itemName / rmItemName with this, so the value that is
- * persisted and the value that is displayed can never disagree. A blank must
- * lose to a derived value, otherwise an empty cell would freeze a good name.
+ * A blank must lose to a derived value, otherwise an empty cell would freeze a
+ * good name.
  */
 export function present(v: string | null | undefined): string | undefined {
   if (v === null || v === undefined) return undefined;
   return v.trim() ? v : undefined;
+}
+
+// BOM data lives in FullItem -> Bom -> BomItem -> (RawMaterial | FullItem).
+// BomRow is one component of one BOM, flattened to the old VerifyBom row shape.
+export type BomRow = {
+  bomId: string;
+  itemCode: string | null;
+  rmItemCode: string | null;
+  bomIdType: string | null;
+  noUse: string | null;
+  availableStock: string | null;
+};
+
+const bomRowInclude = {
+  fullItem: { select: { itemCode: true } },
+  components: {
+    orderBy: { createdAt: "asc" },
+    select: {
+      noUse: true,
+      rawMaterial: { select: { erpItemCode: true, availableStock: true } },
+      fullItem: { select: { itemCode: true } },
+    },
+  },
+} satisfies Prisma.BomInclude;
+
+async function loadBomRows(where: Prisma.BomWhereInput): Promise<BomRow[]> {
+  const boms = await prisma.bom.findMany({
+    where,
+    include: bomRowInclude,
+    orderBy: { bomId: "asc" },
+  });
+  const rows: BomRow[] = [];
+  for (const b of boms) {
+    for (const c of b.components) {
+      const code =
+        c.rawMaterial?.erpItemCode?.trim() || c.fullItem?.itemCode?.trim() || "";
+      if (!code) continue; // orphan component row (freed slot), same as /api/bom
+      rows.push({
+        bomId: b.bomId,
+        itemCode: b.fullItem.itemCode,
+        rmItemCode: code,
+        bomIdType: b.bomIdType,
+        noUse: c.noUse,
+        availableStock: c.rawMaterial?.availableStock ?? null,
+      });
+    }
+  }
+  return rows;
+}
+
+/** BOM linkage for one (itemCode, bomId): its type and first raw-material component. */
+export async function findBomForItem(
+  itemCode: string,
+  bomId: string,
+): Promise<{ bomId: string; bomIdType: string | null; rmItemCode: string | null } | null> {
+  const bom = await prisma.bom.findFirst({
+    where: { bomId, fullItem: { itemCode } },
+    select: {
+      bomId: true,
+      bomIdType: true,
+      components: {
+        where: { rawMaterial: { erpItemCode: { not: null } } },
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: { rawMaterial: { select: { erpItemCode: true } } },
+      },
+    },
+  });
+  if (!bom) return null;
+  return {
+    bomId: bom.bomId,
+    bomIdType: bom.bomIdType,
+    rmItemCode: bom.components[0]?.rawMaterial?.erpItemCode ?? null,
+  };
+}
+
+/** Component rows for an item's BOMs, optionally skipping "NO USE" components. */
+export async function getBomCandidates(
+  itemCode: string,
+  opts: { excludeNoUse?: boolean } = {},
+): Promise<BomRow[]> {
+  const rows = await loadBomRows({ fullItem: { itemCode } });
+  return opts.excludeNoUse ? rows.filter((r) => r.noUse !== "NO USE") : rows;
 }
 
 // Simple TTL cache for distinct bomIds per itemCode
@@ -37,55 +109,39 @@ export async function getDistinctBomIds(itemCode: string): Promise<string[]> {
   if (cache.has(itemCode) && now - cacheAt < CACHE_TTL_MS) {
     return cache.get(itemCode) ?? [];
   }
-  const rows = await prisma.verifyBom.findMany({
-    where: { itemCode },
+  const rows = await prisma.bom.findMany({
+    where: { fullItem: { itemCode } },
     select: { bomId: true },
-    distinct: ["bomId"],
     orderBy: { bomId: "asc" },
   });
-  const ids = rows.map((r) => r.bomId).filter(Boolean) as string[];
+  const ids = rows.map((r) => r.bomId).filter(Boolean);
   // update cache
   cache.set(itemCode, ids);
   cacheAt = now;
   return ids;
 }
 
-export async function getCandidates(itemCode: string): Promise<VerifyBomCandidate[]> {
-  const rows = await prisma.verifyBom.findMany({
-    where: { itemCode },
-    orderBy: { bomId: "asc" },
-  });
-  return rows;
-}
-
 export async function getBatchDistinctBomIds(itemCodes: string[]): Promise<Map<string, string[]>> {
   const unique = [...new Set(itemCodes.filter(Boolean))];
   if (unique.length === 0) return new Map();
-  const rows = await prisma.verifyBom.findMany({
-    where: { itemCode: { in: unique } },
-    select: { itemCode: true, bomId: true },
-    orderBy: [{ itemCode: "asc" }, { bomId: "asc" }],
+  const rows = await prisma.bom.findMany({
+    where: { fullItem: { itemCode: { in: unique } } },
+    select: { bomId: true, fullItem: { select: { itemCode: true } } },
+    orderBy: { bomId: "asc" },
   });
-  const map = new Map<string, Set<string>>();
-  for (const r of rows) {
-    if (!r.itemCode || !r.bomId) continue;
-    if (!map.has(r.itemCode)) map.set(r.itemCode, new Set());
-    map.get(r.itemCode)!.add(r.bomId);
-  }
   const out = new Map<string, string[]>();
-  for (const [k, set] of map) out.set(k, Array.from(set));
-  // also ensure codes with 0 entries map to []
-  for (const c of unique) if (!out.has(c)) out.set(c, []);
+  for (const c of unique) out.set(c, []);
+  for (const r of rows) {
+    const code = r.fullItem.itemCode;
+    if (!code || !r.bomId) continue;
+    out.get(code)?.push(r.bomId);
+  }
   return out;
 }
 
 export type BomUseStatus = "USE" | "NO USE" | null;
 
-type BomRowShape = {
-  itemCode: string | null;
-  rmItemCode: string | null;
-  bomIdType: string | null;
-};
+type BomRowShape = Pick<BomRow, "itemCode" | "rmItemCode" | "bomIdType">;
 
 function computeBomUseStatus(rows: BomRowShape[]): BomUseStatus {
   if (rows.length === 0) return null;
@@ -100,51 +156,18 @@ function computeBomUseStatus(rows: BomRowShape[]): BomUseStatus {
   if (items.size !== 1) return null;
   const rms = new Set<string>();
   for (const r of rows) if (r.rmItemCode) rms.add(r.rmItemCode);
-  return rms.size === minRms ? "USE" : "NO USE";  
+  return rms.size === minRms ? "USE" : "NO USE";
 }
 
-export async function getBomUseStatus(bomId: string): Promise<BomUseStatus> {
-  const rows = await prisma.verifyBom.findMany({
-    where: { bomId },
-    select: { itemCode: true, rmItemCode: true, bomIdType: true },
-  });
-  return computeBomUseStatus(rows);
-}
-
-// Quotation-scoped: distinct bomIds whose stored VerifyBom.noUse == "NO USE"
+// Quotation-scoped: bomIds with any component marked "NO USE"
 export async function getNoUseBomIdSet(bomIds: string[]): Promise<Set<string>> {
   const unique = [...new Set(bomIds.filter(Boolean))];
-  const set = new Set<string>();
-  if (unique.length === 0) return set;
-  const rows = await prisma.verifyBom.findMany({
-    where: { bomId: { in: unique }, noUse: "NO USE" },
+  if (unique.length === 0) return new Set();
+  const rows = await prisma.bom.findMany({
+    where: { bomId: { in: unique }, components: { some: { noUse: "NO USE" } } },
     select: { bomId: true },
-    distinct: ["bomId"],
   });
-  for (const r of rows) if (r.bomId) set.add(r.bomId);
-  return set;
-}
-
-export async function getBomUseStatusBatch(
-  bomIds: string[],
-): Promise<Map<string, BomUseStatus>> {
-  const unique = [...new Set(bomIds.filter(Boolean))];
-  const out = new Map<string, BomUseStatus>();
-  if (unique.length === 0) return out;
-  const rows = await prisma.verifyBom.findMany({
-    where: { bomId: { in: unique } },
-    select: { bomId: true, itemCode: true, rmItemCode: true, bomIdType: true },
-  });
-  const groups = new Map<string, BomRowShape[]>();
-  for (const r of rows) {
-    if (!r.bomId) continue;
-    if (!groups.has(r.bomId)) groups.set(r.bomId, []);
-    groups.get(r.bomId)!.push(r);
-  }
-  for (const id of unique) {
-    out.set(id, computeBomUseStatus(groups.get(id) ?? []));
-  }
-  return out;
+  return new Set(rows.map((r) => r.bomId));
 }
 
 export type BomRmAvail = {
@@ -158,22 +181,9 @@ export async function getBomRmAvailBatch(
   const unique = [...new Set(bomIds.filter(Boolean))];
   const out = new Map<string, BomRmAvail>();
   if (unique.length === 0) return out;
-  const rows = await prisma.verifyBom.findMany({
-    where: { bomId: { in: unique } },
-    select: {
-      bomId: true,
-      itemCode: true,
-      rmItemCode: true,
-      bomIdType: true,
-      availableStock: true,
-    },
-  });
-  const groups = new Map<
-    string,
-    (BomRowShape & { availableStock: string | null })[]
-  >();
+  const rows = await loadBomRows({ bomId: { in: unique } });
+  const groups = new Map<string, BomRow[]>();
   for (const r of rows) {
-    if (!r.bomId) continue;
     if (!groups.has(r.bomId)) groups.set(r.bomId, []);
     groups.get(r.bomId)!.push(r);
   }
@@ -199,204 +209,6 @@ export async function getBomRmAvailBatch(
     });
   }
   return out;
-}
-
-export async function recomputeVerifyBomValues(): Promise<{
-  updated: number;
-  statusMap: Map<string, BomUseStatus>;
-  stockMap: Map<string, string>;
-  rmNameMap: Map<string, string | null>;
-  itemNameMap: Map<string, string>;
-  costMap: Map<string, string>;
-}> {
-  const items = await prisma.verifyBom.findMany({
-    select: {
-      id: true,
-      bomId: true,
-      itemCode: true,
-      rmItemCode: true,
-      noUse: true,
-      availableStock: true,
-      cost: true,
-      itemName: true,
-      rmItemName: true,
-    },
-  });
-
-  const bomIds = [
-    ...new Set(items.map((i) => i.bomId).filter((b): b is string => !!b)),
-  ];
-  // USE/NO USE is now authoritative from the stored TO_DATE mark; do NOT recompute
-  // from bomIdType + RM count (that would revert the TO_DATE "NO USE" marks on /bom).
-  // const statusMap = await getBomUseStatusBatch(bomIds);
-  const statusMap = new Map<string, BomUseStatus>();
-
-  const itemCodes = [
-    ...new Set(items.map((i) => i.itemCode).filter((c): c is string => !!c)),
-  ];
-  const crRows = await tenderPrisma.contractReview.findMany({
-    where: { itemCode: { in: itemCodes }, itemName: { not: null } },
-    select: { itemCode: true, itemName: true, syncedAt: true },
-    orderBy: { syncedAt: "desc" },
-  });
-  const itemNameMap = new Map<string, string>();
-  for (const r of crRows) {
-    if (!r.itemCode) continue;
-    const name = (r.itemName ?? "").trim();
-    if (name && !itemNameMap.has(r.itemCode)) {
-      itemNameMap.set(r.itemCode, name);
-    }
-  }
-
-  const codes = [
-    ...new Set(
-      items
-        .flatMap((i) => [i.rmItemCode, i.itemCode])
-        .filter((c): c is string => !!c),
-    ),
-  ];
-  const rawItems = await prisma.rawMaterial.findMany({
-    where: { erpItemCode: { in: codes } },
-    select: {
-      erpItemCode: true,
-      availableStock: true,
-      itemNameAuto: true,
-      cost: true,
-    },
-  });
-
-  // RM → BOM membership now lives in BomItem; RawMaterial no longer carries bomId.
-  const bomRmRows = await prisma.bomItem.findMany({
-    where: { bom: { bomId: { in: bomIds } }, rawMaterialId: { not: null } },
-    select: {
-      bom: { select: { bomId: true } },
-      rawMaterial: { select: { erpItemCode: true, cost: true } },
-    },
-  });
-
-  const stockMap = new Map<string, string>();
-  const rmNameMap = new Map<string, string | null>();
-  const bomAndItemCodeCostMap = new Map<string, string>();
-  const erpCodeCostMap = new Map<string, string>();
-
-  for (const r of rawItems) {
-    if (!r.erpItemCode) continue;
-    const code = r.erpItemCode.trim().toUpperCase();
-    const costVal = r.cost != null ? r.cost.toString() : "";
-
-    if (!stockMap.has(code)) {
-      stockMap.set(code, r.availableStock ?? "");
-    }
-    if (!rmNameMap.has(code)) {
-      rmNameMap.set(code, r.itemNameAuto ?? null);
-    }
-    if (costVal && !erpCodeCostMap.has(code)) {
-      erpCodeCostMap.set(code, costVal);
-    }
-  }
-
-  for (const r of bomRmRows) {
-    const bId = (r.bom?.bomId ?? "").trim().toUpperCase();
-    const code = (r.rawMaterial?.erpItemCode ?? "").trim().toUpperCase();
-    const costVal = r.rawMaterial?.cost != null ? r.rawMaterial.cost.toString() : "";
-    if (bId && code && costVal) {
-      const key = `${bId}||${code}`;
-      if (!bomAndItemCodeCostMap.has(key)) {
-        bomAndItemCodeCostMap.set(key, costVal);
-      }
-    }
-  }
-
-  const costMap = new Map<string, string>();
-  for (const item of items) {
-    const b = (item.bomId ?? "").trim().toUpperCase();
-    const itemC = (item.itemCode ?? "").trim().toUpperCase();
-    const rmC = (item.rmItemCode ?? "").trim().toUpperCase();
-
-    const derivedCost =
-      (b && itemC ? bomAndItemCodeCostMap.get(`${b}||${itemC}`) : null) ??
-      (b && rmC ? bomAndItemCodeCostMap.get(`${b}||${rmC}`) : null) ??
-      (rmC ? erpCodeCostMap.get(rmC) : null) ??
-      (itemC ? erpCodeCostMap.get(itemC) : null) ??
-      null;
-
-    if (derivedCost !== null) {
-      costMap.set(item.id, derivedCost);
-    }
-  }
-
-  const updates = items
-    .map((item) => {
-      const rmKey = (item.rmItemCode ?? "").trim().toUpperCase();
-      const liveStock = rmKey ? stockMap.get(rmKey) : undefined;
-      // Fall back to the value already stored on VerifyBom (e.g. written by
-      // syncNullVerifyBomStockAction) so a known stock is never clobbered with "".
-      const stock =
-        (liveStock !== undefined && liveStock !== "" ? liveStock : null) ??
-        item.availableStock ??
-        "";
-      // A value already on the row wins. The derived sources
-      // (ITEM MASTER ERP via syncBomMastItemNamesAction, else ContractReview /
-      // GMDUpdateItem) only fill a gap, so a name is never silently replaced by
-      // a different one on every page load.
-      const rmItemName = rmKey
-        ? (present(item.rmItemName) ?? rmNameMap.get(rmKey) ?? null)
-        : null;
-      const itemName = item.itemCode
-        ? (present(item.itemName) ?? itemNameMap.get(item.itemCode) ?? null)
-        : null;
-      const cost = costMap.get(item.id) ?? item.cost ?? null;
-      return {
-        id: item.id,
-        stock,
-        cost,
-        rmItemName,
-        itemName,
-        oldStock: item.availableStock ?? null,
-        oldCost: item.cost ?? null,
-        oldRmItemName: item.rmItemName ?? null,
-        oldItemName: item.itemName ?? null,
-      };
-    })
-    .filter(
-      ({
-        stock,
-        cost,
-        rmItemName,
-        itemName,
-        oldStock,
-        oldCost,
-        oldRmItemName,
-        oldItemName,
-      }) =>
-        oldStock !== stock ||
-        oldCost !== cost ||
-        oldRmItemName !== rmItemName ||
-        oldItemName !== itemName,
-    )
-    .map(({ id, stock, cost, rmItemName, itemName }) =>
-      prisma.verifyBom.update({
-        where: { id },
-        data: { availableStock: stock, cost, rmItemName, itemName },
-      }),
-    );
-
-  if (updates.length > 0) {
-    const chunkSize = 100;
-    for (let i = 0; i < updates.length; i += chunkSize) {
-      const chunk = updates.slice(i, i + chunkSize);
-      await prisma.$transaction(chunk, { timeout: 20000 });
-    }
-  }
-
-  return {
-    updated: updates.length,
-    statusMap,
-    stockMap,
-    rmNameMap,
-    itemNameMap,
-    costMap,
-  };
 }
 
 export type RmAvailRow = {
@@ -495,12 +307,9 @@ export async function resolveContractReviewBomIdsFromActuator(
   const bomIds = [
     ...new Set([...bomIdsByItem.values()].flat()),
   ];
-  const vbRows = await prisma.verifyBom.findMany({
-    where: { bomId: { in: bomIds } },
-    select: { bomId: true, itemCode: true, rmItemCode: true },
-  });
+  const vbRows = await loadBomRows({ bomId: { in: bomIds } });
   const rmCodes = [
-    ...new Set(vbRows.map((r) => r.rmItemCode).filter(Boolean)),
+    ...new Set(vbRows.map((r) => r.rmItemCode).filter((c): c is string => !!c)),
   ];
   const rmItems = await prisma.rawMaterial.findMany({
     where: { erpItemCode: { in: rmCodes } },
@@ -546,9 +355,3 @@ export async function resolveContractReviewBomIdsFromActuator(
   }
   return out;
 }
-
-
-
-
-
-

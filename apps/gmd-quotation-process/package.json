@@ -15,7 +15,6 @@
     "round:qr:apply": "tsx scripts/round-qr.ts --apply",
     "stock:sync": "tsx scripts/sync-available-stock-from-stock-phys.ts",
     "stock:sync:apply": "tsx scripts/sync-available-stock-from-stock-phys.ts --apply",
-    "bom:item-name": "tsx scripts/backfill-verify-bom-item-name.ts",
     "backfill:item-name-merge": "tsx scripts/backfill-item-name-merge.ts",
     "contract:sync": "tsx scripts/sync-contract-numbers.ts",
     "ic:sync": "tsx scripts/sync-ic-dump.ts",
@@ -54,8 +53,14 @@
     "docket:pending:backfill:apply": "tsx scripts/backfill-docket-pending-party.ts --apply",
     "email:backfill": "tsx scripts/backfill-enquiry-email-addresses.ts",
     "email:backfill:apply": "tsx scripts/backfill-enquiry-email-addresses.ts --apply",
+    "email:backfill-sender": "tsx scripts/backfill-enquiry-sender-email.ts",
+    "email:backfill-sender:apply": "tsx scripts/backfill-enquiry-sender-email.ts --apply",
     "bom:fix-stale": "tsx scripts/fix-stale-bom-ids.ts",
-    "bom:fix-stale:apply": "tsx scripts/fix-stale-bom-ids.ts --apply"
+    "bom:fix-stale:apply": "tsx scripts/fix-stale-bom-ids.ts --apply",
+    "docket:backfill-items": "tsx scripts/backfill-pending-docket-items.ts",
+    "docket:backfill-items:apply": "tsx scripts/backfill-pending-docket-items.ts --apply",
+    "rm:cost:round10": "tsx scripts/round-raw-material-cost-to-10.ts",
+    "rm:cost:round10:apply": "tsx scripts/round-raw-material-cost-to-10.ts --apply"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",
@@ -107,6 +112,7 @@
     "tailwind-merge": "^3.6.0",
     "tsx": "^4.19.0",
     "tw-animate-css": "^1.4.0",
+    "unpdf": "^1.8.1",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },

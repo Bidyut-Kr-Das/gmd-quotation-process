@@ -13,6 +13,22 @@ import {
   PARTY_SENTINELS,
 } from "./enquiryEmailParty";
 
+// Sender / cc split helpers live with the other pure email helpers; re-exported
+// here so scheduled-job code has a single import surface.
+export {
+  threadSenderEmails,
+  threadCcEmails,
+  splitThreadEmails,
+  threadEmailLists,
+  partyKey,
+} from "./enquiryEmailParty";
+export type {
+  ThreadEmailFields,
+  EmailListEntry,
+  EmailSplitSource,
+  ThreadEmailSplit,
+} from "./enquiryEmailParty";
+
 export type PartyNameSource = "email" | "partyName" | "subCategory" | "unknown";
 
 export interface ThreadPartyFields {
@@ -66,7 +82,7 @@ export function threadPreferredEmails(thread: ThreadPartyFields): string[] {
  * (`docketNo` set, `sub_category` holding a real party name). First writer wins.
  */
 export function buildEmailPartyMap(input: {
-  enquiries: { emailAddress: string | null; partyName: string }[];
+  enquiries: { emailAddress: string | null; senderEmail?: string | null; partyName: string }[];
   assignedThreads: ThreadPartyFields[];
 }): Map<string, string> {
   const map = new Map<string, string>();
@@ -80,7 +96,11 @@ export function buildEmailPartyMap(input: {
   for (const enq of input.enquiries) {
     const party = String(enq.partyName ?? "").trim();
     if (!party) continue;
-    for (const email of extractEmailsFromValue(enq.emailAddress)) put(email, party);
+    const emails = [
+      ...extractEmailsFromValue(enq.emailAddress),
+      ...extractEmailsFromValue(enq.senderEmail),
+    ];
+    for (const email of emails) put(email, party);
   }
 
   for (const thread of input.assignedThreads) {

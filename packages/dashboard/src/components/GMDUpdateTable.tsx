@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, type ReactNode } from "react";
 import { ChevronUp, ChevronDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check, Highlighter } from "lucide-react";
 import GMDUpdateStatusBadge from "./GMDUpdateStatusBadge";
 import type { ContractReviewImage } from "../lib/types";
@@ -686,12 +686,24 @@ const FROZEN_VISIBLE_COLUMNS = 2;
 const WRAPPED_CELL_BOX =
   "max-h-16 overflow-y-auto overflow-x-hidden cell-scrollable whitespace-normal leading-normal break-words";
 
+/**
+ * A column-filter checkbox whose match logic is supplied by the caller instead
+ * of being derived from the column's own cell value. Rendered in `MultiSelect`
+ * right after the built-in `(Blank)` option.
+ */
+export type ExtraFilterOption = {
+  value: string;
+  label: string;
+  match: (row: unknown[]) => boolean;
+};
+
 function MultiSelect({
   options,
   selected,
   onChange,
   optionMeta,
   hideBlank,
+  extraOptions,
 }: {
   options: string[];
   selected: string[];
@@ -701,9 +713,14 @@ function MultiSelect({
     { count: number; sumLabel: string; partyName?: string }
   >;
   hideBlank?: boolean;
+  extraOptions?: ExtraFilterOption[];
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const extraValues = useMemo(
+    () => new Set((extraOptions ?? []).map((o) => o.value)),
+    [extraOptions],
+  );
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -766,7 +783,30 @@ function MultiSelect({
                 <span className="italic text-muted-foreground">(Blank)</span>
               </label>
             )}
-            {options.map((opt) => {
+            {extraOptions?.map((o) => (
+              <label
+                key={o.value}
+                className="flex items-center gap-1.5 px-2 py-1 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer text-[10px]"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o.value)}
+                  onChange={() => {
+                    const next = selected.includes(o.value)
+                      ? selected.filter((v) => v !== o.value)
+                      : [...selected, o.value];
+                    onChange(next);
+                  }}
+                  className="accent-amber-600 dark:accent-amber-400"
+                />
+                <span className="flex-1 min-w-0 truncate font-semibold text-amber-700 dark:text-amber-400">
+                  {o.label}
+                </span>
+              </label>
+            ))}
+            {options
+              .filter((opt) => !extraValues.has(opt))
+              .map((opt) => {
               const meta = optionMeta?.[opt];
               return (
                 <label
@@ -970,6 +1010,14 @@ interface GMDUpdateTableProps {
   onMatchCosts?: () => void;
   blankOnlyEditableColumns?: string[];
   dropdownRowCondition?: (header: string, row: unknown[]) => boolean;
+  /**
+   * Per-column sentinel checkboxes rendered in the column's filter dropdown
+   * right after the built-in `(Blank)` option. Each option's `match` is
+   * evaluated against the whole row, letting a page express a filter that
+   * depends on more than the column's own cell value (e.g. Actuator "Pending
+   * Actuations" = an actuator item row whose Actuator dropdown is still empty).
+   */
+  extraFilterOptions?: Record<string, ExtraFilterOption[]>;
   imageButtonColumn?: string;
   itemImagesByCode?: Record<string, ContractReviewImage[]>;
   /**
@@ -990,6 +1038,19 @@ interface GMDUpdateTableProps {
    * beside the contract number.
    */
   linkedFilesIconColumn?: string;
+  /**
+   * Extra captions to render right-aligned in a tabular-nums face, in addition
+   * to the built-in `NUMERIC_COLUMNS` set. Lets a dashboard whose columns are
+   * not part of the raw-material sheet (e.g. Engineering Data) opt its numeric
+   * columns in without touching this file.
+   */
+  numericColumns?: ReadonlySet<string>;
+  /**
+   * Extra content rendered in the toolbar immediately after the record count.
+   * The table does not fetch this itself — callers pass a ready-rendered node
+   * (e.g. a density reference strip).
+   */
+  toolbarExtra?: ReactNode;
 }
 
 type CellBadge = NonNullable<GMDUpdateTableProps["cellBadges"]>[number];
@@ -1083,6 +1144,7 @@ castingRateInputs,
   onMatchCosts,
   blankOnlyEditableColumns,
   dropdownRowCondition,
+  extraFilterOptions,
   filterState,
   filterActions,
   columnOptionMeta,
@@ -1094,6 +1156,8 @@ castingRateInputs,
   batchFilterHeader,
   batchPresenceFilters,
   diffHighlight,
+  numericColumns,
+  toolbarExtra,
 }: GMDUpdateTableProps) {
   const isControlled = !!filterState;
 
@@ -1546,6 +1610,9 @@ castingRateInputs,
         const matchesZero = selected.includes(FLOW_ZERO) && cellIsZero(cellVal);
         const matchesNonZero =
           selected.includes(FLOW_NON_ZERO) && !cellIsZero(cellVal);
+        const matchesExtra = (extraFilterOptions?.[colName] ?? []).some(
+          (o) => selected.includes(o.value) && o.match(row),
+        );
         if (
           !(
             matchesBlank ||
@@ -1553,6 +1620,7 @@ castingRateInputs,
             matchesNoValue ||
             matchesZero ||
             matchesNonZero ||
+            matchesExtra ||
             selected.includes(cellVal)
           )
         )
@@ -1629,6 +1697,7 @@ castingRateInputs,
       imageButtonColumn,
       itemImagesByCode,
       batchPresenceFilters,
+      extraFilterOptions,
     ],
   );
 
@@ -2110,7 +2179,7 @@ castingRateInputs,
       }
     } else if (STATUS_COLUMNS.has(header)) {
       cellContent = <GMDUpdateStatusBadge value={display || null} />;
-    } else if (NUMERIC_COLUMNS.has(header)) {
+    } else if (NUMERIC_COLUMNS.has(header) || numericColumns?.has(header)) {
       cellContent = (
         <span className="font-mono-md text-right text-foreground">
           {display || "—"}
@@ -2294,16 +2363,17 @@ castingRateInputs,
   return (
     <div className={`flex flex-col w-full max-w-full min-w-0 bg-card border border-border rounded-lg shadow-sm ${fullHeight ? "flex-1 min-h-0 overflow-hidden h-full" : ""}`}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-border bg-muted">
         <div className="flex items-center gap-2">
           {title && (
             <span className="text-xs font-bold uppercase tracking-wider text-">
               {title}
             </span>
           )}
-          <span className="text-xs font-semibold text-foreground/60">
+          <span className="text-xs font-semibold text-foreground/60 mr-10">
             Showing {filteredRows.length} of {rows.length} records
           </span>
+          {toolbarExtra}
           {usdInrRate != null && (
             <span className="flex items-center gap-1 text-xs font-semibold text-green-700 dark:text-green-300 bg-card border border-border rounded px-2 py-0.5">
               1 USD = ₹{usdInrRate.toFixed(2)}
@@ -2648,6 +2718,7 @@ castingRateInputs,
                                   selected={multiFilters[ch] ?? []}
                                   onChange={(vals) => handleMultiFilter(ch, vals)}
                                   optionMeta={columnOptionMeta?.[ch]}
+                                  extraOptions={extraFilterOptions?.[ch]}
                                 />
                               )}
                               <div className="flex items-center gap-1">
@@ -2856,6 +2927,7 @@ castingRateInputs,
                             selected={multiFilters[header] ?? []}
                             onChange={(vals) => handleMultiFilter(header, vals)}
                             optionMeta={columnOptionMeta?.[header]}
+                            extraOptions={extraFilterOptions?.[header]}
                             hideBlank={
                               !!filterAttachmentColumn &&
                               !!attachmentColumn &&

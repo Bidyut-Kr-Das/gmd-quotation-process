@@ -37,12 +37,10 @@ export const DEFAULT_COLUMN_WIDTHS: Record<number, number> = {
   32: 140, // Total Value incl. GST
   33: 140, // Itemwise Total Value
   34: 170, // Validation
-  35: 180, // Attachment
-  36: 140, // Delivery Schedule
-  37: 170, // APM
-  38: 150, // Offer PDF
-  39: 140, // Duplicate
-  40: 80,  // Actions
+  35: 140, // Delivery Schedule
+  36: 170, // APM
+  37: 150, // Offer PDF
+  38: 80,  // Actions
 };
 
 const initialState: UiState = {

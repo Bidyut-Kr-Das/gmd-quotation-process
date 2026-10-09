@@ -14,7 +14,7 @@ import { validateVaPercent, getDefaultVaPercent } from "@/lib/vaValidation";
 import { recomputeItemCodeForValues, fetchBomIdSet, refreshItemCodeForItem, syncGmdItemCodes, clearBomIdCache } from "@/lib/gmdItemCodeLookup";
 import { fetchBomRows, buildRmCostMap, DIRECT_M2M, getBomEntry, getCachedBomRows, clearBomCache } from "@/lib/gmdBomCostLookup";
 import { update2to1CostForItems, buildRawMaterialsCostMap, clear2to1BomCache } from "@/lib/gmd2to1CostLookup";
-import { getDistinctBomIds, getBomRmAvailBatch, resolveContractReviewBomIdsFromActuator, computeContractReviewRmAvail, getNoUseBomIdSet, normalizeActuatorPart, clearVerifyBomCache } from "@/lib/verifyBomLookup";
+import { getDistinctBomIds, getBomRmAvailBatch, resolveContractReviewBomIdsFromActuator, computeContractReviewRmAvail, getNoUseBomIdSet, normalizeActuatorPart, clearVerifyBomCache, findBomForItem, getBomCandidates } from "@/lib/verifyBomLookup";
 import { splitCsvLinks } from "@/lib/gmd_lib/contract-order-links";
 import { buildDerivedItemName } from "@/lib/gmd_lib/derived-item-name";
 import { getUsdInrRate } from "@/lib/gmd_lib/exchangeRate";
@@ -1033,7 +1033,7 @@ export async function syncEnquiryEmailAddressesAction() {
         threadCount: result.threadCount,
         partyCount: result.partyCount,
         matchedByParty: result.matchedByParty,
-        enquiries: result.proposals.map((p) => ({ id: p.id, emailAddress: p.emailAddress })),
+        enquiries: result.proposals.map((p) => ({ id: p.id, senderEmail: p.senderEmail, emailAddress: p.emailAddress })),
       },
     };
   } catch (error: any) {
@@ -1266,19 +1266,8 @@ async function maybeBackCalculateBomFromRmType(itemId: string, selectedRmType: s
 
   if (!itemCode) return null;
 
-  // Look up candidate BOMs for this item code from VerifyBom (excluding NO USE)
-  const candidates = await prisma.verifyBom.findMany({
-    where: {
-      itemCode,
-      noUse: { not: "NO USE" },
-    },
-    select: {
-      bomId: true,
-      rmItemCode: true,
-      bomIdType: true,
-    },
-    orderBy: { bomId: "asc" },
-  });
+  // Look up candidate BOM components for this item code (excluding NO USE)
+  const candidates = await getBomCandidates(itemCode, { excludeNoUse: true });
   if (candidates.length === 0) return null;
 
   const rmCodes = [...new Set(candidates.map((c) => c.rmItemCode).filter(Boolean))] as string[];
@@ -1554,10 +1543,7 @@ export async function updateItemFieldAction(
             if (isStaleBom || !currentBomId) {
               if (validCandidates.length === 1 && afterCode?.erpItemCode) {
                 const candidateBom = validCandidates[0];
-                const vbRow = await prisma.verifyBom.findFirst({
-                  where: { itemCode: afterCode.erpItemCode, bomId: candidateBom },
-                  select: { bomId: true, rmItemCode: true, bomIdType: true },
-                });
+                const vbRow = await findBomForItem(afterCode.erpItemCode, candidateBom);
                 if (vbRow?.rmItemCode) {
                   const bomType = vbRow.bomIdType || DIRECT_M2M;
                   const dataToUpdate: any = { bomId: vbRow.bomId, rmItemCode: vbRow.rmItemCode, bomType };
@@ -1627,10 +1613,7 @@ export async function updateItemFieldAction(
         if (isStaleBom || !currentBomId) {
           if (validCandidates.length === 1 && itemCodeVal) {
             const candidateBom = validCandidates[0];
-            const vbRow = await prisma.verifyBom.findFirst({
-              where: { itemCode: itemCodeVal, bomId: candidateBom },
-              select: { bomId: true, rmItemCode: true, bomIdType: true },
-            });
+            const vbRow = await findBomForItem(itemCodeVal, candidateBom);
             if (vbRow?.rmItemCode) {
               const bomType = vbRow.bomIdType || DIRECT_M2M;
               const dataToUpdate: any = { bomId: vbRow.bomId, rmItemCode: vbRow.rmItemCode, bomType };
@@ -1768,7 +1751,7 @@ async function maybeUpdateProductCostFromNewCode(itemId: string, newCode: string
       // Single candidate path: try VerifyBom row for cost, fallback to sheet BOM
       // PRIORITY: Raw Materials (GMDUpdateItem.cost) wins; SupplyHistory is fallback
       // Non-override: only set productCost if needProductCost, but bomId/bomType/rmItemCode/availableStock still respect present checks
-      const vbRow = await prisma.verifyBom.findFirst({ where: { itemCode: newCode, bomId: candidateIds[0] }, select: { bomId: true, rmItemCode: true, bomIdType: true } });
+      const vbRow = await findBomForItem(newCode, candidateIds[0]);
       if (vbRow?.rmItemCode) {
         // Try Raw Materials first, then SupplyHistory fallback
         let cost: number | undefined;
@@ -1906,7 +1889,7 @@ export async function selectBomIdAction(itemId: string, bomId: string | null) {
       const cleared = await prisma.enquiryItem.update({ where: { id: itemId }, data: { bomId: null, rmItemCode: null, rmType: null, bomType: null } });
       return { success: true, data: serializeItem(cleared) };
     }
-    const vbRow = await prisma.verifyBom.findFirst({ where: { itemCode: item.erpItemCode, bomId }, select: { bomId: true, rmItemCode: true, bomIdType: true } });
+    const vbRow = await findBomForItem(item.erpItemCode, bomId);
     if (!vbRow) return { success: false, error: "BOM not found for this item code." };
     // Update bom linkage and available stock if DIRECT M2M
     const bomType = vbRow.bomIdType || DIRECT_M2M;
@@ -3665,10 +3648,7 @@ export async function selectContractReviewBomIdAction(
       if (!ids.includes(value)) {
         return { success: false, error: "Selected BOM ID is not in available options." };
       }
-      const vbRow = await prisma.verifyBom.findFirst({
-        where: { itemCode: item.itemCode, bomId: value },
-        select: { bomIdType: true },
-      });
+      const vbRow = await findBomForItem(item.itemCode, value);
       const itemType = (vbRow?.bomIdType ?? "").trim()
         ? vbRow!.bomIdType!
         : "no itemtype present";
@@ -3716,10 +3696,7 @@ export async function autoAssignContractReviewBomIdFromActuator(ids: string[]) {
       const bomId = bomIdByRow.get(row.id);
       if (!bomId) continue;
       if (row.bomId === bomId) continue;
-      const vbRow = await prisma.verifyBom.findFirst({
-        where: { itemCode: row.itemCode, bomId },
-        select: { bomIdType: true },
-      });
+      const vbRow = await findBomForItem(row.itemCode, bomId);
       const itemType = (vbRow?.bomIdType ?? "").trim()
         ? vbRow!.bomIdType!
         : "no itemtype present";
@@ -4489,9 +4466,12 @@ export async function recomputeIndentListingVersionsAction() {
   }
 }
 
-const VERIFY_BOM_EDITABLE_FIELDS = new Set([
-  "bomIdType",
-  "bomItemQty",
+// /bom edits land on the normalized BOM tables. Row ids come from GET /api/bom:
+// a plain id is a BomItem, `bom:<id>` a component-less Bom, `item:<id>` a
+// BOM-less FullItem.
+const BOM_LEVEL_FIELDS = new Set(["bomIdType"]);
+const BOM_ITEM_LEVEL_FIELDS = new Set(["bomItemQty"]);
+const FULL_ITEM_LEVEL_FIELDS = new Set([
   "itemScheduleName",
   "itemType",
   "moc",
@@ -4515,160 +4495,72 @@ export async function updateVerifyBomFieldBatchAction(
 ) {
   "use server";
   try {
-    if (!VERIFY_BOM_EDITABLE_FIELDS.has(field)) {
+    const isBom = BOM_LEVEL_FIELDS.has(field);
+    const isBomItem = BOM_ITEM_LEVEL_FIELDS.has(field);
+    const isFullItem = FULL_ITEM_LEVEL_FIELDS.has(field);
+    if (!isBom && !isBomItem && !isFullItem) {
       return { success: false, error: `Field "${field}" is not editable.` };
     }
     const unique = [...new Set(ids.filter(Boolean))];
     if (unique.length === 0) {
       return { success: true, count: 0 };
     }
-    await prisma.$transaction(
-      unique.map((id) =>
-        prisma.verifyBom.update({
-          where: { id },
-          data: { [field]: value },
-        }),
-      ),
-    );
-    return { success: true, count: unique.length };
-  } catch (error: any) {
-    console.error("Error updating VerifyBom fields:", error);
-    return {
-      success: false,
-      error: error.message || "Failed to update VerifyBom fields.",
-    };
-  }
-}
 
-function deriveVerifyBomItemName(item: {
-  itemType: string | null;
-  moc: string | null;
-  operation: string | null;
-  size: string | null;
-  pnGmd: string | null;
-}): string | null {
-  const parts = [item.itemType, item.moc, item.operation, item.size, item.pnGmd].map(
-    (p) => (p ?? "").trim(),
-  );
-  if (parts.some((p) => p === "")) return null;
-  return parts.join("_");
-}
-
-// Derives VerifyBom NEW ITEM NAME as ITEM_TYPE_MOC_OPERATION_SIZE_PN-GMD
-// and overwrites `merged` (derived wins). Returns the updated rows for the client to patch.
-export async function deriveVerifyBomItemNameBatchAction(ids: string[]) {
-  "use server";
-  try {
-    const unique = [...new Set(ids.filter(Boolean))];
-    if (unique.length === 0) return { success: true, data: [] };
-    const items = await prisma.verifyBom.findMany({
-      where: { id: { in: unique } },
-      select: {
-        id: true,
-        itemType: true,
-        moc: true,
-        operation: true,
-        size: true,
-        pnGmd: true,
-        merged: true,
-      },
-    });
-    const updates = items
-      .map((item) => {
-        const merged = deriveVerifyBomItemName(item);
-        const current = (item.merged ?? "").trim();
-        const next = merged ?? "";
-        if (current === next) return null;
-        return prisma.verifyBom.update({
-          where: { id: item.id },
-          data: { merged },
-        });
-      })
-      .filter((u): u is NonNullable<typeof u> => u !== null);
-    if (updates.length > 0) {
-      await prisma.$transaction(updates);
+    const bomItemIds: string[] = [];
+    const bomIds = new Set<string>();
+    const fullItemIds = new Set<string>();
+    for (const id of unique) {
+      if (id.startsWith("bom:")) bomIds.add(id.slice(4));
+      else if (id.startsWith("item:")) fullItemIds.add(id.slice(5));
+      else bomItemIds.push(id);
     }
-    return {
-      success: true,
-      data: items
-        .map((item) => ({ id: item.id, merged: deriveVerifyBomItemName(item) })),
-    };
-  } catch (error: any) {
-    console.error("Error deriving VerifyBom item names:", error);
-    return {
-      success: false,
-      error: error.message || "Failed to derive VerifyBom item names.",
-    };
-  }
-}
-
-function parseNumericCell(value: string | null | undefined): number | null {
-  const s = String(value ?? "")
-    .replace(/,/g, "")
-    .trim();
-  if (!s || s === "-") return null;
-  const n = parseFloat(s);
-  return isNaN(n) ? null : n;
-}
-
-// Computes VerifyBom BOM ITEM QTY * COST (bomItemQtyCost) and persists it.
-// - qty + numeric cost -> qty * cost rounded to 2 decimals
-// - qty present but cost missing/non-numeric -> "RM COST NOT AVAILABLE"
-// - qty blank -> null
-export async function recomputeVerifyBomBomQtyCostBatchAction(ids: string[]) {
-  "use server";
-  try {
-    const unique = [...new Set(ids.filter(Boolean))];
-    if (unique.length === 0) return { success: true, data: [] };
-    const items = await prisma.verifyBom.findMany({
-      where: { id: { in: unique } },
-      select: { id: true, bomItemQty: true, cost: true, bomItemQtyCost: true },
+    const components = await prisma.bomItem.findMany({
+      where: { id: { in: bomItemIds } },
+      select: { id: true, bomId: true, bom: { select: { fullItemId: true } } },
     });
-    const updates = items
-      .map((item) => {
-        const qty = parseNumericCell(item.bomItemQty);
-        const cost = parseNumericCell(item.cost);
-        let next: string | null;
-        if (qty === null) {
-          next = null;
-        } else if (cost === null) {
-          next = "RM COST NOT AVAILABLE";
-        } else {
-          next = (Math.round(qty * cost * 100) / 100).toString();
-        }
-        const current = (item.bomItemQtyCost ?? "").trim();
-        if (current === (next ?? "")) return null;
-        return prisma.verifyBom.update({
-          where: { id: item.id },
-          data: { bomItemQtyCost: next },
-        });
-      })
-      .filter((u): u is NonNullable<typeof u> => u !== null);
-    if (updates.length > 0) {
-      await prisma.$transaction(updates);
+    for (const c of components) {
+      bomIds.add(c.bomId);
+      fullItemIds.add(c.bom.fullItemId);
     }
-    return {
-      success: true,
-      data: items
-        .map((item) => {
-          const qty = parseNumericCell(item.bomItemQty);
-          const cost = parseNumericCell(item.cost);
-          let next: string | null;
-          if (qty === null) {
-            next = null;
-          } else if (cost === null) {
-            next = "RM COST NOT AVAILABLE";
-          } else {
-            next = (Math.round(qty * cost * 100) / 100).toString();
-          }
-          return { id: item.id, bomItemQtyCost: next };
-        }),
-    };
+    if (isFullItem && bomIds.size > 0) {
+      const boms = await prisma.bom.findMany({
+        where: { id: { in: [...bomIds] } },
+        select: { fullItemId: true },
+      });
+      for (const b of boms) fullItemIds.add(b.fullItemId);
+    }
+
+    if (isBomItem) {
+      const raw = (value ?? "").trim();
+      if (raw && !/^\d+$/.test(raw)) {
+        return { success: false, error: "BOM ITEM QTY must be a whole number." };
+      }
+      if (components.length === 0) {
+        return { success: false, error: "BOM ITEM QTY can only be set on a component row." };
+      }
+      const res = await prisma.bomItem.updateMany({
+        where: { id: { in: components.map((c) => c.id) } },
+        data: { quantity: raw ? parseInt(raw, 10) : null },
+      });
+      return { success: true, count: res.count };
+    }
+    if (isBom) {
+      const res = await prisma.bom.updateMany({
+        where: { id: { in: [...bomIds] } },
+        data: { bomIdType: value },
+      });
+      return { success: true, count: res.count };
+    }
+    const res = await prisma.fullItem.updateMany({
+      where: { id: { in: [...fullItemIds] } },
+      data: { [field]: value },
+    });
+    return { success: true, count: res.count };
   } catch (error: any) {
-    console.error("Error recomputing VerifyBom BOM ITEM QTY * COST:", error);
+    console.error("Error updating BOM fields:", error);
     return {
       success: false,
-      error: error.message || "Failed to recompute VerifyBom BOM ITEM QTY * COST.",
+      error: error.message || "Failed to update BOM fields.",
     };
   }
 }
@@ -4686,58 +4578,38 @@ export async function syncNullVerifyBomStockAction() {
 
     const stockPhysMap = await fetchStockPhysicalSheet();
 
-    const nullRows = await prisma.verifyBom.findMany({
+    // Stock now lives on RawMaterial. Gap-fill only: rows whose erpItemCode has
+    // no availableStock yet.
+    const nullRows = await prisma.rawMaterial.findMany({
       where: {
-        OR: [
-          { availableStock: null },
-          { availableStock: "" },
-        ],
+        OR: [{ availableStock: null }, { availableStock: "" }],
       },
-      select: {
-        id: true,
-        bomId: true,
-        itemCode: true,
-        rmItemCode: true,
-        availableStock: true,
-      },
+      select: { id: true, erpItemCode: true },
     });
 
     const updates: { id: string; stock: string }[] = [];
     const unmatchedSamples: string[] = [];
     let matchedByRmCode = 0;
-    let matchedByItemCode = 0;
     let unmatched = 0;
 
     for (const row of nullRows) {
-      const currentStock = (row.availableStock ?? "").trim();
-      if (currentStock !== "") continue;
-
-      const rmCode = (row.rmItemCode ?? "").trim().toUpperCase();
-      const itemCode = (row.itemCode ?? "").trim().toUpperCase();
-
-      let foundStock: string | null = null;
-      let source: "rmItemCode" | "itemCode" | null = null;
-
-      if (rmCode && rmCode in stockPhysMap) {
-        foundStock = stockPhysMap[rmCode];
-        source = "rmItemCode";
-      } else if (itemCode && itemCode in stockPhysMap) {
-        foundStock = stockPhysMap[itemCode];
-        source = "itemCode";
+      const code = (row.erpItemCode ?? "").trim().toUpperCase();
+      if (!code) {
+        unmatched++;
+        continue;
       }
+
+      const foundStock = stockPhysMap[code];
 
       // A sheet value of "0" is a real count and must be kept; only a blank
       // (or a code missing from the sheet) counts as no match.
-      if (foundStock !== null && foundStock.trim() !== "") {
+      if (foundStock !== undefined && foundStock.trim() !== "") {
         updates.push({ id: row.id, stock: foundStock });
-        if (source === "rmItemCode") matchedByRmCode++;
-        else if (source === "itemCode") matchedByItemCode++;
+        matchedByRmCode++;
       } else {
         unmatched++;
         if (unmatchedSamples.length < 20) {
-          unmatchedSamples.push(
-            `${row.bomId || "-"} :: ${row.itemCode || "-"} :: ${row.rmItemCode || "<empty>"}`,
-          );
+          unmatchedSamples.push(`RM: ${row.erpItemCode || "<empty>"}`);
         }
       }
     }
@@ -4748,7 +4620,7 @@ export async function syncNullVerifyBomStockAction() {
         const chunk = updates.slice(i, i + chunkSize);
         await prisma.$transaction(
           chunk.map((u) =>
-            prisma.verifyBom.update({
+            prisma.rawMaterial.update({
               where: { id: u.id },
               data: { availableStock: u.stock },
             }),
@@ -4762,7 +4634,7 @@ export async function syncNullVerifyBomStockAction() {
       updatedCount: updates.length,
       totalNullCount: nullRows.length,
       matchedByRmCode,
-      matchedByItemCode,
+      matchedByItemCode: 0,
       unmatched,
       unmatchedSamples,
     };
@@ -4827,6 +4699,77 @@ type BomMastSyncPlan = {
  *   wins wherever it has a value. A null/empty sheet cell never replaces an
  *   existing name. Identical values are skipped so only real changes are written.
  */
+type BomComponentRow = {
+  id: string;
+  bomId: string;
+  itemCode: string;
+  rmItemCode: string;
+  noUse: string | null;
+  cBatch: string | null;
+  itemName: string | null;
+  rmItemName: string | null;
+};
+
+// Flattens the relational BOM chain (FullItem -> Bom -> BomItem -> RawMaterial |
+// FullItem) into the bomId||itemCode||rmItemCode shape the ERP syncs work with.
+async function loadBomComponentRows(): Promise<BomComponentRow[]> {
+  const components = await prisma.bomItem.findMany({
+    select: {
+      id: true,
+      noUse: true,
+      cBatch: true,
+      bom: {
+        select: {
+          bomId: true,
+          fullItem: { select: { itemCode: true, itemName: true } },
+        },
+      },
+      rawMaterial: { select: { erpItemCode: true, itemNameAuto: true } },
+      fullItem: { select: { itemCode: true, itemName: true } },
+    },
+  });
+  return components.map((c) => ({
+    id: c.id,
+    bomId: c.bom?.bomId ?? "",
+    itemCode: c.bom?.fullItem?.itemCode ?? "",
+    rmItemCode: c.rawMaterial?.erpItemCode ?? c.fullItem?.itemCode ?? "",
+    noUse: c.noUse,
+    cBatch: c.cBatch,
+    itemName: c.bom?.fullItem?.itemName ?? null,
+    rmItemName: c.rawMaterial?.itemNameAuto ?? c.fullItem?.itemName ?? null,
+  }));
+}
+
+async function resolveBomItemTarget(
+  bomId: string,
+  itemCode: string,
+  rmItemCode: string,
+): Promise<{
+  bomDbId: string;
+  rawMaterialId: string | null;
+  fullItemId: string | null;
+} | null> {
+  const bom = await prisma.bom.findFirst({
+    where: { bomId, fullItem: { itemCode } },
+    select: { id: true },
+  });
+  if (!bom) return null;
+
+  const rm = await prisma.rawMaterial.findFirst({
+    where: { erpItemCode: rmItemCode },
+    select: { id: true },
+  });
+  if (rm) return { bomDbId: bom.id, rawMaterialId: rm.id, fullItemId: null };
+
+  const fi = await prisma.fullItem.findFirst({
+    where: { itemCode: rmItemCode },
+    select: { id: true },
+  });
+  if (fi) return { bomDbId: bom.id, rawMaterialId: null, fullItemId: fi.id };
+
+  return null;
+}
+
 async function buildBomMastSyncPlan(): Promise<BomMastSyncPlan> {
   const { readBomMastErp, readItemMasterErp } = await import(
     "@/lib/gmd_lib/bomMastErp"
@@ -4854,23 +4797,9 @@ async function buildBomMastSyncPlan(): Promise<BomMastSyncPlan> {
     );
   }
 
-  const dbRows = await prisma.verifyBom.findMany({
-    select: {
-      id: true,
-      bomId: true,
-      itemCode: true,
-      rmItemCode: true,
-      noUse: true,
-      cBatch: true,
-      itemName: true,
-      rmItemName: true,
-    },
-  });
+  const dbRows = await loadBomComponentRows();
 
-  const byKey = new Map<
-    string,
-    (typeof dbRows)[number]
-  >();
+  const byKey = new Map<string, BomComponentRow>();
   for (const r of dbRows) {
     byKey.set(keyOf(norm(r.bomId), norm(r.itemCode), norm(r.rmItemCode)), r);
   }
@@ -5014,24 +4943,13 @@ export async function syncBomMastItemNamesAction() {
       );
     }
 
-    const dbRows = await prisma.verifyBom.findMany({
-      select: {
-        id: true,
-        bomId: true,
-        itemCode: true,
-        rmItemCode: true,
-        noUse: true,
-        cBatch: true,
-      },
-    });
+    const dbRows = await loadBomComponentRows();
     const idByKey = new Map<string, string>();
     for (const r of dbRows) {
       idByKey.set(keyOf(norm(r.bomId), norm(r.itemCode), norm(r.rmItemCode)), r.id);
     }
 
-    const syncedAt = new Date();
-    const updateOps: ReturnType<typeof prisma.verifyBom.update>[] = [];
-    const createOps: ReturnType<typeof prisma.verifyBom.upsert>[] = [];
+    const updateOps: ReturnType<typeof prisma.bomItem.update>[] = [];
     let marked = 0;
     let created = 0;
 
@@ -5039,33 +4957,29 @@ export async function syncBomMastItemNamesAction() {
       const existingId = idByKey.get(key);
       if (existingId) {
         updateOps.push(
-          prisma.verifyBom.update({
+          prisma.bomItem.update({
             where: { id: existingId },
             // only the two flag fields - never clobber names/stock/cost
             data: { noUse: BATCH_NO_USE, cBatch: BATCH_C },
           }),
         );
         marked++;
-      } else {
-        const [bomId, itemCode, rmItemCode] = key.split("||");
-        createOps.push(
-          prisma.verifyBom.upsert({
-            where: {
-              bomId_itemCode_rmItemCode: { bomId, itemCode, rmItemCode },
-            },
-            create: {
-              bomId,
-              itemCode,
-              rmItemCode,
-              noUse: BATCH_NO_USE,
-              cBatch: BATCH_C,
-              syncedAt,
-            },
-            update: { noUse: BATCH_NO_USE, cBatch: BATCH_C },
-          }),
-        );
-        created++;
+        continue;
       }
+
+      const [bomId, itemCode, rmItemCode] = key.split("||");
+      const target = await resolveBomItemTarget(bomId, itemCode, rmItemCode);
+      if (!target) continue;
+      await prisma.bomItem.create({
+        data: {
+          bomId: target.bomDbId,
+          rawMaterialId: target.rawMaterialId,
+          fullItemId: target.fullItemId,
+          noUse: BATCH_NO_USE,
+          cBatch: BATCH_C,
+        },
+      });
+      created++;
     }
 
     for (let i = 0; i < updateOps.length; i += CHUNK) {
@@ -5073,59 +4987,68 @@ export async function syncBomMastItemNamesAction() {
         timeout: 20000,
       });
     }
-    for (let i = 0; i < createOps.length; i += CHUNK) {
-      await prisma.$transaction(createOps.slice(i, i + CHUNK), {
-        timeout: 20000,
-      });
-    }
 
     // ---------------- Phase 2 ----------------
     const { nameByCode } = await readItemMasterErp();
 
-    const nameRows = await prisma.verifyBom.findMany({
-      select: {
-        id: true,
-        itemCode: true,
-        rmItemCode: true,
-        itemName: true,
-        rmItemName: true,
-      },
+    // Names live on FullItem (itemName) and RawMaterial (itemNameAuto). Only
+    // codes referenced by a BOM component are considered.
+    const itemCodes = [...new Set(dbRows.map((c) => c.itemCode).filter(Boolean))];
+    const rmCodes = [...new Set(dbRows.map((c) => c.rmItemCode).filter(Boolean))];
+
+    const fullItems = await prisma.fullItem.findMany({
+      where: { itemCode: { in: itemCodes } },
+      select: { id: true, itemCode: true, itemName: true },
+    });
+    const rawMaterials = await prisma.rawMaterial.findMany({
+      where: { erpItemCode: { in: rmCodes } },
+      select: { id: true, erpItemCode: true, itemNameAuto: true },
     });
 
-    const nameOps: ReturnType<typeof prisma.verifyBom.update>[] = [];
+    const nameOps: ReturnType<typeof prisma.fullItem.update>[] = [];
+    const rmNameOps: ReturnType<typeof prisma.rawMaterial.update>[] = [];
     const unmatchedCodes: string[] = [];
     let itemNameChanged = 0;
     let rmItemNameChanged = 0;
 
-    for (const row of nameRows) {
-      const data: { itemName?: string; rmItemName?: string } = {};
-
-      // A null/empty sheet cell never replaces an existing name.
+    // A null/empty sheet cell never replaces an existing name.
+    for (const row of fullItems) {
       const itemSheet = nameByCode.get(norm(row.itemCode));
       if (itemSheet !== undefined && itemSheet !== (row.itemName ?? "")) {
-        data.itemName = itemSheet;
+        nameOps.push(
+          prisma.fullItem.update({
+            where: { id: row.id },
+            data: { itemName: itemSheet },
+          }),
+        );
         itemNameChanged++;
       } else if (itemSheet === undefined && unmatchedCodes.length < 20) {
         unmatchedCodes.push(`itemCode: ${row.itemCode || "<empty>"}`);
       }
+    }
 
-      const rmSheet = nameByCode.get(norm(row.rmItemCode));
-      if (rmSheet !== undefined && rmSheet !== (row.rmItemName ?? "")) {
-        data.rmItemName = rmSheet;
+    for (const row of rawMaterials) {
+      const rmSheet = nameByCode.get(norm(row.erpItemCode));
+      if (rmSheet !== undefined && rmSheet !== (row.itemNameAuto ?? "")) {
+        rmNameOps.push(
+          prisma.rawMaterial.update({
+            where: { id: row.id },
+            data: { itemNameAuto: rmSheet },
+          }),
+        );
         rmItemNameChanged++;
       } else if (rmSheet === undefined && unmatchedCodes.length < 20) {
-        unmatchedCodes.push(`rmItemCode: ${row.rmItemCode || "<empty>"}`);
-      }
-
-      if (Object.keys(data).length > 0) {
-        nameOps.push(
-          prisma.verifyBom.update({ where: { id: row.id }, data }),
-        );
+        unmatchedCodes.push(`rmItemCode: ${row.erpItemCode || "<empty>"}`);
       }
     }
 
     for (let i = 0; i < nameOps.length; i += CHUNK) {
       await prisma.$transaction(nameOps.slice(i, i + CHUNK), {
+        timeout: 20000,
+      });
+    }
+    for (let i = 0; i < rmNameOps.length; i += CHUNK) {
+      await prisma.$transaction(rmNameOps.slice(i, i + CHUNK), {
         timeout: 20000,
       });
     }
@@ -5370,7 +5293,6 @@ export async function syncContractReviewRmAvailAction() {
     const {
       getBomRmAvailBatch,
       computeContractReviewRmAvail,
-      recomputeVerifyBomValues,
     } = await import("@/lib/verifyBomLookup");
     const { fetchStockPhysicalSheet } = await import(
       "@/lib/gmd_lib/google-sheets"
@@ -5419,10 +5341,7 @@ export async function syncContractReviewRmAvailAction() {
       stockFilled = stockUpdates.length;
     }
 
-    // 2. Refresh VerifyBom (availableStock + USE/NO USE) from GMDUpdateItem
-    await recomputeVerifyBomValues();
-
-    // 3. Recompute RM AVAIL for all Contract Review rows with a bomId
+    // 2. Recompute RM AVAIL for all Contract Review rows with a bomId
     const withBom = await tenderPrisma.contractReview.findMany({
       where: { bomId: { not: null } },
       select: { id: true, bomId: true, orderQty: true, noUse: true },
@@ -5449,7 +5368,7 @@ export async function syncContractReviewRmAvailAction() {
       await tenderPrisma.$transaction(rmAvailUpdates);
     }
 
-    // 4. Push the PHYSICAL STOCK column: match each row's RM code (costCodeRef)
+    // 3. Push the PHYSICAL STOCK column: match each row's RM code (costCodeRef)
     //    against the stock-phys sheet, summing every code in a comma-joined ref.
     const physicalRows = await tenderPrisma.contractReview.findMany({
       select: { id: true, costCodeRef: true, rmPhysicalStock: true },

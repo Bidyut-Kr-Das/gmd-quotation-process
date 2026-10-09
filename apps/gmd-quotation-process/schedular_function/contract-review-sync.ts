@@ -17,12 +17,12 @@
  *
  * 2. **Writes are chunked with an explicit transaction timeout.** The manual
  *    version issues one Prisma call per row; here they are batched at 200 with
- *    `{ timeout: 20000 }`, mirroring `lib/verifyBomLookup.ts:387`.
+ *    `{ timeout: 20000 }`, the same chunking the RM AVAIL job uses.
  *
  * Two side-effect stages from the manual route are deliberately NOT run here,
  * so they do not execute twice per hour:
- *   - `recomputeVerifyBomValues()` and the RM AVAIL (`noUse`) recompute belong
- *     to job 3, which is the button that owns them.
+ *   - the RM AVAIL (`noUse`) recompute belongs to job 3, which is the button
+ *     that owns it.
  *   - the Enquiry backfill belongs to job 2.
  *
  * The two stages the manual route does that are NOT any button's job are kept

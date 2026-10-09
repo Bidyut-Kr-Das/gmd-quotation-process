@@ -30,7 +30,7 @@ export default async function Navbar() {
 
         <div className="flex shrink-0 items-center gap-1.5">
           <ThemeToggle />
-          <button
+          {/* <button
             type="button"
             aria-label="Notifications"
             className="relative inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -40,7 +40,7 @@ export default async function Navbar() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
               <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
             </span>
-          </button>
+          </button> */}
           <ChatPanel enabled={!!session && (role === "admin" || role === "developer")} />
           {session?.user?.email ? (
             <div className="ml-1.5 border-l border-border pl-3">

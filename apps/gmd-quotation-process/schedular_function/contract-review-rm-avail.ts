@@ -8,11 +8,10 @@
  * imports only `@/lib/prisma`; `lib/contractPhysicalStock.ts` imports nothing).
  * So this file calls those libs directly. **No logic is duplicated.**
  *
- * Four steps, in order:
+ * Three steps, in order:
  *   1. Refresh `RawMaterial.availableStock` from the stock-phys tab.
- *   2. `recomputeVerifyBomValues()` — VerifyBom stock, cost and names.
- *   3. Recompute `ContractReview.noUse` (the RM AVAIL column) from BOM availability.
- *   4. Push `ContractReview.rmPhysicalStock` (PHYSICAL STOCK) from stock-phys.
+ *   2. Recompute `ContractReview.noUse` (the RM AVAIL column) from BOM availability.
+ *   3. Push `ContractReview.rmPhysicalStock` (PHYSICAL STOCK) from stock-phys.
  *
  * Two deliberate changes from the button:
  *
@@ -23,10 +22,10 @@
  *    Raw Material job: overwrite when the sheet value differs, skip blanks so a
  *    blank cell can never clear a real value, and treat `"0"` as a real count.
  *    Note `RawMaterial` is a *different table* from `GMDUpdateItem`; this one is
- *    the one `recomputeVerifyBomValues` actually reads (`lib/verifyBomLookup.ts:257`),
+ *    the one `getBomRmAvailBatch` reads through BomItem -> RawMaterial,
  *    so it is the one that has to stay fresh for RM AVAIL to mean anything.
  *
- * 2. **Step 3's transaction is chunked.** The original wraps every differing row
+ * 2. **Step 2's transaction is chunked.** The original wraps every differing row
  *    in one unbounded `$transaction` (`app/actions.ts:5260`), which is a `P2028`
  *    waiting to happen. Here it is chunked at 200 with an explicit timeout.
  *
@@ -40,7 +39,6 @@ import { prisma } from "@/lib/prisma";
 import { fetchStockPhysicalSheet } from "@/lib/gmd_lib/google-sheets";
 import {
   getBomRmAvailBatch,
-  recomputeVerifyBomValues,
   computeContractReviewRmAvail,
 } from "@/lib/verifyBomLookup";
 import { planContractPhysicalStock } from "@/lib/contractPhysicalStock";
@@ -61,7 +59,6 @@ export type ContractReviewRmAvailResult = {
   stockSkippedBlank: number;
   /** RawMaterial rows whose code stock-phys does not mention — untouched. */
   stockNotInSheet: number;
-  verifyBomElapsedMs: number;
   /** ContractReview rows whose RM AVAIL (noUse) changed. */
   rmAvailUpdated: number;
   /** ContractReview rows whose PHYSICAL STOCK changed. */
@@ -157,14 +154,7 @@ export async function runContractReviewRmAvailSync(
   }
 
   /* ---------------------------------------------------------------- *
-   * Step 2 — VerifyBom (availableStock, cost, names)
-   * ---------------------------------------------------------------- */
-  const verifyBomStart = Date.now();
-  await recomputeVerifyBomValues();
-  const verifyBomElapsedMs = Date.now() - verifyBomStart;
-
-  /* ---------------------------------------------------------------- *
-   * Step 3 — RM AVAIL (ContractReview.noUse) for rows that have a bomId
+   * Step 2 — RM AVAIL (ContractReview.noUse) for rows that have a bomId
    * ---------------------------------------------------------------- */
   const withBom = await tenderPrisma.contractReview.findMany({
     where: { bomId: { not: null } },
@@ -211,7 +201,7 @@ export async function runContractReviewRmAvailSync(
   }
 
   /* ---------------------------------------------------------------- *
-   * Step 4 — PHYSICAL STOCK (ContractReview.rmPhysicalStock)
+   * Step 3 — PHYSICAL STOCK (ContractReview.rmPhysicalStock)
    * ---------------------------------------------------------------- */
   const physicalRows = await tenderPrisma.contractReview.findMany({
     select: { id: true, costCodeRef: true, rmPhysicalStock: true },
@@ -259,7 +249,6 @@ export async function runContractReviewRmAvailSync(
   console.log(`[scheduler] mode                : ${dryRun ? "DRY RUN" : "APPLY"}`);
   console.log(`[scheduler] stock-phys codes    : ${stockPhysCodes}`);
   console.log(`[scheduler] rawMaterial stock   : updated=${stockToWrite.length} unchanged=${stockUnchanged} blankSkipped=${stockSkippedBlank} notInSheet=${stockNotInSheet}`);
-  console.log(`[scheduler] VerifyBom recompute : ${verifyBomElapsedMs}ms`);
   console.log(`[scheduler] RM AVAIL updated    : ${rmAvailUpdates.length}`);
   console.log(
     `[scheduler] PHYSICAL STOCK      : updated=${physicalUpdates.length} cleared=${physicalStockCleared}`,
@@ -274,7 +263,6 @@ export async function runContractReviewRmAvailSync(
     stockUnchanged,
     stockSkippedBlank,
     stockNotInSheet,
-    verifyBomElapsedMs,
     rmAvailUpdated: rmAvailUpdates.length,
     physicalStockUpdated: physicalUpdates.length,
     physicalStockCleared,

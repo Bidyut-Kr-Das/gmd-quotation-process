@@ -111,7 +111,7 @@ export async function runScheduledContractReview(
     // Step 2 — enquiry fields.
     steps.enquiry = await runContractReviewEnquirySync({ dryRun });
 
-    // Step 3 — RM AVAIL / VerifyBom / physical stock.
+    // Step 3 — RM AVAIL / physical stock.
     const rmAvailOptions = { dryRun };
     if (options.concurrency !== undefined) {
       Object.assign(rmAvailOptions, { concurrency: options.concurrency });

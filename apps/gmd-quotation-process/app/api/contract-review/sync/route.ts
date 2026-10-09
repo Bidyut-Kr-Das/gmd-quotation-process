@@ -10,7 +10,6 @@ import {
 } from "@/lib/gmd_lib/contract-review-columns";
 import {
   getBomRmAvailBatch,
-  recomputeVerifyBomValues,
   computeContractReviewRmAvail,
 } from "@/lib/verifyBomLookup";
 import {
@@ -203,8 +202,6 @@ export async function POST() {
         unchanged++;
       }
     }
-
-    await recomputeVerifyBomValues();
 
     const withBom = await tenderPrisma.contractReview.findMany({
       where: { bomId: { not: null } },
