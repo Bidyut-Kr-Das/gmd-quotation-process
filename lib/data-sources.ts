@@ -453,7 +453,7 @@ const QUOTATION_CALC_COLUMNS = cols(
   ["(derived)", "quotedRateGst", "quotedRate x 1.18"],
   ["(derived)", "itemWiseTotalValue", "quantity x quotedRate"],
   ["(derived)", "totalValue", "itemWiseTotalValue x 1.18"],
-  ["(derived)", "itemNameMerge", "itemType-moc-size-pnRating-operationType-extension-bypass[-WITH-others]"],
+  ["(derived)", "itemNameMerge", "itemType-moc-size-pnRating-operationType[-WITH-EXTENSION-<ext>][-WITH-BYPASS-<bypass>][-WITH-<others>]"],
 );
 
 /** -> LookupOption. Seeded by scripts/seed-lookup-options.ts; every dropdown on / comes from these. */
@@ -482,7 +482,7 @@ const QUOTATION_CLEANUP_COLUMNS = cols(
   ["rmType", "rmType", "normalised to COMMON"],
   ["importedInhouse", "importedInhouse", "derived from itemType + size"],
   ["deliverySchedule", "deliverySchedule", "derived from quantity + stock + size"],
-  ["itemNameMerge", "itemNameMerge", "adds the -WITH-<others> suffix"],
+  ["itemNameMerge", "itemNameMerge", "adds -WITH-EXTENSION-<ext>, -WITH-BYPASS-<bypass> and -WITH-<others> suffixes when set"],
 );
 
 /* ------------------------------------------------------------------ *
@@ -2468,18 +2468,18 @@ const QUOTATION_CRUD_SYNC: SyncOperation[] = [
     file: "app/actions.ts:syncEnquiryEmailAddressesAction -> lib/enquiryEmailSync.ts",
     line: "933-1067",
     purpose:
-      "Fills each enquiry's party email address from the Supply History consignee details.",
+      "Fills each enquiry's senderEmail (the thread sender, future email To) and emailAddress (the cc/rest list, future Cc). Falls back to the most recent docket of the same party (resolved from its source thread) when the thread has no usable external email; internal addresses are never stored.",
     direction: "db-to-db",
     trigger: "button",
     triggerLabel: "Sync Email Addresses button",
-    dbModels: ["SupplyHistoryItem", "Enquiry"],
+    dbModels: ["DocketQuotationThread", "Enquiry"],
     columns: cols([
-      "(Supply History) Party Mail Address",
-      "Enquiry.emailAddress",
-      "matched on party name",
+      "(thread) sender / to_details / cc_details",
+      "Enquiry.senderEmail (To)",
+      "Enquiry.emailAddress (Cc)",
     ]),
     writePolicy:
-      "Blank-only by default in the script form (onlyBlank: true), so an address already on the enquiry is never replaced by an older supply record.",
+      "Blank-only by default in the button/script form (onlyBlank: true), so an address already on the enquiry is never replaced. The sender/cc split backfill (scripts/backfill-enquiry-sender-email.ts) re-derives both from the source thread and overwrites.",
     cadence: "on-demand",
   },
   {

@@ -13,6 +13,9 @@ import { fetchBomRows, buildRmCostMap, DIRECT_M2M, getBomEntry, getCachedBomRows
 import { update2to1CostForItems, buildRawMaterialsCostMap, clear2to1BomCache } from "@/lib/gmd2to1CostLookup";
 import { getDistinctBomIds, getBomRmAvailBatch, resolveContractReviewBomIdsFromActuator, computeContractReviewRmAvail, getNoUseBomIdSet, normalizeActuatorPart, clearVerifyBomCache } from "@/lib/verifyBomLookup";
 import { splitCsvLinks } from "@/lib/gmd_lib/contract-order-links";
+import { buildDocketEmailHtml, buildDocketEmailSubject } from "@/lib/docketEmailTemplate";
+import { sendDocketEmailViaN8n, DOCKET_EMAIL_ALWAYS_CC } from "@/lib/services/n8nEmail";
+import type { OfferLetterTemplateData } from "@/types/offer-lettter";
 import { buildDerivedItemName } from "@/lib/gmd_lib/derived-item-name";
 import { getUsdInrRate } from "@/lib/gmd_lib/exchangeRate";
 import { getRmStockMap, getRmTypeMap, syncDirectM2MAvailableStock } from "@/lib/directM2MStockLookup";
@@ -801,53 +804,6 @@ export async function deleteEnquiryItemAction(itemId: string) {
   }
 }
 
-// Bulk delete multiple items from a single enquiry. Enquiry is retained even if all items are deleted.
-// Single-enquiry constraint is enforced on server.
-export async function deleteEnquiryItemsAction(itemIds: string[]) {
-  try {
-    if (!itemIds || itemIds.length === 0) {
-      return { success: false, error: "No items selected." };
-    }
-
-    const uniqueIds = [...new Set(itemIds)];
-
-    const items = await prisma.enquiryItem.findMany({
-      where: { id: { in: uniqueIds } },
-      select: { id: true, enquiryId: true, itemName: true },
-    });
-
-    if (items.length === 0) {
-      return { success: false, error: "Items not found." };
-    }
-    if (items.length !== uniqueIds.length) {
-      return { success: false, error: "Some items not found. Please refresh and try again." };
-    }
-
-    const enquiryIds = [...new Set(items.map((i) => i.enquiryId))];
-    if (enquiryIds.length !== 1) {
-      return { success: false, error: "Bulk delete is allowed for a single enquiry only. Select items from one docket at a time." };
-    }
-    const enquiryId = enquiryIds[0];
-
-    console.log(`[Server] bulkDelete enquiry=${enquiryId} requested=${uniqueIds.length}`);
-
-    await prisma.enquiryItem.deleteMany({
-      where: { id: { in: uniqueIds }, enquiryId },
-    });
-
-    const remaining = await prisma.enquiryItem.count({
-      where: { enquiryId },
-    });
-
-    const enquiryDeleted = false;
-
-    return { success: true, data: { deletedIds: uniqueIds, enquiryId, enquiryDeleted, remaining } };
-  } catch (error: any) {
-    console.error("Error bulk deleting items:", error);
-    return { success: false, error: error.message || "Failed to delete items." };
-  }
-}
-
 /**
  * Deletes a blank docket that was flagged as a duplicate of another docket.
  *
@@ -942,7 +898,14 @@ export async function updateEnquiryFieldAction(
     // Duplicate flag is a plain Yes/No marker.
     if (field === "duplicate") {
       if (value !== null && value !== "" && value !== "Yes" && value !== "No") {
-        return { success: false, error: "Duplicate must be Yes, No, or blank." }
+        return { success: false, error: "Duplicate must be Yes, No, or blank." };
+      }
+    }
+    // Docket email approval (tick/cross). Cross (false) also clears the sent
+    // marker so the docket can be re-approved and sent again.
+    if (field === "emailApproved") {
+      if (value !== true && value !== false) {
+        return { success: false, error: "emailApproved must be true or false." };
       }
     }
     const prev = await prisma.enquiry.findUnique({
@@ -959,6 +922,10 @@ export async function updateEnquiryFieldAction(
     if (field === "apm" && parsedVal !== "Yes") {
       data.offerPdfGeneratedAt = null;
       data.offerPdfGeneratedBy = null;
+    }
+    // Cross (un-approve) also clears the sent marker so a resend can happen.
+    if (field === "emailApproved" && parsedVal !== true) {
+      data.emailSentBy = null;
     }
     await prisma.enquiry.update({
       where: { id: enquiryId },
@@ -1012,6 +979,120 @@ export async function updateEnquiryFieldAction(
 }
 
 /**
+ * Sends the docket's quotation email through the n8n Gmail webhook.
+ *
+ * Preconditions (enforced server-side): the docket is ticked (`emailApproved`),
+ * has not been sent before (`emailSentBy` null), and has a recipient
+ * (`senderEmail`). The Offer PDF is generated and attached; Cc comes from the
+ * comma-separated `emailAddress`. On success the sent marker is persisted; on
+ * any failure nothing is written and the error is returned to the client.
+ */
+export async function sendDocketEmailAction(enquiryId: string) {
+  try {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "You must be logged in to send this email." };
+    }
+    const userId = (session.user as any).id ?? (session.user as any).email ?? "unknown";
+
+    const enquiry = await prisma.enquiry.findUnique({
+      where: { id: enquiryId },
+      include: { items: { orderBy: { position: "asc" } } },
+    });
+    if (!enquiry) return { success: false, error: "Docket not found." };
+    if (!enquiry.emailApproved) {
+      return { success: false, error: "Approve this docket (tick) before sending." };
+    }
+    if (enquiry.emailSentBy) {
+      return { success: false, error: "This docket email has already been sent." };
+    }
+    const to = (enquiry.senderEmail || "").trim();
+    if (!to) {
+      return { success: false, error: "No recipient (sender email) on this docket." };
+    }
+
+    // Always Cc the fixed address, merged with the docket's other emails and
+    // de-duplicated case-insensitively.
+    const ccEmails = (enquiry.emailAddress || "")
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean);
+    if (!ccEmails.some((e) => e.toLowerCase() === DOCKET_EMAIL_ALWAYS_CC)) {
+      ccEmails.push(DOCKET_EMAIL_ALWAYS_CC);
+    }
+    const cc = ccEmails.join(", ");
+
+    // Reuse the Offer PDF pipeline for the attachment.
+    const { generateOfferPdfAction } = await import("@/lib/generate-offer-pdf");
+    const pdfRes = await generateOfferPdfAction(
+      { docketNo: enquiry.docketNumber } as unknown as OfferLetterTemplateData,
+      enquiryId,
+      { bypassFreeze: true },
+    );
+    if (!pdfRes.success || !pdfRes.pdfBase64) {
+      return { success: false, error: pdfRes.error || "Failed to generate the offer PDF." };
+    }
+    const pdfBuffer = Buffer.from(pdfRes.pdfBase64, "base64");
+
+    // Project sentence source: project reference, else utility, else state.
+    const projectName =
+      (enquiry.projectReference || "").trim() ||
+      (enquiry.utility || "").trim() ||
+      (enquiry.state || "").trim();
+
+    // Item description: distinct merged item names (fallback raw item name).
+    const itemDescription = [
+      ...new Set(
+        enquiry.items
+          .map((item) => (item.itemNameMerge || item.itemName || "").trim())
+          .filter(Boolean),
+      ),
+    ].join(", ");
+
+    const deliverySchedule =
+      (enquiry.items.find((i) => (i.deliverySchedule || "").trim())?.deliverySchedule || "").trim() ||
+      "READY STOCK";
+
+    const state = (enquiry.state || "").trim();
+    const subject = buildDocketEmailSubject({ docketNumber: enquiry.docketNumber });
+    const html = buildDocketEmailHtml({
+      docketNumber: enquiry.docketNumber,
+      projectName,
+      itemDescription,
+      paymentTerms: enquiry.paymentTerms || "",
+      freight: `F.O.R. Site${state ? ` (${state})` : ""}`,
+      deliverySchedule,
+      pdfUrl: pdfRes.driveUrl ?? "",
+      fileName: pdfRes.fileName || `${enquiry.docketNumber}.pdf`,
+    });
+
+    const send = await sendDocketEmailViaN8n({
+      to,
+      cc,
+      subject,
+      html,
+      docketNumber: enquiry.docketNumber,
+      fileName: pdfRes.fileName || `${enquiry.docketNumber}.pdf`,
+      pdfBuffer,
+    });
+    if (!send.success) {
+      return { success: false, error: send.error || "Email sending failed." };
+    }
+
+    const updated = await prisma.enquiry.update({
+      where: { id: enquiryId },
+      data: { emailSentBy: userId },
+      include: { items: { orderBy: { position: "asc" } } },
+    });
+    return { success: true, data: serializeEnquiry(updated) };
+  } catch (error: any) {
+    console.error("Error sending docket email:", error);
+    return { success: false, error: error.message || "Failed to send the docket email." };
+  }
+}
+
+/**
  * Syncs the Email Address column for every enquiry by matching docket number
  * against docket_quotation_threads (sender / to_details / cc_details) and
  * extracting external party email addresses.
@@ -1034,7 +1115,7 @@ export async function syncEnquiryEmailAddressesAction() {
         threadCount: result.threadCount,
         partyCount: result.partyCount,
         matchedByParty: result.matchedByParty,
-        enquiries: result.proposals.map((p) => ({ id: p.id, emailAddress: p.emailAddress })),
+        enquiries: result.proposals.map((p) => ({ id: p.id, senderEmail: p.senderEmail, emailAddress: p.emailAddress })),
       },
     };
   } catch (error: any) {
@@ -5020,58 +5101,38 @@ export async function syncNullVerifyBomStockAction() {
 
     const stockPhysMap = await fetchStockPhysicalSheet();
 
-    const nullRows = await prisma.verifyBom.findMany({
+    // Stock now lives on RawMaterial. Gap-fill only: rows whose erpItemCode has
+    // no availableStock yet.
+    const nullRows = await prisma.rawMaterial.findMany({
       where: {
-        OR: [
-          { availableStock: null },
-          { availableStock: "" },
-        ],
+        OR: [{ availableStock: null }, { availableStock: "" }],
       },
-      select: {
-        id: true,
-        bomId: true,
-        itemCode: true,
-        rmItemCode: true,
-        availableStock: true,
-      },
+      select: { id: true, erpItemCode: true },
     });
 
     const updates: { id: string; stock: string }[] = [];
     const unmatchedSamples: string[] = [];
     let matchedByRmCode = 0;
-    let matchedByItemCode = 0;
     let unmatched = 0;
 
     for (const row of nullRows) {
-      const currentStock = (row.availableStock ?? "").trim();
-      if (currentStock !== "") continue;
-
-      const rmCode = (row.rmItemCode ?? "").trim().toUpperCase();
-      const itemCode = (row.itemCode ?? "").trim().toUpperCase();
-
-      let foundStock: string | null = null;
-      let source: "rmItemCode" | "itemCode" | null = null;
-
-      if (rmCode && rmCode in stockPhysMap) {
-        foundStock = stockPhysMap[rmCode];
-        source = "rmItemCode";
-      } else if (itemCode && itemCode in stockPhysMap) {
-        foundStock = stockPhysMap[itemCode];
-        source = "itemCode";
+      const code = (row.erpItemCode ?? "").trim().toUpperCase();
+      if (!code) {
+        unmatched++;
+        continue;
       }
+
+      const foundStock = stockPhysMap[code];
 
       // A sheet value of "0" is a real count and must be kept; only a blank
       // (or a code missing from the sheet) counts as no match.
-      if (foundStock !== null && foundStock.trim() !== "") {
+      if (foundStock !== undefined && foundStock.trim() !== "") {
         updates.push({ id: row.id, stock: foundStock });
-        if (source === "rmItemCode") matchedByRmCode++;
-        else if (source === "itemCode") matchedByItemCode++;
+        matchedByRmCode++;
       } else {
         unmatched++;
         if (unmatchedSamples.length < 20) {
-          unmatchedSamples.push(
-            `${row.bomId || "-"} :: ${row.itemCode || "-"} :: ${row.rmItemCode || "<empty>"}`,
-          );
+          unmatchedSamples.push(`RM: ${row.erpItemCode || "<empty>"}`);
         }
       }
     }
@@ -5082,7 +5143,7 @@ export async function syncNullVerifyBomStockAction() {
         const chunk = updates.slice(i, i + chunkSize);
         await prisma.$transaction(
           chunk.map((u) =>
-            prisma.verifyBom.update({
+            prisma.rawMaterial.update({
               where: { id: u.id },
               data: { availableStock: u.stock },
             }),
@@ -5096,7 +5157,7 @@ export async function syncNullVerifyBomStockAction() {
       updatedCount: updates.length,
       totalNullCount: nullRows.length,
       matchedByRmCode,
-      matchedByItemCode,
+      matchedByItemCode: 0,
       unmatched,
       unmatchedSamples,
     };
@@ -5161,6 +5222,77 @@ type BomMastSyncPlan = {
  *   wins wherever it has a value. A null/empty sheet cell never replaces an
  *   existing name. Identical values are skipped so only real changes are written.
  */
+type BomComponentRow = {
+  id: string;
+  bomId: string;
+  itemCode: string;
+  rmItemCode: string;
+  noUse: string | null;
+  cBatch: string | null;
+  itemName: string | null;
+  rmItemName: string | null;
+};
+
+// Flattens the relational BOM chain (FullItem -> Bom -> BomItem -> RawMaterial |
+// FullItem) into the bomId||itemCode||rmItemCode shape the ERP syncs work with.
+async function loadBomComponentRows(): Promise<BomComponentRow[]> {
+  const components = await prisma.bomItem.findMany({
+    select: {
+      id: true,
+      noUse: true,
+      cBatch: true,
+      bom: {
+        select: {
+          bomId: true,
+          fullItem: { select: { itemCode: true, itemName: true } },
+        },
+      },
+      rawMaterial: { select: { erpItemCode: true, itemNameAuto: true } },
+      fullItem: { select: { itemCode: true, itemName: true } },
+    },
+  });
+  return components.map((c) => ({
+    id: c.id,
+    bomId: c.bom?.bomId ?? "",
+    itemCode: c.bom?.fullItem?.itemCode ?? "",
+    rmItemCode: c.rawMaterial?.erpItemCode ?? c.fullItem?.itemCode ?? "",
+    noUse: c.noUse,
+    cBatch: c.cBatch,
+    itemName: c.bom?.fullItem?.itemName ?? null,
+    rmItemName: c.rawMaterial?.itemNameAuto ?? c.fullItem?.itemName ?? null,
+  }));
+}
+
+async function resolveBomItemTarget(
+  bomId: string,
+  itemCode: string,
+  rmItemCode: string,
+): Promise<{
+  bomDbId: string;
+  rawMaterialId: string | null;
+  fullItemId: string | null;
+} | null> {
+  const bom = await prisma.bom.findFirst({
+    where: { bomId, fullItem: { itemCode } },
+    select: { id: true },
+  });
+  if (!bom) return null;
+
+  const rm = await prisma.rawMaterial.findFirst({
+    where: { erpItemCode: rmItemCode },
+    select: { id: true },
+  });
+  if (rm) return { bomDbId: bom.id, rawMaterialId: rm.id, fullItemId: null };
+
+  const fi = await prisma.fullItem.findFirst({
+    where: { itemCode: rmItemCode },
+    select: { id: true },
+  });
+  if (fi) return { bomDbId: bom.id, rawMaterialId: null, fullItemId: fi.id };
+
+  return null;
+}
+
 async function buildBomMastSyncPlan(): Promise<BomMastSyncPlan> {
   const { readBomMastErp, readItemMasterErp } = await import(
     "@/lib/gmd_lib/bomMastErp"
@@ -5188,23 +5320,9 @@ async function buildBomMastSyncPlan(): Promise<BomMastSyncPlan> {
     );
   }
 
-  const dbRows = await prisma.verifyBom.findMany({
-    select: {
-      id: true,
-      bomId: true,
-      itemCode: true,
-      rmItemCode: true,
-      noUse: true,
-      cBatch: true,
-      itemName: true,
-      rmItemName: true,
-    },
-  });
+  const dbRows = await loadBomComponentRows();
 
-  const byKey = new Map<
-    string,
-    (typeof dbRows)[number]
-  >();
+  const byKey = new Map<string, BomComponentRow>();
   for (const r of dbRows) {
     byKey.set(keyOf(norm(r.bomId), norm(r.itemCode), norm(r.rmItemCode)), r);
   }
@@ -5348,24 +5466,13 @@ export async function syncBomMastItemNamesAction() {
       );
     }
 
-    const dbRows = await prisma.verifyBom.findMany({
-      select: {
-        id: true,
-        bomId: true,
-        itemCode: true,
-        rmItemCode: true,
-        noUse: true,
-        cBatch: true,
-      },
-    });
+    const dbRows = await loadBomComponentRows();
     const idByKey = new Map<string, string>();
     for (const r of dbRows) {
       idByKey.set(keyOf(norm(r.bomId), norm(r.itemCode), norm(r.rmItemCode)), r.id);
     }
 
-    const syncedAt = new Date();
-    const updateOps: ReturnType<typeof prisma.verifyBom.update>[] = [];
-    const createOps: ReturnType<typeof prisma.verifyBom.upsert>[] = [];
+    const updateOps: ReturnType<typeof prisma.bomItem.update>[] = [];
     let marked = 0;
     let created = 0;
 
@@ -5373,33 +5480,29 @@ export async function syncBomMastItemNamesAction() {
       const existingId = idByKey.get(key);
       if (existingId) {
         updateOps.push(
-          prisma.verifyBom.update({
+          prisma.bomItem.update({
             where: { id: existingId },
             // only the two flag fields - never clobber names/stock/cost
             data: { noUse: BATCH_NO_USE, cBatch: BATCH_C },
           }),
         );
         marked++;
-      } else {
-        const [bomId, itemCode, rmItemCode] = key.split("||");
-        createOps.push(
-          prisma.verifyBom.upsert({
-            where: {
-              bomId_itemCode_rmItemCode: { bomId, itemCode, rmItemCode },
-            },
-            create: {
-              bomId,
-              itemCode,
-              rmItemCode,
-              noUse: BATCH_NO_USE,
-              cBatch: BATCH_C,
-              syncedAt,
-            },
-            update: { noUse: BATCH_NO_USE, cBatch: BATCH_C },
-          }),
-        );
-        created++;
+        continue;
       }
+
+      const [bomId, itemCode, rmItemCode] = key.split("||");
+      const target = await resolveBomItemTarget(bomId, itemCode, rmItemCode);
+      if (!target) continue;
+      await prisma.bomItem.create({
+        data: {
+          bomId: target.bomDbId,
+          rawMaterialId: target.rawMaterialId,
+          fullItemId: target.fullItemId,
+          noUse: BATCH_NO_USE,
+          cBatch: BATCH_C,
+        },
+      });
+      created++;
     }
 
     for (let i = 0; i < updateOps.length; i += CHUNK) {
@@ -5407,59 +5510,68 @@ export async function syncBomMastItemNamesAction() {
         timeout: 20000,
       });
     }
-    for (let i = 0; i < createOps.length; i += CHUNK) {
-      await prisma.$transaction(createOps.slice(i, i + CHUNK), {
-        timeout: 20000,
-      });
-    }
 
     // ---------------- Phase 2 ----------------
     const { nameByCode } = await readItemMasterErp();
 
-    const nameRows = await prisma.verifyBom.findMany({
-      select: {
-        id: true,
-        itemCode: true,
-        rmItemCode: true,
-        itemName: true,
-        rmItemName: true,
-      },
+    // Names live on FullItem (itemName) and RawMaterial (itemNameAuto). Only
+    // codes referenced by a BOM component are considered.
+    const itemCodes = [...new Set(dbRows.map((c) => c.itemCode).filter(Boolean))];
+    const rmCodes = [...new Set(dbRows.map((c) => c.rmItemCode).filter(Boolean))];
+
+    const fullItems = await prisma.fullItem.findMany({
+      where: { itemCode: { in: itemCodes } },
+      select: { id: true, itemCode: true, itemName: true },
+    });
+    const rawMaterials = await prisma.rawMaterial.findMany({
+      where: { erpItemCode: { in: rmCodes } },
+      select: { id: true, erpItemCode: true, itemNameAuto: true },
     });
 
-    const nameOps: ReturnType<typeof prisma.verifyBom.update>[] = [];
+    const nameOps: ReturnType<typeof prisma.fullItem.update>[] = [];
+    const rmNameOps: ReturnType<typeof prisma.rawMaterial.update>[] = [];
     const unmatchedCodes: string[] = [];
     let itemNameChanged = 0;
     let rmItemNameChanged = 0;
 
-    for (const row of nameRows) {
-      const data: { itemName?: string; rmItemName?: string } = {};
-
-      // A null/empty sheet cell never replaces an existing name.
+    // A null/empty sheet cell never replaces an existing name.
+    for (const row of fullItems) {
       const itemSheet = nameByCode.get(norm(row.itemCode));
       if (itemSheet !== undefined && itemSheet !== (row.itemName ?? "")) {
-        data.itemName = itemSheet;
+        nameOps.push(
+          prisma.fullItem.update({
+            where: { id: row.id },
+            data: { itemName: itemSheet },
+          }),
+        );
         itemNameChanged++;
       } else if (itemSheet === undefined && unmatchedCodes.length < 20) {
         unmatchedCodes.push(`itemCode: ${row.itemCode || "<empty>"}`);
       }
+    }
 
-      const rmSheet = nameByCode.get(norm(row.rmItemCode));
-      if (rmSheet !== undefined && rmSheet !== (row.rmItemName ?? "")) {
-        data.rmItemName = rmSheet;
+    for (const row of rawMaterials) {
+      const rmSheet = nameByCode.get(norm(row.erpItemCode));
+      if (rmSheet !== undefined && rmSheet !== (row.itemNameAuto ?? "")) {
+        rmNameOps.push(
+          prisma.rawMaterial.update({
+            where: { id: row.id },
+            data: { itemNameAuto: rmSheet },
+          }),
+        );
         rmItemNameChanged++;
       } else if (rmSheet === undefined && unmatchedCodes.length < 20) {
-        unmatchedCodes.push(`rmItemCode: ${row.rmItemCode || "<empty>"}`);
-      }
-
-      if (Object.keys(data).length > 0) {
-        nameOps.push(
-          prisma.verifyBom.update({ where: { id: row.id }, data }),
-        );
+        unmatchedCodes.push(`rmItemCode: ${row.erpItemCode || "<empty>"}`);
       }
     }
 
     for (let i = 0; i < nameOps.length; i += CHUNK) {
       await prisma.$transaction(nameOps.slice(i, i + CHUNK), {
+        timeout: 20000,
+      });
+    }
+    for (let i = 0; i < rmNameOps.length; i += CHUNK) {
+      await prisma.$transaction(rmNameOps.slice(i, i + CHUNK), {
         timeout: 20000,
       });
     }

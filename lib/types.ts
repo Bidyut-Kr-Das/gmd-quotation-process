@@ -78,10 +78,13 @@ export interface EnquiryData {
   apm?: string | null;
   offerPdfGeneratedAt?: string | Date | null;
   offerPdfGeneratedBy?: string | null;
+  senderEmail?: string | null;
   emailAddress?: string | null;
   contactNo?: string | null;
   duplicate?: string | null;
   duplicateOfDocket?: string | null;
+  emailApproved?: boolean | null;
+  emailSentBy?: string | null;
   attachments: AttachmentData[];
   items: EnquiryItemData[];
 }
@@ -123,6 +126,7 @@ export interface FiltersState {
   vaPercent: string[];
   orderStatus: string[];
   closureStatus: string[];
+  duplicate: string[];
   emailAddress: string;
   contactNo: string;
   itemName: string;
@@ -177,6 +181,7 @@ export interface UiState {
   columnWidths: Record<number, number>;
   isAnalyticsSidebarCollapsed?: boolean;
   generatedImages: Record<string, { url: string | null; driveFileId: string | null }>;
+  selectedEnquiryIds: string[];
 }
 
 export interface PaginationState {

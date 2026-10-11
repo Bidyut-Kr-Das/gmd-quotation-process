@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getItemNameMerge } from "@/lib/costCalculator";
 
 /**
- * One-time backfill: recompute EnquiryItem.itemNameMerge so it includes the
- * selected "Other" values (e.g. flange, gasket) as "...-WITH-<others>".
+ * One-time backfill: recompute EnquiryItem.itemNameMerge so it carries the
+ * labelled suffixes: "...-WITH-EXTENSION-<ext>", "...-WITH-BYPASS-<bypass>"
+ * and "...-WITH-<others>" (e.g. flange, gasket) whenever those values are set.
  * Only rows whose computed merge differs from the stored value are touched,
  * so it is idempotent.
  * Usage:
@@ -28,7 +29,7 @@ type Row = {
 
 async function main() {
   const apply = process.argv.includes("--apply");
-  console.log(`\n=== Backfill ItemNameMerge (include "Other" values) — ${apply ? "APPLY (writes DB)" : "DRY-RUN (no writes)"} ===\n`);
+  console.log(`\n=== Backfill ItemNameMerge (extension / bypass / Other suffixes) — ${apply ? "APPLY (writes DB)" : "DRY-RUN (no writes)"} ===\n`);
 
   const items = (await prisma.enquiryItem.findMany({
     select: {
@@ -49,16 +50,21 @@ async function main() {
   const toUpdate: { row: Row; cur: string | null; next: string | null }[] = [];
 
   for (const row of items) {
-    if (!row.others || row.others.length === 0) continue;
     const next = getItemNameMerge(row) || null;
     const cur = row.itemNameMerge || null;
     if (cur === next) continue;
     toUpdate.push({ row, cur, next });
   }
 
-  const withOthers = items.filter((r) => r.others && r.others.length > 0).length;
+  const hasValue = (v: string | null | undefined) => !!(v && v.trim());
+  const withSuffixes = items.filter(
+    (r) =>
+      (r.others && r.others.length > 0) ||
+      hasValue(r.extension) ||
+      hasValue(r.bypass),
+  ).length;
   console.log(`Total items:                 ${items.length}`);
-  console.log(`Items with "other" values:   ${withOthers}`);
+  console.log(`Items with suffix values:    ${withSuffixes}`);
   console.log(`Need update (merge changed): ${toUpdate.length}`);
 
   if (toUpdate.length === 0) {
@@ -99,7 +105,7 @@ async function main() {
     }
   }
   console.log(`\n\nDone. Updated ${updated} items.\n`);
-  console.log("Verify: SELECT COUNT(*) FROM \"EnquiryItem\" WHERE \"others\" != '{}'::text[] AND \"itemNameMerge\" !~ 'WITH-'; -- rows with others lacking WITH- in merge\n");
+  console.log("Verify: SELECT COUNT(*) FROM \"EnquiryItem\" WHERE ((\"others\" != '{}'::text[] OR \"extension\" IS NOT NULL OR \"bypass\" IS NOT NULL) AND \"itemNameMerge\" NOT LIKE '%WITH-%'); -- rows with suffix values lacking WITH- in merge\n");
 }
 
 main()

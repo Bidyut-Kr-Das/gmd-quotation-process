@@ -116,7 +116,7 @@ export function enquiryPassesFilters(
   if (filters.pbg.length > 0 && !matchesMulti(filters.pbg, enquiry.pbg)) return false;
   if (filters.orderStatus.length > 0 && !matchesMulti(filters.orderStatus, enquiry.orderStatus)) return false;
   if (filters.closureStatus.length > 0 && !matchesMultiCI(filters.closureStatus, enquiry.closureStatus)) return false;
-  if (filters.emailAddress && !matchesText(filters.emailAddress, enquiry.emailAddress || "")) return false;
+  if (filters.emailAddress && !matchesText(filters.emailAddress, enquiry.senderEmail || "")) return false;
   if (filters.contactNo && !matchesText(filters.contactNo, enquiry.contactNo || "")) return false;
   if (filters.apm.length > 0 && !matchesMulti(filters.apm, (enquiry as any).apm)) return false;
   if (filters.contractNo && filters.contractNo.length > 0 && !matchesMulti(filters.contractNo, enquiry.selectedContractNo ?? [])) return false;

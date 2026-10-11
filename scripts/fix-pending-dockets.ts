@@ -21,7 +21,7 @@
 
 import "dotenv/config";
 import { prisma } from "@/lib/prisma";
-import { threadPreferredEmails } from "@/lib/pendingDocketMaterializer";
+import { splitThreadEmails } from "@/lib/pendingDocketMaterializer";
 
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
@@ -42,7 +42,7 @@ async function main() {
 
   const blank = await prisma.enquiry.findMany({
     where: { items: { none: {} } },
-    select: { id: true, docketNumber: true, partyName: true, emailAddress: true },
+    select: { id: true, docketNumber: true, partyName: true, emailAddress: true, senderEmail: true },
   });
   const threads = await prisma.docketQuotationThread.findMany({
     where: { docketNo: { in: blank.map((b) => b.docketNumber) } },
@@ -51,7 +51,7 @@ async function main() {
   const threadByDocket = new Map(threads.map((t) => [t.docketNo, t]));
 
   const toDelete: { id: string; docketNumber: string; partyName: string; date: Date | null }[] = [];
-  const toFill: { id: string; docketNumber: string; emailAddress: string; date: Date | null }[] = [];
+  const toFill: { id: string; docketNumber: string; senderEmail: string; emailAddress: string; date: Date | null }[] = [];
   let noThread = 0;
   let alreadyHasEmail = 0;
 
@@ -66,10 +66,13 @@ async function main() {
       toDelete.push({ id: e.id, docketNumber: e.docketNumber, partyName: e.partyName, date });
       continue;
     }
-    const emails = threadPreferredEmails(t).join(", ");
-    if (emails && !(e.emailAddress && e.emailAddress.trim())) {
-      toFill.push({ id: e.id, docketNumber: e.docketNumber, emailAddress: emails, date });
-    } else if (e.emailAddress && e.emailAddress.trim()) {
+    const split = splitThreadEmails(t);
+    const senderEmail = split.senderEmail ?? "";
+    const ccEmails = split.ccEmails.join(", ");
+    const hasEmail = !!(e.senderEmail && e.senderEmail.trim()) || !!(e.emailAddress && e.emailAddress.trim());
+    if ((senderEmail || ccEmails) && !hasEmail) {
+      toFill.push({ id: e.id, docketNumber: e.docketNumber, senderEmail, emailAddress: ccEmails, date });
+    } else if (hasEmail) {
       alreadyHasEmail++;
     }
   }
@@ -87,7 +90,7 @@ async function main() {
 
   console.log(`\n--- FILL EMAIL (${toFill.length}) ---`);
   for (const f of toFill) {
-    console.log(`  ${f.docketNumber.padEnd(20)} ${f.date ? f.date.toISOString().slice(0, 10) : "?"}  -> ${short(f.emailAddress, 60)}`);
+    console.log(`  ${f.docketNumber.padEnd(20)} ${f.date ? f.date.toISOString().slice(0, 10) : "?"}  -> sender: ${short(f.senderEmail, 40)}${f.emailAddress ? ` | cc: ${short(f.emailAddress, 40)}` : ""}`);
   }
 
   if (!APPLY) {
@@ -111,7 +114,7 @@ async function main() {
 
   for (const f of toFill) {
     try {
-      await prisma.enquiry.update({ where: { id: f.id }, data: { emailAddress: f.emailAddress } });
+      await prisma.enquiry.update({ where: { id: f.id }, data: { senderEmail: f.senderEmail, emailAddress: f.emailAddress } });
       filled++;
     } catch (e) {
       console.log(`  FILL FAILED ${f.docketNumber}: ${(e as Error).message}`);

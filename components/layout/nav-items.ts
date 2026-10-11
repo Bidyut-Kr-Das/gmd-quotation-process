@@ -23,6 +23,7 @@ export const NAV: NavEntry[] = [
       { label: "Supply History", href: "/supply_history" },
     ],
   },
+  { label: "Technical", href: "/technical" },
   { label: "Docket Follow Up", href: "/docket_follow_up" },
   {
     label: "More",
