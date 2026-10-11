@@ -6,6 +6,7 @@ import {
 } from "@/lib/gmd_lib/google-sheets";
 import { sheetRowToDbItem } from "@/lib/gmd_lib/mapSheetRow";
 import { updateDerivedItemName } from "@/app/actions";
+import { runActiveBomRules } from "@/lib/autoBomRun";
 
 const ERP_CODE_IDX = 0;
 const AVAILABLE_STOCK_IDX = 11;
@@ -210,6 +211,9 @@ export async function POST() {
       }
     }
 
+    // New or changed raw materials may now match an active Auto BOM rule.
+    const autoBom = await runActiveBomRules("gmd-update-sync");
+
     console.log("\n===== [SYNC] GMD UPDATION SHEET → DB =====");
     console.log(`[SYNC] Synced at      : ${syncedAt.toISOString()}`);
     console.log(`[SYNC] Rows in sheet  : ${data.rows.length}`);
@@ -239,6 +243,7 @@ export async function POST() {
       totalInSheet: data.rows.length,
       createdCodes,
       derivedCount,
+      autoBomCreated: autoBom.created,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

@@ -35,7 +35,7 @@ pass can backfill `contractNo` on the dockets it creates.
 
 ## `raw-material`
 
-Three sequential steps in `run-gmd-update.ts`:
+Four sequential steps in `run-gmd-update.ts`:
 
 1. **`runGmdCatalogueSync()`** (`gmd-update-catalogue.ts`) — `GMD UPDATION`
    tab → `RawMaterial`. Creates rows for ERP codes not yet in the DB; on
@@ -51,6 +51,10 @@ Three sequential steps in `run-gmd-update.ts`:
    `erpItemCode` (trim + upper-case). Writes only when the name differs.
    `itemNameAuto` is excluded from step 1's overwrite set, so this step is the
    sole writer.
+4. **`runActiveBomRules()`** (`lib/autoBomRun.ts`) — runs every **active**
+   Auto BOM rule (`/bom/auto`) and creates `NEW-BOM-…` BOMs for full items
+   that have no BOM. Inactive rules are skipped. Never throws: a failing rule
+   is logged and counted in `steps.autoBom.failed`.
 
 Steps are strictly sequential: a fatal failure in step 1 aborts before step 2,
 because refreshing stock against a half-synced table is not useful.
