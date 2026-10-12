@@ -56,9 +56,16 @@ function formatSize(size: number | null): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// Prefer streaming Drive files through our own origin; the Drive view link is
+// cross-origin and the `download` attribute is ignored for it.
+function attachmentHref(att: AttachmentData): string {
+  const driveId = driveFileIdFromUrl(att.url);
+  return driveId ? `/api/attachments/${driveId}` : att.url;
+}
+
 function downloadAttachment(att: AttachmentData) {
   const a = document.createElement("a");
-  a.href = att.url;
+  a.href = attachmentHref(att);
   a.download = att.name || "attachment";
   a.target = "_blank";
   a.rel = "noopener noreferrer";
@@ -150,7 +157,7 @@ export default function AttachmentPreviewDialog({
             ) : activeDriveId ? (
               <iframe
                 key={active.id}
-                src={`https://drive.google.com/file/d/${activeDriveId}/preview`}
+                src={`/api/attachments/${activeDriveId}`}
                 className="w-full h-[45vh]"
                 title={active.name}
                 onError={() => markFailed(active.id)}
