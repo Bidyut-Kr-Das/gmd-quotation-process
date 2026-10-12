@@ -20,6 +20,7 @@ import {
   syncContractReviewEnquiryFieldsBatchAction,
   syncContractReviewEnquiryFieldsAllAction,
   syncContractReviewRmAvailAction,
+  recomputeIndentListingVersionsAction,
   autoAssignContractReviewBomIdFromActuator,
   getActuatorOptionsAction,
   saveActuatorWithRmCodeAction,
@@ -724,10 +725,25 @@ export default function ContractReviewPage() {
         throw new Error(body.error ?? `Sync failed (${res.status})`);
       }
       const summary = await res.json().catch(() => ({}));
-      toast.success(
-        `Synced: ${summary.created ?? 0} created, ${summary.updated ?? 0} updated, ${summary.unchanged ?? 0} unchanged`,
-        { id: toastId },
-      );
+      const syncSummary = `Synced: ${summary.created ?? 0} created, ${summary.updated ?? 0} updated, ${summary.unchanged ?? 0} unchanged`;
+
+      // Refresh the Indent Listing V1..V4 split, the RM codes and the Contract
+      // Review COST CODE REF so an NRV / SLV code affected by this sync is
+      // published without a separate trip to the Indent Listing page.
+      const recompute = await recomputeIndentListingVersionsAction();
+      const rm = recompute?.data?.rmCode;
+      const costRef = recompute?.data?.costCodeRef;
+      const recomputeDetail = recompute?.success
+        ? ` | RM codes: ${rm?.resolved ?? 0} linked, ${rm?.ambiguous ?? 0} multi, ${rm?.unmatched ?? 0} unmatched | cost code ref: ${costRef?.resolved ?? 0} filled`
+        : ` | recompute failed: ${recompute?.error ?? "unknown error"}`;
+
+      // The sync itself succeeded; surface a recompute failure without
+      // discarding the sync result.
+      if (recompute?.success) {
+        toast.success(`${syncSummary}${recomputeDetail}`, { id: toastId });
+      } else {
+        toast.warning(`${syncSummary}${recomputeDetail}`, { id: toastId });
+      }
       await fetchData();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sync failed";
@@ -772,8 +788,12 @@ export default function ContractReviewPage() {
     try {
       const res = await syncContractReviewRmAvailAction();
       if (res?.success) {
+        const indent = res.data?.indentRecompute;
+        const indentDetail = indent
+          ? ` | RM codes: ${indent.rmCode?.resolved ?? 0} linked, ${indent.rmCode?.unmatched ?? 0} unmatched | cost code ref: ${indent.costCodeRef?.resolved ?? 0} filled`
+          : "";
         toast.success(
-          `RM AVAIL synced: ${res.data?.rmAvailUpdated ?? 0} updated, ${res.data?.stockFilled ?? 0} stock filled, ${res.data?.physicalStockUpdated ?? 0} physical stock updated`,
+          `RM AVAIL synced: ${res.data?.rmAvailUpdated ?? 0} updated, ${res.data?.stockFilled ?? 0} stock filled, ${res.data?.physicalStockUpdated ?? 0} physical stock updated${indentDetail}`,
           { id: toastId },
         );
         await fetchData();

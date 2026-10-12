@@ -128,7 +128,8 @@ export function buildDocketEmailHtml(data: DocketEmailData): string {
           <td style="padding-top:16px; border-top:1px solid #dddddd; font-size:15px; line-height:1.7; color:#222222;">
             <div>Thanks &amp; Regards,</div>
             <div style="font-weight:bold; padding-top:6px;">Puja Agarwal</div>
-            <div>GM Dalui</div>
+            <div>Director</div>
+            <div>GM Dalui and sons Pvt Ltd.</div>
             <div style="font-size:14px; padding-top:2px;">+91 88200 44755</div>
           </td>
         </tr>

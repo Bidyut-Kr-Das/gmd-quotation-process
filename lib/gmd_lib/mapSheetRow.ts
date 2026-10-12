@@ -5,10 +5,10 @@ export function sheetRowToDbItem(row: unknown[], syncedAt: Date) {
     l1:             String(row[2] ?? ""),
     l2ValveType:    String(row[3] ?? ""),
     l3Dia:          String(row[4] ?? ""),
-    l7Dimension:    String(row[5] ?? ""),
-    l4Component:    String(row[6] ?? ""),
-    l5Material:     String(row[7] ?? ""),
-    l6Std:          String(row[8] ?? ""),
+    l4Component:    String(row[5] ?? ""),
+    l5Material:     String(row[6] ?? ""),
+    l6Std:          String(row[7] ?? ""),
+    l7Dimension:    String(row[8] ?? ""),
     l8ItemCategory: String(row[9] ?? ""),
     um:             String(row[10] ?? ""),
     availableStock: String(row[11] ?? ""),
@@ -67,7 +67,7 @@ currentStatus: string | null;
 }): unknown[] {
   return [
     item.erpItemCode, item.itemNameAuto, item.l1, item.l2ValveType, item.l3Dia,
-    item.l7Dimension, item.l4Component, item.l5Material, item.l6Std, item.l8ItemCategory,
+    item.l4Component, item.l5Material, item.l6Std, item.l7Dimension, item.l8ItemCategory,
     item.um, item.availableStock, item.conv1, item.pcsWgt, item.aum,
     item.cost, item.usdRateOption, item.hsnCode, item.hsnCodeValidation, item.conv2,
     item.majorMarking, item.newItemStatus, item.currentStatus, item.rmType, item.indianImported,
