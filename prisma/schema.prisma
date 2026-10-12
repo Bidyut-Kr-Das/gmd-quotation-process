@@ -392,6 +392,12 @@ model PhysicalStock {
   moq                            String?
   if_less_than_moq_extra_charges String?
   drawing_technical_data         String?
+  // Derived from the FullItem/RawMaterial BOM relations. `cost` is the highest
+  // owning FullItem.cost (DB trigger keeps FullItem.cost = MAX BomItem.cost),
+  // falling back to the RawMaterial.cost. `bom_id` is the BOM that carries that
+  // highest cost, selected by default and editable via the BOM ID dropdown.
+  cost                           String?
+  bom_id                         String?
   created_at                     DateTime @default(now())
   updated_at                     DateTime @updatedAt
 

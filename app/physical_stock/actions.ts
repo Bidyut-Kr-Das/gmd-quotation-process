@@ -7,11 +7,22 @@ import {
   PHYSICAL_COL_INDEX_TO_DB_FIELD,
   PHYSICAL_EDITABLE_FIELDS,
 } from "@/lib/gmd_lib/physical-stock-columns";
+import {
+  applyPhysicalStockDerivations,
+  costForPhysicalStockBom,
+  derivePhysicalStockByCodes,
+} from "@/lib/gmd_lib/physical-stock-derive";
 
 export interface FieldUpdateResult {
   id: string;
   field: string;
   value: string | null;
+}
+
+export interface PhysicalStockBomUpdateResult {
+  id: string;
+  bom_id: string | null;
+  cost: string | null;
 }
 
 export async function updatePhysicalStockFieldAction(
@@ -24,6 +35,58 @@ export async function updatePhysicalStockFieldAction(
   return { id, field, value: value ?? null };
 }
 
+export async function updatePhysicalStockBomIdAction(
+  id: string,
+  bomId: string | null,
+): Promise<PhysicalStockBomUpdateResult> {
+  const row = await prisma.physicalStock.findUnique({
+    where: { id },
+    select: { erp_code: true },
+  });
+  if (!row) throw new Error("Physical stock row not found.");
+
+  const value = bomId?.trim() || null;
+  const code = (row.erp_code ?? "").trim().toUpperCase();
+
+  if (value && code) {
+    const derivations = await derivePhysicalStockByCodes([code]);
+    const d = derivations.get(code);
+    if (d && d.bomIds.length > 0 && !d.bomIds.includes(value)) {
+      throw new Error("Selected BOM ID is not in available options.");
+    }
+  }
+
+  // Cost follows the selected BOM via the DB-maintained FullItem.cost
+  // (fallback RawMaterial.cost). Clearing the BOM falls back to the code cost.
+  let cost: string | null = null;
+  if (value) {
+    cost = await costForPhysicalStockBom(code, value);
+  } else if (code) {
+    const derivations = await derivePhysicalStockByCodes([code]);
+    cost = derivations.get(code)?.maxCost ?? null;
+  }
+
+  await prisma.physicalStock.update({
+    where: { id },
+    data: { bom_id: value, cost },
+  });
+  return { id, bom_id: value, cost };
+}
+
+export async function recomputePhysicalStockCostBomAction(): Promise<{
+  success: boolean;
+  updated?: number;
+  error?: string;
+}> {
+  try {
+    const { updated } = await applyPhysicalStockDerivations();
+    return { success: true, updated };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message };
+  }
+}
+
 export async function updatePhysicalStockUsdCostAction(
   _id: string,
   _usdCost: string | null,
@@ -34,9 +97,13 @@ export async function updatePhysicalStockUsdCostAction(
   };
 }
 
+// Derived columns are never part of the sheet content key, otherwise a row whose
+// derived cost/bom_id is set would look "new" on every sync and be recreated.
+const DERIVED_FIELDS = new Set(["cost", "bom_id"]);
+
 const CONTENT_FIELDS = Array.from(
   new Set(Object.values(PHYSICAL_COL_INDEX_TO_DB_FIELD)),
-);
+).filter((field) => !DERIVED_FIELDS.has(field));
 
 function contentKey(record: Record<string, string | null>): string {
   const o: Record<string, string | null> = {};
@@ -53,6 +120,7 @@ export async function syncPhysicalStockFromSheetAction(): Promise<{
   skipped?: number;
   totalRows?: number;
   syncedAt?: string;
+  derivedUpdated?: number;
   error?: string;
 }> {
   try {
@@ -83,12 +151,16 @@ export async function syncPhysicalStockFromSheetAction(): Promise<{
       await prisma.physicalStock.createMany({ data: toCreate });
     }
 
+    // Derive Cost / BOM ID from the FullItem + RawMaterial BOM relations.
+    const { updated: derivedUpdated } = await applyPhysicalStockDerivations();
+
     return {
       success: true,
       created: toCreate.length,
       skipped,
       totalRows: rows.length,
       syncedAt: new Date().toISOString(),
+      derivedUpdated,
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
