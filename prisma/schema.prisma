@@ -359,6 +359,45 @@ model RawMaterial {
   updatedAt DateTime @updatedAt
 }
 
+model PhysicalStock {
+  id                             String   @id @default(cuid())
+  erp_code                       String?
+  location                       String?
+  l2_valve_type                  String?
+  dimension                      String?
+  l7_dimension                   String?
+  l4_component                   String?
+  l5_material                    String?
+  l6_std                         String?
+  l8_item_category               String?
+  received_qty                   String?
+  dispatch_qty                   String?
+  available_qty                  String?
+  remarks                        String?
+  sum_of_physical_stock          String?
+  stock_as_per_erp               String?
+  rate_unit                      String?
+  rate_per_pc_qty_weight         String?
+  weight_per_pc                  String?
+  item_wise_value                String?
+  moving_within_3_months         String?
+  order_ag_approval_recvd        String?
+  purchase_in_26_27              String?
+  dispatched_in_26_27            String?
+  order_in_hand_qty              String?
+  shortage_qty                   String?
+  unnamed_aa                     String?
+  item_type                      String?
+  price                          String?
+  moq                            String?
+  if_less_than_moq_extra_charges String?
+  drawing_technical_data         String?
+  created_at                     DateTime @default(now())
+  updated_at                     DateTime @updatedAt
+
+  @@index([erp_code])
+}
+
 model FullItem {
   id                   String   @id @default(cuid())
   itemCode             String?  @unique
