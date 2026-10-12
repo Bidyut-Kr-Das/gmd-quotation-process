@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { hydrateFromServer, selectAllEnquiries, selectAllItems } from "@/lib/enquiriesSlice";
 import { setFilter } from "@/lib/filtersSlice";
+import { setClosedBomIds } from "@/lib/uiSlice";
 import type { EnquiryData, EnquiryItemData, DropdownOptions } from "@/lib/types";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import EnquiryTable from "@/components/table/EnquiryTable";
@@ -210,6 +211,25 @@ export default function DashboardContainer({
     const allItems = enquiries.flatMap((e) => e.items as EnquiryItemData[]);
     dispatch(hydrateFromServer({ enquiries, items: allItems }));
   }, [enquiries, dispatch]);
+
+  // Seed the closed-BOM set once from the server-computed `closedBomIds`
+  // (VerifyBom.cBatch = "C"). Held in ui state so it survives the item
+  // replacements that inline edits and BOM selection trigger.
+  const derivedClosedBomIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of enquiries) {
+      for (const item of e.items ?? []) {
+        for (const id of item.closedBomIds ?? []) {
+          if (id) set.add(id);
+        }
+      }
+    }
+    return Array.from(set);
+  }, [enquiries]);
+
+  useEffect(() => {
+    dispatch(setClosedBomIds(derivedClosedBomIds));
+  }, [derivedClosedBomIds, dispatch]);
 
   const mergedDropdownOptions = useMemo(() => {
     const allItems = enquiries.flatMap((e) => e.items);

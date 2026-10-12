@@ -38,6 +38,8 @@ export interface EnquiryItemData {
   contractReviewRate?: string | null;
   pdcostValidation?: string | null;
   availableBomIds?: string[] | null;
+  /** Derived at hydration: available/selected BOM IDs whose VerifyBom.cBatch = "C". */
+  closedBomIds?: string[] | null;
   stockQuantity?: string | null;
   costLogic?: string | null;
   availableStock?: string | null;
@@ -182,6 +184,8 @@ export interface UiState {
   isAnalyticsSidebarCollapsed?: boolean;
   generatedImages: Record<string, { url: string | null; driveFileId: string | null }>;
   selectedEnquiryIds: string[];
+  /** BOM IDs whose VerifyBom.cBatch = "C" (server-derived, seeded on hydration). */
+  closedBomIds: string[];
 }
 
 export interface PaginationState {

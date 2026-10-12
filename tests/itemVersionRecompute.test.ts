@@ -108,7 +108,7 @@ test('BFV maps plain/DI->V1, CS->V2, WAFER->V3, 9523->V4', () => {
   assert.equal(updates[0].totalBalBillAgCont, 15)
 })
 
-test('NRV unmapped suffix falls into the spare V2 slot', () => {
+test('NRV 9523 and unmapped suffixes share the V2 slot', () => {
   const { updates } = planIndentRecompute([
     row({ id: 'a', item: 'NRV-DI', totalBalBillAgCont: 1 }),
     row({ id: 'b', item: 'NRV-CS', totalBalBillAgCont: 2 }),
@@ -117,12 +117,12 @@ test('NRV unmapped suffix falls into the spare V2 slot', () => {
   assert.equal(updates.length, 1)
   assert.equal(updates[0].item, 'NRV')
   assert.equal(updates[0].v1, '1')
-  assert.equal(updates[0].v2, '2')
+  assert.equal(updates[0].v2, '5')
   assert.equal(updates[0].v3, '')
-  assert.equal(updates[0].v4, '3')
+  assert.equal(updates[0].v4, '')
   assert.equal(updates[0].v1Category, 'DI')
-  assert.equal(updates[0].v2Category, 'CS')
-  assert.equal(updates[0].v4Category, '9523')
+  assert.equal(updates[0].v2Category, 'CS, 9523')
+  assert.equal(updates[0].v4Category, '')
 })
 
 test('multiple variants landing in the same slot join their categories', () => {

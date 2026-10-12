@@ -20,6 +20,12 @@ export interface DocketEmailPayload {
   docketNumber: string;
   fileName: string;
   pdfBuffer: Buffer;
+  /**
+   * Gmail thread id of the linked `DocketQuotationThread`. The n8n workflow
+   * replies into this thread instead of starting a new one. Omitted only for
+   * legacy callers; the send action always supplies it.
+   */
+  threadId?: string;
 }
 
 export interface DocketEmailResult {
@@ -49,6 +55,7 @@ export async function sendDocketEmailViaN8n(
     form.append("html", payload.html);
     form.append("docketNumber", payload.docketNumber);
     form.append("fileName", payload.fileName);
+    form.append("threadId", payload.threadId ?? "");
     form.append(
       "attachment",
       new Blob([new Uint8Array(payload.pdfBuffer)], { type: "application/pdf" }),

@@ -4,63 +4,130 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import MultiSelectFilter, { BLANK } from "@/components/table/MultiSelectFilter";
 import Pagination from "@/components/table/Pagination";
+import type { VariantMetrics } from "@/lib/indentListingMetrics";
 
 interface IndentListingTableProps {
   title: string;
   rows: unknown[][];
   ids: string[];
+  /** Per-row, per-variant metrics aligned with `rows`. */
+  metrics: VariantMetrics[][];
 }
 
-interface ColumnDef {
+// Row layout (17 fields) produced by `lib/indentListingRead.ts`:
+//   item, size, pnRating, mcReceivedPending, total,
+//   v1..v4, v1Category..v4Category, rmCodeV1..rmCodeV4
+const STATUS_IDX = 3;
+const V_VALUE_IDXS = [5, 6, 7, 8];
+const V_CAT_IDXS = [9, 10, 11, 12];
+const V_RM_IDXS = [13, 14, 15, 16];
+
+type VariantMetricKey =
+  | "mcReceived"
+  | "mcPending"
+  | "stock"
+  | "catValue"
+  | "orderedQty"
+  | "pendingOrderQty";
+
+interface BaseColumn {
+  kind: "base";
   label: string;
   key: string;
   dataIdx: number;
   numeric: boolean;
+  width: number;
+}
+
+interface VariantColumn {
+  kind: "variant";
+  label: string;
+  key: string;
+  slot: number;
+  slotLabel: string;
+  metric: VariantMetricKey;
+  numeric: boolean;
+  width: number;
+  valueIdx?: number;
   categoryIdx?: number;
   rmCodeIdx?: number;
 }
 
-// Display columns. `dataIdx` maps the display index to the raw row index
-// (rows carry 17 fields: item, size, pnRating, mcReceivedPending, total, v1..v4,
-// then v1Category..v4Category, then rmCodeV1..rmCodeV4; the MC RECEIVED/PENDING
-// field is skipped in the UI). V1..V4 hold the BAL BILL AG CONT for each variant
-// of the item, derived on recompute, and the matching category is shown beside
-// the value and used by the column filter. The RM code resolved from the raw
-// material master for that same variant is shown underneath both.
-const COLUMNS: ColumnDef[] = [
-  { label: "ITEM NAME", key: "item", dataIdx: 0, numeric: false },
-  { label: "SIZE", key: "size", dataIdx: 1, numeric: false },
-  { label: "PN RATING", key: "pnRating", dataIdx: 2, numeric: false },
-  { label: "Total Ag Cont", key: "total", dataIdx: 4, numeric: true },
-  { label: "V1", key: "v1", dataIdx: 5, numeric: true, categoryIdx: 9, rmCodeIdx: 13 },
-  { label: "V2", key: "v2", dataIdx: 6, numeric: true, categoryIdx: 10, rmCodeIdx: 14 },
-  { label: "V3", key: "v3", dataIdx: 7, numeric: true, categoryIdx: 11, rmCodeIdx: 15 },
-  { label: "V4", key: "v4", dataIdx: 8, numeric: true, categoryIdx: 12, rmCodeIdx: 16 },
+type LeafColumn = BaseColumn | VariantColumn;
+
+const BASE_COLUMNS: BaseColumn[] = [
+  { kind: "base", label: "ITEM NAME", key: "item", dataIdx: 0, numeric: false, width: 150 },
+  { kind: "base", label: "SIZE", key: "size", dataIdx: 1, numeric: false, width: 100 },
+  { kind: "base", label: "PN RATING", key: "pnRating", dataIdx: 2, numeric: false, width: 120 },
+  { kind: "base", label: "MC RECEIVED/PENDING", key: "mcStatus", dataIdx: STATUS_IDX, numeric: false, width: 150 },
+  { kind: "base", label: "Total Ag Cont", key: "total", dataIdx: 4, numeric: true, width: 120 },
 ];
 
-// Widths are sized to the content: `item` holds the base item after recompute
-// so its longest value is 11 chars ("AIR CUSHION"), and the total is a number
-// capped at ~4 digits. V1..V4 stay wider because they stack the balance, the
-// category line and a comma-joined RM code.
-const DEFAULT_COLUMN_WIDTHS: Record<number, number> = {
-  0: 140,
-  1: 110,
-  2: 130,
-  3: 110,
-  4: 150,
-  5: 150,
-  6: 150,
-  7: 150,
-};
+// The subcolumns every V1..V4 block repeats. `catValue` is the existing balance
+// cell: the value with `-(category)` beside it and the resolved RM code below.
+const VARIANT_SUBS: { metric: VariantMetricKey; label: string; width: number }[] = [
+  { metric: "stock", label: "STOCK", width: 90 },
+  { metric: "catValue", label: "CATEGORY / VALUE", width: 150 },
+  { metric: "orderedQty", label: "ORDERED QTY", width: 100 },
+  { metric: "pendingOrderQty", label: "PENDING ORDER QTY", width: 120 },
+];
 
-function cellText(row: unknown[], dataIdx: number): string {
-  return String(row[dataIdx] ?? "").trim();
+const VARIANT_GROUPS = ["V1", "V2", "V3", "V4"];
+
+const VARIANT_COLUMNS: VariantColumn[] = VARIANT_GROUPS.flatMap(
+  (slotLabel, slot) =>
+    VARIANT_SUBS.map((sub) => ({
+      kind: "variant" as const,
+      label: sub.label,
+      key: `${slotLabel}-${sub.metric}`,
+      slot,
+      slotLabel,
+      metric: sub.metric,
+      numeric: true,
+      width: sub.width,
+      ...(sub.metric === "catValue"
+        ? {
+            valueIdx: V_VALUE_IDXS[slot],
+            categoryIdx: V_CAT_IDXS[slot],
+            rmCodeIdx: V_RM_IDXS[slot],
+          }
+        : {}),
+    })),
+);
+
+const LEAF_COLUMNS: LeafColumn[] = [...BASE_COLUMNS, ...VARIANT_COLUMNS];
+
+const DEFAULT_COLUMN_WIDTHS: Record<number, number> = Object.fromEntries(
+  LEAF_COLUMNS.map((col, idx) => [idx, col.width]),
+);
+
+function cellText(row: unknown[], idx: number): string {
+  return String(row[idx] ?? "").trim();
 }
 
-// Value used for filtering a column: the category for V1..V4, otherwise the
-// cell value itself.
-function filterText(row: unknown[], col: ColumnDef): string {
-  return cellText(row, col.categoryIdx ?? col.dataIdx);
+// The value shown (and sorted) in a leaf column. Variant metrics come from the
+// per-row `VariantMetrics`; `catValue` falls back to the balance in the row.
+function leafValue(
+  row: unknown[],
+  col: LeafColumn,
+  metrics?: VariantMetrics[],
+): string {
+  if (col.kind === "base") return cellText(row, col.dataIdx);
+  if (col.metric === "catValue")
+    return col.valueIdx === undefined ? "" : cellText(row, col.valueIdx);
+  return metrics?.[col.slot]?.[col.metric] ?? "";
+}
+
+// Value used for filtering: the category for the `catValue` subcolumn (matching
+// the previous V-column behaviour), otherwise the displayed value.
+function leafFilterText(
+  row: unknown[],
+  col: LeafColumn,
+  metrics?: VariantMetrics[],
+): string {
+  if (col.kind === "variant" && col.metric === "catValue")
+    return col.categoryIdx === undefined ? "" : cellText(row, col.categoryIdx);
+  return leafValue(row, col, metrics);
 }
 
 function compareCell(a: string, b: string, numeric: boolean): number {
@@ -82,6 +149,7 @@ export default function IndentListingTable({
   title,
   rows,
   ids,
+  metrics,
 }: IndentListingTableProps) {
   const [sortIdx, setSortIdx] = useState<number | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
@@ -93,9 +161,25 @@ export default function IndentListingTable({
   );
   const tableRef = useRef<HTMLTableElement>(null);
 
-  const getColWidth = (idx: number) => columnWidths[idx] ?? DEFAULT_COLUMN_WIDTHS[idx] ?? 120;
-  const totalTableWidth =
-    COLUMNS.reduce((acc, _, idx) => acc + getColWidth(idx), 0);
+  const getColWidth = (idx: number) =>
+    columnWidths[idx] ?? DEFAULT_COLUMN_WIDTHS[idx] ?? 120;
+  const totalTableWidth = LEAF_COLUMNS.reduce(
+    (acc, _, idx) => acc + getColWidth(idx),
+    0,
+  );
+
+  // Row reference -> its per-variant metrics. The family merge clones rows but
+  // keeps object identity, so filtering/sorting can look metrics up by row.
+  const metricsByRow = useMemo(() => {
+    const map = new Map<unknown[], VariantMetrics[]>();
+    rows.forEach((row, i) => map.set(row, metrics[i] ?? []));
+    return map;
+  }, [rows, metrics]);
+
+  const getMetrics = useCallback(
+    (row: unknown[]) => metricsByRow.get(row),
+    [metricsByRow],
+  );
 
   // Mouse drag handler for column resizing. Paints straight to the DOM during
   // the drag and commits the width once on mouseup.
@@ -138,18 +222,18 @@ export default function IndentListingTable({
       let out = source;
       for (const [colIdxStr, selected] of Object.entries(filters)) {
         const colIdx = Number(colIdxStr);
-        const col = COLUMNS[colIdx];
+        const col = LEAF_COLUMNS[colIdx];
         if (!col || colIdx === excludeIdx || selected.length === 0) continue;
         const selectedSet = new Set(selected);
         out = out.filter((row) => {
-          const v = filterText(row, col);
+          const v = leafFilterText(row, col, getMetrics(row));
           if (selectedSet.has(BLANK)) return v === "";
           return selectedSet.has(v);
         });
       }
       return out;
     },
-    [filters],
+    [filters, getMetrics],
   );
 
   const filtered = useMemo(
@@ -163,11 +247,11 @@ export default function IndentListingTable({
   const { cascadedOptions, cascadedCounts } = useMemo(() => {
     const options: Record<number, string[]> = {};
     const counts: Record<number, Record<string, number>> = {};
-    COLUMNS.forEach((col, idx) => {
+    LEAF_COLUMNS.forEach((col, idx) => {
       const scoped = applyFilters(idx, rows);
       const valueCounts = new Map<string, number>();
       for (const row of scoped) {
-        const v = filterText(row, col);
+        const v = leafFilterText(row, col, getMetrics(row));
         valueCounts.set(v, (valueCounts.get(v) ?? 0) + 1);
       }
       const selectedSet = new Set(filters[idx] ?? []);
@@ -181,21 +265,21 @@ export default function IndentListingTable({
       counts[idx] = Object.fromEntries(valueCounts);
     });
     return { cascadedOptions: options, cascadedCounts: counts };
-  }, [applyFilters, rows, filters]);
+  }, [applyFilters, rows, filters, getMetrics]);
 
   const sorted = useMemo(() => {
     const out = [...filtered];
     if (sortIdx !== null) {
-      const col = COLUMNS[sortIdx];
+      const col = LEAF_COLUMNS[sortIdx];
       out.sort((a, b) => {
-        const av = cellText(a, col.dataIdx).toLowerCase();
-        const bv = cellText(b, col.dataIdx).toLowerCase();
+        const av = leafValue(a, col, getMetrics(a)).toLowerCase();
+        const bv = leafValue(b, col, getMetrics(b)).toLowerCase();
         const cmp = compareCell(av, bv, col.numeric);
         return sortAsc ? cmp : -cmp;
       });
     }
     return out;
-  }, [filtered, sortIdx, sortAsc]);
+  }, [filtered, sortIdx, sortAsc, getMetrics]);
 
   const paginated = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -227,45 +311,95 @@ export default function IndentListingTable({
 
   const hasActiveFilters = Object.values(filters).some((v) => v.length > 0);
 
-  // V1..V4 stack three lines: the balance, the variant category it came from,
-  // and the RM code resolved from the raw material master for that variant.
-  const renderCell = (row: unknown[], col: ColumnDef) => {
-    const value = String(row[col.dataIdx] ?? "").trim();
-    const category =
-      col.categoryIdx === undefined
-        ? ""
-        : String(row[col.categoryIdx] ?? "").trim();
-    const rmCode =
-      col.rmCodeIdx === undefined
-        ? ""
-        : String(row[col.rmCodeIdx] ?? "").trim();
+  // Base and variant cells. The `catValue` subcolumn stacks three lines: the
+  // balance, the variant category, and the RM code resolved for that variant.
+  const renderCell = (row: unknown[], col: LeafColumn) => {
+    if (col.kind === "base") {
+      const value = cellText(row, col.dataIdx);
+      return value === "" ? "—" : value;
+    }
 
-    if (value === "") return "—";
-    if (category === "" && rmCode === "") return value;
+    if (col.metric === "catValue") {
+      const value = col.valueIdx === undefined ? "" : cellText(row, col.valueIdx);
+      const category =
+        col.categoryIdx === undefined ? "" : cellText(row, col.categoryIdx);
+      const rmCode =
+        col.rmCodeIdx === undefined ? "" : cellText(row, col.rmCodeIdx);
 
-    return (
-      <span className="flex flex-col items-end gap-0.5">
-        <span className="inline-flex items-baseline justify-end gap-1">
-          <span>{value}</span>
-          {category !== "" && (
-            <span className="text-[10px] font-medium text-muted-foreground">
-              -({category})
+      if (value === "") return "—";
+      if (category === "" && rmCode === "") return value;
+
+      return (
+        <span className="flex flex-col items-end gap-0.5">
+          <span className="inline-flex items-baseline justify-end gap-1">
+            <span>{value}</span>
+            {category !== "" && (
+              <span className="text-[10px] font-medium text-muted-foreground">
+                -({category})
+              </span>
+            )}
+          </span>
+          {rmCode !== "" && (
+            <span className="text-[10px] font-mono font-medium text-[#0f62fe] dark:text-primary">
+              {rmCode}
             </span>
           )}
         </span>
-        {rmCode !== "" && (
-          <span className="text-[10px] font-mono font-medium text-[#0f62fe] dark:text-primary">
-            {rmCode}
-          </span>
-        )}
-      </span>
+      );
+    }
+
+    const value = getMetrics(row)?.[col.slot]?.[col.metric] ?? "";
+    return value === "" ? "—" : value;
+  };
+
+  const headerControls = (col: LeafColumn, idx: number) => {
+    const prefix = col.kind === "variant" ? `${col.slotLabel} ` : "";
+    return (
+      <>
+        {/* Full-cell sort target. It sits beneath the label and the filter so
+            both keep their own clicks, and stays a real <button> so keyboard and
+            screen reader users can still reach it — unlike an onClick on the
+            <th> itself. */}
+        <button
+          type="button"
+          onClick={() => handleSort(idx)}
+          aria-label={`Sort by ${prefix}${col.label}`.trim()}
+          className="absolute inset-0 z-0 cursor-pointer transition-colors hover:bg-muted/60"
+        />
+
+        <div className="relative z-10 flex items-center justify-between gap-1 pointer-events-none">
+          <span className="font-bold uppercase tracking-wider">{col.label}</span>
+          {sortArrow(idx)}
+        </div>
+
+        <div className="relative z-20 mt-1.5 normal-case font-normal text-left text-foreground">
+          <MultiSelectFilter
+            label={`${prefix}${col.label}`.trim()}
+            allLabel={`${prefix}${col.label}: All`.trim()}
+            options={cascadedOptions[idx] ?? []}
+            cascadedOptions={cascadedOptions[idx] ?? []}
+            counts={cascadedCounts[idx] ?? {}}
+            selected={filters[idx] ?? []}
+            onChange={(v) => setFilters((prev) => ({ ...prev, [idx]: v }))}
+            includeBlank
+          />
+        </div>
+        <div
+          onMouseDown={(e) => handleMouseDown(idx, e)}
+          className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-30 group"
+          style={{ marginRight: "-3px" }}
+        >
+          <div className="absolute top-0 left-[-4px] w-[14px] h-full" />
+          <div className="absolute right-[2px] top-0 w-[2px] h-full bg-transparent group-hover:bg-[#0f62fe] dark:group-hover:bg-primary group-active:bg-[#0f62fe] dark:group-active:bg-primary transition-colors" />
+        </div>
+      </>
     );
   };
 
   return (
     <div className="flex flex-col flex-1 min-h-0 w-full max-w-full min-w-0">
       {/* Toolbar */}
-      <div className="flex justify-between items-center px-4 py-2.5 bg-muted/50 border-b border-border">
+      <div className="flex justify-between items-center px-4 py-2.5 bg-muted/50 border-b border-slate-300 dark:border-slate-600">
         <span className="text-[11px] font-semibold text-muted-foreground">
           {title} · {filtered.length} of {rows.length} rows
         </span>
@@ -281,22 +415,23 @@ export default function IndentListingTable({
       </div>
 
       {/* Table */}
-      <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto w-full min-w-0 border-b border-border">
+      <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto w-full min-w-0 border-b border-slate-300 dark:border-slate-600">
         <table
           ref={tableRef}
-          className="border-collapse text-left border border-border"
+          className="border-collapse text-left border border-slate-400 dark:border-slate-600"
           style={{ tableLayout: "fixed", width: totalTableWidth }}
         >
           <colgroup>
-            {COLUMNS.map((_, idx) => (
+            {LEAF_COLUMNS.map((_, idx) => (
               <col key={idx} style={{ width: getColWidth(idx) }} />
             ))}
           </colgroup>
           <thead>
             <tr className="bg-muted select-none">
-              {COLUMNS.map((col, idx) => (
+              {BASE_COLUMNS.map((col, idx) => (
                 <th
                   key={col.key}
+                  rowSpan={2}
                   aria-sort={
                     sortIdx === idx
                       ? sortAsc
@@ -304,61 +439,51 @@ export default function IndentListingTable({
                         : "descending"
                       : "none"
                   }
-                  className="relative py-2.5 px-3 sticky top-0 z-30 bg-muted text-[10px] font-bold tracking-wider text-muted-foreground uppercase border-r border-b border-border last:border-r-0"
+                  className="relative py-2.5 px-3 sticky top-0 z-30 bg-muted text-[10px] font-bold tracking-wider text-muted-foreground uppercase border-r border-b-2 border-slate-300 dark:border-slate-600 last:border-r-0"
                 >
-                  {/* Full-cell sort target. It sits beneath the label and the
-                      filter so both keep their own clicks, and stays a real
-                      <button> so keyboard and screen reader users can still
-                      reach it — unlike an onClick on the <th> itself. */}
-                  <button
-                    type="button"
-                    onClick={() => handleSort(idx)}
-                    aria-label={`Sort by ${col.label}`}
-                    className="absolute inset-0 z-0 cursor-pointer transition-colors hover:bg-muted/60"
-                  />
-
-                  <div className="relative z-10 flex items-center justify-between gap-1 pointer-events-none">
-                    <span className="font-bold uppercase tracking-wider">
-                      {col.label}
-                    </span>
-                    {sortArrow(idx)}
-                  </div>
-
-                  <div className="relative z-20 mt-1.5 normal-case font-normal text-left text-foreground">
-                    <MultiSelectFilter
-                      label={col.label}
-                      allLabel={`${col.label}: All`}
-                      options={cascadedOptions[idx] ?? []}
-                      cascadedOptions={cascadedOptions[idx] ?? []}
-                      counts={cascadedCounts[idx] ?? {}}
-                      selected={filters[idx] ?? []}
-                      onChange={(v) =>
-                        setFilters((prev) => ({ ...prev, [idx]: v }))
-                      }
-                      includeBlank
-                    />
-                  </div>
-                  <div
-                    onMouseDown={(e) => handleMouseDown(idx, e)}
-                    className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-30 group"
-                    style={{ marginRight: "-3px" }}
-                  >
-                    <div className="absolute top-0 left-[-4px] w-[14px] h-full" />
-                    <div className="absolute right-[2px] top-0 w-[2px] h-full bg-transparent group-hover:bg-[#0f62fe] dark:group-hover:bg-primary group-active:bg-[#0f62fe] dark:group-active:bg-primary transition-colors" />
-                  </div>
+                  {headerControls(col, idx)}
                 </th>
               ))}
+              {VARIANT_GROUPS.map((label) => (
+                <th
+                  key={label}
+                  colSpan={VARIANT_SUBS.length}
+                  className="sticky top-0 z-30 h-8 bg-muted/80 text-center text-[11px] font-bold tracking-wider text-foreground uppercase border-r border-b border-slate-300 dark:border-slate-600"
+                >
+                  {label}
+                </th>
+              ))}
+            </tr>
+            <tr className="bg-muted select-none">
+              {VARIANT_COLUMNS.map((col, i) => {
+                const idx = BASE_COLUMNS.length + i;
+                return (
+                  <th
+                    key={col.key}
+                    aria-sort={
+                      sortIdx === idx
+                        ? sortAsc
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                    }
+                    className="relative py-2.5 px-3 sticky top-8 z-30 bg-muted text-[10px] font-bold tracking-wider text-muted-foreground uppercase border-r border-b-2 border-slate-300 dark:border-slate-600 last:border-r-0"
+                  >
+                    {headerControls(col, idx)}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className="bg-background">
             {paginated.length === 0 ? (
               <tr>
                 <td
-                  colSpan={COLUMNS.length}
-                  className="py-20 px-4 text-center border-b border-border"
+                  colSpan={LEAF_COLUMNS.length}
+                  className="py-20 px-4 text-center border-b border-slate-300 dark:border-slate-600"
                 >
                   <div className="flex flex-col items-center justify-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground mb-4 border border-border">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground mb-4 border border-slate-300 dark:border-slate-600">
                       <Search className="h-6 w-6 stroke-[1.5]" />
                     </div>
                     <h3 className="text-sm font-semibold text-foreground">
@@ -378,20 +503,24 @@ export default function IndentListingTable({
                     key={id || rowIdx}
                     className="hover:bg-muted/20 transition-colors"
                   >
-                    {COLUMNS.map((col, idx) => (
-                      <td
-                        key={col.key}
-                        className={`py-2.5 px-4 text-xs border-r border-b border-border last:border-r-0 ${
-                          col.rmCodeIdx === undefined ? "truncate" : ""
-                        } ${
-                          col.numeric
-                            ? "font-bold text-foreground text-right tabular-nums"
-                            : "text-muted-foreground"
-                        } ${idx === 0 ? "font-semibold text-foreground" : ""}`}
-                      >
-                        {renderCell(row, col)}
-                      </td>
-                    ))}
+                    {LEAF_COLUMNS.map((col, idx) => {
+                      const isCatValue =
+                        col.kind === "variant" && col.metric === "catValue";
+                      return (
+                        <td
+                          key={col.key}
+                          className={`py-2.5 px-4 text-xs border-r border-b border-slate-300 dark:border-slate-600 last:border-r-0 ${
+                            isCatValue ? "" : "truncate"
+                          } ${
+                            col.numeric
+                              ? "font-bold text-foreground text-right tabular-nums"
+                              : "text-muted-foreground"
+                          } ${idx === 0 ? "font-semibold text-foreground" : ""}`}
+                        >
+                          {renderCell(row, col)}
+                        </td>
+                      );
+                    })}
                   </tr>
                 );
               })

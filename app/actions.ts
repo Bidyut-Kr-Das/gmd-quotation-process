@@ -996,6 +996,11 @@ export async function updateEnquiryFieldAction(
  * (`senderEmail`). The Offer PDF is generated and attached; Cc comes from the
  * comma-separated `emailAddress`. On success the sent marker is persisted; on
  * any failure nothing is written and the error is returned to the client.
+ *
+ * The email is sent as a reply inside the linked `DocketQuotationThread` (the
+ * latest thread whose `docketNo` matches this docket number) so it lands on the
+ * RFQ conversation instead of starting a new one. When no linked thread exists
+ * the action returns "Linked email thread not found" and sends nothing.
  */
 export async function sendDocketEmailAction(enquiryId: string) {
   try {
@@ -1020,6 +1025,15 @@ export async function sendDocketEmailAction(enquiryId: string) {
     const to = (enquiry.senderEmail || "").trim();
     if (!to) {
       return { success: false, error: "No recipient (sender email) on this docket." };
+    }
+
+    // The quotation must go back as a reply in the thread the RFQ arrived on.
+    // Resolve the latest thread linked to this docket number and refuse to send
+    // (rather than start a detached thread) when there is none.
+    const { findLatestLinkedThread } = await import("@/lib/docketThreadResolver");
+    const linkedThread = await findLatestLinkedThread(enquiry.docketNumber);
+    if (!linkedThread) {
+      return { success: false, error: "Linked email thread not found" };
     }
 
     // Always Cc the fixed address, merged with the docket's other emails and
@@ -1085,6 +1099,7 @@ export async function sendDocketEmailAction(enquiryId: string) {
       docketNumber: enquiry.docketNumber,
       fileName: pdfRes.fileName || `${enquiry.docketNumber}.pdf`,
       pdfBuffer,
+      threadId: linkedThread.threadId,
     });
     if (!send.success) {
       return { success: false, error: send.error || "Email sending failed." };
@@ -4711,7 +4726,7 @@ export async function recomputeIndentListingVersionsAction() {
       },
     });
 
-    const { planIndentRmCodes, RM_CODE_ITEM_CATEGORY, RM_CODE_VALVE_TYPE } =
+    const { planIndentRmCodes, RM_CODE_ITEM_CATEGORY, RM_CODE_VALVE_TYPES } =
       await import("@/lib/indentRmCodeResolver");
 
     const [rmCodeSourceRows, rawMaterials] = await Promise.all([
@@ -4743,7 +4758,10 @@ export async function recomputeIndentListingVersionsAction() {
             contains: RM_CODE_ITEM_CATEGORY,
             mode: "insensitive",
           },
-          l2ValveType: { equals: RM_CODE_VALVE_TYPE, mode: "insensitive" },
+          l2ValveType: {
+            in: [...RM_CODE_VALVE_TYPES],
+            mode: "insensitive",
+          },
           newItemStatus: null,
         },
         select: {
@@ -4863,7 +4881,7 @@ export async function recomputeIndentListingVersionsAction() {
 
     const rmCodeSummary =
       rmCodePlan.updates.length === 0
-        ? "No SLV / SLV METAL / TPAV+SLV indent rows to link."
+        ? "No SLV / SLV METAL / TPAV+SLV / NRV indent rows to link."
         : `${rmCodePlan.resolved} linked, ${rmCodePlan.ambiguous} with multiple RM codes, ${rmCodePlan.unmatched} with no RM code.`;
 
     const costCodeRefSummary =
@@ -5835,6 +5853,14 @@ export async function syncContractReviewRmAvailAction() {
       "@/lib/contractPhysicalStock"
     );
 
+    // 0. Refresh the Indent Listing V1..V4 split, the RM codes and the Contract
+    //    Review COST CODE REF before the PHYSICAL STOCK step below reads that
+    //    ref. Without this an NRV / SLV code published since the last Indent
+    //    Listing recompute would be missed. The call is idempotent: the
+    //    destructive collapse is skipped once the rows are already collapsed,
+    //    but the RM code and cost code ref passes always run.
+    const indentRecompute = await recomputeIndentListingVersionsAction();
+
     // 1. Blank-fill GMDUpdateItem.availableStock from the stock-phys sheet
     const stockPhysMap = await fetchStockPhysicalSheet();
     const stockPhysCodes = Object.keys(stockPhysMap);
@@ -5936,6 +5962,7 @@ export async function syncContractReviewRmAvailAction() {
         stockPhysCodes: stockPhysCodes.length,
         rmAvailUpdated: rmAvailUpdates.length,
         physicalStockUpdated: physicalUpdates.length,
+        indentRecompute: indentRecompute?.data ?? null,
       },
     };
   } catch (error: any) {

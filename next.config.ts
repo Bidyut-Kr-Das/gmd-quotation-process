@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '100mb',
     },
+    // `proxy.ts` buffers every matched request body in memory (default 10MB).
+    // Docket creation POSTs base64 attachments through the proxy, so raise the
+    // proxy buffer to match the Server Action limit.
+    proxyClientMaxBodySize: '100mb',
   },
    output: "standalone",
 };

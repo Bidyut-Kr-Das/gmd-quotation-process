@@ -64,10 +64,10 @@ const CASCADE_LEVEL_HEADERS = [
   "L1",
   "L2-VALVE TYPE",
   "L3-DIA",
-  "L7-DIMENSION",
   "L4-COMPONENT",
   "L5- MATERIAL",
   "L6-STD",
+  "L7-DIMENSION",
 ];
 
 interface SheetData {
@@ -153,10 +153,10 @@ function rowToGMDUpdateItem(
     l1: String(row[3] ?? ""),
     l2ValveType: String(row[4] ?? ""),
     l3Dia: String(row[5] ?? ""),
-    l7Dimension: String(row[6] ?? ""),
-    l4Component: String(row[7] ?? ""),
-    l5Material: String(row[8] ?? ""),
-    l6Std: String(row[9] ?? ""),
+    l4Component: String(row[6] ?? ""),
+    l5Material: String(row[7] ?? ""),
+    l6Std: String(row[8] ?? ""),
+    l7Dimension: String(row[9] ?? ""),
     l8ItemCategory: String(row[10] ?? ""),
     um: String(row[11] ?? ""),
     availableStock: String(row[12] ?? ""),

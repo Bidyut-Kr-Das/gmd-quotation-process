@@ -7,13 +7,13 @@ import GMDUpdateHeader from "@/components/gmd_dashboard/GMDUpdateHeader";
 import GMDUpdateSkeleton from "@/components/gmd_dashboard/skeletons/GMDUpdateSkeleton";
 import IndentListingTable from "@/components/indent_listing/IndentListingTable";
 import { recomputeIndentListingVersionsAction } from "@/app/actions";
-
-const STATUS_IDX = 3;
+import type { VariantMetrics } from "@/lib/indentListingMetrics";
 
 interface IndentListingData {
   headers: string[];
   rows: unknown[][];
   ids: string[];
+  metrics: VariantMetrics[][];
   totalRows: number;
   syncedAt: string | null;
 }
@@ -135,22 +135,6 @@ export default function IndentListingPage() {
     }
   }, [fetchData]);
 
-  const allRows = data?.rows ?? [];
-  const allIds = data?.ids ?? [];
-  const partition = (status: string) => {
-    const rows: unknown[][] = [];
-    const ids: string[] = [];
-    allRows.forEach((r, i) => {
-      if (String(r[STATUS_IDX] ?? "").trim().toLowerCase() === status) {
-        rows.push(r);
-        ids.push(allIds[i]);
-      }
-    });
-    return { rows, ids };
-  };
-  const received = partition("received");
-  const pending = partition("pending");
-
   if (loading) {
     return (
       <main className="flex-1 min-h-0 flex flex-col bg-background overflow-hidden">
@@ -202,14 +186,10 @@ export default function IndentListingPage() {
       </div>
       <div className="flex-1 min-h-0 px-6 pb-6 flex gap-4">
         <IndentListingTable
-          title="MC RECEIVED"
-          rows={received.rows}
-          ids={received.ids}
-        />
-        <IndentListingTable
-          title="MC PENDING"
-          rows={pending.rows}
-          ids={pending.ids}
+          title="MC RECEIVED / PENDING"
+          rows={data?.rows ?? []}
+          ids={data?.ids ?? []}
+          metrics={data?.metrics ?? []}
         />
       </div>
     </main>
