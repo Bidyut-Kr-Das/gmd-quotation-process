@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Download,
   ExternalLink,
@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import ExcelPreview from "./ExcelPreview";
 import type { AttachmentData } from "@/lib/types";
 
 // Client-safe mirror of lib/gdrive's driveFileIdFromUrl. lib/gdrive pulls in
@@ -35,17 +36,29 @@ function extensionOf(nameOrUrl: string): string {
   return m ? m[1].toLowerCase() : "";
 }
 
-type AttachmentKind = "pdf" | "image" | "other";
+type AttachmentKind = "pdf" | "image" | "excel" | "other";
+
+const EXCEL_MIME_TYPES = [
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "application/vnd.ms-excel.sheet.macroenabled.12",
+  "application/vnd.ms-excel.sheet.binary.macroenabled.12",
+  "text/csv",
+];
+
+const EXCEL_EXTENSIONS = ["xlsx", "xls", "xlsm", "xlsb", "csv"];
 
 function kindOf(att: AttachmentData): AttachmentKind {
   const type = (att.type ?? "").toLowerCase();
   if (type === "application/pdf") return "pdf";
   if (type.startsWith("image/")) return "image";
+  if (EXCEL_MIME_TYPES.includes(type)) return "excel";
   const ext = extensionOf(att.name) || extensionOf(att.url);
   if (ext === "pdf") return "pdf";
   if (["png", "jpg", "jpeg", "webp", "gif", "bmp", "tif", "tiff"].includes(ext)) {
     return "image";
   }
+  if (EXCEL_EXTENSIONS.includes(ext)) return "excel";
   return "other";
 }
 
@@ -94,13 +107,16 @@ export default function AttachmentPreviewDialog({
   const activeDriveId = active ? driveFileIdFromUrl(active.url) : null;
   const previewFailed = active ? failedIds.has(active.id) : false;
 
-  const markFailed = (id: string) =>
-    setFailedIds((prev) => {
-      if (prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
+  const markFailed = useCallback(
+    (id: string) =>
+      setFailedIds((prev) => {
+        if (prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      }),
+    [],
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -154,6 +170,13 @@ export default function AttachmentPreviewDialog({
                   </Button>
                 </div>
               </div>
+            ) : activeKind === "excel" ? (
+              <ExcelPreview
+                key={active.id}
+                src={attachmentHref(active)}
+                name={active.name}
+                onError={() => markFailed(active.id)}
+              />
             ) : activeDriveId ? (
               <iframe
                 key={active.id}

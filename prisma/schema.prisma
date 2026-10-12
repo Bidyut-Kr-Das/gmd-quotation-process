@@ -262,11 +262,44 @@ model SupplyHistoryItem {
   // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
   // never rendered as its own column.
   cBatch                         String?
+  bomLinks SupplyHistoryBomLink[]
+
+selectedBomItemId String?
+selectedBomItem BomItem? @relation("SupplyHistorySelectedBomItem", fields: [selectedBomItemId], references: [id])
+
+@@index([selectedBomItemId])
+  @@unique([invoiceNo, itemName])
+  @@index([erpItemCode])
   syncedAt                       DateTime @default(now())
   createdAt                      DateTime @default(now())
   updatedAt                      DateTime @updatedAt
 
-  @@unique([invoiceNo, itemName])
+}
+model SupplyHistoryBomLink {
+  id String @id @default(cuid())
+
+  supplyHistoryItemId String
+  supplyHistoryItem SupplyHistoryItem @relation(fields: [supplyHistoryItemId], references: [id])
+
+  bomId String
+  bom Bom @relation(fields: [bomId], references: [id])
+
+  bomItemId String
+  bomItem BomItem @relation(fields: [bomItemId], references: [id])
+
+  rawMaterialId String?
+  rawMaterial RawMaterial? @relation(fields: [rawMaterialId], references: [id])
+
+
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([supplyHistoryItemId, bomItemId])
+  @@index([supplyHistoryItemId])
+  @@index([bomId])
+  @@index([bomItemId])
+  @@index([rawMaterialId])
 }
 
 model GMDUpdateItem {
@@ -353,6 +386,7 @@ model RawMaterial {
 
   // BOMs where this RawMaterial is used as a component
   bomComponents BomItem[]
+  supplyHistoryLinks SupplyHistoryBomLink[]
 
   syncedAt  DateTime @default(now())
   createdAt DateTime @default(now())
@@ -401,6 +435,7 @@ model Bom {
 
   // Materials / FullItems consumed by this BOM
   components BomItem[]
+  supplyHistoryLinks SupplyHistoryBomLink[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -427,6 +462,9 @@ model BomItem {
   cost     Decimal?
   noUse    String?
   cBatch   String?
+  supplyHistoryLinks SupplyHistoryBomLink[]
+
+selectedBySupplyHistory SupplyHistoryItem[] @relation("SupplyHistorySelectedBomItem")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
