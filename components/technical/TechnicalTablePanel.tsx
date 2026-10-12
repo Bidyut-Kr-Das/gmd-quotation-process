@@ -152,6 +152,7 @@ export default function TechnicalTablePanel({
               wrapCells={tab.wrapCells}
               toolbarExtra={<DensityInline pairs={densityPairs} />}
               fullHeight
+              hiddenColumns={tab.hiddenColumns}
             />
           </div>
         </>

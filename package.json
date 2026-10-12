@@ -59,7 +59,9 @@
     "bom:fix-stale": "tsx scripts/fix-stale-bom-ids.ts",
     "bom:fix-stale:apply": "tsx scripts/fix-stale-bom-ids.ts --apply",
     "docket:backfill-items": "tsx scripts/backfill-pending-docket-items.ts",
-    "docket:backfill-items:apply": "tsx scripts/backfill-pending-docket-items.ts --apply"
+    "docket:backfill-items:apply": "tsx scripts/backfill-pending-docket-items.ts --apply",
+    "flange:weight": "tsx scripts/compute-flange-weight.ts",
+    "flange:weight:apply": "tsx scripts/compute-flange-weight.ts --apply"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",

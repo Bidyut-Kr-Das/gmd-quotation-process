@@ -1,5 +1,6 @@
 import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "@/lib/googleAuth";
+import { sheetFieldCount } from "./engineeringModels";
 import type { EngineeringTab } from "./types";
 
 /**
@@ -23,9 +24,10 @@ function getSpreadsheetId(): string {
 }
 
 /**
- * Rows are padded/truncated to the tab's column count so a short row cannot
- * shift cells leftwards, and entirely-empty rows (the sheet has thousands of
- * trailing blank grid rows) are dropped.
+ * Rows are padded/truncated to the tab's **sheet-backed** column count (see
+ * `sheetColumnCount`) so a short row cannot shift cells leftwards, and
+ * entirely-empty rows (the sheet has thousands of trailing blank grid rows) are
+ * dropped. App-managed columns are not part of this width at all.
  */
 export async function fetchEngineeringSheet(
   tab: EngineeringTab,
@@ -43,7 +45,7 @@ export async function fetchEngineeringSheet(
     valueRenderOption: "FORMATTED_VALUE",
   });
 
-  const columnCount = tab.columns.length;
+  const columnCount = sheetFieldCount(tab.key);
   const rows: unknown[][] = [];
 
   for (const rawRow of res.data.values ?? []) {

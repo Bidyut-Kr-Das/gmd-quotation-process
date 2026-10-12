@@ -788,7 +788,7 @@ model Flange {
   syncedAt                          DateTime @default(now())
   createdAt                         DateTime @default(now())
   updatedAt                         DateTime @updatedAt
-
+  boltDiameter                      String?
   @@index([syncedAt])
   @@map("flange")
 }
