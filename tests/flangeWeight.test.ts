@@ -6,6 +6,7 @@ import {
   computeCastingCost,
   computeFlangeWeightKg,
   computeFlangeWeightRange,
+  formatBoltDimension,
   parseDim,
   resolveCastingKey,
   resolveMocDensity,
@@ -175,4 +176,11 @@ test("resolveNominalBoltDiameter is the largest nominal that fits the hole", () 
   assert.equal(resolveNominalBoltDiameter("5"), null);
   assert.equal(resolveNominalBoltDiameter(""), null);
   assert.equal(resolveNominalBoltDiameter(null), null);
+});
+
+test("formatBoltDimension joins bolt dia and bolt length with X", () => {
+  assert.equal(formatBoltDimension(24, 95.25), "24.00X95.25");
+  assert.equal(formatBoltDimension(16, 42), "16.00X42.00");
+  assert.equal(formatBoltDimension(24, null), null);
+  assert.equal(formatBoltDimension(null, 95.25), null);
 });

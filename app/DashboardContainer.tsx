@@ -47,6 +47,7 @@ export default function DashboardContainer({
   const storeItems = useAppSelector(selectAllItems);
   const filters = useAppSelector((s) => s.filters);
   const generatedImages = useAppSelector((s) => s.ui.generatedImages);
+  const selectedEnquiryIds = useAppSelector((s) => s.ui.selectedEnquiryIds);
   const globalSearch = filters.globalSearch.trim();
 
   // Sidebar filter values synced with Redux filtersSlice
@@ -84,14 +85,26 @@ export default function DashboardContainer({
   // Use store data when hydrated, fallback to server prop for initial render
   const effectiveEnquiries = storeEnquiries.length > 0 ? storeEnquiries : enquiries;
 
-  // Fully filtered enquiries matching both sidebar and table header filters
+  // Scope: when dockets are selected in the table, the cards and analytics
+  // filters narrow to that selection; otherwise they span all enquiries.
+  const selectedEnquiryIdSet = useMemo(() => new Set(selectedEnquiryIds), [selectedEnquiryIds]);
+  const scopedEnquiries = useMemo(
+    () =>
+      selectedEnquiryIds.length > 0
+        ? effectiveEnquiries.filter((e) => selectedEnquiryIdSet.has(e.id))
+        : effectiveEnquiries,
+    [effectiveEnquiries, selectedEnquiryIds, selectedEnquiryIdSet]
+  );
+
+  // Fully filtered enquiries matching both sidebar and table header filters,
+  // further narrowed to the selected dockets (if any).
   const filteredEnquiries = useMemo(() => {
-    return effectiveEnquiries.filter((enquiry) => {
+    return scopedEnquiries.filter((enquiry) => {
       if (!enquiryPassesFilters(enquiry, filters, globalSearch, generatedImages)) return false;
       if (!enquiry.items || enquiry.items.length === 0) return true;
       return enquiry.items.some((item) => itemPassesFilters(item, filters, generatedImages));
     });
-  }, [effectiveEnquiries, filters, globalSearch, generatedImages]);
+  }, [scopedEnquiries, filters, globalSearch, generatedImages]);
 
   // Items of filtered enquiries that pass active item filters
   const analyticsItems = useMemo(() => {

@@ -174,6 +174,19 @@ export function resolveNominalBoltDiameter(holeDia: unknown): number | null {
   return match;
 }
 
+/**
+ * Display string for the "Bolt Dimention" column: bolt diameter and bolt length
+ * joined by `X` (e.g. `24.00X95.25`). This is a label, not a calculation.
+ * Returns `null` when either value is missing.
+ */
+export function formatBoltDimension(
+  boltDiaMm: number | null,
+  boltLengthMm: number | null,
+): string | null {
+  if (boltDiaMm == null || boltLengthMm == null) return null;
+  return `${boltDiaMm.toFixed(2)}X${boltLengthMm.toFixed(2)}`;
+}
+
 export type FlangeDimensions = {
   odMm: unknown;
   idMm: unknown;

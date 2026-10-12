@@ -13,7 +13,6 @@ import {
   addItemsAction,
   updateEnquiryItemAction,
   deleteEnquiryItemAction,
-  deleteEnquiryItemsAction,
   deleteEnquiryAction,
   bulkUpdateValidationAction,
   bulkUpdateApmAction,
@@ -31,6 +30,7 @@ import {
   selectBomIdAction,
   syncDirectM2MAvailableStockAction,
   syncEnquiryEmailAddressesAction,
+  sendDocketEmailAction,
 } from "@/app/actions";
 
 export const populatePdCostValidation = createAsyncThunk(
@@ -205,20 +205,6 @@ export const deleteEnquiryItem = createAsyncThunk(
   }
 );
 
-export const deleteEnquiryItems = createAsyncThunk(
-  "enquiries/deleteEnquiryItems",
-  async (
-    itemIds: string[],
-    { rejectWithValue }
-  ) => {
-    const result = await deleteEnquiryItemsAction(itemIds);
-    if (!result.success) {
-      return rejectWithValue(result.error || "Failed to delete items");
-    }
-    return result.data!;
-  }
-);
-
 export const deleteEnquiry = createAsyncThunk(
   "enquiries/deleteEnquiry",
   async (
@@ -242,6 +228,17 @@ export const addAttachments = createAsyncThunk(
     const result = await addAttachmentsAction(payload);
     if (!result.success) {
       return rejectWithValue(result.error || "Failed to add attachments");
+    }
+    return result.data!;
+  }
+);
+
+export const sendDocketEmail = createAsyncThunk(
+  "enquiries/sendDocketEmail",
+  async (enquiryId: string, { rejectWithValue }) => {
+    const result = await sendDocketEmailAction(enquiryId);
+    if (!result.success) {
+      return rejectWithValue(result.error || "Failed to send docket email");
     }
     return result.data!;
   }
@@ -466,6 +463,13 @@ const enquiriesSlice = createSlice({
       .addCase(updateEnquiryField.rejected, (state, action) => {
         state.updateStatus = "failed";
         state.updateError = (action.payload as string) || "Update failed";
+      })
+      .addCase(sendDocketEmail.fulfilled, (state, action) => {
+        const enquiry = action.payload as EnquiryData;
+        enquiriesAdapter.upsertOne(state.enquiries, enquiry);
+        if (enquiry.items && enquiry.items.length > 0) {
+          itemsAdapter.upsertMany(state.items, enquiry.items);
+        }
       })
       .addCase(syncEnquiryEmailAddresses.fulfilled, (state, action) => {
         const updates = action.payload.enquiries;
@@ -701,29 +705,6 @@ const enquiriesSlice = createSlice({
       .addCase(deleteEnquiryItem.rejected, (state, action) => {
         state.deleteStatus = "failed";
         state.deleteError = (action.payload as string) || "Delete failed";
-      })
-      .addCase(deleteEnquiryItems.pending, (state) => {
-        state.deleteStatus = "loading";
-        state.deleteError = null;
-      })
-      .addCase(deleteEnquiryItems.fulfilled, (state, action) => {
-        const { deletedIds, enquiryId } = action.payload as {
-          deletedIds: string[];
-          enquiryId: string;
-          enquiryDeleted: boolean;
-          remaining: number;
-        };
-        const idSet = new Set(deletedIds);
-        itemsAdapter.removeMany(state.items, deletedIds);
-        const storedEnquiry = state.enquiries.entities[enquiryId];
-        if (storedEnquiry) {
-          storedEnquiry.items = storedEnquiry.items.filter((i) => !idSet.has(i.id));
-        }
-        state.deleteStatus = "succeeded";
-      })
-      .addCase(deleteEnquiryItems.rejected, (state, action) => {
-        state.deleteStatus = "failed";
-        state.deleteError = (action.payload as string) || "Bulk delete failed";
       })
       .addCase(deleteEnquiry.pending, (state) => {
         state.deleteStatus = "loading";

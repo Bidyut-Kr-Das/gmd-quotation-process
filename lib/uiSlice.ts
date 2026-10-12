@@ -40,7 +40,8 @@ export const DEFAULT_COLUMN_WIDTHS: Record<number, number> = {
   35: 140, // Delivery Schedule
   36: 170, // APM
   37: 150, // Offer PDF
-  38: 80,  // Actions
+  38: 150, // Send Email
+  39: 80,  // Actions
 };
 
 const initialState: UiState = {
@@ -48,6 +49,7 @@ const initialState: UiState = {
   isAnalyticsSidebarCollapsed: false,
   columnWidths: { ...DEFAULT_COLUMN_WIDTHS },
   generatedImages: {},
+  selectedEnquiryIds: [],
 };
 
 const uiSlice = createSlice({
@@ -91,6 +93,21 @@ const uiSlice = createSlice({
     ) {
       state.generatedImages = action.payload;
     },
+    toggleEnquirySelection(state, action: PayloadAction<string>) {
+      const id = action.payload;
+      const idx = state.selectedEnquiryIds.indexOf(id);
+      if (idx === -1) {
+        state.selectedEnquiryIds.push(id);
+      } else {
+        state.selectedEnquiryIds.splice(idx, 1);
+      }
+    },
+    setSelectedEnquiries(state, action: PayloadAction<string[]>) {
+      state.selectedEnquiryIds = Array.from(new Set(action.payload));
+    },
+    clearEnquirySelection(state) {
+      state.selectedEnquiryIds = [];
+    },
   },
 });
 
@@ -102,6 +119,9 @@ export const {
   toggleAnalyticsSidebar,
   setAnalyticsSidebarCollapsed,
   setGeneratedImages,
+  toggleEnquirySelection,
+  setSelectedEnquiries,
+  clearEnquirySelection,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

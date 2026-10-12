@@ -453,7 +453,7 @@ const QUOTATION_CALC_COLUMNS = cols(
   ["(derived)", "quotedRateGst", "quotedRate x 1.18"],
   ["(derived)", "itemWiseTotalValue", "quantity x quotedRate"],
   ["(derived)", "totalValue", "itemWiseTotalValue x 1.18"],
-  ["(derived)", "itemNameMerge", "itemType-moc-size-pnRating-operationType-extension-bypass[-WITH-others]"],
+  ["(derived)", "itemNameMerge", "itemType-moc-size-pnRating-operationType[-WITH-EXTENSION-<ext>][-WITH-BYPASS-<bypass>][-WITH-<others>]"],
 );
 
 /** -> LookupOption. Seeded by scripts/seed-lookup-options.ts; every dropdown on / comes from these. */
@@ -482,7 +482,7 @@ const QUOTATION_CLEANUP_COLUMNS = cols(
   ["rmType", "rmType", "normalised to COMMON"],
   ["importedInhouse", "importedInhouse", "derived from itemType + size"],
   ["deliverySchedule", "deliverySchedule", "derived from quantity + stock + size"],
-  ["itemNameMerge", "itemNameMerge", "adds the -WITH-<others> suffix"],
+  ["itemNameMerge", "itemNameMerge", "adds -WITH-EXTENSION-<ext>, -WITH-BYPASS-<bypass> and -WITH-<others> suffixes when set"],
 );
 
 /* ------------------------------------------------------------------ *

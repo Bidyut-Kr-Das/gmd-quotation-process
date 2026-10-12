@@ -7,6 +7,7 @@ import {
   computeBoltLengthMm,
   computeCastingCost,
   computeFlangeWeightRange,
+  formatBoltDimension,
   parseNumber,
   resolveCastingKey,
   resolveMocDensity,
@@ -82,6 +83,7 @@ async function main() {
   let noCastingRate = 0;
   let boltComputed = 0;
   let boltDiaComputed = 0;
+  let boltDimentionComputed = 0;
   let updated = 0;
   let unchanged = 0;
   const skipped: Skipped[] = [];
@@ -96,6 +98,7 @@ async function main() {
     costAsPerIs: number | null;
     boltLengthMm: number | null;
     boltDiaMm: number | null;
+    boltDimension: string | null;
   }[] = [];
 
   for (const flange of flanges) {
@@ -113,6 +116,11 @@ async function main() {
     const boltDia = resolveNominalBoltDiameter(flange.holeDia);
     const boltDiaStr = boltDia != null ? toFixedString(boltDia, 2) : "";
     if (boltDia != null) boltDiaComputed++;
+
+    // "Bolt Dimention" is a display label: "<bolt dia>X<bolt length>".
+    const boltDimension = formatBoltDimension(boltDia, boltLength);
+    const boltDimensionStr = boltDimension ?? "";
+    if (boltDimension != null) boltDimentionComputed++;
 
     // Weight / cost need a density and the ring dimensions.
     let densityVal: number | null = null;
@@ -181,6 +189,7 @@ async function main() {
     if (String(flange.costAsPerIs ?? "").trim() !== costStr) data.costAsPerIs = costStr;
     if (String(flange.boltLengthMm ?? "").trim() !== boltStr) data.boltLengthMm = boltStr;
     if (String(flange.boltDiaMm ?? "").trim() !== boltDiaStr) data.boltDiaMm = boltDiaStr;
+    if (String(flange.boltDiameter ?? "").trim() !== boltDimensionStr) data.boltDiameter = boltDimensionStr;
 
     if (Object.keys(data).length === 0) {
       unchanged++;
@@ -203,6 +212,7 @@ async function main() {
         costAsPerIs,
         boltLengthMm: boltLength,
         boltDiaMm: boltDia,
+        boltDimension,
       });
     }
   }
@@ -216,7 +226,7 @@ async function main() {
       const bolt = s.boltLengthMm != null ? s.boltLengthMm.toFixed(2) : "n/a";
       const dia = s.boltDiaMm != null ? s.boltDiaMm.toFixed(2) : "n/a";
       console.log(
-        `  size=${s.size || "?"} | moc=${s.moc || "?"} | density=${s.density} | weight=${s.weightKg.toFixed(2)} kg | +tol=${plus} | -tol=${minus} | cost=${cost} | bolt=${bolt} | dia=${dia}`,
+        `  size=${s.size || "?"} | moc=${s.moc || "?"} | density=${s.density} | weight=${s.weightKg.toFixed(2)} kg | +tol=${plus} | -tol=${minus} | cost=${cost} | bolt=${bolt} | dia=${dia} | dim=${s.boltDimension ?? "n/a"}`,
       );
     }
   }
@@ -233,6 +243,7 @@ async function main() {
   console.log(`No casting rate:   ${noCastingRate}`);
   console.log(`Bolt computed:     ${boltComputed}`);
   console.log(`Bolt dia computed: ${boltDiaComputed}`);
+  console.log(`Bolt dimention:    ${boltDimentionComputed}`);
   console.log(`${apply ? "Updated" : "Would update"}:     ${updated}`);
   console.log(`Already current:   ${unchanged}`);
   console.log(`Weight skipped:    ${skipped.length}`);

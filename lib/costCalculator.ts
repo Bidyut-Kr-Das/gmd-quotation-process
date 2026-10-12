@@ -28,19 +28,26 @@ export function serializeEnquiry(enquiry: any) {
 }
 
 export function getItemNameMerge(item: any) {
-  const orderedFields = [
+  const baseFields = [
     item.itemType,
     item.moc,
     item.size,
     item.pnRating,
     item.operationType,
-    item.extension,
-    item.bypass
   ];
-  const base = orderedFields
+  const base = baseFields
     .map(val => (val || "").trim())
     .filter(Boolean)
     .join("-");
+
+  const parts: string[] = [];
+  if (base) parts.push(base);
+
+  const extension = String(item.extension ?? "").trim();
+  if (extension) parts.push(`WITH-EXTENSION-${extension}`);
+
+  const bypass = String(item.bypass ?? "").trim();
+  if (bypass) parts.push(`WITH-BYPASS-${bypass}`);
 
   let others: string[] = [];
   if (Array.isArray(item.others)) {
@@ -52,9 +59,9 @@ export function getItemNameMerge(item: any) {
     .map(v => String(v).trim())
     .filter(Boolean)
     .join("-");
+  if (othersStr) parts.push(`WITH-${othersStr}`);
 
-  if (!othersStr) return base;
-  return base ? `${base}-WITH-${othersStr}` : `WITH-${othersStr}`;
+  return parts.join("-");
 }
 
 export function normalizeStateName(raw: string | null | undefined): string | null {

@@ -83,6 +83,8 @@ export interface EnquiryData {
   contactNo?: string | null;
   duplicate?: string | null;
   duplicateOfDocket?: string | null;
+  emailApproved?: boolean | null;
+  emailSentBy?: string | null;
   attachments: AttachmentData[];
   items: EnquiryItemData[];
 }
@@ -179,6 +181,7 @@ export interface UiState {
   columnWidths: Record<number, number>;
   isAnalyticsSidebarCollapsed?: boolean;
   generatedImages: Record<string, { url: string | null; driveFileId: string | null }>;
+  selectedEnquiryIds: string[];
 }
 
 export interface PaginationState {

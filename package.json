@@ -60,6 +60,8 @@
     "bom:fix-stale:apply": "tsx scripts/fix-stale-bom-ids.ts --apply",
     "docket:backfill-items": "tsx scripts/backfill-pending-docket-items.ts",
     "docket:backfill-items:apply": "tsx scripts/backfill-pending-docket-items.ts --apply",
+    "rm:cost:round10": "tsx scripts/round-raw-material-cost-to-10.ts",
+    "rm:cost:round10:apply": "tsx scripts/round-raw-material-cost-to-10.ts --apply",
     "flange:weight": "tsx scripts/compute-flange-weight.ts",
     "flange:weight:apply": "tsx scripts/compute-flange-weight.ts --apply"
   },

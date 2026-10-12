@@ -65,6 +65,8 @@ model Enquiry {
   contactNo           String?
   duplicate String?
   duplicateOfDocket String?
+  emailApproved    Boolean   @default(false)
+  emailSentBy      String?
 
   attachments Attachment[]
   items       EnquiryItem[]
@@ -789,6 +791,9 @@ model Flange {
   createdAt                         DateTime @default(now())
   updatedAt                         DateTime @updatedAt
   boltDiameter                      String?
+  boltWeight                         String?
+  boltVolume                         String?
+  nutWeight                         String?
   @@index([syncedAt])
   @@map("flange")
 }

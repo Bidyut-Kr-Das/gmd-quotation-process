@@ -509,6 +509,23 @@ export default function Home() {
 
   const totalRows = allItems.length;
 
+  // Ids of rows whose derived item name is shared by more than one raw material
+  // row (catalogue-wide). Blank names are ignored.
+  const duplicateDerivedIds = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of allItems) {
+      const key = (item.itemNameDerived ?? "").trim().toUpperCase();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const ids = new Set<string>();
+    for (const item of allItems) {
+      const key = (item.itemNameDerived ?? "").trim().toUpperCase();
+      if (key && (counts.get(key) ?? 0) > 1) ids.add(item.id);
+    }
+    return ids;
+  }, [allItems]);
+
   const processedCost = useMemo(
     () => applyCastingCost(processedItems, castingRates),
     [processedItems, castingRates],
@@ -1415,6 +1432,8 @@ export default function Home() {
                     cellBadges={cBatchBadges("ERP ITEM CODE")}
                     batchFilterHeader="ERP ITEM CODE"
                     batchPresenceFilters={RAW_MATERIAL_BATCH_FILTERS}
+                    warningRowIds={duplicateDerivedIds}
+                    warningColumn="ITEM NAME (derived)"
                     fullHeight
                   />
                 </ResizablePanel>
@@ -1450,6 +1469,8 @@ export default function Home() {
                     cellBadges={cBatchBadges("ERP ITEM CODE")}
                     batchFilterHeader="ERP ITEM CODE"
                     batchPresenceFilters={RAW_MATERIAL_BATCH_FILTERS}
+                    warningRowIds={duplicateDerivedIds}
+                    warningColumn="ITEM NAME (derived)"
                     fullHeight
                   />
                 </ResizablePanel>
@@ -1482,6 +1503,8 @@ export default function Home() {
                     cellBadges={cBatchBadges("ERP ITEM CODE")}
                     batchFilterHeader="ERP ITEM CODE"
                     batchPresenceFilters={RAW_MATERIAL_BATCH_FILTERS}
+                    warningRowIds={duplicateDerivedIds}
+                    warningColumn="ITEM NAME (derived)"
                     onCellUpdate={handleTransferredCellUpdate}
                     pasteErpCodes={{
                       draft: pasteDraft,
