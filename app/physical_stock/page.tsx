@@ -16,13 +16,17 @@ import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import {
   hydratePhysicalStock,
   updatePhysicalStockField,
+  updatePhysicalStockBomId,
+  setPhysicalStockBomIdOptions,
   selectAllPhysicalStockRows,
+  selectPhysicalStockBomIdOptions,
 } from "@/lib/physicalStockSlice";
 import type { PhysicalStockRow } from "@/lib/physicalStockSlice";
 
 interface PhysicalStockApiResponse {
   headers: string[];
   items: PhysicalStockRow[];
+  bomIdOptions?: Record<string, string[]>;
   totalRows: number;
 }
 
@@ -40,6 +44,7 @@ export default function Home() {
       });
       const data: PhysicalStockApiResponse = await res.json();
       dispatch(hydratePhysicalStock(data.items));
+      dispatch(setPhysicalStockBomIdOptions(data.bomIdOptions ?? {}));
     } catch (err) {
       toast.error(
         err instanceof Error
@@ -64,6 +69,7 @@ export default function Home() {
     selectAllPhysicalStockRows(state).map((row) => row.id),
   );
   const totalRows = useMemo(() => rows.length, [rows]);
+  const bomIdOptionsById = useAppSelector(selectPhysicalStockBomIdOptions);
 
   const handleCellUpdate = useCallback(
     async (id: string, colIndex: number, value: string) => {
@@ -77,6 +83,22 @@ export default function Home() {
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : `Failed to update ${header}`,
+          { id: toastId },
+        );
+      }
+    },
+    [dispatch],
+  );
+
+  const handleSelectBomId = useCallback(
+    async (id: string, bomId: string | null) => {
+      const toastId = toast.loading("Saving BOM ID...");
+      try {
+        await dispatch(updatePhysicalStockBomId({ id, bomId })).unwrap();
+        toast.success("BOM ID saved", { id: toastId });
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to save BOM ID",
           { id: toastId },
         );
       }
@@ -134,6 +156,8 @@ export default function Home() {
               editable
               editableColumns={PHYSICAL_EDITABLE_COLUMNS}
               numericColumns={PHYSICAL_NUMERIC_COLUMNS}
+              bomIdOptionsById={bomIdOptionsById}
+              onSelectBomId={handleSelectBomId}
               onCellUpdate={handleCellUpdate}
               fullHeight
             />

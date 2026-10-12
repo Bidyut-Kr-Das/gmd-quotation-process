@@ -30,6 +30,8 @@ export const PHYSICAL_COLUMNS = [
   "MOQ",
   "IF LESS THAN MOQ- EXTRA CHARGES",
   "DRAWING/ TECHNICAL DATA",
+  "COST",
+  "BOM ID",
 ];
 
 export const PHYSICAL_COL_INDEX_TO_DB_FIELD: Record<number, string> = {
@@ -64,6 +66,8 @@ export const PHYSICAL_COL_INDEX_TO_DB_FIELD: Record<number, string> = {
   28: "moq",
   29: "if_less_than_moq_extra_charges",
   30: "drawing_technical_data",
+  31: "cost",
+  32: "bom_id",
 };
 
 export const PHYSICAL_NUMERIC_COLUMNS = new Set([
@@ -81,6 +85,7 @@ export const PHYSICAL_NUMERIC_COLUMNS = new Set([
   "ORDER IN hand QTY",
   "shortage qty",
   "",
+  "COST",
 ]);
 
 export const PHYSICAL_STATUS_COLUMNS = new Set<string>([]);
@@ -92,6 +97,8 @@ export const PHYSICAL_EDITABLE_COLUMNS = [
   "MOQ",
   "IF LESS THAN MOQ- EXTRA CHARGES",
   "DRAWING/ TECHNICAL DATA",
+  "BOM ID",
+  "COST",
 ];
 
 export const PHYSICAL_EDITABLE_FIELDS = PHYSICAL_EDITABLE_COLUMNS.map(

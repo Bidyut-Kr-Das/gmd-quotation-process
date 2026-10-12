@@ -63,7 +63,9 @@
     "rm:cost:round10": "tsx scripts/round-raw-material-cost-to-10.ts",
     "rm:cost:round10:apply": "tsx scripts/round-raw-material-cost-to-10.ts --apply",
     "flange:weight": "tsx scripts/compute-flange-weight.ts",
-    "flange:weight:apply": "tsx scripts/compute-flange-weight.ts --apply"
+    "flange:weight:apply": "tsx scripts/compute-flange-weight.ts --apply",
+    "physical:cost": "tsx scripts/backfill-physical-stock-cost-bom.ts",
+    "physical:cost:apply": "tsx scripts/backfill-physical-stock-cost-bom.ts --apply"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",
