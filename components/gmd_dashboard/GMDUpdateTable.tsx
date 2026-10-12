@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useCallback, useEffect, type ReactNode } from "react";
-import { ChevronUp, ChevronDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check, Highlighter } from "lucide-react";
+import { ChevronUp, ChevronDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check, Highlighter, AlertTriangle } from "lucide-react";
 import GMDUpdateStatusBadge from "./GMDUpdateStatusBadge";
 import type { ContractReviewImage } from "@/lib/gmd_lib/contract-review-image-lookup";
 import {
@@ -1041,6 +1041,16 @@ interface GMDUpdateTableProps {
    * (e.g. a density reference strip).
    */
   toolbarExtra?: ReactNode;
+  /**
+   * Ids of rows to mark with a warning: an amber row tint plus a warning
+   * triangle rendered in the `warningColumn` cell. Used to flag rows whose
+   * derived item name collides with another row's.
+   */
+  warningRowIds?: ReadonlySet<string>;
+  /** Column whose cell renders the warning triangle. */
+  warningColumn?: string;
+  /** Tooltip for the warning triangle. Defaults to "Duplicate derived item name". */
+  warningTitle?: string;
 }
 
 type CellBadge = NonNullable<GMDUpdateTableProps["cellBadges"]>[number];
@@ -1145,6 +1155,9 @@ castingRateInputs,
   diffHighlight,
   numericColumns,
   toolbarExtra,
+  warningRowIds,
+  warningColumn,
+  warningTitle,
 }: GMDUpdateTableProps) {
   const isControlled = !!filterState;
 
@@ -2985,7 +2998,9 @@ castingRateInputs,
                 </td>
               </tr>
             ) : (
-              paginatedWithIds.map(({ row, id }, idx) => (
+              paginatedWithIds.map(({ row, id }, idx) => {
+                const isWarned = !!id && !!warningRowIds?.has(id);
+                return (
                 <tr
                   key={id ?? idx}
                   className={`transition-colors hover:bg-muted/60 cursor-pointer ${
@@ -3137,11 +3152,13 @@ castingRateInputs,
                         : "";
                     const bgClass = rowIsDiff
                       ? diffBg
-                      : editableBg
-                        ? editableBg
-                        : frozenLeft !== undefined
-                          ? "bg-card"
-                          : "";
+                      : isWarned
+                        ? "bg-amber-100 dark:bg-amber-500/15"
+                        : editableBg
+                          ? editableBg
+                          : frozenLeft !== undefined
+                            ? "bg-card"
+                            : "";
 
                     return (
                       <td
@@ -3156,7 +3173,24 @@ castingRateInputs,
                           frozenLeft !== undefined ? { left: frozenLeft } : undefined
                         }
                       >
-                        {cellContent}
+                        {header === warningColumn && isWarned ? (
+                          <span
+                            className="flex items-center gap-1.5 min-w-0"
+                            title={
+                              warningTitle ?? "Duplicate derived item name"
+                            }
+                          >
+                            <AlertTriangle
+                              size={13}
+                              className="shrink-0 text-amber-600 dark:text-amber-400"
+                            />
+                            <span className="min-w-0 flex-1">
+                              {cellContent}
+                            </span>
+                          </span>
+                        ) : (
+                          cellContent
+                        )}
                       </td>
                     );
                   })}
@@ -3176,7 +3210,8 @@ castingRateInputs,
                     </td>
                   )}
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>

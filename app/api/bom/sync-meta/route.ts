@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sheets as googleSheets } from "@googleapis/sheets";
 import { getOAuthClient } from "@/lib/googleAuth";
+import { runActiveBomRules } from "@/lib/autoBomRun";
 
 const SPREADSHEET_ID = "1LIC8GGgs7K7XWf8kUJFwvfOWpAkElYp6SJ83jk9wWGM";
 const SHEET_GID = 2142407502;
@@ -110,8 +111,12 @@ export async function POST() {
       `[bom/sync-meta] matched ${matched.length} item codes, updated ${updated} FullItem rows from "${tabTitle}"`,
     );
 
+    // Full item fields changed, so items may now match an active Auto BOM rule.
+    const autoBom = await runActiveBomRules("bom/sync-meta");
+
     return NextResponse.json({
       count: updated,
+      autoBomCreated: autoBom.created,
       matchedItemCodes: matched.length,
       totalCodesInSheet: itemMap.size,
       syncedAt: new Date().toISOString(),

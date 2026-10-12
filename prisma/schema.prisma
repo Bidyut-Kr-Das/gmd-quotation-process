@@ -436,6 +436,20 @@ model BomItem {
   @@index([fullItemId])
 }
 
+// Auto BOM rule (/bom/auto). `conditions` is a RuleCondition[] validated by
+// ruleSchema in lib/autoBom.ts: which FullItem field is matched against which
+// RawMaterial field, plus fixed filters on either side.
+model BomRule {
+  id         String   @id @default(cuid())
+  name       String
+  isActive   Boolean  @default(true)
+  bomMode    String   @default("PER_MATCH") // "PER_MATCH" | "ALL_IN_ONE"
+  bomIdType  String? // BOM type given to created BOMs: "2:1" | "3:1" | "DIRECT M2M" | "CREATE BOM"
+  conditions Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 model VerifyBom {
   id                   String   @id @default(cuid())
   bomId                String
@@ -790,7 +804,10 @@ model Flange {
   syncedAt                          DateTime @default(now())
   createdAt                         DateTime @default(now())
   updatedAt                         DateTime @updatedAt
-
+  boltDiameter                      String?
+  boltWeight                         String?
+  boltVolume                         String?
+  nutWeight                         String?
   @@index([syncedAt])
   @@map("flange")
 }

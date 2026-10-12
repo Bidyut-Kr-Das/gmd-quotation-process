@@ -70,6 +70,7 @@ export const TAB_FIELDS: Record<string, readonly string[]> = {
     "costAsPerIs",
     "boltLengthMm",
     "boltDiaMm",
+    "boltDiameter",
     "boltWeightCsKg",
     "boltWeightSsKg",
     "boltWeightAsKg",
@@ -144,24 +145,55 @@ for (const tab of ENGINEERING_TABS) {
         `but ${fields.length} mapped fields.`,
     );
   }
+  if (
+    tab.sheetColumnCount !== undefined &&
+    (tab.sheetColumnCount < 0 || tab.sheetColumnCount > fields.length)
+  ) {
+    throw new Error(
+      `engineeringModels: tab "${tab.key}" declares sheetColumnCount ` +
+        `${tab.sheetColumnCount}, which is outside 0..${fields.length}.`,
+    );
+  }
 }
 
-/** Sheet row (positional) -> Prisma record (named). Empty cells become "". */
+/**
+ * Number of leading columns a tab reads from the sheet. Everything past this is
+ * app-managed (DB/UI only) and is skipped by the write path.
+ */
+export function sheetFieldCount(tabKey: string): number {
+  const tab = ENGINEERING_TABS.find((t) => t.key === tabKey);
+  if (!tab) throw new Error(`Unknown engineering tab: ${tabKey}`);
+  return tab.sheetColumnCount ?? tab.columns.length;
+}
+
+/**
+ * Sheet row (positional) -> Prisma record (named).
+ *
+ * Only the **sheet-backed prefix** is mapped (see `sheetColumnCount`). Columns
+ * past that are app-managed and are deliberately omitted, so the sync's write
+ * path can never set them — that is what keeps DB/UI-edited values safe.
+ */
 export function rowToRecord(
   tabKey: string,
   row: unknown[],
 ): Record<string, string> {
   const fields = TAB_FIELDS[tabKey];
   if (!fields) throw new Error(`Unknown engineering tab: ${tabKey}`);
+  const count = sheetFieldCount(tabKey);
   const record: Record<string, string> = {};
-  fields.forEach((field, i) => {
+  for (let i = 0; i < count; i++) {
     const value = row[i];
-    record[field] = value == null ? "" : String(value);
-  });
+    record[fields[i]] = value == null ? "" : String(value);
+  }
   return record;
 }
 
-/** Prisma record (named) -> sheet row (positional), in caption order. */
+/**
+ * Prisma record (named) -> sheet row (positional), in caption order.
+ *
+ * The read path emits **all** columns, app-managed ones included, so the table
+ * shows them even though the sync never populates them.
+ */
 export function recordToRow(
   tabKey: string,
   record: Record<string, unknown>,
