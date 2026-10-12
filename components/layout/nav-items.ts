@@ -20,6 +20,7 @@ export const NAV: NavEntry[] = [
     items: [
       { label: "Raw Material", href: "/raw_material" },
       { label: "FG BOM", href: "/bom" },
+      { label: "Auto BOM", href: "/bom/auto" },
       { label: "Supply History", href: "/supply_history" },
     ],
   },
