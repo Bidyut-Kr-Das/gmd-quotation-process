@@ -6,6 +6,7 @@
  *   1. `runGmdCatalogueSync()`      GMD UPDATION -> RawMaterial (create + diff)
  *   2. `runStockPhysSync()`         stock-phys   -> RawMaterial.availableStock
  *   3. `runRawMaterialItemNameSync()` ITEM MASTER ERP -> RawMaterial.itemNameAuto
+ *   4. `runActiveBomRules()`        active Auto BOM rules -> Bom / BomItem
  *
  * Step 2 only makes sense once step 1 has landed, so the steps are strictly
  * sequential: a fatal failure in step 1 aborts before step 2 runs rather than
@@ -27,6 +28,7 @@ import {
   type StockPhysSyncResult,
 } from "./gmd-update-stock-phys";
 import { runRawMaterialItemNameSync, type ItemNameSyncResult } from "./item-name-sync";
+import { runActiveBomRules } from "@/lib/autoBomRun";
 
 export type JobName = "gmd-update";
 
@@ -39,6 +41,7 @@ export type ScheduledJobResult = {
     catalogue?: CatalogueSyncResult;
     stock?: StockPhysSyncResult;
     itemNames?: ItemNameSyncResult;
+    autoBom?: { created: number; failed: number };
   };
 };
 
@@ -119,13 +122,18 @@ export async function runScheduledGmdUpdate(
     // Step 3 — item names from ITEM MASTER ERP -> RawMaterial.itemNameAuto.
     steps.itemNames = await runRawMaterialItemNameSync();
 
+    // Step 4 — active Auto BOM rules against the refreshed raw materials.
+    // Never throws; a failing rule is logged and counted.
+    steps.autoBom = await runActiveBomRules(job);
+
     const elapsedMs = Date.now() - startedAtMs;
 
     console.log(
       `[scheduler] ${job} finished in ${elapsedMs}ms — ` +
         `catalogue(created=${steps.catalogue.created}, updated=${steps.catalogue.updated}, unchanged=${steps.catalogue.unchanged}) ` +
         `stock(updated=${steps.stock.updatedRows}, changed=${steps.stock.changed}) ` +
-        `itemNames(updated=${steps.itemNames.updated}, unmatched=${steps.itemNames.unmatched})`,
+        `itemNames(updated=${steps.itemNames.updated}, unmatched=${steps.itemNames.unmatched}) ` +
+        `autoBom(created=${steps.autoBom.created}, failed=${steps.autoBom.failed})`,
     );
     console.log(`########## [SCHEDULER] ${job} done ##########\n`);
 
