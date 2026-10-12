@@ -26,6 +26,16 @@ import { parseAndValidateProdOrderNumber } from "@/lib/contractValidation";
 import { matchPnRating } from "@/lib/pnRatingMatcher";
 import { withHardcodedL7Options } from "@/lib/gmd_lib/sheet-columns";
 import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
+import {
+  buildDensityMap,
+  computeBoltVolumeMm3,
+  computeBoltWeightKg,
+  computeNutWeightKg,
+  encodeBoltWeight,
+  parseNumber,
+  resolveBoltMaterial,
+  resolveMocDensity,
+} from "@/lib/technical/formulas";
 // LEGACY — superseded by the hourly `docket-creation` scheduler job
 // (schedular_function/docket-creation.ts). The imports below were used only by
 // the commented-out `createPendingDocketsAction`; restore them when re-enabling.
@@ -6056,6 +6066,62 @@ export async function saveGMDCastingRateAction(key: string, value: string) {
     return {
       success: false,
       error: error.message || "Failed to save casting rate.",
+    };
+  }
+}
+
+/**
+ * Set the bolt material (SS/GI) for a Flange row and recompute its bolt/nut
+ * weight. MS/CS rows ignore the passed material and stay locked to their flange
+ * MOC. The BOLT WEIGHT cell encodes the result as `<weight>|<material>`.
+ */
+export async function updateFlangeBoltWeightAction(id: string, material: string) {
+  "use server";
+  try {
+    const flange = await prisma.flange.findUnique({ where: { id } });
+    if (!flange) {
+      return { success: false, error: "Flange row not found." };
+    }
+
+    const densityRows = await prisma.density.findMany({
+      select: { material: true, densityGmCm3: true },
+    });
+    const densityByMaterial = buildDensityMap(densityRows);
+
+    const base = resolveBoltMaterial(flange.moc);
+    const chosen =
+      base === "MS" || base === "CS"
+        ? base
+        : material === "GI" || material === "SS"
+          ? material
+          : "SS";
+
+    const volume = computeBoltVolumeMm3(
+      parseNumber(flange.boltDiaMm),
+      parseNumber(flange.boltLengthMm),
+    );
+    const density = resolveMocDensity(chosen, densityByMaterial);
+    const weightKg = computeBoltWeightKg(volume, density);
+    const nutWeightKg = computeNutWeightKg(weightKg);
+
+    const updated = await prisma.flange.update({
+      where: { id },
+      data: {
+        boltWeight: encodeBoltWeight(weightKg, chosen),
+        nutWeight: nutWeightKg != null ? nutWeightKg.toFixed(2) : "",
+      },
+    });
+
+    return {
+      success: true,
+      data: { boltWeight: updated.boltWeight, nutWeight: updated.nutWeight },
+    };
+  } catch (error) {
+    console.error("Error updating flange bolt weight:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to update bolt weight.",
     };
   }
 }

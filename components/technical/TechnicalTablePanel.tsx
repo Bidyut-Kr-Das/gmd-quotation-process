@@ -9,6 +9,7 @@ import GMDUpdateSkeleton from "@/components/gmd_dashboard/skeletons/GMDUpdateSke
 import ErrorState from "@/components/gmd_dashboard/ErrorState";
 import DensityInline from "./DensityInline";
 import SyncButton from "./SyncButton";
+import { updateFlangeBoltWeightAction } from "@/app/actions";
 import type {
   DensityPair,
   EngineeringDataState,
@@ -153,6 +154,26 @@ export default function TechnicalTablePanel({
               toolbarExtra={<DensityInline pairs={densityPairs} />}
               fullHeight
               hiddenColumns={tab.hiddenColumns}
+              editable
+              editableColumns={["BOLT WEIGHT"]}
+              encodedDropdownColumns={{
+                "BOLT WEIGHT": { options: ["SS", "GI"] },
+              }}
+              dropdownRowCondition={(header, row) => {
+                if (header !== "BOLT WEIGHT") return true;
+                const mocIdx = state.data.headers.indexOf("MOC");
+                if (mocIdx === -1) return true;
+                const moc = String(row[mocIdx] ?? "")
+                  .trim()
+                  .toUpperCase()
+                  .replace(/\./g, "");
+                return moc !== "MS" && moc !== "CS";
+              }}
+              onCellUpdate={async (id, colIndex, value) => {
+                if (state.data.headers[colIndex] !== "BOLT WEIGHT") return;
+                await updateFlangeBoltWeightAction(id, value);
+                reload();
+              }}
             />
           </div>
         </>

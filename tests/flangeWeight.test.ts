@@ -3,11 +3,17 @@ import assert from "node:assert/strict";
 import {
   buildDensityMap,
   computeBoltLengthMm,
+  computeBoltVolumeMm3,
+  computeBoltWeightKg,
   computeCastingCost,
   computeFlangeWeightKg,
   computeFlangeWeightRange,
+  computeNutWeightKg,
+  decodeBoltWeight,
+  encodeBoltWeight,
   formatBoltDimension,
   parseDim,
+  resolveBoltMaterial,
   resolveCastingKey,
   resolveMocDensity,
   resolveNominalBoltDiameter,
@@ -183,4 +189,37 @@ test("formatBoltDimension joins bolt dia and bolt length with X", () => {
   assert.equal(formatBoltDimension(16, 42), "16.00X42.00");
   assert.equal(formatBoltDimension(24, null), null);
   assert.equal(formatBoltDimension(null, 95.25), null);
+});
+
+test("computeBoltVolumeMm3 models the bolt as a cylinder", () => {
+  close(computeBoltVolumeMm3(24, 95.25)!, Math.PI * 12 * 12 * 95.25);
+  assert.equal(computeBoltVolumeMm3(0, 100), null);
+  assert.equal(computeBoltVolumeMm3(24, 0), null);
+  assert.equal(computeBoltVolumeMm3(null, 100), null);
+});
+
+test("resolveBoltMaterial: MS/CS from flange MOC, everything else SS", () => {
+  assert.equal(resolveBoltMaterial("MS"), "MS");
+  assert.equal(resolveBoltMaterial("M.S."), "MS");
+  assert.equal(resolveBoltMaterial("C.S."), "CS");
+  assert.equal(resolveBoltMaterial("CS"), "CS");
+  assert.equal(resolveBoltMaterial("CI"), "SS");
+  assert.equal(resolveBoltMaterial("DI"), "SS");
+  assert.equal(resolveBoltMaterial(""), "SS");
+});
+
+test("computeBoltWeightKg and computeNutWeightKg convert and double", () => {
+  const volume = Math.PI * 12 * 12 * 95.25;
+  close(computeBoltWeightKg(volume, 7.9)!, (volume * 7.9) / 1_000_000);
+  assert.equal(computeBoltWeightKg(volume, null), null);
+  assert.equal(computeBoltWeightKg(null, 7.9), null);
+  close(computeNutWeightKg(0.34)!, 0.68);
+  assert.equal(computeNutWeightKg(null), null);
+});
+
+test("encode/decode bolt weight round-trips value|MOC", () => {
+  assert.equal(encodeBoltWeight(0.34, "SS"), "0.34|SS");
+  assert.equal(encodeBoltWeight(null, "GI"), "|GI");
+  assert.deepEqual(decodeBoltWeight("0.34|SS"), { weightKg: 0.34, material: "SS" });
+  assert.deepEqual(decodeBoltWeight("|GI"), { weightKg: null, material: "GI" });
 });

@@ -1001,6 +1001,17 @@ interface GMDUpdateTableProps {
   blankOnlyEditableColumns?: string[];
   dropdownRowCondition?: (header: string, row: unknown[]) => boolean;
   /**
+   * Columns whose cell value is encoded as `<value><separator><code>` (default
+   * separator `|`, e.g. BOLT WEIGHT `"0.38|SS"`). The cell renders a `<select>`
+   * of `options` (the code) beside the value; changing the select emits the
+   * chosen code via `onCellUpdate`. On rows where the column is not editable the
+   * same value/code pair is rendered as read-only text.
+   */
+  encodedDropdownColumns?: Record<
+    string,
+    { options: string[]; separator?: string }
+  >;
+  /**
    * Per-column sentinel checkboxes rendered in the column's filter dropdown
    * right after the built-in `(Blank)` option. Each option's `match` is
    * evaluated against the whole row, letting a page express a filter that
@@ -1141,6 +1152,7 @@ castingRateInputs,
   onMatchCosts,
   blankOnlyEditableColumns,
   dropdownRowCondition,
+  encodedDropdownColumns,
   extraFilterOptions,
   filterState,
   filterActions,
@@ -2133,6 +2145,37 @@ castingRateInputs,
             }}
           />
         );
+      } else if (encodedDropdownColumns?.[header]) {
+        const cfg = encodedDropdownColumns[header];
+        const sep = cfg.separator ?? "|";
+        const sepAt = display.indexOf(sep);
+        const valuePart = sepAt === -1 ? display : display.slice(0, sepAt);
+        const materialPart =
+          sepAt === -1 ? "" : display.slice(sepAt + sep.length).trim();
+        const current = materialPart || cfg.options[0] || "";
+        cellContent = (
+          <div className="flex items-center justify-between gap-2 w-full min-w-0">
+            <span className="font-mono-md text-foreground/80 truncate">
+              {valuePart || "—"}
+            </span>
+            <select
+              key={display + "-" + idx + "-" + cellIdx}
+              defaultValue={current}
+              onChange={(e) => handleCellUpdate(idx, cellIdx, e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 text-xs bg-transparent border-none outline-none cursor-pointer"
+            >
+              {materialPart && !cfg.options.includes(materialPart) && (
+                <option value={materialPart}>{materialPart}</option>
+              )}
+              {cfg.options.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
       } else if (
         STATUS_COLUMNS.has(header) ||
         categoryOptions?.[header] ||
@@ -2180,6 +2223,34 @@ castingRateInputs,
           />
         );
       }
+    } else if (encodedDropdownColumns?.[header]) {
+      const cfg = encodedDropdownColumns[header];
+      const sep = cfg.separator ?? "|";
+      const sepAt = display.indexOf(sep);
+      const valuePart = sepAt === -1 ? display : display.slice(0, sepAt);
+      const materialPart =
+        sepAt === -1 ? "" : display.slice(sepAt + sep.length).trim();
+      cellContent = (
+        <div className="flex items-center justify-between gap-2 w-full min-w-0">
+          <span className="font-mono-md text-foreground truncate">
+            {valuePart || "—"}
+          </span>
+          <select
+            disabled
+            defaultValue={materialPart || cfg.options[0] || ""}
+            className="shrink-0 text-xs bg-transparent border-none outline-none text-muted-foreground cursor-not-allowed"
+          >
+            {materialPart && !cfg.options.includes(materialPart) && (
+              <option value={materialPart}>{materialPart}</option>
+            )}
+            {cfg.options.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
     } else if (STATUS_COLUMNS.has(header)) {
       cellContent = <GMDUpdateStatusBadge value={display || null} />;
     } else if (NUMERIC_COLUMNS.has(header) || numericColumns?.has(header)) {
