@@ -5,10 +5,16 @@ import "dotenv/config";
 import {
   buildDensityMap,
   computeBoltLengthMm,
+  computeBoltVolumeMm3,
+  computeBoltWeightKg,
   computeCastingCost,
   computeFlangeWeightRange,
+  computeNutWeightKg,
+  decodeBoltWeight,
+  encodeBoltWeight,
   formatBoltDimension,
   parseNumber,
+  resolveBoltMaterial,
   resolveCastingKey,
   resolveMocDensity,
   resolveNominalBoltDiameter,
@@ -84,6 +90,9 @@ async function main() {
   let boltComputed = 0;
   let boltDiaComputed = 0;
   let boltDimentionComputed = 0;
+  let boltVolumeComputed = 0;
+  let boltWeightComputed = 0;
+  let nutWeightComputed = 0;
   let updated = 0;
   let unchanged = 0;
   const skipped: Skipped[] = [];
@@ -99,6 +108,9 @@ async function main() {
     boltLengthMm: number | null;
     boltDiaMm: number | null;
     boltDimension: string | null;
+    boltVolumeMm3: number | null;
+    boltWeightValue: string | null;
+    nutWeightKg: number | null;
   }[] = [];
 
   for (const flange of flanges) {
@@ -121,6 +133,28 @@ async function main() {
     const boltDimension = formatBoltDimension(boltDia, boltLength);
     const boltDimensionStr = boltDimension ?? "";
     if (boltDimension != null) boltDimentionComputed++;
+
+    // Bolt volume / weight / nut weight (cylinder), stored as "<weight>|MOC".
+    // MS/CS lock to the flange MOC; every other MOC keeps a stored SS/GI choice
+    // (default SS). GI has no density yet, so its weight stays blank.
+    const boltMaterialBase = resolveBoltMaterial(flange.moc);
+    const storedBolt = decodeBoltWeight(flange.boltWeight);
+    const boltMaterial =
+      boltMaterialBase === "MS" || boltMaterialBase === "CS"
+        ? boltMaterialBase
+        : storedBolt.material === "GI" || storedBolt.material === "SS"
+          ? storedBolt.material
+          : "SS";
+    const boltVolume = computeBoltVolumeMm3(boltDia, boltLength);
+    const boltVolumeStr = boltVolume != null ? toFixedString(boltVolume, 2) : "";
+    const boltDensity = resolveMocDensity(boltMaterial, densityByMaterial);
+    const boltWeightKg = computeBoltWeightKg(boltVolume, boltDensity);
+    const nutWeightKg = computeNutWeightKg(boltWeightKg);
+    const boltWeightValue = encodeBoltWeight(boltWeightKg, boltMaterial);
+    const nutWeightStr = nutWeightKg != null ? toFixedString(nutWeightKg, 2) : "";
+    if (boltVolume != null) boltVolumeComputed++;
+    if (boltWeightKg != null) boltWeightComputed++;
+    if (nutWeightKg != null) nutWeightComputed++;
 
     // Weight / cost need a density and the ring dimensions.
     let densityVal: number | null = null;
@@ -190,6 +224,9 @@ async function main() {
     if (String(flange.boltLengthMm ?? "").trim() !== boltStr) data.boltLengthMm = boltStr;
     if (String(flange.boltDiaMm ?? "").trim() !== boltDiaStr) data.boltDiaMm = boltDiaStr;
     if (String(flange.boltDiameter ?? "").trim() !== boltDimensionStr) data.boltDiameter = boltDimensionStr;
+    if (String(flange.boltVolume ?? "").trim() !== boltVolumeStr) data.boltVolume = boltVolumeStr;
+    if (String(flange.boltWeight ?? "").trim() !== boltWeightValue) data.boltWeight = boltWeightValue;
+    if (String(flange.nutWeight ?? "").trim() !== nutWeightStr) data.nutWeight = nutWeightStr;
 
     if (Object.keys(data).length === 0) {
       unchanged++;
@@ -213,6 +250,9 @@ async function main() {
         boltLengthMm: boltLength,
         boltDiaMm: boltDia,
         boltDimension,
+        boltVolumeMm3: boltVolume,
+        boltWeightValue,
+        nutWeightKg,
       });
     }
   }
@@ -225,8 +265,11 @@ async function main() {
       const cost = s.costAsPerIs != null ? s.costAsPerIs.toFixed(2) : "n/a";
       const bolt = s.boltLengthMm != null ? s.boltLengthMm.toFixed(2) : "n/a";
       const dia = s.boltDiaMm != null ? s.boltDiaMm.toFixed(2) : "n/a";
+      const vol = s.boltVolumeMm3 != null ? s.boltVolumeMm3.toFixed(2) : "n/a";
+      const bw = s.boltWeightValue ?? "n/a";
+      const nut = s.nutWeightKg != null ? s.nutWeightKg.toFixed(2) : "n/a";
       console.log(
-        `  size=${s.size || "?"} | moc=${s.moc || "?"} | density=${s.density} | weight=${s.weightKg.toFixed(2)} kg | +tol=${plus} | -tol=${minus} | cost=${cost} | bolt=${bolt} | dia=${dia} | dim=${s.boltDimension ?? "n/a"}`,
+        `  size=${s.size || "?"} | moc=${s.moc || "?"} | density=${s.density} | weight=${s.weightKg.toFixed(2)} kg | +tol=${plus} | -tol=${minus} | cost=${cost} | bolt=${bolt} | dia=${dia} | dim=${s.boltDimension ?? "n/a"} | vol=${vol} | bwt=${bw} | nut=${nut}`,
       );
     }
   }
@@ -244,6 +287,9 @@ async function main() {
   console.log(`Bolt computed:     ${boltComputed}`);
   console.log(`Bolt dia computed: ${boltDiaComputed}`);
   console.log(`Bolt dimention:    ${boltDimentionComputed}`);
+  console.log(`Bolt volume:       ${boltVolumeComputed}`);
+  console.log(`Bolt weight:       ${boltWeightComputed}`);
+  console.log(`Nut weight:        ${nutWeightComputed}`);
   console.log(`${apply ? "Updated" : "Would update"}:     ${updated}`);
   console.log(`Already current:   ${unchanged}`);
   console.log(`Weight skipped:    ${skipped.length}`);
