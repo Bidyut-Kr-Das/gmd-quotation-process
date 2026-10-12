@@ -187,6 +187,89 @@ export function formatBoltDimension(
   return `${boltDiaMm.toFixed(2)}X${boltLengthMm.toFixed(2)}`;
 }
 
+/** Bolt materials that can be chosen in the UI (density looked up per material). */
+export const BOLT_MATERIALS = ["SS", "GI"] as const;
+
+/**
+ * Default bolt material implied by the flange MOC: mild steel and carbon steel
+ * take their own material; every other MOC (CI, DI, FS, ...) is treated as
+ * stainless steel. The user can still switch a row to GI via the dropdown.
+ */
+export function resolveBoltMaterial(
+  flangeMoc: string | null | undefined,
+): "MS" | "CS" | "SS" {
+  const n = normalizeMaterial(String(flangeMoc ?? ""));
+  if (n === "MS" || n === "MILD STEEL") return "MS";
+  if (n === "CS" || n === "CARBON STEEL" || n === "CAST STEEL") return "CS";
+  return "SS";
+}
+
+/**
+ * Volume of a bolt modelled as a cylinder, in mm³: π·r²·L = π·(d/2)²·L.
+ * Returns `null` when the diameter or length is missing/non-positive.
+ */
+export function computeBoltVolumeMm3(
+  boltDiaMm: number | null,
+  boltLengthMm: number | null,
+): number | null {
+  if (boltDiaMm == null || boltLengthMm == null) return null;
+  if (!Number.isFinite(boltDiaMm) || !Number.isFinite(boltLengthMm)) return null;
+  if (boltDiaMm <= 0 || boltLengthMm <= 0) return null;
+  const r = boltDiaMm / 2;
+  return Math.PI * r * r * boltLengthMm;
+}
+
+/**
+ * Bolt weight (kg) = volume (mm³) × density (gm/cm³) / 1_000_000. The divisor
+ * carries both unit conversions (mm³→cm³ and g→kg). `null` on missing input.
+ */
+export function computeBoltWeightKg(
+  volumeMm3: number | null,
+  densityGmCm3: number | null,
+): number | null {
+  if (volumeMm3 == null || !Number.isFinite(volumeMm3) || volumeMm3 <= 0) return null;
+  if (densityGmCm3 == null || !Number.isFinite(densityGmCm3) || densityGmCm3 <= 0) {
+    return null;
+  }
+  return (volumeMm3 * densityGmCm3) / 1_000_000;
+}
+
+/** Nut weight (kg) = bolt weight × 2. `null` when the bolt weight is missing. */
+export function computeNutWeightKg(boltWeightKg: number | null): number | null {
+  if (boltWeightKg == null || !Number.isFinite(boltWeightKg) || boltWeightKg <= 0) {
+    return null;
+  }
+  return boltWeightKg * 2;
+}
+
+/**
+ * Encode the BOLT WEIGHT cell as `<weight>|<material>` (e.g. `0.38|SS`). A
+ * missing weight yields a blank value but keeps the material (`|GI`).
+ */
+export function encodeBoltWeight(
+  weightKg: number | null,
+  material: string,
+): string {
+  const weight =
+    weightKg != null && Number.isFinite(weightKg) ? weightKg.toFixed(2) : "";
+  return `${weight}|${material}`;
+}
+
+/** Decode a `<weight>|<material>` BOLT WEIGHT cell back into its parts. */
+export function decodeBoltWeight(value: unknown): {
+  weightKg: number | null;
+  material: string | null;
+} {
+  const s = String(value ?? "");
+  const bar = s.indexOf("|");
+  if (bar === -1) return { weightKg: parseNumber(s), material: null };
+  return {
+    weightKg: parseNumber(s.slice(0, bar)),
+    material: s.slice(bar + 1).trim() || null,
+  };
+}
+
+
 export type FlangeDimensions = {
   odMm: unknown;
   idMm: unknown;
