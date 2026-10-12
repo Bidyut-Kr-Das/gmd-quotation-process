@@ -22,6 +22,7 @@ export const NAV: NavEntry[] = [
       { label: "FG BOM", href: "/bom" },
       { label: "Auto BOM", href: "/bom/auto" },
       { label: "Supply History", href: "/supply_history" },
+      { label: "PBG", href: "/pbg" },
     ],
   },
   { label: "Technical", href: "/technical" },
