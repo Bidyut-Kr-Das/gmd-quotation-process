@@ -1,7 +1,7 @@
 "use server";
 
 import { createHash } from "crypto";
-import { prisma } from "@/lib/prisma";
+import { neonPrisma } from "@/lib/neonPrisma";
 import { fetchPhysicalStockSheet } from "@/lib/gmd_lib/physical-stock-sheet";
 import {
   PHYSICAL_COL_INDEX_TO_DB_FIELD,
@@ -31,7 +31,7 @@ export async function updatePhysicalStockFieldAction(
   value: string | null,
 ): Promise<FieldUpdateResult> {
   const data: Record<string, string | null> = { [field]: value ?? null };
-  await prisma.physicalStock.update({ where: { id }, data });
+  await neonPrisma.physicalStock.update({ where: { id }, data });
   return { id, field, value: value ?? null };
 }
 
@@ -39,7 +39,7 @@ export async function updatePhysicalStockBomIdAction(
   id: string,
   bomId: string | null,
 ): Promise<PhysicalStockBomUpdateResult> {
-  const row = await prisma.physicalStock.findUnique({
+  const row = await neonPrisma.physicalStock.findUnique({
     where: { id },
     select: { erp_code: true },
   });
@@ -66,7 +66,7 @@ export async function updatePhysicalStockBomIdAction(
     cost = derivations.get(code)?.maxCost ?? null;
   }
 
-  await prisma.physicalStock.update({
+  await neonPrisma.physicalStock.update({
     where: { id },
     data: { bom_id: value, cost },
   });
@@ -126,7 +126,7 @@ export async function syncPhysicalStockFromSheetAction(): Promise<{
   try {
     const rows = await fetchPhysicalStockSheet();
 
-    const existing = await prisma.physicalStock.findMany();
+    const existing = await neonPrisma.physicalStock.findMany();
     const byKey = new Map<string, string>();
     for (const row of existing) {
       const key = contentKey(row as unknown as Record<string, string | null>);
@@ -148,7 +148,7 @@ export async function syncPhysicalStockFromSheetAction(): Promise<{
     }
 
     if (toCreate.length > 0) {
-      await prisma.physicalStock.createMany({ data: toCreate });
+      await neonPrisma.physicalStock.createMany({ data: toCreate });
     }
 
     // Derive Cost / BOM ID from the FullItem + RawMaterial BOM relations.

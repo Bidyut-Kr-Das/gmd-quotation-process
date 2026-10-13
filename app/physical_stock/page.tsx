@@ -11,14 +11,14 @@ import {
   PHYSICAL_EDITABLE_COLUMNS,
   PHYSICAL_NUMERIC_COLUMNS,
 } from "@/lib/gmd_lib/physical-stock-columns";
-import { physicalStockRowToArray } from "@/lib/gmd_lib/physical-stock-row";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import {
   hydratePhysicalStock,
   updatePhysicalStockField,
   updatePhysicalStockBomId,
   setPhysicalStockBomIdOptions,
-  selectAllPhysicalStockRows,
+  selectPhysicalStockRowsArray,
+  selectPhysicalStockIds,
   selectPhysicalStockBomIdOptions,
 } from "@/lib/physicalStockSlice";
 import type { PhysicalStockRow } from "@/lib/physicalStockSlice";
@@ -60,14 +60,8 @@ export default function Home() {
     loadData();
   }, [loadData]);
 
-  const rows = useAppSelector((state) =>
-    selectAllPhysicalStockRows(state).map((row) =>
-      physicalStockRowToArray(row),
-    ),
-  );
-  const ids = useAppSelector((state) =>
-    selectAllPhysicalStockRows(state).map((row) => row.id),
-  );
+  const rows = useAppSelector(selectPhysicalStockRowsArray);
+  const ids = useAppSelector(selectPhysicalStockIds);
   const totalRows = useMemo(() => rows.length, [rows]);
   const bomIdOptionsById = useAppSelector(selectPhysicalStockBomIdOptions);
 

@@ -2,12 +2,14 @@ import {
   createSlice,
   createEntityAdapter,
   createAsyncThunk,
+  createSelector,
 } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
 import {
   updatePhysicalStockFieldAction,
   updatePhysicalStockBomIdAction,
 } from "@/app/physical_stock/actions";
+import { physicalStockRowToArray } from "@/lib/gmd_lib/physical-stock-row";
 
 export interface PhysicalStockRow {
   id: string;
@@ -114,4 +116,16 @@ export const {
 } = adapter.getSelectors<RootState>((state) => state.physicalStock);
 export const selectPhysicalStockBomIdOptions = (state: RootState) =>
   state.physicalStock.bomIdOptions;
+
+// Memoized projections of the (stable) adapter output. Mapping inside the
+// selector otherwise returns a new array reference on every call, which trips
+// React-Redux's "selector returned a different result" warning and rerenders.
+export const selectPhysicalStockRowsArray = createSelector(
+  [selectAllPhysicalStockRows],
+  (rows) => rows.map((row) => physicalStockRowToArray(row)),
+);
+export const selectPhysicalStockIds = createSelector(
+  [selectAllPhysicalStockRows],
+  (rows) => rows.map((row) => row.id),
+);
 export default physicalStockSlice.reducer;

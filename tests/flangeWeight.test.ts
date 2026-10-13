@@ -2,18 +2,22 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildDensityMap,
+  canonicalDensityMaterial,
+  canonicalizeDensityRows,
   computeBoltLengthMm,
   computeBoltVolumeMm3,
   computeBoltWeightKg,
   computeCastingCost,
   computeFlangeWeightKg,
   computeFlangeWeightRange,
+  computeNutBoltCost,
   computeNutWeightKg,
   decodeBoltWeight,
   encodeBoltWeight,
   formatBoltDimension,
   parseDim,
   resolveBoltMaterial,
+  resolveBoltRateKey,
   resolveCastingKey,
   resolveMocDensity,
   resolveNominalBoltDiameter,
@@ -80,6 +84,7 @@ test("resolveMocDensity matches abbreviations exactly against the density table"
     { material: "CARBON STEEL", densityGmCm3: "7.8" },
     { material: "STAINLESS STEEL", densityGmCm3: "7.9" },
     { material: "MILD STEEL", densityGmCm3: "7.8" },
+    { material: "GALVANIZED IRON", densityGmCm3: "7.85" },
   ]);
 
   assert.equal(resolveMocDensity("CI", map), 7.2);
@@ -90,6 +95,8 @@ test("resolveMocDensity matches abbreviations exactly against the density table"
   assert.equal(resolveMocDensity("C.S.", map), 7.8);
   assert.equal(resolveMocDensity("SS", map), 7.9);
   assert.equal(resolveMocDensity("MS", map), 7.8);
+  assert.equal(resolveMocDensity("GI", map), 7.85);
+  assert.equal(resolveMocDensity("G.I.", map), 7.85);
   // Full names hit the density table directly.
   assert.equal(resolveMocDensity("CARBON STEEL", map), 7.8);
   // Not in the density table -> leave unmatched.
@@ -198,14 +205,16 @@ test("computeBoltVolumeMm3 models the bolt as a cylinder", () => {
   assert.equal(computeBoltVolumeMm3(null, 100), null);
 });
 
-test("resolveBoltMaterial: MS/CS from flange MOC, everything else SS", () => {
+test("resolveBoltMaterial: MS/CS from flange MOC, everything else GI", () => {
   assert.equal(resolveBoltMaterial("MS"), "MS");
   assert.equal(resolveBoltMaterial("M.S."), "MS");
   assert.equal(resolveBoltMaterial("C.S."), "CS");
   assert.equal(resolveBoltMaterial("CS"), "CS");
-  assert.equal(resolveBoltMaterial("CI"), "SS");
-  assert.equal(resolveBoltMaterial("DI"), "SS");
-  assert.equal(resolveBoltMaterial(""), "SS");
+  assert.equal(resolveBoltMaterial("CI"), "GI");
+  assert.equal(resolveBoltMaterial("DI"), "GI");
+  assert.equal(resolveBoltMaterial("SS"), "GI");
+  assert.equal(resolveBoltMaterial("FS"), "GI");
+  assert.equal(resolveBoltMaterial(""), "GI");
 });
 
 test("computeBoltWeightKg and computeNutWeightKg convert and double", () => {
@@ -222,4 +231,62 @@ test("encode/decode bolt weight round-trips value|MOC", () => {
   assert.equal(encodeBoltWeight(null, "GI"), "|GI");
   assert.deepEqual(decodeBoltWeight("0.34|SS"), { weightKg: 0.34, material: "SS" });
   assert.deepEqual(decodeBoltWeight("|GI"), { weightKg: null, material: "GI" });
+});
+
+test("canonicalDensityMaterial fixes the ALLOY ATEEL sheet typo", () => {
+  assert.equal(canonicalDensityMaterial("ALLOY ATEEL"), "ALLOY STEEL");
+  assert.equal(canonicalDensityMaterial("alloy ateel"), "ALLOY STEEL");
+  // Untouched names pass straight through.
+  assert.equal(canonicalDensityMaterial("CAST IRON"), "CAST IRON");
+});
+
+test("canonicalizeDensityRows renames typos, appends GI and drops duplicates", () => {
+  const rows = canonicalizeDensityRows([
+    { material: "CAST IRON", densityGmCm3: "7.2" },
+    { material: "ALLOY ATEEL", densityGmCm3: "7.8" },
+    { material: "STAINLESS STEEL", densityGmCm3: "7.9" },
+  ]);
+
+  assert.deepEqual(rows[0], { material: "CAST IRON", densityGmCm3: "7.2" });
+  assert.deepEqual(rows[1], { material: "ALLOY STEEL", densityGmCm3: "7.8" });
+  // GALVANIZED IRON is canonical and not in the sheet, so it is appended.
+  assert.deepEqual(rows.find((r) => r.material === "GALVANIZED IRON"), {
+    material: "GALVANIZED IRON",
+    densityGmCm3: "7.85",
+  });
+
+  // A material already present is never duplicated by the canonical append.
+  const withGi = canonicalizeDensityRows([
+    { material: "GALVANIZED IRON", densityGmCm3: "7.85" },
+  ]);
+  assert.equal(withGi.filter((r) => r.material === "GALVANIZED IRON").length, 1);
+});
+
+test("resolveBoltRateKey maps SS/GI/MS/CS to their casting-rate keys", () => {
+  assert.equal(resolveBoltRateKey("SS"), "SS");
+  assert.equal(resolveBoltRateKey("GI"), "GI");
+  assert.equal(resolveBoltRateKey("G.I."), "GI");
+  assert.equal(resolveBoltRateKey("MS"), "MS");
+  assert.equal(resolveBoltRateKey("CS"), "CS");
+  assert.equal(resolveBoltRateKey("C.S."), "CS");
+  assert.equal(resolveBoltRateKey("CI"), null);
+  assert.equal(resolveBoltRateKey(""), null);
+  assert.equal(resolveBoltRateKey(null), null);
+});
+
+test("computeNutBoltCost = weight × rate, with independent blanks", () => {
+  assert.deepEqual(computeNutBoltCost(0.34, 0.68, 450), {
+    boltCost: 153,
+    nutCost: 306,
+  });
+  // Missing rate leaves both lines blank.
+  assert.deepEqual(computeNutBoltCost(0.34, 0.68, null), {
+    boltCost: null,
+    nutCost: null,
+  });
+  // A missing weight blanks only that line.
+  assert.deepEqual(computeNutBoltCost(0.34, null, 450), {
+    boltCost: 153,
+    nutCost: null,
+  });
 });

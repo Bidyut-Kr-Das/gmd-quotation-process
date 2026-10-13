@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { prisma } from "@/lib/prisma";
+import { neonPrisma } from "@/lib/neonPrisma";
 import {
   applyPhysicalStockDerivations,
   derivePhysicalStockByCodes,
@@ -22,7 +23,7 @@ async function main() {
     `\n=== Physical Stock cost / BOM ID ${apply ? "(APPLY - writes)" : "(DRY RUN)"} ===\n`,
   );
 
-  const rows = await prisma.physicalStock.findMany({
+  const rows = await neonPrisma.physicalStock.findMany({
     select: { id: true, erp_code: true, cost: true, bom_id: true },
   });
   const codes = [...new Set(rows.map((r) => norm(r.erp_code)).filter(Boolean))];
@@ -74,4 +75,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await neonPrisma.$disconnect();
   });

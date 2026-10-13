@@ -792,6 +792,8 @@ model PbgData {
   contactNumber String?   @map("contact_number")
   remark        String?
   status        String?
+  bankGuarantee Json?     @map("bank_guarantee")
+  validityOn    String?   @map("validity_on")
   syncedAt      DateTime  @default(now()) @map("synced_at") @db.Timestamptz
   updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz
 
@@ -891,6 +893,8 @@ model Flange {
   boltWeight                         String?
   boltVolume                         String?
   nutWeight                         String?
+  boltCost                          String?
+  nutCost                           String?
   @@index([syncedAt])
   @@map("flange")
 }

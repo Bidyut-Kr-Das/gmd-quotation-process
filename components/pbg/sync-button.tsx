@@ -54,10 +54,9 @@ export function SyncButton() {
       const result = await syncPbgDataAction();
       if (result.ok) {
         const seconds = (result.durationMs / 1000).toFixed(1);
-        const skipped = result.skipped ? ` · ${result.skipped} skipped` : "";
         setStatus({
           tone: "success",
-          text: `Synced ${result.synced} rows in ${seconds}s${skipped}`,
+          text: `Inserted ${result.inserted} · Updated ${result.updated} · Unchanged ${result.unchanged} in ${seconds}s`,
         });
         router.refresh();
       } else {
