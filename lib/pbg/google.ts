@@ -1,7 +1,7 @@
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
-const DEFAULT_SHEET_ID = "1W3IUErIV2RXz2ZDS2ZLiVbvroOQlxDgk7JpThDxO544";
-const DEFAULT_GID = 1943109369;
+const DEFAULT_SHEET_ID = "1t_oYGXhIeBta-jUfJgIZDZH_anKfSdNug8yC7GAIOuc";
+const DEFAULT_GID = 1472341879;
 
 type CachedToken = { accessToken: string; expiresAt: number };
 
