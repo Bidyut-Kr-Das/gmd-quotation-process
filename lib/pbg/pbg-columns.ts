@@ -47,11 +47,11 @@ export const PBG_COLUMN_DEFS: ColumnDef[] = [
   { key: "bgNo", label: "BG No", type: "text", width: 160 },
   { key: "bgDate", label: "BG Date", type: "date", width: 115 },
   { key: "bgAmtFc", label: "BG Amt (FC)", type: "number", align: "right", width: 130 },
-  { key: "expiryDate", label: "Expiry Date", type: "date", width: 115 },
+  { key: "expiryDate", label: "Validity as per contract (Date Calculation)", type: "date", width: 115 },
   { key: "claimDate", label: "Claim Date", type: "date", width: 115 },
   {
     key: "validityOn",
-    label: "Validity On for Contract",
+    label: "Validity as per contract",
     type: "text",
     width: 180,
     options: VALIDITY_OPTIONS,
