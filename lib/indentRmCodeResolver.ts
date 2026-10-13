@@ -364,3 +364,56 @@ export function planIndentRmCodes(
 
   return { updates, resolved, ambiguous, unmatched };
 }
+
+export type RmCodeSlotKey =
+  | "rmCodeV1"
+  | "rmCodeV2"
+  | "rmCodeV3"
+  | "rmCodeV4";
+
+const RM_CODE_SLOT_KEYS: readonly RmCodeSlotKey[] = [
+  "rmCodeV1",
+  "rmCodeV2",
+  "rmCodeV3",
+  "rmCodeV4",
+];
+
+export interface RmCodeWrite {
+  id: string;
+  rmCodeV1?: string;
+  rmCodeV2?: string;
+  rmCodeV3?: string;
+  rmCodeV4?: string;
+}
+
+/**
+ * Narrows planned RM-code updates to the slots that actually need a write: a
+ * slot is written only when the plan is non-blank AND differs from the stored
+ * value. A blank plan is never written, so a hand-picked code survives a sync
+ * that failed to resolve that slot. Rows with no qualifying slot are dropped.
+ */
+export function planRmCodeWrites(
+  planned: IndentRmCodeUpdate[],
+  currentById: ReadonlyMap<
+    string,
+    { rmCodeV1: string | null; rmCodeV2: string | null; rmCodeV3: string | null; rmCodeV4: string | null }
+  >,
+): RmCodeWrite[] {
+  const writes: RmCodeWrite[] = [];
+  for (const update of planned) {
+    const current = currentById.get(update.id);
+    if (!current) continue;
+
+    const write: RmCodeWrite = { id: update.id };
+    let changed = false;
+    for (const key of RM_CODE_SLOT_KEYS) {
+      const next = update[key];
+      if (next.trim() === "") continue;
+      if (String(current[key] ?? "") === next) continue;
+      write[key] = next;
+      changed = true;
+    }
+    if (changed) writes.push(write);
+  }
+  return writes;
+}

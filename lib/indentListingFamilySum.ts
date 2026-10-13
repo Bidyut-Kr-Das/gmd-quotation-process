@@ -64,16 +64,32 @@ function keyFor(row: unknown[]): string {
 }
 
 /**
- * Which TPAV slot a TPAV+SLV variant belongs to. TPAV's slot map differs from
- * SLV's: plain/DI is V1, 9523 is V4, and TPAV has no rising column so a rising
- * isolation valve falls into its spare V2.
+ * Which TPAV slot a TPAV+SLV variant belongs to, from the category label alone.
+ * TPAV's slot map differs from SLV's: plain/DI is V1, 9523 is V4, and CS/wafer
+ * uses the spare V2. RISING is SLV-only, so a rising-only compound falls to V1.
  */
-function tpavSlotForVariant(slvSlot: number, category: string): number {
+function tpavSlotForVariant(category: string): number {
   const c = category.toUpperCase();
   if (c.includes("9523")) return 3; // V4
   if (c.includes("DI")) return 0; // V1
-  if (c.includes("RISING")) return 1; // V2 (spare)
-  return [0, 3, 1, 3][slvSlot] ?? 0;
+  if (c.includes("CS") || c.includes("WAFER")) return 1; // V2 (spare)
+  return 0; // V1
+}
+
+// RISING is an SLV-only attribute (no real TPAV-rising), so the SLV-only token
+// is stripped from the label before it lands on a TPAV row. A label that was
+// nothing but RISING becomes the plain air valve's "Base".
+function tpavCategory(category: string): string {
+  if (!category.trim()) return category;
+  const parts = [
+    ...new Set(
+      category
+        .split(",")
+        .map((s) => s.replace(/\bRISING\b/gi, " ").trim())
+        .filter((s) => s.length > 0),
+    ),
+  ];
+  return parts.length > 0 ? parts.join(", ") : "Base";
 }
 
 // Add a variant amount (and its category / RM code) into one slot of a target
@@ -135,15 +151,20 @@ function makeTargetRow(item: string, source: unknown[]): unknown[] {
  * drop the `TPAV+SLV` rows. Targets that do not exist yet are synthesized so no
  * balance is lost. `ids` is returned alongside `rows` so the caller can keep
  * them index-aligned (synthesized rows get a generated id).
+ *
+ * `sourceIds` is aligned with the output `rows`: the stored-row ids behind each
+ * displayed row. A row a compound row was folded into lists its own id plus
+ * every contributing `TPAV+SLV` id, so an edit can reach every stored row.
  */
 export function applyTpavSlvMerge(
   rows: unknown[][],
   ids: string[],
-): { rows: unknown[][]; ids: string[] } {
+): { rows: unknown[][]; ids: string[]; sourceIds: string[][] } {
   // Shallow copy of the list: untouched rows keep their original reference so
   // callers/tests can rely on identity; only rows we actually modify are cloned.
   const out = [...rows];
   const outIds = [...ids];
+  const outSourceIds: string[][] = ids.map((id) => [id]);
   const cloned = new Set<number>();
   const mutable = (index: number): unknown[] => {
     if (!cloned.has(index)) {
@@ -175,6 +196,9 @@ export function applyTpavSlvMerge(
     const index = out.length;
     out.push(makeTargetRow(item, source));
     outIds.push(`syn::${key}::${item}`);
+    // A synthesized row has no DB row of its own, so it starts with no sources
+    // and collects only the contributing compound ids below.
+    outSourceIds.push([]);
     map.set(key, index);
     return index;
   };
@@ -183,8 +207,16 @@ export function applyTpavSlvMerge(
     const source = out[index];
     const key = keyFor(source);
 
-    const slvTarget = mutable(ensureTarget(slvByKey, SLV_ITEM, key, source));
-    const tpavTarget = mutable(ensureTarget(tpavByKey, TPAV_ITEM, key, source));
+    const slvIndex = ensureTarget(slvByKey, SLV_ITEM, key, source);
+    const tpavIndex = ensureTarget(tpavByKey, TPAV_ITEM, key, source);
+    const slvTarget = mutable(slvIndex);
+    const tpavTarget = mutable(tpavIndex);
+
+    // The compound row is a stored source of both targets, so a hand-picked RM
+    // code written to this displayed row also lands on the compound's DB row.
+    const compoundId = ids[index];
+    outSourceIds[slvIndex].push(compoundId);
+    outSourceIds[tpavIndex].push(compoundId);
 
     for (let slot = 0; slot < V_IDXS.length; slot++) {
       const amount = source[V_IDXS[slot]];
@@ -198,9 +230,9 @@ export function applyTpavSlvMerge(
       // TPAV's slot map differs, so the variant is re-homed.
       addAmountToSlot(
         tpavTarget,
-        tpavSlotForVariant(slot, category),
+        tpavSlotForVariant(category),
         amount,
-        category,
+        tpavCategory(category),
         rmCode,
       );
     }
@@ -212,11 +244,13 @@ export function applyTpavSlvMerge(
   const removed = new Set(tslvIndices);
   const finalRows: unknown[][] = [];
   const finalIds: string[] = [];
+  const finalSourceIds: string[][] = [];
   out.forEach((row, index) => {
     if (removed.has(index)) return;
     finalRows.push(row);
     finalIds.push(outIds[index]);
+    finalSourceIds.push(outSourceIds[index]);
   });
 
-  return { rows: finalRows, ids: finalIds };
+  return { rows: finalRows, ids: finalIds, sourceIds: finalSourceIds };
 }

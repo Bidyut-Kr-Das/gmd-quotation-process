@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   planIndentRmCodes,
+  planRmCodeWrites,
   rmCodeSizeKey,
   rmCodeRequiredMaterial,
   RM_CODE_CARBON_STEEL,
@@ -368,4 +369,47 @@ test('the resolver reports a count for every populated slot', () => {
   assert.equal(plan.unmatched, 3)
   // Nothing is double counted: all 5 populated slots land in exactly one bucket.
   assert.equal(plan.resolved + plan.ambiguous + plan.unmatched, 5)
+})
+
+test('a blank planned value is never written over a stored code', () => {
+  const plan = planIndentRmCodes([indent({ id: 'r1' })], [])
+  const current = new Map([
+    [
+      'r1',
+      { rmCodeV1: 'MANUAL1', rmCodeV2: '', rmCodeV3: '', rmCodeV4: '' },
+    ],
+  ])
+  // The resolver has no raw material, so every slot plans blank: nothing to do.
+  assert.deepEqual(planRmCodeWrites(plan.updates, current), [])
+})
+
+test('non-blank differing slots are written, unchanged slots are not', () => {
+  const planned = [
+    {
+      id: 'r1',
+      rmCodeV1: 'NEW1',
+      rmCodeV2: 'KEEP2',
+      rmCodeV3: '',
+      rmCodeV4: 'NEW4',
+    },
+  ]
+  const current = new Map([
+    [
+      'r1',
+      { rmCodeV1: 'OLD1', rmCodeV2: 'KEEP2', rmCodeV3: '', rmCodeV4: 'OLD4' },
+    ],
+  ])
+  assert.deepEqual(planRmCodeWrites(planned, current), [
+    { id: 'r1', rmCodeV1: 'NEW1', rmCodeV4: 'NEW4' },
+  ])
+})
+
+test('a row whose slots all match is dropped from the writes', () => {
+  const planned = [
+    { id: 'r1', rmCodeV1: 'SAME', rmCodeV2: '', rmCodeV3: '', rmCodeV4: '' },
+  ]
+  const current = new Map([
+    ['r1', { rmCodeV1: 'SAME', rmCodeV2: '', rmCodeV3: '', rmCodeV4: '' }],
+  ])
+  assert.deepEqual(planRmCodeWrites(planned, current), [])
 })

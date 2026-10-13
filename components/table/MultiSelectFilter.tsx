@@ -20,6 +20,8 @@ interface MultiSelectFilterProps {
   selected: string[];
   onChange: (values: string[]) => void;
   counts?: Record<string, number>;
+  /** Optional display label per option value (the value is still what is stored). */
+  optionLabels?: Record<string, string>;
   includeBlank?: boolean;
   includeAvailable?: boolean;
   searchPlaceholder?: string;
@@ -37,6 +39,7 @@ export default function MultiSelectFilter({
   selected,
   onChange,
   counts,
+  optionLabels,
   includeBlank = false,
   includeAvailable = false,
   searchPlaceholder,
@@ -52,10 +55,15 @@ export default function MultiSelectFilter({
     const cascadedSet = new Set(cascadedOptions);
     const selectedSet = new Set(selected);
     const q = search.toLowerCase();
-    return options.filter(
-      (opt) => (cascadedSet.has(opt) || selectedSet.has(opt)) && opt.toLowerCase().includes(q)
-    );
-  }, [options, cascadedOptions, selected, search]);
+    return options.filter((opt) => {
+      if (!cascadedSet.has(opt) && !selectedSet.has(opt)) return false;
+      if (!q) return true;
+      return (
+        opt.toLowerCase().includes(q) ||
+        (optionLabels?.[opt]?.toLowerCase().includes(q) ?? false)
+      );
+    });
+  }, [options, cascadedOptions, selected, search, optionLabels]);
 
   const toggle = (opt: string) => {
     onChange(
@@ -167,7 +175,9 @@ export default function MultiSelectFilter({
                   onChange={() => toggle(opt)}
                   className="h-3 w-3 rounded text-blue-600 focus:ring-blue-500 border-border cursor-pointer"
                 />
-                <span className="truncate flex-1">{opt}</span>
+                <span className="truncate flex-1" title={optionLabels?.[opt] ?? opt}>
+                  {optionLabels?.[opt] ?? opt}
+                </span>
                 {count !== undefined && (
                   <span className="text-[9px] text-muted-foreground font-semibold shrink-0 ml-1">
                     ({count})
