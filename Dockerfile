@@ -31,6 +31,7 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 # 🟢 FIX: Generate Prisma Client before building
 RUN npx prisma generate
+RUN npx prisma generate --config prisma.neon.config.ts 
 
 RUN if [ -f package-lock.json ]; then \
         npm run build; \

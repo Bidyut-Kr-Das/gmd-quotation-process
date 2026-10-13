@@ -77,6 +77,8 @@ export const TAB_FIELDS: Record<string, readonly string[]> = {
     "boltWeightCsKg",
     "boltWeightSsKg",
     "boltWeightAsKg",
+    "boltCost",
+    "nutCost",
   ],
   "gear-box": [
     "typeOfValve",

@@ -13,6 +13,8 @@ import {
   mergeOrderListCsv,
   splitCsvLinks,
 } from "@/lib/gmd_lib/contract-order-links";
+import { rebuildSupplyHistoryBomLinks } from "@/lib/supplyHistoryBomSync";
+import { runBomMastErpSync } from "@/schedular_function/bom-mast-sync";
 
 const SPREADSHEET_ID = process.env.SUPPLY_HISTORY_SPREADSHEET_ID;
 const SHEET_NAME = "MASTER";
@@ -53,6 +55,19 @@ function makeRowKey(invoiceNo: string, itemName: string): string {
 export async function POST() {
   const syncStart = Date.now();
   try {
+    // Refresh the BOM graph first so the manual Sync button does not have to wait
+    // for the :05 hourly bom-mast job — the link rebuild below reads it. A
+    // failure here is logged and swallowed; the MASTER row sync still stands.
+    let bomMast: Awaited<ReturnType<typeof runBomMastErpSync>> | null = null;
+    try {
+      bomMast = await runBomMastErpSync();
+      console.log(
+        `[supply-sync] BOM MAST ERP synced: sheetRows=${bomMast.sheetRows} bomCreated=${bomMast.bomCreated} linkCreated=${bomMast.linkCreated}`,
+      );
+    } catch (err) {
+      console.error("[supply-sync] BOM MAST ERP sync failed:", err);
+    }
+
     console.log(`[supply-sync] Starting sync MASTER=${SHEET_NAME} spreadsheet=${SPREADSHEET_ID}`);
     const auth = getAuth();
     const sheets = googleSheets({ version: "v4", auth });
@@ -67,7 +82,7 @@ export async function POST() {
     console.log(`[supply-sync] Fetched ${allRows.length} rows from sheet (including header)`);
     if (allRows.length < 2) {
       console.log(`[supply-sync] No data rows`);
-      return NextResponse.json({ count: 0, syncedAt: new Date().toISOString() });
+      return NextResponse.json({ count: 0, syncedAt: new Date().toISOString(), bomMast });
     }
 
     const sheetHeaders = allRows[0].map(String);
@@ -311,6 +326,18 @@ export async function POST() {
       console.log(`[supply-sync] Touched unchanged rows: ${touched}`);
     }
 
+    // Reconcile BOM links after the row sync; a failure here must not fail the
+    // row sync, so it is reported but swallowed.
+    let bomLinks: Awaited<ReturnType<typeof rebuildSupplyHistoryBomLinks>> | null = null;
+    try {
+      bomLinks = await rebuildSupplyHistoryBomLinks();
+      console.log(
+        `[supply-sync] BOM links rebuilt: items=${bomLinks.itemsScanned} withLinks=${bomLinks.itemsWithLinks} +${bomLinks.linksCreated}/-${bomLinks.linksRemoved} defaulted=${bomLinks.selectionsDefaulted}`,
+      );
+    } catch (err) {
+      console.error("[supply-sync] BOM link rebuild failed:", err);
+    }
+
     const elapsed = Date.now() - syncStart;
     console.log(`[supply-sync] Done elapsed=${elapsed}ms inserted=${inserted} patched=${patched} touched=${touched} skippedBlankKey=${skippedBlankKey} totalInSheet=${rawRows.length} orderLinkMap=${orderLinkMap.size} unmapped=${unmapped.length ? unmapped.join(",") : "none"}`);
     if (sampleChanges.length) {
@@ -329,6 +356,8 @@ export async function POST() {
       orderLinkMapSize: orderLinkMap.size,
       syncedAt: syncedAt.toISOString(),
       elapsedMs: elapsed,
+      bomLinks,
+      bomMast,
     });
   } catch (error) {
     const message =

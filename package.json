@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 4569",
-    "build": "npx prisma generate && next build",
-    "build-start": "npx prisma generate && next build && next start --port 4570",
+    "build": "npx prisma generate && npx prisma generate --config prisma.neon.config.ts && next build",
+    "build-start": "npx prisma generate && npx prisma generate --config prisma.neon.config.ts && next build && next start --port 4570",
     "start": "next start --port 4570",
     "lint": "eslint",
     "typecheck": "tsc --noemit",
@@ -65,7 +65,15 @@
     "flange:weight": "tsx scripts/compute-flange-weight.ts",
     "flange:weight:apply": "tsx scripts/compute-flange-weight.ts --apply",
     "pbg:sync": "tsx scripts/sync-pbg-data.ts",
-    "pbg:sync:apply": "tsx scripts/sync-pbg-data.ts --apply"
+    "pbg:sync:apply": "tsx scripts/sync-pbg-data.ts --apply",
+    "physical:cost": "tsx scripts/backfill-physical-stock-cost-bom.ts",
+    "physical:cost:apply": "tsx scripts/backfill-physical-stock-cost-bom.ts --apply",
+    "physical:copy-neon": "tsx scripts/copy-physical-stock-to-neon.ts",
+    "physical:copy-neon:apply": "tsx scripts/copy-physical-stock-to-neon.ts --apply",
+    "prisma:neon:generate": "prisma generate --config prisma.neon.config.ts",
+    "prisma:neon:deploy": "prisma migrate deploy --config prisma.neon.config.ts",
+    "prisma:neon:migrate": "prisma migrate dev --config prisma.neon.config.ts",
+    "prisma:neon:status": "prisma migrate status --config prisma.neon.config.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",

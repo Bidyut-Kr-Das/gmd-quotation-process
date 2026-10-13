@@ -157,7 +157,7 @@ export default function TechnicalTablePanel({
               editable
               editableColumns={["BOLT WEIGHT"]}
               encodedDropdownColumns={{
-                "BOLT WEIGHT": { options: ["SS", "GI"] },
+                "BOLT WEIGHT": { options: ["GI", "SS"] },
               }}
               dropdownRowCondition={(header, row) => {
                 if (header !== "BOLT WEIGHT") return true;
