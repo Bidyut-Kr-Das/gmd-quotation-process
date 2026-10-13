@@ -34,6 +34,12 @@ export function ColumnFilterPopover({
 
   const showMultiSelect = def.type !== "files";
 
+  // Keep already-selected values visible even when cascading rules them out of
+  // the current option list, so a selection never silently disappears.
+  const valueOptions = Array.from(
+    new Set([...distinct, ...(filter.selected ?? [])]),
+  );
+
   return (
     <div className="w-72 space-y-3 p-3">
       <div className="flex items-center justify-between">
@@ -123,7 +129,7 @@ export function ColumnFilterPopover({
             Values
           </span>
           <MultiSelect
-            options={distinct}
+            options={valueOptions}
             selected={filter.selected ?? []}
             onChange={(values) => patch({ selected: values })}
           />

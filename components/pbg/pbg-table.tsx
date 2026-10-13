@@ -165,14 +165,21 @@ export function PbgTable({
     [visible],
   );
 
+  // Cascading (faceted) value lists: each column's options are computed from
+  // the rows that pass every OTHER active filter (+ the search query), so the
+  // choices narrow as filters are applied. A column's own filter is excluded so
+  // its selection can still be changed.
   const distinctMap = useMemo(() => {
     const map = new Map<ColumnKey, string[]>();
     for (const def of PBG_COLUMN_DEFS) {
       if (def.type === "files") continue;
-      map.set(def.key, getDistinctValues(rows, def.key));
+      const scopeFilters = { ...filters };
+      delete scopeFilters[def.key];
+      const scope = filterRecords(rows, scopeFilters, query);
+      map.set(def.key, getDistinctValues(scope, def.key));
     }
     return map;
-  }, [rows]);
+  }, [rows, filters, query]);
 
   const statusOptions = useMemo(() => getStatusOptions(rows), [rows]);
 
