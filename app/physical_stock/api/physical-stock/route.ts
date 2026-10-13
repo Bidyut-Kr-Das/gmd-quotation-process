@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { neonPrisma } from "@/lib/neonPrisma";
 import { PHYSICAL_COLUMNS } from "@/lib/gmd_lib/physical-stock-columns";
 import { physicalStockRowToArray } from "@/lib/gmd_lib/physical-stock-row";
 import { derivePhysicalStockByCodes } from "@/lib/gmd_lib/physical-stock-derive";
 
 export async function GET() {
-  const items = await prisma.physicalStock.findMany({
+  const items = await neonPrisma.physicalStock.findMany({
     orderBy: { updated_at: "desc" },
   });
 
