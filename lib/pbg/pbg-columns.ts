@@ -1,4 +1,6 @@
-export type ColumnType = "text" | "select" | "date" | "number";
+import { VALIDITY_OPTIONS } from "@/lib/pbg/validity";
+
+export type ColumnType = "text" | "select" | "date" | "number" | "files";
 
 export type ColumnKey =
   | "clientName"
@@ -15,7 +17,11 @@ export type ColumnKey =
   | "contactPerson"
   | "contactNumber"
   | "remark"
-  | "status";
+  | "status"
+  | "bankGuarantee"
+  | "validityOn"
+  | "lastSupplyDate"
+  | "extendedValidity";
 
 export type FilterKind = "text" | "multiselect";
 
@@ -27,6 +33,10 @@ export type ColumnDef = {
   width: number;
   /** How the header filter behaves. Defaults to "text" for text, "multiselect" for select. */
   filter?: FilterKind;
+  /** Suggested values for a text column (rendered as an editable combobox). */
+  options?: string[];
+  /** Derived/user-owned value that is never written back to the database. */
+  readonly?: boolean;
 };
 
 export const PBG_COLUMN_DEFS: ColumnDef[] = [
@@ -39,11 +49,21 @@ export const PBG_COLUMN_DEFS: ColumnDef[] = [
   { key: "bgAmtFc", label: "BG Amt (FC)", type: "number", align: "right", width: 130 },
   { key: "expiryDate", label: "Expiry Date", type: "date", width: 115 },
   { key: "claimDate", label: "Claim Date", type: "date", width: 115 },
+  {
+    key: "validityOn",
+    label: "Validity On for Contract",
+    type: "text",
+    width: 180,
+    options: VALIDITY_OPTIONS,
+  },
+  { key: "lastSupplyDate", label: "Last Supply Date", type: "date", width: 130, readonly: true },
+  { key: "extendedValidity", label: "Extended Validity", type: "date", width: 130, readonly: true },
   { key: "marginPct", label: "Margin %", type: "select", align: "right", width: 95 },
   { key: "marginAmount", label: "Margin Amount", type: "number", align: "right", width: 130 },
   { key: "contactPerson", label: "Contact Person", type: "text", width: 210 },
   { key: "contactNumber", label: "Contact Number", type: "text", width: 160 },
   { key: "remark", label: "Remark", type: "text", width: 300 },
+  { key: "bankGuarantee", label: "Bank Guarantee", type: "files", width: 240 },
   { key: "status", label: "Status", type: "select", width: 120 },
 ];
 

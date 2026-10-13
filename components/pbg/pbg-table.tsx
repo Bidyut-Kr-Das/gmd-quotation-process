@@ -29,7 +29,12 @@ import {
   type PbgTreeSelection,
 } from "@/lib/pbg/pbg-tree";
 import type { PbgRecord } from "@/lib/pbg/pbg-data";
-import { updatePbgCellAction } from "@/app/pbg/actions";
+import { computeExtendedValidity } from "@/lib/pbg/validity";
+import {
+  removePbgBankGuaranteeFileAction,
+  updatePbgCellAction,
+  uploadPbgBankGuaranteeAction,
+} from "@/app/pbg/actions";
 import { PbgGrid } from "@/components/pbg/pbg-grid";
 import { PbgTree } from "@/components/pbg/pbg-tree";
 import { SyncButton } from "@/components/pbg/sync-button";
@@ -163,9 +168,8 @@ export function PbgTable({
   const distinctMap = useMemo(() => {
     const map = new Map<ColumnKey, string[]>();
     for (const def of PBG_COLUMN_DEFS) {
-      if (def.type === "text" || def.type === "select") {
-        map.set(def.key, getDistinctValues(rows, def.key));
-      }
+      if (def.type === "files") continue;
+      map.set(def.key, getDistinctValues(rows, def.key));
     }
     return map;
   }, [rows]);
@@ -225,11 +229,21 @@ export function PbgTable({
       record: boolean,
     ): Promise<boolean> => {
       setRows((prev) =>
-        prev.map((row) =>
-          row.id === id
-            ? ({ ...row, [key]: to, updatedAt: new Date().toISOString() } as PbgRecord)
-            : row,
-        ),
+        prev.map((row) => {
+          if (row.id !== id) return row;
+          const nextRow = {
+            ...row,
+            [key]: to,
+            updatedAt: new Date().toISOString(),
+          } as PbgRecord;
+          if (key === "validityOn") {
+            nextRow.extendedValidity = computeExtendedValidity(
+              to === null || to === undefined ? null : String(to),
+              row.lastSupplyDate,
+            );
+          }
+          return nextRow;
+        }),
       );
       setSaving((prev) => new Set(prev).add(`${id}:${key}`));
       setError(null);
@@ -257,6 +271,40 @@ export function PbgTable({
         setRedoStack([]);
       }
       return true;
+    },
+    [],
+  );
+
+  const handleUploadBankGuarantee = useCallback(
+    async (id: string, files: File[]): Promise<void> => {
+      setError(null);
+      const result = await uploadPbgBankGuaranteeAction(id, files);
+      if (result.ok) {
+        setRows((prev) =>
+          prev.map((row) =>
+            row.id === id ? { ...row, bankGuarantee: result.files } : row,
+          ),
+        );
+      } else {
+        setError(result.error);
+      }
+    },
+    [],
+  );
+
+  const handleRemoveBankGuarantee = useCallback(
+    async (id: string, url: string): Promise<void> => {
+      setError(null);
+      const result = await removePbgBankGuaranteeFileAction(id, url);
+      if (result.ok) {
+        setRows((prev) =>
+          prev.map((row) =>
+            row.id === id ? { ...row, bankGuarantee: result.files } : row,
+          ),
+        );
+      } else {
+        setError(result.error);
+      }
     },
     [],
   );
@@ -333,6 +381,8 @@ export function PbgTable({
         statusOptions={statusOptions}
         saving={saving}
         onCommit={handleCommit}
+        onUploadBankGuarantee={handleUploadBankGuarantee}
+        onRemoveBankGuarantee={handleRemoveBankGuarantee}
       />
     </div>
   );

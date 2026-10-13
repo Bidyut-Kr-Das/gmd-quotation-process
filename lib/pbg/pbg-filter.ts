@@ -67,19 +67,34 @@ export function filterRecords(
     }
 
     for (const def of PBG_COLUMN_DEFS) {
+      if (def.type === "files") continue;
       const filter = filters[def.key];
       if (!isFilterActive(filter) || !filter) continue;
 
+      const hasSelected = filter.selected && filter.selected.length > 0;
+
       if (def.type === "date") {
-        const value = record[def.key] as string | null;
-        if (!value) return false;
+        const raw = record[def.key];
+        const value = raw === null || raw === undefined ? "" : String(raw);
+        if ((filter.from || filter.to || hasSelected) && !value) return false;
         if (filter.from && value < filter.from) return false;
         if (filter.to && value > filter.to) return false;
+        if (hasSelected && !filter.selected!.includes(value)) return false;
       } else if (def.type === "number") {
-        const value = record[def.key] as number | null;
-        if (value === null || value === undefined) return false;
-        if (typeof filter.min === "number" && value < filter.min) return false;
-        if (typeof filter.max === "number" && value > filter.max) return false;
+        const raw = record[def.key];
+        const value =
+          raw === null || raw === undefined ? null : Number(raw);
+        const hasRange =
+          typeof filter.min === "number" || typeof filter.max === "number";
+        if (hasRange) {
+          if (value === null || Number.isNaN(value)) return false;
+          if (typeof filter.min === "number" && value < filter.min) return false;
+          if (typeof filter.max === "number" && value > filter.max) return false;
+        }
+        if (hasSelected) {
+          const text = raw === null || raw === undefined ? "" : String(raw);
+          if (!filter.selected!.includes(text)) return false;
+        }
       } else {
         const raw = record[def.key];
         const value = raw === null || raw === undefined ? "" : String(raw);

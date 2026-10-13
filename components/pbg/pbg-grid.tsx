@@ -6,12 +6,13 @@ import {
   useMemo,
   useRef,
   useState,
+  type ChangeEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { formatAmount, formatDate } from "@/lib/pbg/format";
 import type { ColumnDef, ColumnKey } from "@/lib/pbg/pbg-columns";
-import type { PbgRecord } from "@/lib/pbg/pbg-data";
+import type { PbgFile, PbgRecord } from "@/lib/pbg/pbg-data";
 import { toEditValue } from "@/lib/pbg/pbg-cell";
 import {
   isFilterActive,
@@ -65,6 +66,10 @@ function renderCell(
       return formatDate(record.expiryDate);
     case "claimDate":
       return formatDate(record.claimDate);
+    case "lastSupplyDate":
+      return formatDate(record.lastSupplyDate);
+    case "extendedValidity":
+      return formatDate(record.extendedValidity);
     case "bgAmtFc":
       return formatAmount(record.bgAmtFc);
     case "marginAmount":
@@ -200,6 +205,29 @@ function CellEditor({
     );
   }
 
+  if (kind === "text" && def.options && def.options.length > 0) {
+    const listId = `pbg-options-${def.key}`;
+    return (
+      <>
+        <input
+          ref={inputRef}
+          type="text"
+          list={listId}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={onKeyDown}
+          onBlur={() => finish(null)}
+          className={baseClass}
+        />
+        <datalist id={listId}>
+          {def.options.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      </>
+    );
+  }
+
   return (
     <input
       ref={inputRef}
@@ -213,6 +241,86 @@ function CellEditor({
   );
 }
 
+function BankGuaranteeCell({
+  id,
+  files,
+  onUpload,
+  onRemove,
+}: {
+  id: string;
+  files: PbgFile[] | null;
+  onUpload: (id: string, files: File[]) => Promise<void>;
+  onRemove: (id: string, url: string) => Promise<void>;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [busy, setBusy] = useState(false);
+  const list = files ?? [];
+
+  async function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (selected.length === 0) return;
+    setBusy(true);
+    try {
+      await onUpload(id, selected);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="flex flex-col gap-1.5"
+      onMouseDown={(event) => event.stopPropagation()}
+    >
+      {list.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {list.map((file) => (
+            <span
+              key={file.url}
+              className="inline-flex max-w-full items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[11px]"
+            >
+              <a
+                href={file.url}
+                target="_blank"
+                rel="noreferrer"
+                title={file.name}
+                className="max-w-[9rem] truncate font-medium text-indigo-600 hover:underline"
+              >
+                {file.name}
+              </a>
+              <button
+                type="button"
+                onClick={() => void onRemove(id, file.url)}
+                aria-label={`Remove ${file.name}`}
+                className="text-slate-400 hover:text-rose-600"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={handleChange}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        className="inline-flex w-fit items-center gap-1 rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-60"
+      >
+        {busy ? "Uploading…" : "+ Upload"}
+      </button>
+    </div>
+  );
+}
+
 export function PbgGrid({
   rows,
   columns,
@@ -222,6 +330,8 @@ export function PbgGrid({
   statusOptions,
   saving,
   onCommit,
+  onUploadBankGuarantee,
+  onRemoveBankGuarantee,
 }: {
   rows: PbgRecord[];
   columns: ColumnDef[];
@@ -231,6 +341,8 @@ export function PbgGrid({
   statusOptions: string[];
   saving: Set<string>;
   onCommit: (id: string, key: ColumnKey, raw: string) => void;
+  onUploadBankGuarantee: (id: string, files: File[]) => Promise<void>;
+  onRemoveBankGuarantee: (id: string, url: string) => Promise<void>;
 }) {
   const [sort, setSort] = useState<SortState>(null);
   const [widths, setWidths] = useState<Record<string, number>>({});
@@ -309,6 +421,7 @@ export function PbgGrid({
     const row = sortedRows[pos.r];
     const col = columns[pos.c];
     if (!row || !col) return;
+    if (col.type === "files" || col.readonly) return;
     setEditing({ pos, initial: initial ?? toEditValue(row, col.key) });
   }
 
@@ -513,24 +626,26 @@ export function PbgGrid({
                         </span>
                       )}
                     </button>
-                    <Popover
-                      ariaLabel={`Filter ${col.label}`}
-                      trigger={<FunnelIcon />}
-                      triggerClassName={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
-                        filterActive
-                          ? "bg-indigo-100 text-indigo-600"
-                          : "text-slate-400 hover:bg-slate-200 hover:text-slate-600"
-                      }`}
-                    >
-                      {() => (
-                        <ColumnFilterPopover
-                          def={col}
-                          filter={filters[col.key]}
-                          distinct={distinctMap.get(col.key) ?? []}
-                          onChange={(value) => onSetFilter(col.key, value)}
-                        />
-                      )}
-                    </Popover>
+                    {col.type !== "files" && (
+                      <Popover
+                        ariaLabel={`Filter ${col.label}`}
+                        trigger={<FunnelIcon />}
+                        triggerClassName={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
+                          filterActive
+                            ? "bg-indigo-100 text-indigo-600"
+                            : "text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                        }`}
+                      >
+                        {() => (
+                          <ColumnFilterPopover
+                            def={col}
+                            filter={filters[col.key]}
+                            distinct={distinctMap.get(col.key) ?? []}
+                            onChange={(value) => onSetFilter(col.key, value)}
+                          />
+                        )}
+                      </Popover>
+                    )}
                   </div>
                   <span
                     onPointerDown={(event) =>
@@ -596,6 +711,10 @@ export function PbgGrid({
                       moveTo(r, c, event.shiftKey);
                       containerRef.current?.focus();
                     }}
+                    onClick={() => {
+                      if (editingHere) return;
+                      if (col.options && col.options.length > 0) startEdit({ r, c });
+                    }}
                     onDoubleClick={() => startEdit({ r, c })}
                     style={{
                       paddingTop: CELL_PAD_Y,
@@ -619,6 +738,13 @@ export function PbgGrid({
                         statusOptions={statusOptions}
                         onCommit={commitEdit}
                         onCancel={() => setEditing(null)}
+                      />
+                    ) : col.type === "files" ? (
+                      <BankGuaranteeCell
+                        id={row.id}
+                        files={row.bankGuarantee}
+                        onUpload={onUploadBankGuarantee}
+                        onRemove={onRemoveBankGuarantee}
                       />
                     ) : (
                       renderCell(col, row, expanded.has(row.id), toggleHistory)

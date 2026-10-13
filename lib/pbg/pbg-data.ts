@@ -2,6 +2,8 @@ import { Prisma } from "@/app/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { fetchSheetRows } from "@/lib/pbg/google";
 import { mapRows } from "@/lib/pbg/pbg";
+import { parseFlexibleDate, normalizePo } from "@/lib/pbg/supply-history";
+import { computeExtendedValidity } from "@/lib/pbg/validity";
 import type { CellValue } from "@/lib/pbg/pbg-cell";
 import type { ColumnKey } from "@/lib/pbg/pbg-columns";
 
@@ -23,6 +25,13 @@ const EXCLUDE_CLOSED_WHERE = {
   ],
 };
 
+/** A manually uploaded Bank Guarantee document stored on a PBG row. */
+export type PbgFile = {
+  name: string;
+  url: string;
+  fileId: string;
+};
+
 export type PbgRecord = {
   id: string;
   clientName: string | null;
@@ -40,9 +49,34 @@ export type PbgRecord = {
   contactNumber: string | null;
   remark: string | null;
   status: string | null;
+  bankGuarantee: PbgFile[] | null;
+  /** User-set contract validity duration (e.g. "5y", "18m"). */
+  validityOn: string | null;
+  /** Derived: latest SupplyHistoryItem.date for this PO. */
+  lastSupplyDate: string | null;
+  /** Derived: lastSupplyDate + validityOn duration. */
+  extendedValidity: string | null;
   syncedAt: string | null;
   updatedAt: string | null;
 };
+
+/** Coerces the stored JSON array into typed Bank Guarantee files. */
+export function parsePbgFiles(value: unknown): PbgFile[] | null {
+  if (!Array.isArray(value)) return null;
+  const files: PbgFile[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+    const record = entry as Record<string, unknown>;
+    const url = typeof record.url === "string" ? record.url : null;
+    if (!url) continue;
+    files.push({
+      name: typeof record.name === "string" ? record.name : "file",
+      url,
+      fileId: typeof record.fileId === "string" ? record.fileId : "",
+    });
+  }
+  return files.length > 0 ? files : null;
+}
 
 function toDateOnly(value: Date | null): string | null {
   return value ? value.toISOString().slice(0, 10) : null;
@@ -72,26 +106,75 @@ export async function getPbgData(
     orderBy: { id: "asc" },
   });
 
-  return rows.map((row) => ({
-    id: row.id.toString(),
-    clientName: row.clientName,
-    project: row.project,
-    poNumber: row.poNumber,
-    poDate: toDateOnly(row.poDate),
-    bgNo: row.bgNo,
-    bgDate: toDateOnly(row.bgDate),
-    bgAmtFc: toNum(row.bgAmtFc),
-    expiryDate: toDateOnly(row.expiryDate),
-    claimDate: toDateOnly(row.claimDate),
-    marginPct: toNum(row.marginPct),
-    marginAmount: toNum(row.marginAmount),
-    contactPerson: row.contactPerson,
-    contactNumber: row.contactNumber,
-    remark: row.remark,
-    status: row.status,
-    syncedAt: row.syncedAt ? row.syncedAt.toISOString() : null,
-    updatedAt: row.updatedAt ? row.updatedAt.toISOString() : null,
-  }));
+  const latestSupplyByPo = await loadLatestSupplyDates(
+    rows.map((row) => row.poNumber),
+  );
+
+  return rows.map((row) => {
+    const lastSupply = row.poNumber
+      ? latestSupplyByPo.get(normalizePo(row.poNumber))
+      : undefined;
+    const lastSupplyDate = toDateOnly(lastSupply ?? null);
+
+    return {
+      id: row.id.toString(),
+      clientName: row.clientName,
+      project: row.project,
+      poNumber: row.poNumber,
+      poDate: toDateOnly(row.poDate),
+      bgNo: row.bgNo,
+      bgDate: toDateOnly(row.bgDate),
+      bgAmtFc: toNum(row.bgAmtFc),
+      expiryDate: toDateOnly(row.expiryDate),
+      claimDate: toDateOnly(row.claimDate),
+      marginPct: toNum(row.marginPct),
+      marginAmount: toNum(row.marginAmount),
+      contactPerson: row.contactPerson,
+      contactNumber: row.contactNumber,
+      remark: row.remark,
+      status: row.status,
+      bankGuarantee: parsePbgFiles(row.bankGuarantee),
+      validityOn: row.validityOn,
+      lastSupplyDate,
+      extendedValidity: computeExtendedValidity(row.validityOn, lastSupplyDate),
+      syncedAt: row.syncedAt ? row.syncedAt.toISOString() : null,
+      updatedAt: row.updatedAt ? row.updatedAt.toISOString() : null,
+    };
+  });
+}
+
+/**
+ * One bounded query: for the given PO numbers, returns the latest parsed
+ * SupplyHistoryItem.date keyed by normalized PO. Missing POs are absent.
+ */
+async function loadLatestSupplyDates(
+  poNumbers: Array<string | null>,
+): Promise<Map<string, Date>> {
+  const unique = Array.from(
+    new Set(
+      poNumbers.filter(
+        (value): value is string => !!value && value.trim() !== "",
+      ),
+    ),
+  );
+  const latest = new Map<string, Date>();
+  if (unique.length === 0) return latest;
+
+  const history = await prisma.supplyHistoryItem.findMany({
+    where: { partyOrderNo: { in: unique, mode: "insensitive" } },
+    select: { partyOrderNo: true, date: true },
+  });
+
+  for (const item of history) {
+    const key = normalizePo(item.partyOrderNo ?? "");
+    if (!key) continue;
+    const parsed = parseFlexibleDate(item.date);
+    if (!parsed) continue;
+    const existing = latest.get(key);
+    if (!existing || parsed > existing) latest.set(key, parsed);
+  }
+
+  return latest;
 }
 
 /**
