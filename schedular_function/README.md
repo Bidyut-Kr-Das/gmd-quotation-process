@@ -12,26 +12,52 @@ Where an algorithm already existed there, it was copied rather than imported
 
 ## Jobs
 
-Five hourly jobs, staggered so no two heavy ones collide.
+Six hourly jobs, staggered so no two heavy ones collide.
 
-| :00 | :15 | :20 | :30 | :45 |
-|---|---|---|---|---|
-| `raw-material` | `supply-history` | `docket-creation` | `contract-review` | `c-batch` |
+| :00 | :05 | :15 | :20 | :30 | :45 |
+|---|---|---|---|---|---|
+| `raw-material` | `bom-mast` | `supply-history` | `docket-creation` | `contract-review` | `c-batch` |
 
 | Job | Endpoint | Ofelia job name | Reads |
 |---|---|---|---|
 | Raw Material sync | `POST /api/scheduler/raw-material` | `raw-material-sync` | `GMD UPDATION`, `stock-phys` |
+| BOM MAST ERP sync | `POST /api/scheduler/bom-mast` | `bom-mast-sync` | `BOM MAST ERP` |
 | Supply History MASTER sync | `POST /api/scheduler/supply-history` | `supply-history-sync` | `MASTER`, GMD Clientwise ORDER LIST |
 | Pending docket creation | `POST /api/scheduler/docket-creation` | `docket-creation-sync` | `docket_quotation_threads`, `enquiries` |
 | Contract Review sync | `POST /api/scheduler/contract-review` | `contract-review-sync` | `CONTRACTS`, `DUMP`, `stock-phys`, `INSPECTION OFFER DUMP` |
 | C Batch marks | `POST /api/scheduler/c-batch` | `c-batch-sync` | `ITEM MASTER ERP` |
 
 The stagger is deliberate. `raw-material`, `supply-history` and
-`contract-review` each full-table-read the tables the others write. `c-batch`
-runs last and can safely overlap any of them: it writes **only** the `cBatch`
-column, which no other scheduled job touches. `docket-creation` runs at `:20`,
-between `supply-history` and `contract-review`, so contract-review's same-hour
-pass can backfill `contractNo` on the dockets it creates.
+`contract-review` each full-table-read the tables the others write. `bom-mast`
+runs at :05, after `raw-material` (which owns the `RawMaterial` rows its
+components resolve against) and before `supply-history`, whose
+`SupplyHistoryBomLink` rebuild reads the `Bom`/`BomItem` graph it writes — so
+Supply History sees fresh BOMs in the same hourly pass. `c-batch` runs last and
+can safely overlap any of them: it writes **only** the `cBatch` column, which no
+other scheduled job touches. `docket-creation` runs at `:20`, between
+`supply-history` and `contract-review`, so contract-review's same-hour pass can
+backfill `contractNo` on the dockets it creates.
+
+## `bom-mast`
+
+Single step in `run-bom-mast.ts`, delegating to `runBomMastErpSync()`
+(`bom-mast-sync.ts`):
+
+- **`runBomMastErpSync()`** — `BOM MAST ERP` tab → `FullItem` / `Bom` /
+  `BomItem`. `BOM_ID` → `Bom.bomId` (owner = the `FullItem` for `ITEM_CODE`),
+  `RM_ITEM_CODE` → component (`RawMaterial.erpItemCode` first, else a sub-assembly
+  `FullItem`). Missing owning `FullItem`s and `Bom`/`BomItem` rows are created;
+  `BomItem` rows the sheet no longer backs are kept but unlinked (component
+  pointers set to `null`). **Quantity and cost are deliberately not synced**, so
+  manual `BomItem.cost` edits made from Supply History are preserved.
+
+The manual route `POST /api/sync/bom_from_erp` is a thin wrapper around the same
+`runBomMastErpSync()`, so the two paths cannot drift. The manual Supply History
+sync (`POST /api/supply-history/sync`) also runs `runBomMastErpSync()` first, so
+pressing the dashboard's Sync button refreshes BOMs without waiting for :05. No
+file here imports `@/app/actions`, so a scheduled run can never be served a
+cached Server Action result.
+
 
 ## `raw-material`
 

@@ -102,3 +102,26 @@ export async function downloadFileFromDrive(fileId: string): Promise<Buffer> {
   );
   return Buffer.from(response.data as ArrayBuffer);
 }
+
+/**
+ * Fetches a Drive file's metadata and bytes in one call. Used by the
+ * attachment-preview route to stream files through our own origin instead of
+ * embedding Google Drive's UI (which needs third-party cookies).
+ */
+export async function fetchDriveFile(fileId: string): Promise<{
+  buffer: Buffer;
+  mimeType: string;
+  name: string;
+}> {
+  const driveApi = getDriveClient();
+  const meta = await driveApi.files.get({
+    fileId,
+    fields: "name, mimeType",
+  });
+  const buffer = await downloadFileFromDrive(fileId);
+  return {
+    buffer,
+    mimeType: meta.data.mimeType || "application/octet-stream",
+    name: meta.data.name || "attachment",
+  };
+}

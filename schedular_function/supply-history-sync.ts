@@ -48,6 +48,10 @@ import {
   mergeOrderListCsv,
   splitCsvLinks,
 } from "@/lib/gmd_lib/contract-order-links";
+import {
+  rebuildSupplyHistoryBomLinks,
+  type SupplyHistoryBomSyncResult,
+} from "@/lib/supplyHistoryBomSync";
 
 const SHEET_NAME = "MASTER";
 
@@ -146,6 +150,8 @@ export type SupplyHistorySyncResult = {
   failedWrites: number;
   sampleChanges: string[];
   elapsedMs: number;
+  /** BOM-link reconciliation stats (SupplyHistoryItem <-> BomItem). */
+  bomLinks: SupplyHistoryBomSyncResult;
 };
 
 /**
@@ -196,6 +202,16 @@ export async function runSupplyHistorySync(): Promise<SupplyHistorySyncResult> {
       failedWrites: 0,
       sampleChanges: [],
       elapsedMs: Date.now() - startedAt,
+      bomLinks: {
+        itemsScanned: 0,
+        itemsWithLinks: 0,
+        linksCreated: 0,
+        linksRemoved: 0,
+        selectionsKept: 0,
+        selectionsDefaulted: 0,
+        selectionsCleared: 0,
+        unmatchedItemCodes: 0,
+      },
     };
   }
 
@@ -407,6 +423,26 @@ export async function runSupplyHistorySync(): Promise<SupplyHistorySyncResult> {
     }
   }
 
+  // Reconcile BOM links (SupplyHistoryItem -> RawMaterial -> BomItem) after the
+  // row sync, so dropdowns/defaults reflect the freshly written data. A failure
+  // here must not fail the row sync.
+  let bomLinks: SupplyHistoryBomSyncResult;
+  try {
+    bomLinks = await rebuildSupplyHistoryBomLinks();
+  } catch (err) {
+    console.error("[supply-history-sync] BOM link rebuild failed:", err);
+    bomLinks = {
+      itemsScanned: 0,
+      itemsWithLinks: 0,
+      linksCreated: 0,
+      linksRemoved: 0,
+      selectionsKept: 0,
+      selectionsDefaulted: 0,
+      selectionsCleared: 0,
+      unmatchedItemCodes: 0,
+    };
+  }
+
   const elapsedMs = Date.now() - startedAt;
 
   console.log("\n===== [SCHEDULER] SUPPLY HISTORY MASTER SYNC =====");
@@ -430,6 +466,9 @@ export async function runSupplyHistorySync(): Promise<SupplyHistorySyncResult> {
     }`,
   );
   console.log(`[scheduler] elapsed          : ${elapsedMs}ms`);
+  console.log(
+    `[scheduler] bom links         : items=${bomLinks.itemsScanned} withLinks=${bomLinks.itemsWithLinks} +${bomLinks.linksCreated}/-${bomLinks.linksRemoved} defaulted=${bomLinks.selectionsDefaulted} kept=${bomLinks.selectionsKept} cleared=${bomLinks.selectionsCleared} unmatchedCodes=${bomLinks.unmatchedItemCodes}`,
+  );
   if (sampleChanges.length) console.log(`[scheduler] samples          :`, sampleChanges);
   console.log("===== [SCHEDULER] SUPPLY HISTORY DONE =====\n");
 
@@ -449,5 +488,6 @@ export async function runSupplyHistorySync(): Promise<SupplyHistorySyncResult> {
     failedWrites,
     sampleChanges,
     elapsedMs,
+    bomLinks,
   };
 }

@@ -6,7 +6,11 @@ import GMDUpdateTable from "../../components/gmd_dashboard/GMDUpdateTable";
 import ErrorState from "../../components/gmd_dashboard/ErrorState";
 import GMDUpdateSkeleton from "../../components/gmd_dashboard/skeletons/GMDUpdateSkeleton";
 import { toast } from "sonner";
-import { updateSupplyHistoryFieldAction } from "@/app/actions";
+import {
+  updateSupplyHistoryFieldAction,
+  updateSupplyHistorySelectedBomAction,
+  updateSupplyHistoryBomCostAction,
+} from "@/app/actions";
 import { SUPPLY_HEADER_TO_DB_FIELD } from "@/lib/gmd_lib/supply-history-columns";
 import { C_BATCH_HEADER, cBatchBadges, cBatchFilter } from "@/lib/gmd_lib/verify-bom-columns";
 import { INDIAN_STATES } from "@/lib/supplyStateResolver";
@@ -30,6 +34,7 @@ interface SupplyHistoryData {
   totalRows: number;
   syncedAt: string | null;
   utilityOptions?: string[];
+  bomIdOptions?: Record<string, string[]>;
 }
 
 // Stable descriptor list so GMDUpdateTable's row predicate keeps a stable dep.
@@ -41,6 +46,9 @@ export default function SupplyHistoryPage() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [bomIdOptionsById, setBomIdOptionsById] = useState<
+    Record<string, string[]>
+  >({});
   const dispatch = useAppDispatch();
   const filterState = useAppSelector((s) => s.supplyHistoryFilters);
 
@@ -55,6 +63,7 @@ export default function SupplyHistoryPage() {
       }
       const json = await res.json();
       setData(json);
+      setBomIdOptionsById(json.bomIdOptions ?? {});
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -83,6 +92,25 @@ export default function SupplyHistoryPage() {
     async (id: string, colIndex: number, value: string) => {
       const header = data?.headers[colIndex];
       if (!header) return;
+
+      // BOM COST edits the selected BomItem's cost (shared with the BOM
+      // dashboard), so it routes to a dedicated action rather than the generic
+      // Supply History field writer.
+      if (header === "BOM COST") {
+        const toastId = toast.loading("Updating BOM COST...");
+        try {
+          const res = await updateSupplyHistoryBomCostAction(id, value || null);
+          if (!res.success) throw new Error(res.error || "Failed to update BOM COST");
+          await fetchData();
+          toast.success("BOM COST updated", { id: toastId });
+        } catch (err: unknown) {
+          const message =
+            err instanceof Error ? err.message : "Failed to update BOM COST";
+          toast.error(message, { id: toastId });
+        }
+        return;
+      }
+
       const field = SUPPLY_HEADER_TO_DB_FIELD[header];
       if (!field) return;
 
@@ -94,7 +122,23 @@ export default function SupplyHistoryPage() {
         toast.error(err?.message || err || `Failed to update ${header}`, { id: toastId });
       }
     },
-    [data?.headers],
+    [data?.headers, fetchData],
+  );
+
+  const handleSelectBomId = useCallback(
+    async (id: string, bomId: string | null) => {
+      const toastId = toast.loading("Saving BOM...");
+      try {
+        const res = await updateSupplyHistorySelectedBomAction(id, bomId);
+        if (!res.success) throw new Error(res.error || "Failed to save BOM");
+        await fetchData();
+        toast.success("BOM saved", { id: toastId });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to save BOM";
+        toast.error(message, { id: toastId });
+      }
+    },
+    [fetchData],
   );
 
   useEffect(() => {
@@ -111,7 +155,7 @@ export default function SupplyHistoryPage() {
       "INVOICE NO", "item name", "party name",
       "Item Type", "MOC", "Size", "State",
       "FINANCIAL YEAR", "CLASS OF VALVE", "Warranty valid/Not",
-      "BG NO", "PBG VALID TILL",
+      "BG NO", "PBG VALID TILL", "BOM ID",
     ];
     for (const col of dropdownCols) {
       const idx = headers.indexOf(col);
@@ -186,7 +230,7 @@ export default function SupplyHistoryPage() {
             onSelect={setSelectedIndex}
             title={`Supply History`}
             editable
-            editableColumns={["Party Mail Address", "State", "UTILITY"]}
+            editableColumns={["Party Mail Address", "State", "UTILITY", "BOM COST"]}
             onCellUpdate={handleCellUpdate}
             categoryOptions={categoryOptions}
             uniqueKeyColumns={["INVOICE NO", "item name"]}
@@ -194,6 +238,8 @@ export default function SupplyHistoryPage() {
             cellBadges={cBatchBadges("ERP ITEM CODE")}
             batchFilterHeader="ERP ITEM CODE"
             batchPresenceFilters={SUPPLY_HISTORY_BATCH_FILTERS}
+            bomIdOptionsById={bomIdOptionsById}
+            onSelectBomId={handleSelectBomId}
             filterState={filterState}
             filterActions={filterActions}
             fullHeight

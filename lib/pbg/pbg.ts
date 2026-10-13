@@ -92,28 +92,49 @@ export function parseNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Sheet header (normalized) -> PbgRow field. Unlisted columns are ignored. */
+/**
+ * Sheet header -> PbgRow field. Keys are canonical header names (uppercased
+ * with all non-alphanumerics stripped) so " BG Amt(FC) ", "BG_AMT" and
+ * "Margin %" all resolve regardless of spacing/punctuation. Unlisted columns
+ * are ignored. Legacy aliases are kept for backward compatibility.
+ */
 const HEADER_FIELDS: Record<string, keyof PbgRow> = {
-  BENEFICIARY_NAME: "clientName",
-  BG_NO: "bgNo",
-  BG_AMT: "bgAmtFc",
-  "MARGIN %": "marginPct",
-  MARGIN_AMT: "marginAmount",
-  "PO NUMBER": "poNumber",
-  "PO DATE": "poDate",
-  CANCELLED_STATUS: "status",
+  CLIENTNAME: "clientName",
+  BENEFICIARYNAME: "clientName",
+  PROJECT: "project",
+  PONUMBER: "poNumber",
+  PODATE: "poDate",
+  BGNO: "bgNo",
+  BGDATE: "bgDate",
+  BGAMTFC: "bgAmtFc",
+  BGAMT: "bgAmtFc",
+  EXPIRYDATE: "expiryDate",
+  CLAIMDATE: "claimDate",
+  MARGIN: "marginPct",
+  MARGINPCT: "marginPct",
+  MARGINAMOUNT: "marginAmount",
+  MARGINAMT: "marginAmount",
+  CONTACTPERSON: "contactPerson",
+  CONTACTNUMBER: "contactNumber",
+  REMARK: "remark",
+  STATUS: "status",
+  CANCELLEDSTATUS: "status",
 };
 
 function normalizeHeader(value: unknown): string {
-  return clean(value).toUpperCase();
+  return clean(value)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
 }
 
 function findHeaderRowIndex(rows: string[][]): number {
   for (let i = 0; i < rows.length; i += 1) {
     const headers = rows[i].map(normalizeHeader);
     if (
-      headers.includes("BG_NO") &&
-      (headers.includes("BENEFICIARY_NAME") || headers.includes("PO NUMBER"))
+      headers.includes("BGNO") &&
+      (headers.includes("CLIENTNAME") ||
+        headers.includes("BENEFICIARYNAME") ||
+        headers.includes("PONUMBER"))
     ) {
       return i;
     }
@@ -153,7 +174,11 @@ export function mapRows(rows: string[][]): {
     }
 
     const first = normalizeHeader(cells[0]);
-    if (first === "SERIES_NAME" || first === "BENEFICIARY_NAME") {
+    if (
+      first === "SERIESNAME" ||
+      first === "BENEFICIARYNAME" ||
+      first === "CLIENTNAME"
+    ) {
       skipped += 1;
       continue;
     }
@@ -165,19 +190,19 @@ export function mapRows(rows: string[][]): {
 
     const row: PbgRow = {
       clientName: toText(cell("clientName")),
-      project: null,
+      project: toText(cell("project")),
       poNumber: toText(cell("poNumber")),
       poDate: parseDate(cell("poDate")),
       bgNo: toText(cell("bgNo")),
-      bgDate: null,
+      bgDate: parseDate(cell("bgDate")),
       bgAmtFc: parseNumber(cell("bgAmtFc")),
-      expiryDate: null,
-      claimDate: null,
+      expiryDate: parseDate(cell("expiryDate")),
+      claimDate: parseDate(cell("claimDate")),
       marginPct: parseNumber(cell("marginPct")),
       marginAmount: parseNumber(cell("marginAmount")),
-      contactPerson: null,
-      contactNumber: null,
-      remark: null,
+      contactPerson: toText(cell("contactPerson")),
+      contactNumber: toText(cell("contactNumber")),
+      remark: toText(cell("remark")),
       status: toText(cell("status")),
     };
 
