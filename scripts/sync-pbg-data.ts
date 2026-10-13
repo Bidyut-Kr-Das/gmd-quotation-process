@@ -3,9 +3,16 @@ import { PrismaClient } from "../app/generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { fetchSheetRows } from "../lib/pbg/google";
 import { mapRows } from "../lib/pbg/pbg";
+import { normalizeBg } from "../lib/pbg/supply-history";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
+
+function toNum(value: { toString(): string } | null): number | null {
+  if (value === null || value === undefined) return null;
+  const n = Number(value.toString());
+  return Number.isFinite(n) ? n : null;
+}
 
 function show(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -18,23 +25,43 @@ async function main() {
   console.log(
     `\n=== SYNC PBG SHEET -> pbg_data [${apply ? "APPLY" : "DRY RUN"}] ===\n`,
   );
+  console.log(
+    "Sheet-owned columns: BG_NO, BG_AMT, CANCELLED_STATUS, MARGIN %, MARGIN_AMT, BENEFICIARY_NAME\n",
+  );
 
   const sheetRows = await fetchSheetRows();
-  const { data, skipped } = mapRows(sheetRows);
+  const { data } = mapRows(sheetRows);
 
-  console.log(`Sheet rows:   ${sheetRows.length}`);
-  console.log(`Mapped rows:  ${data.length}`);
-  console.log(`Skipped rows: ${skipped}`);
+  const seen = new Set<string>();
+  const candidates: typeof data = [];
+  let skippedBlankBgNo = 0;
+  let duplicateInSheet = 0;
+  for (const row of data) {
+    const key = normalizeBg(row.bgNo);
+    if (!key) {
+      skippedBlankBgNo += 1;
+      continue;
+    }
+    if (seen.has(key)) {
+      duplicateInSheet += 1;
+      continue;
+    }
+    seen.add(key);
+    candidates.push(row);
+  }
 
-  if (data.length > 0) {
-    console.log("\n--- Sample (first 3 mapped rows) ---");
-    for (const row of data.slice(0, 3)) {
+  console.log(`Sheet rows:        ${sheetRows.length}`);
+  console.log(`Matched (BG key):  ${candidates.length}`);
+  console.log(`Skipped blank BG:  ${skippedBlankBgNo}`);
+  console.log(`Duplicate BG:      ${duplicateInSheet}`);
+
+  if (candidates.length > 0) {
+    console.log("\n--- Sample (first 3) ---");
+    for (const row of candidates.slice(0, 3)) {
       console.log(
-        `  ${show(row.clientName)} | ${show(row.poNumber)} | ${show(row.bgNo)} | ` +
-          `po=${show(row.poDate)} bg=${show(row.bgDate)} amt=${show(row.bgAmtFc)} | ` +
-          `exp=${show(row.expiryDate)} claim=${show(row.claimDate)} | ` +
+        `  ${show(row.bgNo)} | amt=${show(row.bgAmtFc)} | ` +
           `margin=${show(row.marginPct)}/${show(row.marginAmount)} | ` +
-          `status=${show(row.status)}`,
+          `status=${show(row.status)} | client=${show(row.clientName)}`,
       );
     }
   }
@@ -44,17 +71,83 @@ async function main() {
     return;
   }
 
-  if (data.length === 0) {
-    console.log("\nRefusing to wipe pbg_data: no rows mapped.\n");
-    return;
+  const existingRows = await prisma.pbgData.findMany({
+    select: {
+      id: true,
+      bgNo: true,
+      clientName: true,
+      bgAmtFc: true,
+      marginPct: true,
+      marginAmount: true,
+      status: true,
+    },
+  });
+  const byBg = new Map<string, (typeof existingRows)[number]>();
+  for (const row of existingRows) {
+    const key = normalizeBg(row.bgNo);
+    if (key && !byBg.has(key)) byBg.set(key, row);
   }
 
-  const [, inserted] = await prisma.$transaction([
-    prisma.pbgData.deleteMany(),
-    prisma.pbgData.createMany({ data }),
-  ]);
+  let inserted = 0;
+  let updated = 0;
+  let unchanged = 0;
+  const now = new Date();
 
-  console.log(`\nApplied: table refreshed with ${inserted.count} rows.\n`);
+  for (const row of candidates) {
+    const key = normalizeBg(row.bgNo) as string;
+    const existing = byBg.get(key);
+
+    if (!existing) {
+      await prisma.pbgData.create({
+        data: {
+          bgNo: row.bgNo,
+          clientName: row.clientName,
+          bgAmtFc: row.bgAmtFc,
+          marginPct: row.marginPct,
+          marginAmount: row.marginAmount,
+          status: row.status,
+          syncedAt: now,
+          updatedAt: now,
+        },
+      });
+      inserted += 1;
+      continue;
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (row.clientName !== null && row.clientName !== existing.clientName) {
+      patch.clientName = row.clientName;
+    }
+    if (row.bgAmtFc !== null && row.bgAmtFc !== toNum(existing.bgAmtFc)) {
+      patch.bgAmtFc = row.bgAmtFc;
+    }
+    if (row.marginPct !== null && row.marginPct !== toNum(existing.marginPct)) {
+      patch.marginPct = row.marginPct;
+    }
+    if (
+      row.marginAmount !== null &&
+      row.marginAmount !== toNum(existing.marginAmount)
+    ) {
+      patch.marginAmount = row.marginAmount;
+    }
+    if (row.status !== null && row.status !== existing.status) {
+      patch.status = row.status;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      unchanged += 1;
+      continue;
+    }
+
+    patch.syncedAt = now;
+    patch.updatedAt = now;
+    await prisma.pbgData.update({ where: { id: existing.id }, data: patch });
+    updated += 1;
+  }
+
+  console.log(
+    `\nApplied: inserted=${inserted} updated=${updated} unchanged=${unchanged}\n`,
+  );
 }
 
 main()
