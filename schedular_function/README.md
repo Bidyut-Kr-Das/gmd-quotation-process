@@ -12,11 +12,11 @@ Where an algorithm already existed there, it was copied rather than imported
 
 ## Jobs
 
-Six hourly jobs, staggered so no two heavy ones collide.
+Eight hourly jobs, staggered so no two heavy ones collide.
 
-| :00 | :05 | :15 | :20 | :30 | :45 |
-|---|---|---|---|---|---|
-| `raw-material` | `bom-mast` | `supply-history` | `docket-creation` | `contract-review` | `c-batch` |
+| :00 | :05 | :15 | :20 | :30 | :35 | :40 | :45 |
+|---|---|---|---|---|---|---|---|
+| `raw-material` | `bom-mast` | `supply-history` | `docket-creation` | `contract-review` | `acc-master` | `execution-tracking` | `c-batch` |
 
 | Job | Endpoint | Ofelia job name | Reads |
 |---|---|---|---|
@@ -25,6 +25,8 @@ Six hourly jobs, staggered so no two heavy ones collide.
 | Supply History MASTER sync | `POST /api/scheduler/supply-history` | `supply-history-sync` | `MASTER`, GMD Clientwise ORDER LIST |
 | Pending docket creation | `POST /api/scheduler/docket-creation` | `docket-creation-sync` | `docket_quotation_threads`, `enquiries` |
 | Contract Review sync | `POST /api/scheduler/contract-review` | `contract-review-sync` | `CONTRACTS`, `DUMP`, `stock-phys`, `INSPECTION OFFER DUMP` |
+| ACC Master refresh | `POST /api/scheduler/acc-master` | `acc-master-sync` | `ACC_MASTER` |
+| Execution Tracking sync | `POST /api/scheduler/execution-tracking` | `execution-tracking-sync` | `SALE_BILL` (+ the local `acc_master`) |
 | C Batch marks | `POST /api/scheduler/c-batch` | `c-batch-sync` | `ITEM MASTER ERP` |
 
 The stagger is deliberate. `raw-material`, `supply-history` and
@@ -32,11 +34,15 @@ The stagger is deliberate. `raw-material`, `supply-history` and
 runs at :05, after `raw-material` (which owns the `RawMaterial` rows its
 components resolve against) and before `supply-history`, whose
 `SupplyHistoryBomLink` rebuild reads the `Bom`/`BomItem` graph it writes — so
-Supply History sees fresh BOMs in the same hourly pass. `c-batch` runs last and
-can safely overlap any of them: it writes **only** the `cBatch` column, which no
-other scheduled job touches. `docket-creation` runs at `:20`, between
-`supply-history` and `contract-review`, so contract-review's same-hour pass can
-backfill `contractNo` on the dockets it creates.
+Supply History sees fresh BOMs in the same hourly pass. `acc-master` (:35) fills
+the code -> name list `execution-tracking` (:40) joins on, and
+`execution-tracking` runs after `supply-history` (:15) so it patches rows that
+job just wrote. `c-batch` runs last and can safely overlap any of them: it writes
+**only** the `cBatch` column, which no other scheduled job touches.
+`docket-creation` runs at `:20`, between `supply-history` and `contract-review`,
+so contract-review's same-hour pass can backfill `contractNo` on the dockets it
+creates.
+
 
 ## `bom-mast`
 
@@ -440,7 +446,138 @@ were **removed**. The action is retained as a commented-out `LEGACY` block in
 `app/actions.ts`, with its now-unused imports commented alongside it. This folder
 is the source of truth for scheduled docket creation.
 
+## `acc-master`
+
+Single step: `runAccMasterSync()` in `acc-master-sync.ts`. Reads the
+`ACC_MASTER_GID` tab of `GMD_EXECUTION_TRACKING_SPREADSHEET_ID`
+(`FORMATTED_VALUE`, header row 1) and copies `ACC_CODE` / `ACC_NAME` into the
+local `acc_master` table.
+
+The point is to keep Google out of `execution-tracking`'s hot path: that job
+needs one name per consignee code, on every row it touches, every hour.
+`acc-master` publishes the whole list once, `lib/accMasterLookup.ts` reads it in
+one query, and the sync joins in memory.
+
+Notes:
+
+- Rows are matched on the **normalised** code (trim, collapse whitespace,
+  upper-case), so a casing change in the sheet updates the existing row instead
+  of creating a second one. The sheet's spelling is then kept as the stored
+  value.
+- A blank `ACC_NAME` never clears a stored name.
+- A duplicate `ACC_CODE` in the sheet keeps the first row and is counted
+  (`duplicateCodes`) — the codes are meant to be unique, so a duplicate is a
+  sheet problem the report should surface, not a reason to fail the run.
+- Rows the sheet no longer carries are **kept**. The list can only ever get more
+  complete, never wrong, which keeps the sync that reads it safe.
+- `execution-tracking` refreshes this table before it runs, so the manual path
+  does not depend on the :35 job having fired.
+
+## `execution-tracking`
+
+Single step: `runExecutionTrackingStep()` in `execution-tracking-sync.ts` — the
+ACC master refresh above, then `runExecutionTrackingSync()` from
+`lib/executionTrackingSync.ts`, the same engine the CLI
+(`npm run exec:sync`) and the `/supply_history` button use.
+
+Reads the `SALE_BILL_GID` tab of `GMD_EXECUTION_TRACKING_SPREADSHEET_ID` and
+diffs it into `SupplyHistoryItem`, for **one fiscal year**. The scheduler uses
+the current fiscal year (`getFiscalYearLabel`, April start, the same helper the
+docket numbers use — it yields the `2026-27` form the table stores); the button
+passes a year chosen in the UI; the CLI takes `--fy`.
+
+Column mapping is declarative — `SALE_BILL_COLUMN_MAP` in
+`lib/gmd_lib/execution-tracking-columns.ts` is a list of
+`{ sheetHeader, dbField }`, and the engine's preload, insert payload, diff loop
+and report all iterate it. **Adding a column is one line.**
+
+`consigneeName` is the one field not on the sheet: it is `ACC_NAME` for the row's
+`CONSIGNEE_CODE`, resolved through `acc_master`.
+
+### The match key is invoice number, with one guard
+
+`SupplyHistoryItem` allows several rows per `INVOICE NO` — one per line item — and
+that is common, not exceptional: 65 of the FY 2026-27 invoices own more than one
+row. So a sheet row is matched by invoice number, and when that yields several DB
+rows the record is narrowed by `ITEM_CODE`. If the item code is blank or matches
+more than one candidate, the record is counted as `ambiguous` and **skipped**.
+
+The alternative — writing one line's quantity onto all its siblings — would
+corrupt them silently, so the guard trades a visible count for invisible damage.
+`ambiguous` is in the response, the log and the ofelia script (which warns).
+Persistently non-zero `ambiguous` means the sheet needs an item code on those
+rows.
+
+### The fiscal year must match on both sides
+
+A row is only considered when the sheet's own FY column equals the requested year
+(any spelling: `26-27`, `2026-27`, `2026-2027`, `2627` — see
+`normalizeFiscalYear`), and the DB preload is scoped to the same year. Because
+`financialYear` is free text that older rows may have written differently, the
+preload queries the variants in `fiscalYearVariants` and the comparison is on the
+normalised form.
+
+### Two writes the engine deliberately refuses
+
+- **A blank cell never clears a value**, including the dash sentinels `-` `--`
+  `—` `–`. Same rule as the MASTER sync.
+- **`state` is written only when the sheet value is a recognised Indian state**
+  (`canonicalizeState` in `lib/supplyStateResolver.ts`), and written in the DB's
+  Title Case. Comparison is on the canonical form, so a row that already means
+  the same thing (`Chattisgarh` vs `CHATTISGARH`) is never rewritten. An
+  unrecognised value (`MH`, `Other`) leaves the field alone and lands in the
+  report's `stateSkipped` samples.
+
+An insert carries a **blank `itemName`**: the sheet has no item name, and
+`itemName` is `NOT NULL`. The row is visible on `/supply_history` for an operator
+to name. Only the first sheet row for an invoice can insert — the DB unique key is
+`(invoiceNo, itemName)`, so a second blank-name row for the same invoice cannot
+exist; it is counted as a duplicate instead.
+
+### Every run is logged
+
+`lib/syncLog.ts` writes one `sync_log` row per run — headline counts plus
+`details`, the before/after of every add and change, capped at
+`DETAIL_CAP` (2,000). A dry run is logged too (`mode = "dry-run"`), so the preview
+an operator looked at sits next to the apply that followed it. `kind` keeps the
+table shared: `"execution-tracking"` and `"acc-master"` today.
+
+### Manual control
+
+```sh
+npm run exec:headers                                  # read-only: real headers + column map + acc_master state
+npm run exec:sync -- --fy 26-27                       # dry run, prints the report
+npm run exec:sync -- --fy 26-27 --limit 20            # smoke test the first 20 rows
+npm run exec:sync -- --fy 26-27 --apply               # write
+npm run exec:sync -- --fy 26-27 --apply --no-log      # write without a sync_log row
+
+# the same engine over HTTP (dryRun / fy are optional)
+curl -X POST "$BASE/execution-tracking?dryRun=1&fy=2025-26" -H "x-api-key: $GMD_SYNC_API_KEY"
+```
+
 ## Write policy
+
+### `acc-master`
+
+| Column | Rule |
+|---|---|
+| `acc_code`, `acc_name` on a **new** code | written |
+| `acc_name` on an existing code | overwritten when the sheet value is non-blank and differs; a blank never clears |
+| `acc_code` on an existing code | updated to the sheet's spelling when it differs only in case/spacing; matched on the normalised form |
+| codes the sheet no longer lists | **kept** |
+| deletions | none |
+
+### `execution-tracking`
+
+| Column | Rule |
+|---|---|
+| `quantity`, `uom`, `lrNoDt`, `consigneeAddress`, `erpItemCode`, `consigneeName` | overwritten when the sheet value is non-blank and differs |
+| `state` | overwritten when the sheet value is a recognised Indian state and the canonical form differs; written in Title Case |
+| blank / `-` `--` `—` `–` cells | never overwrite, never clear |
+| `invoiceNo`, `itemName`, `financialYear` | immutable on an existing row |
+| new rows | inserted with `itemName = ""`, the target fiscal year, `syncedAt` |
+| `syncedAt` | stamped only on rows actually written |
+| deletions | none |
 
 ### `raw-material`
 
@@ -706,6 +843,10 @@ curl -i -X POST -H "x-api-key: nope" "$BASE/raw-material"
 # correct key -> 200 (runs the job)
 curl -i -X POST -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/raw-material"
 curl -i -X POST -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/contract-review"
+
+# the execution-tracking pair: refresh the name list, then preview a year
+curl -i -X POST -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/acc-master"
+curl -i -X POST -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/execution-tracking?dryRun=1&fy=2026-27"
 
 # verify credentials WITHOUT running the job
 curl -i -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/contract-review"

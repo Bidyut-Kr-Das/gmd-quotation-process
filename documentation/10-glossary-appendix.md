@@ -15,6 +15,8 @@
 | **Verify BOM** | Same `CONTRACT_SHEET_SPREADSHEET_ID` | Env | Name `VERIFY BOM` | `"'VERIFY BOM'!A2:ZZZ"` (row 2 header) | `FORMATTED_VALUE` | same | `app/api/bom/sync/route.ts` |
 | **Legacy Import (one-time CSV, no auth)** | `13PExjBVtkd8izrPT3nCWvofJ7qTztl5IciCuLt9KA6Q` | Hard-coded public CSV URL `lib/fetch csv?gid=` | `gid 1091837496` Dockets (Form Responses 1) + `gid 1061341359` ITEMS AND RATES | Public `fetch` | parsed via custom `parseCSV` multiline | none | `scripts/import-sheet.ts` |
 | **Sale Bill script (optional)** | `SALE_BILL_SPREADSHEET_ID` | Env | `GID 0` | `A:ZZZ` | `FORMATTED_VALUE` | `getOAuthClient` | `scripts/import-sale-bill.ts` |
+| **Execution Tracking** `ACC_MASTER` | `GMD_EXECUTION_TRACKING_SPREADSHEET_ID` | Env | `ACC_MASTER_GID` 566954129 | `A1:ZZZ` | `FORMATTED_VALUE` | `getOAuthClient` | `schedular_function/acc-master-sync.ts` → `acc_master` |
+| **Execution Tracking** `SALE_BILL` | `GMD_EXECUTION_TRACKING_SPREADSHEET_ID` | Env | `SALE_BILL_GID` 604337671 | `A1:ZZZ` | `FORMATTED_VALUE` | `getOAuthClient` | `lib/executionTrackingSync.ts` → `SupplyHistoryItem` |
 
 **Env vars (set in deployment `.env`):** Only `DATABASE_URL` currently present locally `D:\gmd-quotation-process\.env`; expected but missing locally: `GOOGLE_SPREADSHEET_ID`, `SUPPLY_HISTORY_SPREADSHEET_ID`, `CONTRACT_SHEET_SPREADSHEET_ID`, `SALE_BILL_SPREADSHEET_ID`, `GDRIVE_*`, `OPENAI*`, `GEMINI*`, `N8N_WEBHOOK`, `GOOGLE_DRIVE` etc — see `lib/gmd_lib/google-sheets.ts`, `app/api/**/sync/route.ts`.
 
@@ -126,6 +128,9 @@ GOOGLE_SPREADSHEET_ID=...            # GMD UPDATION / Category / stock-phys
 SUPPLY_HISTORY_SPREADSHEET_ID=...    # MASTER
 CONTRACT_SHEET_SPREADSHEET_ID=...    # CONTRACTS + DUMP + VERIFY BOM + ORDER LINK helper 1367392830
 SALE_BILL_SPREADSHEET_ID=...         # optional scripts/import-sale-bill.ts
+GMD_EXECUTION_TRACKING_SPREADSHEET_ID=...  # execution-tracking sync + acc-master refresh
+ACC_MASTER_GID=566954129             # tab gid: ACC_CODE -> ACC_NAME (acc_master table)
+SALE_BILL_GID=604337671              # tab gid: the per-invoice execution rows
 
 # Google OAuth (files credentials.json + token.json must exist, or set these)
 # credentials.json installed/web client_id/client_secret/redirect_uris[0]

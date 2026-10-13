@@ -73,7 +73,10 @@
     "prisma:neon:generate": "prisma generate --config prisma.neon.config.ts",
     "prisma:neon:deploy": "prisma migrate deploy --config prisma.neon.config.ts",
     "prisma:neon:migrate": "prisma migrate dev --config prisma.neon.config.ts",
-    "prisma:neon:status": "prisma migrate status --config prisma.neon.config.ts"
+    "prisma:neon:status": "prisma migrate status --config prisma.neon.config.ts",
+    "exec:sync": "tsx scripts/sync-execution-tracking.ts",
+    "exec:sync:apply": "tsx scripts/sync-execution-tracking.ts --apply",
+    "exec:headers": "tsx scripts/sync-execution-tracking.ts --dump-headers"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",
