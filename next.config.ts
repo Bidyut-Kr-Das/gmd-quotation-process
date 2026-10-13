@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
     // proxy buffer to match the Server Action limit.
     proxyClientMaxBodySize: '100mb',
   },
-   //output: "standalone",
+   output: "standalone",
 };
 
 export default nextConfig;
