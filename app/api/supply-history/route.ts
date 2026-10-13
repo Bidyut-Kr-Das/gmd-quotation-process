@@ -5,11 +5,19 @@ import {
   dbItemToRow,
 } from "@/lib/gmd_lib/supply-history-columns";
 import { C_BATCH_HEADER } from "@/lib/gmd_lib/verify-bom-columns";
+import { compareBomIdsDescending } from "@/lib/supplyHistoryBomSync";
+
+const BOM_ID_HEADER = "BOM ID";
+const BOM_COST_HEADER = "BOM COST";
+const RAW_MATERIAL_COST_HEADER = "RAWMATERIAL COST";
 
 const DISPLAY_HEADERS = <const>[
   "INVOICE NO",
   "item name",
   "ERP ITEM CODE",
+  BOM_ID_HEADER,
+  BOM_COST_HEADER,
+  RAW_MATERIAL_COST_HEADER,
 
   "FINANCIAL YEAR",
   "party name",
@@ -51,7 +59,7 @@ const DISPLAY_HEADERS = <const>[
 ];
 
 const displayColumnMap = DISPLAY_HEADERS.map((h) =>
-  SUPPLY_HISTORY_HEADERS.indexOf(h),
+  (SUPPLY_HISTORY_HEADERS as readonly string[]).indexOf(h),
 );
 
 const MERGE_FIELDS: Record<string, [string, string]> = {
@@ -60,11 +68,35 @@ const MERGE_FIELDS: Record<string, [string, string]> = {
   Size: ["sizeOfValve", "derivedSize"],
 };
 
+function formatCost(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "";
+  const n = Number(value);
+  return Number.isFinite(n) ? String(Math.round(n * 100) / 100) : "";
+}
+
 export async function GET() {
   try {
     const [items, utilityRows] = await Promise.all([
       prisma.supplyHistoryItem.findMany({
         orderBy: { syncedAt: "desc" },
+        include: {
+          bomLinks: {
+            select: {
+              bomItemId: true,
+              bom: { select: { bomId: true } },
+              bomItem: { select: { cost: true } },
+              rawMaterial: { select: { cost: true } },
+            },
+          },
+          selectedBomItem: {
+            select: {
+              id: true,
+              cost: true,
+              bom: { select: { bomId: true } },
+              rawMaterial: { select: { cost: true } },
+            },
+          },
+        },
       }),
       prisma.lookupOption.findMany({
         where: { type: "UTILITY", isActive: true },
@@ -85,6 +117,8 @@ export async function GET() {
           )
         : null;
 
+    const bomIdOptions: Record<string, string[]> = {};
+
     const rows = items.map((item) => {
       const canonicalRow = dbItemToRow(item);
       const row = displayColumnMap.map((idx) => canonicalRow[idx]);
@@ -93,10 +127,50 @@ export async function GET() {
       )) {
         const idx = (DISPLAY_HEADERS as readonly string[]).indexOf(header);
         if (idx === -1) continue;
-        const sheetVal = (item as any)[sheetField];
-        const derivedVal = (item as any)[derivedField];
+        const record = item as Record<string, unknown>;
+        const sheetVal = record[sheetField];
+        const derivedVal = record[derivedField];
         row[idx] = sheetVal || derivedVal || null;
       }
+
+      // Distinct BOM IDs for the dropdown, highest first.
+      const options = [
+        ...new Set(
+          item.bomLinks
+            .map((l) => l.bom?.bomId?.trim())
+            .filter((v): v is string => !!v),
+        ),
+      ].sort(compareBomIdsDescending);
+      bomIdOptions[item.id] = options;
+
+      // Selected = remembered choice if it is still linked, else the highest BOM.
+      let selectedLink = item.selectedBomItem
+        ? item.bomLinks.find((l) => l.bomItemId === item.selectedBomItem!.id)
+        : undefined;
+      if (!selectedLink && options.length > 0) {
+        selectedLink = item.bomLinks.find(
+          (l) => l.bom?.bomId?.trim() === options[0],
+        );
+      }
+
+      const bomIdIdx = (DISPLAY_HEADERS as readonly string[]).indexOf(
+        BOM_ID_HEADER,
+      );
+      const bomCostIdx = (DISPLAY_HEADERS as readonly string[]).indexOf(
+        BOM_COST_HEADER,
+      );
+      const rmCostIdx = (DISPLAY_HEADERS as readonly string[]).indexOf(
+        RAW_MATERIAL_COST_HEADER,
+      );
+
+      row[bomIdIdx] = selectedLink?.bom?.bomId?.trim() || null;
+      row[bomCostIdx] = selectedLink?.bomItem?.cost != null
+        ? formatCost(selectedLink.bomItem.cost)
+        : null;
+      row[rmCostIdx] = selectedLink?.rawMaterial?.cost != null
+        ? formatCost(selectedLink.rawMaterial.cost)
+        : null;
+
       return row;
     });
 
@@ -107,6 +181,7 @@ export async function GET() {
       totalRows: rows.length,
       syncedAt: lastSynced?.toISOString() ?? null,
       utilityOptions,
+      bomIdOptions,
     });
   } catch (error) {
     return NextResponse.json(

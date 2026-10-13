@@ -5989,6 +5989,113 @@ export async function updateSupplyHistoryFieldAction(
   return { id, field, value };
 }
 
+/**
+ * Remembers the BOM a Supply History row should display. `bomId` comes from the
+ * row's BOM dropdown, which lists every BOM the row's raw material feeds into.
+ * The chosen BOM resolves to a specific `BomItem` so its component cost can be
+ * shown. Passing `null` clears the selection.
+ */
+export async function updateSupplyHistorySelectedBomAction(
+  supplyHistoryItemId: string,
+  bomId: string | null,
+) {
+  "use server";
+  try {
+    if (!bomId) {
+      await prisma.supplyHistoryItem.update({
+        where: { id: supplyHistoryItemId },
+        data: { selectedBomItemId: null },
+      });
+      return { success: true, data: { bomId: null } };
+    }
+
+    // Only a BOM that is actually linked to this Supply History row is valid.
+    const link = await prisma.supplyHistoryBomLink.findFirst({
+      where: { supplyHistoryItemId, bom: { is: { bomId } } },
+      select: { bomItemId: true },
+      orderBy: { bomItemId: "asc" },
+    });
+    if (!link) {
+      return {
+        success: false,
+        error: "Selected BOM is not linked to this Supply History row.",
+      } as const;
+    }
+
+    await prisma.supplyHistoryItem.update({
+      where: { id: supplyHistoryItemId },
+      data: { selectedBomItemId: link.bomItemId },
+    });
+    return { success: true, data: { bomId } };
+  } catch (e: unknown) {
+    console.error("[updateSupplyHistorySelectedBomAction] failed:", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to save BOM selection.",
+    } as const;
+  }
+}
+
+/**
+ * Manually edits the cost of the BOM currently selected on a Supply History row.
+ * The cost lives on the selected `BomItem` (shared with the BOM dashboard), not
+ * on `SupplyHistoryItem`, so this writes through to `BomItem.cost`.
+ */
+export async function updateSupplyHistoryBomCostAction(
+  supplyHistoryItemId: string,
+  value: string | number | null,
+) {
+  "use server";
+  try {
+    const item = await prisma.supplyHistoryItem.findUnique({
+      where: { id: supplyHistoryItemId },
+      select: { selectedBomItemId: true },
+    });
+    if (!item) {
+      return { success: false, error: "Supply History row not found." } as const;
+    }
+    if (!item.selectedBomItemId) {
+      return {
+        success: false,
+        error: "No BOM is selected for this row.",
+      } as const;
+    }
+
+    // Only a BomItem actually linked to this row may be edited.
+    const link = await prisma.supplyHistoryBomLink.findFirst({
+      where: { supplyHistoryItemId, bomItemId: item.selectedBomItemId },
+      select: { bomItemId: true },
+    });
+    if (!link) {
+      return {
+        success: false,
+        error: "Selected BOM is not linked to this Supply History row.",
+      } as const;
+    }
+
+    let cost: number | null = null;
+    if (value !== null && String(value).trim() !== "") {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) {
+        return { success: false, error: "BOM cost must be a number." } as const;
+      }
+      cost = parsed;
+    }
+
+    await prisma.bomItem.update({
+      where: { id: item.selectedBomItemId },
+      data: { cost },
+    });
+    return { success: true, data: { cost } };
+  } catch (e: unknown) {
+    console.error("[updateSupplyHistoryBomCostAction] failed:", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to update BOM cost.",
+    } as const;
+  }
+}
+
 export async function updateBisStatusFieldAction(
   id: string,
   field: string,
