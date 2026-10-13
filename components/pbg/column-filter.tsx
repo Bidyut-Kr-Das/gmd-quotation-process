@@ -32,7 +32,7 @@ export function ColumnFilterPopover({
     onChange(empty ? undefined : merged);
   }
 
-  const showMultiSelect = def.type !== "files";
+  const showMultiSelect = def.type !== "files" && def.type !== "links";
 
   // Keep already-selected values visible even when cascading rules them out of
   // the current option list, so a selection never silently disappears.

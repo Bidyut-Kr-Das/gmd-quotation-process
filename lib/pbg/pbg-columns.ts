@@ -1,6 +1,12 @@
 import { VALIDITY_OPTIONS } from "@/lib/pbg/validity";
 
-export type ColumnType = "text" | "select" | "date" | "number" | "files";
+export type ColumnType =
+  | "text"
+  | "select"
+  | "date"
+  | "number"
+  | "files"
+  | "links";
 
 export type ColumnKey =
   | "clientName"
@@ -19,6 +25,7 @@ export type ColumnKey =
   | "remark"
   | "status"
   | "bankGuarantee"
+  | "orderList"
   | "validityOn"
   | "lastSupplyDate"
   | "extendedValidity";
@@ -42,8 +49,8 @@ export type ColumnDef = {
 export const PBG_COLUMN_DEFS: ColumnDef[] = [
   { key: "clientName", label: "Client Name", type: "text", width: 220, filter: "multiselect" },
   { key: "project", label: "Project", type: "text", width: 150, filter: "multiselect" },
-  { key: "poNumber", label: "PO Number", type: "text", width: 190 },
-  { key: "poDate", label: "PO Date", type: "date", width: 115 },
+  { key: "poNumber", label: "PO Number", type: "text", width: 190, readonly: true },
+  { key: "poDate", label: "PO Date", type: "date", width: 115, readonly: true },
   { key: "bgNo", label: "BG No", type: "text", width: 160 },
   { key: "bgDate", label: "BG Date", type: "date", width: 115 },
   { key: "bgAmtFc", label: "BG Amt (FC)", type: "number", align: "right", width: 130 },
@@ -58,6 +65,7 @@ export const PBG_COLUMN_DEFS: ColumnDef[] = [
   },
   { key: "lastSupplyDate", label: "Last Supply Date", type: "date", width: 130, readonly: true },
   { key: "extendedValidity", label: "Validity as per contract (Date Calculation)", type: "date", width: 130, readonly: true },
+  { key: "orderList", label: "Order List", type: "links", width: 210, readonly: true },
   { key: "marginPct", label: "Margin %", type: "select", align: "right", width: 95 },
   { key: "marginAmount", label: "Margin Amount", type: "number", align: "right", width: 130 },
   { key: "contactPerson", label: "Contact Person", type: "text", width: 210 },

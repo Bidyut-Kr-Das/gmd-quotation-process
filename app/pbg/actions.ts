@@ -16,18 +16,26 @@ import {
 } from "@/lib/gdrive";
 
 export type SyncResult =
-  | { ok: true; synced: number; skipped: number; durationMs: number }
+  | {
+      ok: true;
+      totalInSheet: number;
+      inserted: number;
+      updated: number;
+      unchanged: number;
+      skippedBlankBgNo: number;
+      duplicateInSheet: number;
+      durationMs: number;
+    }
   | { ok: false; error: string };
 
 export async function syncPbgDataAction(): Promise<SyncResult> {
   const startedAt = Date.now();
   try {
-    const { synced, skipped } = await syncPbgData();
+    const result = await syncPbgData();
     revalidatePath("/pbg");
     return {
       ok: true,
-      synced,
-      skipped,
+      ...result,
       durationMs: Date.now() - startedAt,
     };
   } catch (error) {
@@ -55,6 +63,37 @@ export async function updatePbgCellAction(
     const coerced = parseCellInput(key, value);
     await updatePbgCell(id, key, coerced);
     return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Update failed",
+    };
+  }
+}
+
+export type ValidityGroupResult =
+  | { ok: true; count: number }
+  | { ok: false; error: string };
+
+/**
+ * Applies a "Validity as per contract" value to every PBG row sharing the same
+ * PO number and project as the edited row.
+ */
+export async function updateValidityForGroupAction(
+  poNumber: string,
+  project: string | null,
+  value: string | null,
+): Promise<ValidityGroupResult> {
+  try {
+    const po = poNumber.trim();
+    if (!po) return { ok: false, error: "Missing PO number" };
+
+    const result = await prisma.pbgData.updateMany({
+      where: { poNumber: po, project: project ?? null },
+      data: { validityOn: value, updatedAt: new Date() },
+    });
+    revalidatePath("/pbg");
+    return { ok: true, count: result.count };
   } catch (error) {
     return {
       ok: false,

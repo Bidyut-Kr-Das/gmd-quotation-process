@@ -6,6 +6,7 @@ export type PbgStats = {
   expired: number;
   closed: number;
   totalAmount: number;
+  totalMarginAmount: number;
   lastSyncedAt: string | null;
 };
 
@@ -14,6 +15,7 @@ export function computeStats(records: PbgRecord[]): PbgStats {
   let expired = 0;
   let closed = 0;
   let totalAmount = 0;
+  let totalMarginAmount = 0;
   let lastSyncedAt: string | null = null;
 
   for (const record of records) {
@@ -23,6 +25,7 @@ export function computeStats(records: PbgRecord[]): PbgStats {
     else if (status === "closed") closed += 1;
 
     if (record.bgAmtFc !== null) totalAmount += record.bgAmtFc;
+    if (record.marginAmount !== null) totalMarginAmount += record.marginAmount;
 
     if (record.syncedAt && (!lastSyncedAt || record.syncedAt > lastSyncedAt)) {
       lastSyncedAt = record.syncedAt;
@@ -35,6 +38,7 @@ export function computeStats(records: PbgRecord[]): PbgStats {
     expired,
     closed,
     totalAmount,
+    totalMarginAmount,
     lastSyncedAt,
   };
 }

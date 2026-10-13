@@ -321,6 +321,50 @@ function BankGuaranteeCell({
   );
 }
 
+function DocLinkIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+      <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z" />
+      <path d="M9 13h6M9 17h6" />
+    </svg>
+  );
+}
+
+function LinksCell({ links }: { links: string[] | null }) {
+  const list = links ?? [];
+  if (list.length === 0) return <span className="text-slate-400">—</span>;
+  return (
+    <div
+      className="flex flex-wrap gap-1.5"
+      onMouseDown={(event) => event.stopPropagation()}
+    >
+      {list.map((url, index) => (
+        <a
+          key={`${url}-${index}`}
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          title={url}
+          className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-100 hover:text-indigo-800"
+        >
+          <DocLinkIcon />
+          {`Order ${index + 1}`}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export function PbgGrid({
   rows,
   columns,
@@ -626,7 +670,7 @@ export function PbgGrid({
                         </span>
                       )}
                     </button>
-                    {col.type !== "files" && (
+                    {col.type !== "files" && col.type !== "links" && (
                       <Popover
                         ariaLabel={`Filter ${col.label}`}
                         trigger={<FunnelIcon />}
@@ -746,6 +790,8 @@ export function PbgGrid({
                         onUpload={onUploadBankGuarantee}
                         onRemove={onRemoveBankGuarantee}
                       />
+                    ) : col.type === "links" ? (
+                      <LinksCell links={row.orderList} />
                     ) : (
                       renderCell(col, row, expanded.has(row.id), toggleHistory)
                     )}

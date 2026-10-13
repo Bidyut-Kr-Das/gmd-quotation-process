@@ -29,10 +29,13 @@ import {
   type PbgTreeSelection,
 } from "@/lib/pbg/pbg-tree";
 import type { PbgRecord } from "@/lib/pbg/pbg-data";
+import { computeStats } from "@/lib/pbg/stats";
+import { formatAmount } from "@/lib/pbg/format";
 import { computeExtendedValidity } from "@/lib/pbg/validity";
 import {
   removePbgBankGuaranteeFileAction,
   updatePbgCellAction,
+  updateValidityForGroupAction,
   uploadPbgBankGuaranteeAction,
 } from "@/app/pbg/actions";
 import { PbgGrid } from "@/components/pbg/pbg-grid";
@@ -172,7 +175,7 @@ export function PbgTable({
   const distinctMap = useMemo(() => {
     const map = new Map<ColumnKey, string[]>();
     for (const def of PBG_COLUMN_DEFS) {
-      if (def.type === "files") continue;
+      if (def.type === "files" || def.type === "links") continue;
       const scopeFilters = { ...filters };
       delete scopeFilters[def.key];
       const scope = filterRecords(rows, scopeFilters, query);
@@ -189,6 +192,8 @@ export function PbgTable({
       ? base
       : base.filter((row) => matchesAnySelection(row, selections));
   }, [rows, filters, query, selections]);
+
+  const stats = useMemo(() => computeStats(filtered), [filtered]);
 
   const activeFilterDefs = useMemo(
     () => PBG_COLUMN_DEFS.filter((def) => isFilterActive(filters[def.key])),
@@ -316,15 +321,64 @@ export function PbgTable({
     [],
   );
 
+  /** Applies `validityOn` to every row sharing the edited row's PO + project. */
+  const applyValidityGroup = useCallback(
+    async (id: string, to: RecordValue): Promise<void> => {
+      const current = rows.find((row) => row.id === id);
+      if (!current) return;
+      const value = to === null || to === undefined ? null : String(to);
+      const po = (current.poNumber ?? "").trim();
+      const project = current.project ?? null;
+
+      if (!po) {
+        void applyChange(id, "validityOn", current.validityOn, to, true);
+        return;
+      }
+
+      const matches = (row: PbgRecord) =>
+        (row.poNumber ?? "").trim() === po && (row.project ?? null) === project;
+
+      setRows((prev) =>
+        prev.map((row) =>
+          matches(row)
+            ? {
+                ...row,
+                validityOn: value,
+                extendedValidity: computeExtendedValidity(value, row.lastSupplyDate),
+                updatedAt: new Date().toISOString(),
+              }
+            : row,
+        ),
+      );
+      setSaving((prev) => new Set(prev).add(`${id}:validityOn`));
+      setError(null);
+
+      const result = await updateValidityForGroupAction(po, project, value);
+
+      setSaving((prev) => {
+        const next = new Set(prev);
+        next.delete(`${id}:validityOn`);
+        return next;
+      });
+
+      if (!result.ok) setError(result.error);
+    },
+    [rows, applyChange],
+  );
+
   const handleCommit = useCallback(
     (id: string, key: ColumnKey, raw: string) => {
       const current = rows.find((row) => row.id === id);
       const from = current ? (current[key] as RecordValue) : null;
       const to = toRecordValue(key, raw);
       if (from === to) return;
+      if (key === "validityOn") {
+        void applyValidityGroup(id, to);
+        return;
+      }
       void applyChange(id, key, from, to, true);
     },
-    [rows, applyChange],
+    [rows, applyChange, applyValidityGroup],
   );
 
   const undo = useCallback(async () => {
@@ -474,6 +528,34 @@ export function PbgTable({
           )}
 
           <SyncButton />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3 border-b border-slate-200 bg-slate-50/40 px-4 py-3">
+        <div className="min-w-[190px] rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
+          <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            BG Amount
+          </span>
+          <span className="mt-0.5 block text-lg font-bold tabular-nums text-slate-900">
+            {formatAmount(stats.totalAmount)}
+          </span>
+          <span className="block text-[10px] font-medium text-slate-500">
+            {stats.total.toLocaleString("en-IN")} record
+            {stats.total === 1 ? "" : "s"}
+          </span>
+        </div>
+
+        <div className="min-w-[190px] rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
+          <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            Margin Amount
+          </span>
+          <span className="mt-0.5 block text-lg font-bold tabular-nums text-slate-900">
+            {formatAmount(stats.totalMarginAmount)}
+          </span>
+          <span className="block text-[10px] font-medium text-slate-500">
+            {stats.total.toLocaleString("en-IN")} record
+            {stats.total === 1 ? "" : "s"}
+          </span>
         </div>
       </div>
 

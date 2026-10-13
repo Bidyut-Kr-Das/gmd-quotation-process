@@ -91,6 +91,11 @@ export function normalizePo(value: string): string {
   return String(value ?? "").trim().replace(/\s+/g, " ").toUpperCase();
 }
 
+/** Normalizes a BG number for matching (trim, collapse spaces, uppercase). */
+export function normalizeBg(value: string | null | undefined): string {
+  return String(value ?? "").trim().replace(/\s+/g, " ").toUpperCase();
+}
+
 /**
  * True when a supply-history invoice belongs to the "SR" series
  * (e.g. "SR22Y-00001", "SR25Y-00015"). SR invoices are skipped when picking
