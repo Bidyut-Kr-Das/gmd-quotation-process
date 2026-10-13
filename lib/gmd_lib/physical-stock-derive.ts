@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { neonPrisma } from "@/lib/neonPrisma";
 
 /**
  * Derived Cost / BOM ID for a Physical Stock ERP code.
@@ -193,18 +194,23 @@ export async function costForPhysicalStockBom(
  * Recompute `cost` / `bom_id` for every Physical Stock row. An existing
  * `bom_id` is preserved as long as it is still a valid candidate; otherwise the
  * highest-cost BOM becomes the default. Always refreshes `cost`.
+ *
+ * Cross-database: the BOM graph (FullItem/RawMaterial/Bom/BomItem) is read from
+ * the LOCAL database while the results are written to the Neon PhysicalStock
+ * table. There is no shared transaction, so a mid-run failure leaves a partial
+ * update; the operation is idempotent and safe to re-run.
  */
 export async function applyPhysicalStockDerivations(): Promise<{
   scanned: number;
   updated: number;
 }> {
-  const rows = await prisma.physicalStock.findMany({
+  const rows = await neonPrisma.physicalStock.findMany({
     select: { id: true, erp_code: true, cost: true, bom_id: true },
   });
   const codeSet = [...new Set(rows.map((r) => norm(r.erp_code)).filter(Boolean))];
   const derivations = await derivePhysicalStockByCodes(codeSet);
 
-  const updates: ReturnType<typeof prisma.physicalStock.update>[] = [];
+  const updates: ReturnType<typeof neonPrisma.physicalStock.update>[] = [];
   for (const row of rows) {
     const code = norm(row.erp_code);
     const d = derivations.get(code);
@@ -223,7 +229,7 @@ export async function applyPhysicalStockDerivations(): Promise<{
 
     if (nextCost === row.cost && nextBomId === row.bom_id) continue;
     updates.push(
-      prisma.physicalStock.update({
+      neonPrisma.physicalStock.update({
         where: { id: row.id },
         data: { cost: nextCost, bom_id: nextBomId },
       }),
