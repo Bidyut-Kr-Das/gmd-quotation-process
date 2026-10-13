@@ -47,7 +47,7 @@ export const PBG_COLUMN_DEFS: ColumnDef[] = [
   { key: "bgNo", label: "BG No", type: "text", width: 160 },
   { key: "bgDate", label: "BG Date", type: "date", width: 115 },
   { key: "bgAmtFc", label: "BG Amt (FC)", type: "number", align: "right", width: 130 },
-  { key: "expiryDate", label: "Validity as per contract (Date Calculation)", type: "date", width: 115 },
+  { key: "expiryDate", label: "Expiry Date", type: "date", width: 115 },
   { key: "claimDate", label: "Claim Date", type: "date", width: 115 },
   {
     key: "validityOn",
@@ -57,7 +57,7 @@ export const PBG_COLUMN_DEFS: ColumnDef[] = [
     options: VALIDITY_OPTIONS,
   },
   { key: "lastSupplyDate", label: "Last Supply Date", type: "date", width: 130, readonly: true },
-  { key: "extendedValidity", label: "Extended Validity", type: "date", width: 130, readonly: true },
+  { key: "extendedValidity", label: "Validity as per contract (Date Calculation)", type: "date", width: 130, readonly: true },
   { key: "marginPct", label: "Margin %", type: "select", align: "right", width: 95 },
   { key: "marginAmount", label: "Margin Amount", type: "number", align: "right", width: 130 },
   { key: "contactPerson", label: "Contact Person", type: "text", width: 210 },
