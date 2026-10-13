@@ -2,7 +2,11 @@ import { Prisma } from "@/app/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { fetchSheetRows } from "@/lib/pbg/google";
 import { mapRows } from "@/lib/pbg/pbg";
-import { parseFlexibleDate, normalizePo } from "@/lib/pbg/supply-history";
+import {
+  parseFlexibleDate,
+  normalizePo,
+  isSrInvoice,
+} from "@/lib/pbg/supply-history";
 import { computeExtendedValidity } from "@/lib/pbg/validity";
 import type { CellValue } from "@/lib/pbg/pbg-cell";
 import type { ColumnKey } from "@/lib/pbg/pbg-columns";
@@ -162,12 +166,14 @@ async function loadLatestSupplyDates(
 
   const history = await prisma.supplyHistoryItem.findMany({
     where: { partyOrderNo: { in: unique, mode: "insensitive" } },
-    select: { partyOrderNo: true, date: true },
+    select: { partyOrderNo: true, date: true, invoiceNo: true },
   });
 
   for (const item of history) {
     const key = normalizePo(item.partyOrderNo ?? "");
     if (!key) continue;
+    // Skip "SR" series invoices so the previous non-SR supply wins.
+    if (isSrInvoice(item.invoiceNo)) continue;
     const parsed = parseFlexibleDate(item.date);
     if (!parsed) continue;
     const existing = latest.get(key);

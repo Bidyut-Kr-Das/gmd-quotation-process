@@ -90,3 +90,15 @@ export function pickLatestDateRows<T>(
 export function normalizePo(value: string): string {
   return String(value ?? "").trim().replace(/\s+/g, " ").toUpperCase();
 }
+
+/**
+ * True when a supply-history invoice belongs to the "SR" series
+ * (e.g. "SR22Y-00001", "SR25Y-00015"). SR invoices are skipped when picking
+ * the Last Supply Date for a PBG row, so the previous non-SR supply wins.
+ */
+export function isSrInvoice(invoiceNo: string | null | undefined): boolean {
+  return String(invoiceNo ?? "")
+    .trim()
+    .toUpperCase()
+    .startsWith("SR");
+}

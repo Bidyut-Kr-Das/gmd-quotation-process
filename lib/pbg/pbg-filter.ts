@@ -12,6 +12,25 @@ export type ColumnFilter = {
 
 export type FilterState = Partial<Record<ColumnKey, ColumnFilter>>;
 
+/** Sentinel shown in every column's value list to filter blank/empty cells. */
+export const BLANK_FILTER = "(Blank)";
+
+/**
+ * True when the row's raw value matches any selected value. The `BLANK_FILTER`
+ * sentinel matches cells that are null/undefined/empty.
+ */
+export function matchesSelection(selected: string[], raw: unknown): boolean {
+  const text = raw === null || raw === undefined ? "" : String(raw);
+  for (const token of selected) {
+    if (token === BLANK_FILTER) {
+      if (text === "") return true;
+    } else if (text === token) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function isFilterActive(filter?: ColumnFilter): boolean {
   if (!filter) return false;
   return Boolean(
@@ -34,9 +53,10 @@ export function getDistinctValues(
     if (raw === null || raw === undefined || raw === "") continue;
     set.add(String(raw));
   }
-  return Array.from(set).sort((a, b) =>
+  const values = Array.from(set).sort((a, b) =>
     a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
   );
+  return [BLANK_FILTER, ...values];
 }
 
 const SEARCH_KEYS: ColumnKey[] = [
@@ -76,10 +96,10 @@ export function filterRecords(
       if (def.type === "date") {
         const raw = record[def.key];
         const value = raw === null || raw === undefined ? "" : String(raw);
-        if ((filter.from || filter.to || hasSelected) && !value) return false;
         if (filter.from && value < filter.from) return false;
         if (filter.to && value > filter.to) return false;
-        if (hasSelected && !filter.selected!.includes(value)) return false;
+        if ((filter.from || filter.to) && !value) return false;
+        if (hasSelected && !matchesSelection(filter.selected!, raw)) return false;
       } else if (def.type === "number") {
         const raw = record[def.key];
         const value =
@@ -91,19 +111,14 @@ export function filterRecords(
           if (typeof filter.min === "number" && value < filter.min) return false;
           if (typeof filter.max === "number" && value > filter.max) return false;
         }
-        if (hasSelected) {
-          const text = raw === null || raw === undefined ? "" : String(raw);
-          if (!filter.selected!.includes(text)) return false;
-        }
+        if (hasSelected && !matchesSelection(filter.selected!, raw)) return false;
       } else {
         const raw = record[def.key];
         const value = raw === null || raw === undefined ? "" : String(raw);
         if (filter.text && !value.toLowerCase().includes(filter.text.toLowerCase())) {
           return false;
         }
-        if (filter.selected && filter.selected.length > 0) {
-          if (!filter.selected.includes(value)) return false;
-        }
+        if (hasSelected && !matchesSelection(filter.selected!, raw)) return false;
       }
     }
 
