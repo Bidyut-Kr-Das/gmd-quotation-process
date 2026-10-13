@@ -139,12 +139,15 @@ test('DPCV: plain/DI -> V1, CS -> V2, 9523 -> V4, spare -> V3', () => {
   assert.equal(parseItem('DPCV-WAFER').variant, 'OTHER')
 })
 
-test('NRV: plain/DI -> V1, 9523 -> V4, unmapped suffix -> V2 (spare)', () => {
+test('NRV: plain/DI (swing type) -> V1, 9523 -> V2, unmapped suffix -> V2 (spare)', () => {
   assert.equal(parseItem('NRV').slot, 1)
+  assert.equal(parseItem('NRV SWING TYPE').slot, 1)
   assert.equal(parseItem('NRV-DI').slot, 1)
   assert.equal(parseItem('NRV-DI').variant, 'DI')
-  assert.equal(parseItem('NRV-9523').slot, 4)
+  assert.equal(parseItem('NRV-9523').slot, 2)
   assert.equal(parseItem('NRV-9523').variant, '9523')
+  assert.equal(parseItem('NRV SWING TYPE 9523').slot, 2)
+  assert.equal(parseItem('NRV SWING TYPE 9523').variant, '9523')
   assert.equal(parseItem('NRV-CS').slot, 2)
   assert.equal(parseItem('NRV-CS').variant, 'OTHER')
 })

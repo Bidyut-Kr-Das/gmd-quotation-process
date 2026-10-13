@@ -19,9 +19,11 @@ export const NAV: NavEntry[] = [
     label: "Materials",
     items: [
       { label: "Raw Material", href: "/raw_material" },
+      { label: "Physical Stock", href: "/physical_stock" },
       { label: "FG BOM", href: "/bom" },
       { label: "Auto BOM", href: "/bom/auto" },
       { label: "Supply History", href: "/supply_history" },
+      { label: "PBG", href: "/pbg" },
     ],
   },
   { label: "Technical", href: "/technical" },

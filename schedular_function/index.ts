@@ -94,6 +94,16 @@ export {
 } from "./run-supply-history";
 
 export {
+  runBomMastErpSync,
+  type BomMastSyncResult,
+} from "./bom-mast-sync";
+
+export {
+  runScheduledBomMast,
+  type ScheduledBomMastResult,
+} from "./run-bom-mast";
+
+export {
   runCBatchSync,
   planCBatchMarks,
   type CBatchRow,

@@ -50,6 +50,7 @@ const initialState: UiState = {
   columnWidths: { ...DEFAULT_COLUMN_WIDTHS },
   generatedImages: {},
   selectedEnquiryIds: [],
+  closedBomIds: [],
 };
 
 const uiSlice = createSlice({
@@ -108,6 +109,9 @@ const uiSlice = createSlice({
     clearEnquirySelection(state) {
       state.selectedEnquiryIds = [];
     },
+    setClosedBomIds(state, action: PayloadAction<string[]>) {
+      state.closedBomIds = Array.from(new Set(action.payload));
+    },
   },
 });
 
@@ -122,6 +126,7 @@ export const {
   toggleEnquirySelection,
   setSelectedEnquiries,
   clearEnquirySelection,
+  setClosedBomIds,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

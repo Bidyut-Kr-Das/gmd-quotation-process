@@ -117,7 +117,8 @@ interface VariantFlags {
  *    V4 = RISING + 9523.
  *  - BFV: V1 = plain/DI, V2 = CS, V3 = WAFER, V4 = 9523.
  *  - DPCV: V1 = plain/DI, V2 = CS, V3 = spare, V4 = 9523.
- *  - NRV / TPAV: V1 = plain/DI, V2 = spare, V4 = 9523.
+ *  - NRV: V1 = plain (swing type) / DI, V2 = 9523 (swing type 9523).
+ *  - TPAV: V1 = plain/DI, V2 = spare, V4 = 9523.
  *  - CF / DV / GV / PRV: V1 = plain, V2 = spare.
  *
  * Any recognized suffix that a base item does not explicitly map falls into
@@ -154,7 +155,15 @@ function resolveSlot(
     return { slot: 3, variant: "OTHER" };
   }
 
-  if (baseItem === "NRV" || baseItem === "TPAV") {
+  if (baseItem === "NRV") {
+    // A plain NRV is a swing-type check valve (V1); the 9523 variant shares its
+    // own column (V2), never the V4 column used by the sluice-valve family.
+    if (has9523) return { slot: 2, variant: "9523" };
+    if (hasDi) return { slot: 1, variant: "DI" };
+    return { slot: 2, variant: "OTHER" };
+  }
+
+  if (baseItem === "TPAV") {
     if (has9523) return { slot: 4, variant: "9523" };
     if (hasDi) return { slot: 1, variant: "DI" };
     return { slot: 2, variant: "OTHER" };

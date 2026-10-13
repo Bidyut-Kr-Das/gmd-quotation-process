@@ -1,11 +1,22 @@
 import { prisma } from "@/lib/prisma";
 import { applyTpavSlvMerge } from "./indentListingFamilySum";
+import {
+  buildContractMetricsByRmCode,
+  buildRowVariantMetrics,
+  buildStockByRmCode,
+  type VariantMetrics,
+} from "./indentListingMetrics";
+
+// rmCodeV1..rmCodeV4 positions in the row shape produced below.
+const RM_CODE_IDXS = [13, 14, 15, 16];
 
 export interface MergedIndentListing {
   /** Rows in INDENT_LISTING_HEADERS order, with TPAV+SLV folded into SLV/TPAV. */
   rows: unknown[][];
   /** Ids aligned with `rows`; synthesized rows get a generated id. */
   ids: string[];
+  /** Per-row, per-variant (V1..V4) metrics aligned with `rows`. */
+  metrics: VariantMetrics[][];
   totalRows: number;
   syncedAt: string | null;
 }
@@ -21,7 +32,7 @@ export async function getMergedIndentListing(): Promise<MergedIndentListing> {
   });
 
   if (items.length === 0) {
-    return { rows: [], ids: [], totalRows: 0, syncedAt: null };
+    return { rows: [], ids: [], metrics: [], totalRows: 0, syncedAt: null };
   }
 
   const rawRows = items.map((item) => [
@@ -49,6 +60,33 @@ export async function getMergedIndentListing(): Promise<MergedIndentListing> {
     items.map((i) => i.id),
   );
 
+  // Per-variant metrics for the merged rows. Stock comes from the raw-material
+  // master (`availableStock`, the column stock-phys feeds); the Contract Review
+  // quantities are grouped by `costCodeRef`, the RM code published per variant.
+  const [rawMaterials, contractRows] = await Promise.all([
+    prisma.rawMaterial.findMany({
+      select: { erpItemCode: true, availableStock: true },
+    }),
+    prisma.contractReview.findMany({
+      where: { costCodeRef: { not: null } },
+      select: {
+        costCodeRef: true,
+        mcReceivedPending: true,
+        orderQty: true,
+        balanceToProdOrd: true,
+      },
+    }),
+  ]);
+
+  const stockByCode = buildStockByRmCode(rawMaterials);
+  const contractByCode = buildContractMetricsByRmCode(contractRows);
+  const metrics = buildRowVariantMetrics(
+    rows,
+    RM_CODE_IDXS,
+    stockByCode,
+    contractByCode,
+  );
+
   const lastSynced = items.reduce(
     (latest: Date, item) =>
       item.syncedAt > latest ? item.syncedAt : latest,
@@ -58,6 +96,7 @@ export async function getMergedIndentListing(): Promise<MergedIndentListing> {
   return {
     rows,
     ids,
+    metrics,
     totalRows: rows.length,
     syncedAt: lastSynced?.toISOString() ?? null,
   };

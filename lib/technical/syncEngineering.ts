@@ -2,7 +2,7 @@ import type { Prisma } from "@/app/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { ENGINEERING_TABS, findTab } from "./tableConfig";
 import { fetchEngineeringSheet } from "./googleSheets";
-import { rowToRecord } from "./engineeringModels";
+import { rowToRecord, sheetFieldCount, TAB_FIELDS } from "./engineeringModels";
 import type { EngineeringTab } from "./types";
 
 /**
@@ -11,13 +11,21 @@ import type { EngineeringTab } from "./types";
  * Server-only. Called by `POST /api/engineering-data/sync`; the UI reads the
  * result back through `lib/technical/engineeringData.ts`.
  *
- * Each tab is fully replaced (`deleteMany` + `createMany` inside a transaction)
- * rather than upserted. None of these sheets has a reliable natural key — the
- * same size/rating legitimately repeats many times — so a partial upsert would
- * silently duplicate rows. A full replace is idempotent and cheap at ~630 rows.
+ * **Non-destructive by design**, mirroring the other GMD sync routes:
  *
- * A failure on one tab is reported per-tab instead of aborting the whole run,
- * so one mis-typed sheet header cannot block the others from updating.
+ *   - No `deleteMany` (except the tiny DENSITY lookup — see below). Rows are
+ *     matched and updated in place; new rows are inserted. A row that disappears
+ *     from the sheet is left alone.
+ *   - A blank (or dash-sentinel) sheet cell never overwrites a stored value.
+ *   - App-managed columns (past a tab's `sheetColumnCount`) are never read from
+ *     the sheet and never written, so DB/UI-edited values (e.g. the computed
+ *     Flange `Total Weight in KG`) survive every sync.
+ *
+ * **Row identity is `rowIndex`** (the sheet's row position), not a business key:
+ * these sheets have no viable column key — FLANGE has byte-identical rows. The
+ * trade-off is that inserting or re-sorting rows in the sheet shifts positions.
+ *
+ * A failure on one tab is reported per-tab instead of aborting the whole run.
  */
 
 export type TabSyncResult =
@@ -27,66 +35,76 @@ export type TabSyncResult =
 /** Guard key for a whole-workbook sync (the `?tab=`-less request). */
 const ALL_TABS_KEY = "__all__";
 
+const UPDATE_CHUNK = 200;
+const TOUCH_CHUNK = 500;
+
 /**
- * Replaces the stored rows for one tab. The casts are the one place the
- * positional sheet values meet Prisma's generated per-model inputs; every field
- * on every model is `String?` (plus `rowIndex`), which is what makes a single
- * generic path safe here.
+ * A cell the sync treats as "no information". A standalone dash is the sheet's
+ * own "none" marker, so it is skipped rather than stored over a real value.
  */
-async function replaceTab(
-  tabKey: string,
-  records: Record<string, string | number>[],
-): Promise<void> {
+function isBlankSheetValue(value: unknown): boolean {
+  if (value == null) return true;
+  const t = String(value).trim();
+  return t === "" || t === "-" || t === "--" || t === "—" || t === "–";
+}
+
+/**
+ * Structural view of a Prisma model delegate, so one code path serves every
+ * tab. The concrete delegates are structurally compatible; the single cast in
+ * `delegateFor` is the only place that has to know it.
+ */
+type TabDelegate = {
+  findMany(args: {
+    select: Record<string, true>;
+  }): Promise<Record<string, unknown>[]>;
+  createMany(args: {
+    data: Record<string, unknown>[];
+  }): Promise<{ count: number }>;
+  update(args: {
+    where: { id: string };
+    data: Record<string, unknown>;
+  }): Promise<unknown>;
+  updateMany(args: {
+    where: { id: { in: string[] } };
+    data: Record<string, unknown>;
+  }): Promise<{ count: number }>;
+};
+
+function delegateFor(tabKey: string): TabDelegate {
   switch (tabKey) {
-    case "gate-valve": {
-      const data = records as unknown as Prisma.GateValveCreateManyInput[];
-      await prisma.$transaction([
-        prisma.gateValve.deleteMany(),
-        prisma.gateValve.createMany({ data }),
-      ]);
-      return;
-    }
-    case "flange": {
-      const data = records as unknown as Prisma.FlangeCreateManyInput[];
-      await prisma.$transaction([
-        prisma.flange.deleteMany(),
-        prisma.flange.createMany({ data }),
-      ]);
-      return;
-    }
-    case "gear-box": {
-      const data = records as unknown as Prisma.GearBoxCreateManyInput[];
-      await prisma.$transaction([
-        prisma.gearBox.deleteMany(),
-        prisma.gearBox.createMany({ data }),
-      ]);
-      return;
-    }
-    case "actuator": {
-      const data = records as unknown as Prisma.ActuatorCreateManyInput[];
-      await prisma.$transaction([
-        prisma.actuator.deleteMany(),
-        prisma.actuator.createMany({ data }),
-      ]);
-      return;
-    }
-    case "density": {
-      const data = records as unknown as Prisma.DensityCreateManyInput[];
-      await prisma.$transaction([
-        prisma.density.deleteMany(),
-        // `material` is unique; skipDuplicates keeps a repeated material in the
-        // sheet from failing the whole sync.
-        prisma.density.createMany({ data, skipDuplicates: true }),
-      ]);
-      return;
-    }
+    case "gate-valve":
+      return prisma.gateValve as unknown as TabDelegate;
+    case "flange":
+      return prisma.flange as unknown as TabDelegate;
+    case "gear-box":
+      return prisma.gearBox as unknown as TabDelegate;
+    case "actuator":
+      return prisma.actuator as unknown as TabDelegate;
+    case "density":
+      return prisma.density as unknown as TabDelegate;
     default:
       throw new Error(`Unknown engineering tab: ${tabKey}`);
   }
 }
 
-/** Reads the sheet, maps it, and replaces the tab's rows. Throws on failure. */
-async function syncOneTab(tab: EngineeringTab): Promise<TabSyncResult> {
+/** Bookkeeping write shared by both sync paths. */
+async function markSynced(tabKey: string, totalRows: number): Promise<string> {
+  const syncedAt = new Date();
+  await prisma.engineeringSync.upsert({
+    where: { tabKey },
+    create: { tabKey, syncedAt, totalRows },
+    update: { syncedAt, totalRows },
+  });
+  return syncedAt.toISOString();
+}
+
+/**
+ * DENSITY is a tiny, fully sheet-owned lookup whose `material` is `@unique`.
+ * It has no app-managed columns and no user edits, so it is replaced wholesale
+ * (`skipDuplicates` tolerates a repeated material) — a positional reconcile
+ * would otherwise risk a unique collision when the sheet rows are reordered.
+ */
+async function replaceDensity(tab: EngineeringTab): Promise<TabSyncResult> {
   try {
     const { rows } = await fetchEngineeringSheet(tab);
     const records = rows.map((row, index) => ({
@@ -94,20 +112,113 @@ async function syncOneTab(tab: EngineeringTab): Promise<TabSyncResult> {
       ...rowToRecord(tab.key, row),
     }));
 
-    await replaceTab(tab.key, records);
+    const data = records as unknown as Prisma.DensityCreateManyInput[];
+    await prisma.$transaction([
+      prisma.density.deleteMany(),
+      prisma.density.createMany({ data, skipDuplicates: true }),
+    ]);
+
+    const syncedAt = await markSynced(tab.key, records.length);
+    return { tabKey: tab.key, ok: true, totalRows: records.length, syncedAt };
+  } catch (err) {
+    return {
+      tabKey: tab.key,
+      ok: false,
+      error: err instanceof Error ? err.message : "Sync failed.",
+    };
+  }
+}
+
+/** Reads the sheet and reconciles it into the tab's table. Throws on failure. */
+async function syncOneTab(tab: EngineeringTab): Promise<TabSyncResult> {
+  if (tab.key === "density") return replaceDensity(tab);
+
+  try {
+    const delegate = delegateFor(tab.key);
+    const fieldCount = sheetFieldCount(tab.key);
+    const sheetFields = TAB_FIELDS[tab.key].slice(0, fieldCount);
+
+    const { rows } = await fetchEngineeringSheet(tab);
+
+    // Preload existing rows keyed by position — one query, no N+1.
+    const select: Record<string, true> = { id: true, rowIndex: true };
+    for (const field of sheetFields) select[field] = true;
+    const existing = await delegate.findMany({ select });
+    const byIndex = new Map<number, Record<string, unknown>>();
+    for (const row of existing) byIndex.set(Number(row.rowIndex), row);
 
     const syncedAt = new Date();
-    await prisma.engineeringSync.upsert({
-      where: { tabKey: tab.key },
-      create: { tabKey: tab.key, syncedAt, totalRows: records.length },
-      update: { syncedAt, totalRows: records.length },
+    const toCreate: Record<string, unknown>[] = [];
+    const toUpdate: { id: string; data: Record<string, unknown> }[] = [];
+    const toTouch: string[] = [];
+
+    rows.forEach((row, index) => {
+      const incoming = rowToRecord(tab.key, row);
+      const db = byIndex.get(index);
+
+      if (!db) {
+        // Brand-new position: write the sheet-backed columns; app-managed ones
+        // simply stay NULL.
+        toCreate.push({ rowIndex: index, ...incoming, syncedAt });
+        return;
+      }
+
+      const data: Record<string, unknown> = {};
+      let changed = false;
+      for (const field of sheetFields) {
+        const sheetVal = incoming[field];
+        // GMD rule: a blank sheet cell never erases a stored value.
+        if (isBlankSheetValue(sheetVal)) continue;
+
+        const dbVal = db[field];
+        const dbStr = dbVal == null ? "" : String(dbVal).trim();
+        const sheetStr = String(sheetVal).trim();
+        if (dbStr !== sheetStr) {
+          data[field] = sheetVal;
+          changed = true;
+        }
+      }
+
+      const id = String(db.id);
+      if (changed) {
+        data.syncedAt = syncedAt;
+        toUpdate.push({ id, data });
+      } else {
+        toTouch.push(id);
+      }
     });
+
+    if (toCreate.length) {
+      await delegate.createMany({ data: toCreate });
+    }
+
+    for (let i = 0; i < toUpdate.length; i += UPDATE_CHUNK) {
+      const chunk = toUpdate.slice(i, i + UPDATE_CHUNK);
+      const settled = await Promise.allSettled(
+        chunk.map((u) => delegate.update({ where: { id: u.id }, data: u.data })),
+      );
+      const failed = settled.filter((s) => s.status === "rejected").length;
+      if (failed > 0) {
+        throw new Error(`${failed} row update(s) failed for "${tab.key}".`);
+      }
+    }
+
+    for (let i = 0; i < toTouch.length; i += TOUCH_CHUNK) {
+      const chunk = toTouch.slice(i, i + TOUCH_CHUNK);
+      await delegate.updateMany({
+        where: { id: { in: chunk } },
+        data: { syncedAt },
+      });
+    }
+
+    const totalRows = byIndex.size + toCreate.length;
+    const syncedAtIso = await markSynced(tab.key, totalRows);
 
     return {
       tabKey: tab.key,
       ok: true,
-      totalRows: records.length,
-      syncedAt: syncedAt.toISOString(),
+      totalRows,
+      syncedAt: syncedAtIso,
     };
   } catch (err) {
     return {

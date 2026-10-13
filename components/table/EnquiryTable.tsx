@@ -354,6 +354,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   const expandedRows = useAppSelector((s) => s.ui.expandedRows);
   const columnWidths = useAppSelector((s) => s.ui.columnWidths);
   const selectedEnquiryIds = useAppSelector((s) => s.ui.selectedEnquiryIds);
+  const closedBomIds = useAppSelector((s) => s.ui.closedBomIds);
   const globalSearch = filters.globalSearch.trim();
 
   const [sortField, setSortField] = useState<string | null>(null);
@@ -404,6 +405,8 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   const [syncStockStatus, setSyncStockStatus] = useState<"idle" | "running">("idle");
   // Docket No header filter: show only pending dockets (auto-created, no items yet).
   const [pendingOnly, setPendingOnly] = useState(false);
+  // BOM ID header filter: show only items whose selected BOM is closed (VerifyBom.cBatch = "C").
+  const [closedBomOnly, setClosedBomOnly] = useState(false);
   const [addingContractFor, setAddingContractFor] = useState<string | null>(null);
 
   // Image lookup: GeneratedImage rows keyed by imageKey (itemType__operationType__rmType).
@@ -448,6 +451,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   // analytics sidebar can scope themselves to the same dockets). Ids that no
   // longer exist are ignored by every consumer via set membership.
   const selectedEnquiryIdSet = useMemo(() => new Set(selectedEnquiryIds), [selectedEnquiryIds]);
+  const closedBomIdSet = useMemo(() => new Set(closedBomIds), [closedBomIds]);
 
   const validSelectedEnquiryIds = useMemo(
     () => enquiries.filter((e) => selectedEnquiryIdSet.has(e.id)).map((e) => e.id),
@@ -760,6 +764,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   const handleResetAllFilters = () => {
     dispatch(resetFilters());
     setPendingOnly(false);
+    setClosedBomOnly(false);
     toast.success("All filters reset successfully.");
   };
 
@@ -1011,9 +1016,13 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
         if (wantBlank && !wantPresent && hasImg) return false;
       }
       if (!itemDeletedStatus(item, filters.deletedStatus)) return false;
+      if (closedBomOnly) {
+        const bomId = (item as unknown as Record<string, unknown>).bomId as string | null | undefined;
+        if (!bomId || !closedBomIdSet.has(bomId)) return false;
+      }
       return true;
     });
-  }, [filters, getItemImage]);
+  }, [filters, getItemImage, closedBomOnly, closedBomIdSet]);
 
   const toggleExpand = (id: string, currentExpanded: boolean) => {
     dispatch(setRowExpanded({ id, expanded: !currentExpanded }));
@@ -1638,6 +1647,10 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
         if (wantBlank && !wantPresent && hasImg) return false;
       }
       if (!itemDeletedStatus(item, filters.deletedStatus)) return false;
+      if (closedBomOnly) {
+        const bomId = (item as unknown as Record<string, unknown>).bomId as string | null | undefined;
+        if (!bomId || !closedBomIdSet.has(bomId)) return false;
+      }
       return true;
     });
 
@@ -1646,6 +1659,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     // a filter is narrowing the list. When the "Pending only" filter is on, empty
     // dockets always pass and dockets with items are excluded below.
     if (!enquiry.items || enquiry.items.length === 0) {
+      if (closedBomOnly) return false;
       if (hasActiveFilters && !pendingOnly) return false;
     } else if (!matchesItems) {
       return false;
@@ -1653,7 +1667,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     if (pendingOnly && (enquiry.items?.length ?? 0) > 0) return false;
 
     return true;
-  }), [enquiries, filters, filterProjectReference, globalSearch, getItemImage, hasActiveFilters, pendingOnly]);
+  }), [enquiries, filters, filterProjectReference, globalSearch, getItemImage, hasActiveFilters, pendingOnly, closedBomOnly, closedBomIdSet]);
 
   // Selection scope for the header checkbox: every docket passing the current
   // (cascading) filters across all pages.
@@ -3198,6 +3212,18 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                 placeholder="Search BOM ID..."
                 className="mt-1 w-full h-6 rounded border border-border bg-background px-1.5 py-0.5 text-[9px] font-normal text-foreground placeholder:text-muted-foreground outline-none focus:border-blue-500 normal-case"
               />
+              <label
+                className="mt-1 flex items-center gap-1.5 text-[9px] font-semibold text-muted-foreground cursor-pointer select-none normal-case"
+                title="Show only items whose selected BOM is closed (C batch)"
+              >
+                <input
+                  type="checkbox"
+                  checked={closedBomOnly}
+                  onChange={(e) => setClosedBomOnly(e.target.checked)}
+                  className="h-3 w-3 rounded border-border cursor-pointer"
+                />
+                Closed BOM only
+              </label>
               <div
                 onMouseDown={(e) => handleMouseDown(16, e)}
                 className="absolute top-0 right-0 h-full w-[6px] cursor-col-resize z-20 group"
@@ -4587,12 +4613,20 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                               >
                                 <option value="">-- select --</option>
                                 {avail!.map((b) => (
-                                  <option key={b} value={b}>{b}</option>
+                                  <option key={b} value={b}>{closedBomIdSet.has(b) ? `${b} (C - Closed BOM)` : b}</option>
                                 ))}
                               </select>
                             );
                           }
-                          return <span className="block text-[10px] text-muted-foreground p-1 font-mono truncate" title={(firstItem as any).bomId || ""}>{(firstItem as any).bomId || "-"}</span>;
+                          const bomId = (firstItem as any).bomId as string | undefined;
+                          return (
+                            <span className="flex items-center gap-1 min-w-0" title={bomId || ""}>
+                              <span className="block text-[10px] text-muted-foreground p-1 font-mono truncate">{bomId || "-"}</span>
+                              {bomId && closedBomIdSet.has(bomId) && (
+                                <span className="shrink-0 px-1 py-0.5 text-[9px] font-bold rounded border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300" title="Closed BOM (BOM MAST ERP TO_DATE - C batch)">C</span>
+                              )}
+                            </span>
+                          );
                         })()
                       ) : "-"}
                     </td>
@@ -5249,12 +5283,20 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                                 >
                                   <option value="">-- select --</option>
                                   {avail!.map((b) => (
-                                    <option key={b} value={b}>{b}</option>
+                                    <option key={b} value={b}>{closedBomIdSet.has(b) ? `${b} (C - Closed BOM)` : b}</option>
                                   ))}
                                 </select>
                               );
                             }
-                            return <span className="block text-[10px] text-muted-foreground p-1 font-mono truncate" title={(item as any).bomId || ""}>{(item as any).bomId || "-"}</span>;
+                            const bomId = (item as any).bomId as string | undefined;
+                            return (
+                              <span className="flex items-center gap-1 min-w-0" title={bomId || ""}>
+                                <span className="block text-[10px] text-muted-foreground p-1 font-mono truncate">{bomId || "-"}</span>
+                                {bomId && closedBomIdSet.has(bomId) && (
+                                  <span className="shrink-0 px-1 py-0.5 text-[9px] font-bold rounded border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300" title="Closed BOM (BOM MAST ERP TO_DATE - C batch)">C</span>
+                                )}
+                              </span>
+                            );
                           })()}
                         </td>
 

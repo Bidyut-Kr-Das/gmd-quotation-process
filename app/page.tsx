@@ -2,7 +2,7 @@ import React, { Suspense } from "react";
 import DashboardContainer from "./DashboardContainer";
 import { prisma } from "@/lib/prisma";
 import { getActiveLookupValuesByType } from "@/lib/lookup";
-import { getBatchDistinctBomIds, getNoUseBomIdSet } from "@/lib/verifyBomLookup";
+import { getBatchDistinctBomIds, getNoUseBomIdSet, getClosedBomIdSet } from "@/lib/verifyBomLookup";
 import { syncClosureStatuses } from "@/lib/closureStatusSync";
 import { getFiscalPrefix, nextDocketSerials } from "@/lib/docketNumber";
 
@@ -41,12 +41,14 @@ export default async function Page() {
   // even if stored data is stale, and never brings back NO-USE bomIds.
   let bomMap: Map<string, string[]> = new Map();
   let noUseSet: Set<string> = new Set();
+  let closedBomSet: Set<string> = new Set();
   try {
     const allCodes = [...new Set(rawEnquiries.flatMap((e) => e.items.map((i) => (i as any).erpItemCode).filter(Boolean) as string[]))];
     if (allCodes.length > 0) {
       bomMap = await getBatchDistinctBomIds(allCodes);
       const allBomIds = [...new Set([...bomMap.values()].flat())];
       noUseSet = await getNoUseBomIdSet(allBomIds);
+      closedBomSet = await getClosedBomIdSet(allBomIds);
     }
   } catch (e) {
     console.warn("[Page] bom availability batch failed, falling back to stored values:", e);
@@ -59,9 +61,15 @@ export default async function Page() {
       const filtered = code ? (bomMap.get(code) ?? []).filter((id) => !noUseSet.has(id)) : [];
       // Use filtered when code is present (authoritative, NO-USE excluded); otherwise keep stored (null => blank)
       const availableBomIds = code ? filtered : ((item as any).availableBomIds ?? []);
+      // Closed BOM IDs come from VerifyBom.cBatch = "C" (BOM MAST ERP TO_DATE
+      // flow, same signal shown on /bom). Only report the ones this item can see.
+      const selectedBomId = (item as any).bomId as string | null;
+      const visibleBomIds = [...new Set([...(availableBomIds ?? []), ...(selectedBomId ? [selectedBomId] : [])])];
+      const closedBomIds = visibleBomIds.filter((id) => closedBomSet.has(id));
       return {
         ...item,
         availableBomIds,
+        closedBomIds,
         quantity: item.quantity !== null && item.quantity !== undefined ? Number(item.quantity) : 0,
         productCost: item.productCost !== null && item.productCost !== undefined ? Number(item.productCost) : null,
         cost: item.cost !== null && item.cost !== undefined ? Number(item.cost) : null,

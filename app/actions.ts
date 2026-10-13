@@ -26,6 +26,16 @@ import { parseAndValidateProdOrderNumber } from "@/lib/contractValidation";
 import { matchPnRating } from "@/lib/pnRatingMatcher";
 import { withHardcodedL7Options } from "@/lib/gmd_lib/sheet-columns";
 import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
+import {
+  buildDensityMap,
+  computeBoltVolumeMm3,
+  computeBoltWeightKg,
+  computeNutWeightKg,
+  encodeBoltWeight,
+  parseNumber,
+  resolveBoltMaterial,
+  resolveMocDensity,
+} from "@/lib/technical/formulas";
 // LEGACY — superseded by the hourly `docket-creation` scheduler job
 // (schedular_function/docket-creation.ts). The imports below were used only by
 // the commented-out `createPendingDocketsAction`; restore them when re-enabling.
@@ -986,6 +996,11 @@ export async function updateEnquiryFieldAction(
  * (`senderEmail`). The Offer PDF is generated and attached; Cc comes from the
  * comma-separated `emailAddress`. On success the sent marker is persisted; on
  * any failure nothing is written and the error is returned to the client.
+ *
+ * The email is sent as a reply inside the linked `DocketQuotationThread` (the
+ * latest thread whose `docketNo` matches this docket number) so it lands on the
+ * RFQ conversation instead of starting a new one. When no linked thread exists
+ * the action returns "Linked email thread not found" and sends nothing.
  */
 export async function sendDocketEmailAction(enquiryId: string) {
   try {
@@ -1010,6 +1025,15 @@ export async function sendDocketEmailAction(enquiryId: string) {
     const to = (enquiry.senderEmail || "").trim();
     if (!to) {
       return { success: false, error: "No recipient (sender email) on this docket." };
+    }
+
+    // The quotation must go back as a reply in the thread the RFQ arrived on.
+    // Resolve the latest thread linked to this docket number and refuse to send
+    // (rather than start a detached thread) when there is none.
+    const { findLatestLinkedThread } = await import("@/lib/docketThreadResolver");
+    const linkedThread = await findLatestLinkedThread(enquiry.docketNumber);
+    if (!linkedThread) {
+      return { success: false, error: "Linked email thread not found" };
     }
 
     // Always Cc the fixed address, merged with the docket's other emails and
@@ -1075,6 +1099,7 @@ export async function sendDocketEmailAction(enquiryId: string) {
       docketNumber: enquiry.docketNumber,
       fileName: pdfRes.fileName || `${enquiry.docketNumber}.pdf`,
       pdfBuffer,
+      threadId: linkedThread.threadId,
     });
     if (!send.success) {
       return { success: false, error: send.error || "Email sending failed." };
@@ -4701,7 +4726,7 @@ export async function recomputeIndentListingVersionsAction() {
       },
     });
 
-    const { planIndentRmCodes, RM_CODE_ITEM_CATEGORY, RM_CODE_VALVE_TYPE } =
+    const { planIndentRmCodes, RM_CODE_ITEM_CATEGORY, RM_CODE_VALVE_TYPES } =
       await import("@/lib/indentRmCodeResolver");
 
     const [rmCodeSourceRows, rawMaterials] = await Promise.all([
@@ -4733,7 +4758,10 @@ export async function recomputeIndentListingVersionsAction() {
             contains: RM_CODE_ITEM_CATEGORY,
             mode: "insensitive",
           },
-          l2ValveType: { equals: RM_CODE_VALVE_TYPE, mode: "insensitive" },
+          l2ValveType: {
+            in: [...RM_CODE_VALVE_TYPES],
+            mode: "insensitive",
+          },
           newItemStatus: null,
         },
         select: {
@@ -4853,7 +4881,7 @@ export async function recomputeIndentListingVersionsAction() {
 
     const rmCodeSummary =
       rmCodePlan.updates.length === 0
-        ? "No SLV / SLV METAL / TPAV+SLV indent rows to link."
+        ? "No SLV / SLV METAL / TPAV+SLV / NRV indent rows to link."
         : `${rmCodePlan.resolved} linked, ${rmCodePlan.ambiguous} with multiple RM codes, ${rmCodePlan.unmatched} with no RM code.`;
 
     const costCodeRefSummary =
@@ -5825,6 +5853,14 @@ export async function syncContractReviewRmAvailAction() {
       "@/lib/contractPhysicalStock"
     );
 
+    // 0. Refresh the Indent Listing V1..V4 split, the RM codes and the Contract
+    //    Review COST CODE REF before the PHYSICAL STOCK step below reads that
+    //    ref. Without this an NRV / SLV code published since the last Indent
+    //    Listing recompute would be missed. The call is idempotent: the
+    //    destructive collapse is skipped once the rows are already collapsed,
+    //    but the RM code and cost code ref passes always run.
+    const indentRecompute = await recomputeIndentListingVersionsAction();
+
     // 1. Blank-fill GMDUpdateItem.availableStock from the stock-phys sheet
     const stockPhysMap = await fetchStockPhysicalSheet();
     const stockPhysCodes = Object.keys(stockPhysMap);
@@ -5926,6 +5962,7 @@ export async function syncContractReviewRmAvailAction() {
         stockPhysCodes: stockPhysCodes.length,
         rmAvailUpdated: rmAvailUpdates.length,
         physicalStockUpdated: physicalUpdates.length,
+        indentRecompute: indentRecompute?.data ?? null,
       },
     };
   } catch (error: any) {
@@ -5950,6 +5987,113 @@ export async function updateSupplyHistoryFieldAction(
     }
   );
   return { id, field, value };
+}
+
+/**
+ * Remembers the BOM a Supply History row should display. `bomId` comes from the
+ * row's BOM dropdown, which lists every BOM the row's raw material feeds into.
+ * The chosen BOM resolves to a specific `BomItem` so its component cost can be
+ * shown. Passing `null` clears the selection.
+ */
+export async function updateSupplyHistorySelectedBomAction(
+  supplyHistoryItemId: string,
+  bomId: string | null,
+) {
+  "use server";
+  try {
+    if (!bomId) {
+      await prisma.supplyHistoryItem.update({
+        where: { id: supplyHistoryItemId },
+        data: { selectedBomItemId: null },
+      });
+      return { success: true, data: { bomId: null } };
+    }
+
+    // Only a BOM that is actually linked to this Supply History row is valid.
+    const link = await prisma.supplyHistoryBomLink.findFirst({
+      where: { supplyHistoryItemId, bom: { is: { bomId } } },
+      select: { bomItemId: true },
+      orderBy: { bomItemId: "asc" },
+    });
+    if (!link) {
+      return {
+        success: false,
+        error: "Selected BOM is not linked to this Supply History row.",
+      } as const;
+    }
+
+    await prisma.supplyHistoryItem.update({
+      where: { id: supplyHistoryItemId },
+      data: { selectedBomItemId: link.bomItemId },
+    });
+    return { success: true, data: { bomId } };
+  } catch (e: unknown) {
+    console.error("[updateSupplyHistorySelectedBomAction] failed:", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to save BOM selection.",
+    } as const;
+  }
+}
+
+/**
+ * Manually edits the cost of the BOM currently selected on a Supply History row.
+ * The cost lives on the selected `BomItem` (shared with the BOM dashboard), not
+ * on `SupplyHistoryItem`, so this writes through to `BomItem.cost`.
+ */
+export async function updateSupplyHistoryBomCostAction(
+  supplyHistoryItemId: string,
+  value: string | number | null,
+) {
+  "use server";
+  try {
+    const item = await prisma.supplyHistoryItem.findUnique({
+      where: { id: supplyHistoryItemId },
+      select: { selectedBomItemId: true },
+    });
+    if (!item) {
+      return { success: false, error: "Supply History row not found." } as const;
+    }
+    if (!item.selectedBomItemId) {
+      return {
+        success: false,
+        error: "No BOM is selected for this row.",
+      } as const;
+    }
+
+    // Only a BomItem actually linked to this row may be edited.
+    const link = await prisma.supplyHistoryBomLink.findFirst({
+      where: { supplyHistoryItemId, bomItemId: item.selectedBomItemId },
+      select: { bomItemId: true },
+    });
+    if (!link) {
+      return {
+        success: false,
+        error: "Selected BOM is not linked to this Supply History row.",
+      } as const;
+    }
+
+    let cost: number | null = null;
+    if (value !== null && String(value).trim() !== "") {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) {
+        return { success: false, error: "BOM cost must be a number." } as const;
+      }
+      cost = parsed;
+    }
+
+    await prisma.bomItem.update({
+      where: { id: item.selectedBomItemId },
+      data: { cost },
+    });
+    return { success: true, data: { cost } };
+  } catch (e: unknown) {
+    console.error("[updateSupplyHistoryBomCostAction] failed:", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to update BOM cost.",
+    } as const;
+  }
 }
 
 export async function updateBisStatusFieldAction(
@@ -6029,6 +6173,62 @@ export async function saveGMDCastingRateAction(key: string, value: string) {
     return {
       success: false,
       error: error.message || "Failed to save casting rate.",
+    };
+  }
+}
+
+/**
+ * Set the bolt material (SS/GI) for a Flange row and recompute its bolt/nut
+ * weight. MS/CS rows ignore the passed material and stay locked to their flange
+ * MOC. The BOLT WEIGHT cell encodes the result as `<weight>|<material>`.
+ */
+export async function updateFlangeBoltWeightAction(id: string, material: string) {
+  "use server";
+  try {
+    const flange = await prisma.flange.findUnique({ where: { id } });
+    if (!flange) {
+      return { success: false, error: "Flange row not found." };
+    }
+
+    const densityRows = await prisma.density.findMany({
+      select: { material: true, densityGmCm3: true },
+    });
+    const densityByMaterial = buildDensityMap(densityRows);
+
+    const base = resolveBoltMaterial(flange.moc);
+    const chosen =
+      base === "MS" || base === "CS"
+        ? base
+        : material === "GI" || material === "SS"
+          ? material
+          : "SS";
+
+    const volume = computeBoltVolumeMm3(
+      parseNumber(flange.boltDiaMm),
+      parseNumber(flange.boltLengthMm),
+    );
+    const density = resolveMocDensity(chosen, densityByMaterial);
+    const weightKg = computeBoltWeightKg(volume, density);
+    const nutWeightKg = computeNutWeightKg(weightKg);
+
+    const updated = await prisma.flange.update({
+      where: { id },
+      data: {
+        boltWeight: encodeBoltWeight(weightKg, chosen),
+        nutWeight: nutWeightKg != null ? nutWeightKg.toFixed(2) : "",
+      },
+    });
+
+    return {
+      success: true,
+      data: { boltWeight: updated.boltWeight, nutWeight: updated.nutWeight },
+    };
+  } catch (error) {
+    console.error("Error updating flange bolt weight:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to update bolt weight.",
     };
   }
 }

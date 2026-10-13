@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { C_BATCH_VALUE } from "@/lib/gmd_lib/verify-bom-columns";
 
 export type VerifyBomCandidate = {
   bomId: string;
@@ -121,6 +122,24 @@ export async function getNoUseBomIdSet(bomIds: string[]): Promise<Set<string>> {
     distinct: ["bomId"],
   });
   for (const r of rows) if (r.bomId) set.add(r.bomId);
+  return set;
+}
+
+// Quotation-scoped: distinct BOM IDs whose components are closed (cBatch = "C").
+// Mirrors the /bom relational view exactly: the mark lives on BomItem, and the
+// business BOM ID is Bom.bomId (BomItem.bomId is the Bom row FK).
+export async function getClosedBomIdSet(bomIds: string[]): Promise<Set<string>> {
+  const unique = [...new Set(bomIds.filter(Boolean))];
+  const set = new Set<string>();
+  if (unique.length === 0) return set;
+  const rows = await prisma.bomItem.findMany({
+    where: {
+      bom: { bomId: { in: unique } },
+      cBatch: C_BATCH_VALUE,
+    },
+    select: { bom: { select: { bomId: true } } },
+  });
+  for (const r of rows) if (r.bom?.bomId) set.add(r.bom.bomId);
   return set;
 }
 
