@@ -891,6 +891,8 @@ model Flange {
   boltWeight                         String?
   boltVolume                         String?
   nutWeight                         String?
+  boltCost                          String?
+  nutCost                           String?
   @@index([syncedAt])
   @@map("flange")
 }

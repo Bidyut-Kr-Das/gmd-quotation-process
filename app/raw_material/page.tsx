@@ -91,9 +91,17 @@ function isMoveToNewItemsStatus(value: string | null): boolean {
 // Stable descriptor list so GMDUpdateTable's row predicate keeps a stable dep.
 const RAW_MATERIAL_BATCH_FILTERS = [cBatchFilter()];
 
-type CastingKey = "DI" | "CS" | "CI" | "SS" | "Bronze";
+type CastingKey = "DI" | "CS" | "CI" | "SS" | "Bronze" | "MS" | "GI";
 
-const CASTING_KEYS: CastingKey[] = ["DI", "CS", "CI", "SS", "Bronze"];
+const CASTING_KEYS: CastingKey[] = [
+  "DI",
+  "CS",
+  "CI",
+  "SS",
+  "Bronze",
+  "MS",
+  "GI",
+];
 
 const CASTING_RATE_MATCHERS: {
   key: CastingKey;
@@ -259,6 +267,8 @@ export default function Home() {
     CI: "",
     SS: "",
     Bronze: "",
+    MS: "",
+    GI: "",
   });
   const saveRateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [transferredIds, setTransferredIds] = useState<string[]>([]);

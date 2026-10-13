@@ -47,7 +47,8 @@ function normalizeMaterial(value: string): string {
 /**
  * MOC shorthand -> the exact `Density.material` name it stands for. Only
  * materials that actually exist in the DENSITY table are mapped; anything else
- * (e.g. FORGED STEEL / GALVANISED / GUN METAL) is left unmatched on purpose.
+ * (e.g. FORGED STEEL / GUN METAL) is left unmatched on purpose. `GI` resolves to
+ * the canonical GALVANIZED IRON row (see `CANONICAL_DENSITY_ROWS`).
  */
 const MOC_ALIASES: Record<string, string> = {
   CI: "CAST IRON",
@@ -55,6 +56,7 @@ const MOC_ALIASES: Record<string, string> = {
   CS: "CARBON STEEL",
   SS: "STAINLESS STEEL",
   MS: "MILD STEEL",
+  GI: "GALVANIZED IRON",
 };
 
 /**
@@ -92,6 +94,58 @@ export function resolveMocDensity(
   const alias = MOC_ALIASES[normalized];
   if (alias == null) return null;
   return densityByMaterial.get(alias) ?? null;
+}
+
+/**
+ * Material-name spellings that arrive wrong in the DENSITY sheet, keyed by the
+ * normalised value and mapped to the canonical name. `ALLOY ATEEL` is the sheet
+ * typo for `ALLOY STEEL`.
+ */
+const DENSITY_MATERIAL_ALIASES: Record<string, string> = {
+  "ALLOY ATEEL": "ALLOY STEEL",
+};
+
+/**
+ * DENSITY rows that must always be available even when the sheet omits them.
+ * GALVANIZED IRON backs bolt/nut costing for the GI bolt-material option but is
+ * not a row in the DENSITY tab.
+ */
+export const CANONICAL_DENSITY_ROWS: readonly {
+  material: string;
+  densityGmCm3: string;
+}[] = [{ material: "GALVANIZED IRON", densityGmCm3: "7.85" }];
+
+/** Correct a DENSITY material name against the known sheet typos. */
+export function canonicalDensityMaterial(material: string): string {
+  return DENSITY_MATERIAL_ALIASES[normalizeMaterial(material)] ?? material;
+}
+
+/**
+ * Normalise DENSITY rows coming from the sheet: fix known material-name typos
+ * and append any canonical row the sheet is missing. Sheet order is preserved;
+ * a material that already exists is never duplicated (first one wins).
+ */
+export function canonicalizeDensityRows(
+  rows: readonly { material: string; densityGmCm3: string }[],
+): { material: string; densityGmCm3: string }[] {
+  const out: { material: string; densityGmCm3: string }[] = [];
+  const seen = new Set<string>();
+
+  const push = (material: string, densityGmCm3: string) => {
+    const key = normalizeMaterial(material);
+    if (key === "" || seen.has(key)) return;
+    seen.add(key);
+    out.push({ material, densityGmCm3 });
+  };
+
+  for (const row of rows) {
+    push(canonicalDensityMaterial(row.material), row.densityGmCm3 ?? "");
+  }
+  for (const row of CANONICAL_DENSITY_ROWS) {
+    push(row.material, row.densityGmCm3);
+  }
+
+  return out;
 }
 
 /**
@@ -136,6 +190,50 @@ export function computeCastingCost(
   if (weightKg == null || !Number.isFinite(weightKg) || weightKg <= 0) return null;
   if (ratePerKg == null || !Number.isFinite(ratePerKg) || ratePerKg <= 0) return null;
   return weightKg * ratePerKg;
+}
+
+/**
+ * Bolt/nut materials (`SS`, `GI`, `MS`, `CS`) mapped straight onto their
+ * `GMD_CASTING_RATE` key. Unlike `resolveCastingKey`, MS and GI are valid here
+ * because the raw-material casting-rate lookup carries their per-kg rates too.
+ */
+const BOLT_RATE_KEYS: Record<string, string> = {
+  SS: "SS",
+  GI: "GI",
+  MS: "MS",
+  CS: "CS",
+};
+
+/**
+ * Resolve the per-kg rate key for a bolt/nut material. Returns `null` for
+ * anything else so the cost is left blank.
+ */
+export function resolveBoltRateKey(
+  material: string | null | undefined,
+): string | null {
+  const normalized = normalizeMaterial(String(material ?? ""));
+  if (normalized === "") return null;
+  return BOLT_RATE_KEYS[normalized] ?? null;
+}
+
+export type NutBoltCost = {
+  boltCost: number | null;
+  nutCost: number | null;
+};
+
+/**
+ * Bolt and nut cost at one material rate: each weight × rate (per kg). A missing
+ * or non-positive weight/rate leaves that line blank; the two are independent.
+ */
+export function computeNutBoltCost(
+  boltWeightKg: number | null,
+  nutWeightKg: number | null,
+  ratePerKg: number | null,
+): NutBoltCost {
+  return {
+    boltCost: computeCastingCost(boltWeightKg, ratePerKg),
+    nutCost: computeCastingCost(nutWeightKg, ratePerKg),
+  };
 }
 
 /**
@@ -188,20 +286,20 @@ export function formatBoltDimension(
 }
 
 /** Bolt materials that can be chosen in the UI (density looked up per material). */
-export const BOLT_MATERIALS = ["SS", "GI"] as const;
+export const BOLT_MATERIALS = ["GI", "SS"] as const;
 
 /**
  * Default bolt material implied by the flange MOC: mild steel and carbon steel
- * take their own material; every other MOC (CI, DI, FS, ...) is treated as
- * stainless steel. The user can still switch a row to GI via the dropdown.
+ * take their own material; every other MOC (CI, DI, SS, FS, ...) defaults to
+ * galvanized iron. The user can still switch a row to SS via the dropdown.
  */
 export function resolveBoltMaterial(
   flangeMoc: string | null | undefined,
-): "MS" | "CS" | "SS" {
+): "MS" | "CS" | "GI" {
   const n = normalizeMaterial(String(flangeMoc ?? ""));
   if (n === "MS" || n === "MILD STEEL") return "MS";
   if (n === "CS" || n === "CARBON STEEL" || n === "CAST STEEL") return "CS";
-  return "SS";
+  return "GI";
 }
 
 /**
