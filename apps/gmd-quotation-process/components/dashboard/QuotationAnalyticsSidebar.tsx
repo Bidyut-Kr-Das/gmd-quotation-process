@@ -48,11 +48,23 @@ export default function QuotationAnalyticsSidebar({
 }: QuotationAnalyticsSidebarProps) {
   const dispatch = useAppDispatch();
   const isCollapsed = useAppSelector((s) => s.ui.isAnalyticsSidebarCollapsed);
-  const enquiries = useAppSelector(selectAllEnquiries);
+  const allEnquiries = useAppSelector(selectAllEnquiries);
+  const selectedEnquiryIds = useAppSelector((s) => s.ui.selectedEnquiryIds);
   const filters = useAppSelector((s) => s.filters);
   const generatedImages = useAppSelector((s) => s.ui.generatedImages);
   const searchParams = useSearchParams();
   const globalSearch = (searchParams.get("search") || "").trim();
+
+  // Selection scope: options and counts cascade within the dockets selected in
+  // the table (falling back to every enquiry when nothing is selected).
+  const selectedEnquiryIdSet = useMemo(() => new Set(selectedEnquiryIds), [selectedEnquiryIds]);
+  const enquiries = useMemo(
+    () =>
+      selectedEnquiryIds.length > 0
+        ? allEnquiries.filter((e) => selectedEnquiryIdSet.has(e.id))
+        : allEnquiries,
+    [allEnquiries, selectedEnquiryIds, selectedEnquiryIdSet]
+  );
 
   const [stateSearchQuery, setStateSearchQuery] = useState("");
 

@@ -35,6 +35,9 @@ importers:
       '@gmd/db-quotation':
         specifier: workspace:*
         version: link:../../packages/db-quotation
+      '@gmd/db-stock':
+        specifier: workspace:*
+        version: link:../../packages/db-stock
       '@gmd/db-tender':
         specifier: workspace:*
         version: link:../../packages/db-tender
@@ -458,6 +461,28 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
 
   packages/db-quotation:
+    dependencies:
+      '@prisma/adapter-pg':
+        specifier: ^7.8.0
+        version: 7.10.0
+      '@prisma/client':
+        specifier: ^7.8.0
+        version: 7.10.0(prisma@7.10.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3)
+      '@prisma/client-runtime-utils':
+        specifier: 7.10.0
+        version: 7.10.0
+      pg:
+        specifier: ^8.22.0
+        version: 8.23.1
+    devDependencies:
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
+      prisma:
+        specifier: ^7.8.0
+        version: 7.10.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+
+  packages/db-stock:
     dependencies:
       '@prisma/adapter-pg':
         specifier: ^7.8.0

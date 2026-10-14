@@ -12,30 +12,56 @@ Where an algorithm already existed there, it was copied rather than imported
 
 ## Jobs
 
-Five hourly jobs, staggered so no two heavy ones collide.
+Six hourly jobs, staggered so no two heavy ones collide.
 
-| :00 | :15 | :20 | :30 | :45 |
-|---|---|---|---|---|
-| `raw-material` | `supply-history` | `docket-creation` | `contract-review` | `c-batch` |
+| :00 | :05 | :15 | :20 | :30 | :45 |
+|---|---|---|---|---|---|
+| `raw-material` | `bom-mast` | `supply-history` | `docket-creation` | `contract-review` | `c-batch` |
 
 | Job | Endpoint | Ofelia job name | Reads |
 |---|---|---|---|
 | Raw Material sync | `POST /api/scheduler/raw-material` | `raw-material-sync` | `GMD UPDATION`, `stock-phys` |
+| BOM MAST ERP sync | `POST /api/scheduler/bom-mast` | `bom-mast-sync` | `BOM MAST ERP` |
 | Supply History MASTER sync | `POST /api/scheduler/supply-history` | `supply-history-sync` | `MASTER`, GMD Clientwise ORDER LIST |
 | Pending docket creation | `POST /api/scheduler/docket-creation` | `docket-creation-sync` | `docket_quotation_threads`, `enquiries` |
 | Contract Review sync | `POST /api/scheduler/contract-review` | `contract-review-sync` | `CONTRACTS`, `DUMP`, `stock-phys`, `INSPECTION OFFER DUMP` |
 | C Batch marks | `POST /api/scheduler/c-batch` | `c-batch-sync` | `ITEM MASTER ERP` |
 
 The stagger is deliberate. `raw-material`, `supply-history` and
-`contract-review` each full-table-read the tables the others write. `c-batch`
-runs last and can safely overlap any of them: it writes **only** the `cBatch`
-column, which no other scheduled job touches. `docket-creation` runs at `:20`,
-between `supply-history` and `contract-review`, so contract-review's same-hour
-pass can backfill `contractNo` on the dockets it creates.
+`contract-review` each full-table-read the tables the others write. `bom-mast`
+runs at :05, after `raw-material` (which owns the `RawMaterial` rows its
+components resolve against) and before `supply-history`, whose
+`SupplyHistoryBomLink` rebuild reads the `Bom`/`BomItem` graph it writes — so
+Supply History sees fresh BOMs in the same hourly pass. `c-batch` runs last and
+can safely overlap any of them: it writes **only** the `cBatch` column, which no
+other scheduled job touches. `docket-creation` runs at `:20`, between
+`supply-history` and `contract-review`, so contract-review's same-hour pass can
+backfill `contractNo` on the dockets it creates.
+
+## `bom-mast`
+
+Single step in `run-bom-mast.ts`, delegating to `runBomMastErpSync()`
+(`bom-mast-sync.ts`):
+
+- **`runBomMastErpSync()`** — `BOM MAST ERP` tab → `FullItem` / `Bom` /
+  `BomItem`. `BOM_ID` → `Bom.bomId` (owner = the `FullItem` for `ITEM_CODE`),
+  `RM_ITEM_CODE` → component (`RawMaterial.erpItemCode` first, else a sub-assembly
+  `FullItem`). Missing owning `FullItem`s and `Bom`/`BomItem` rows are created;
+  `BomItem` rows the sheet no longer backs are kept but unlinked (component
+  pointers set to `null`). **Quantity and cost are deliberately not synced**, so
+  manual `BomItem.cost` edits made from Supply History are preserved.
+
+The manual route `POST /api/sync/bom_from_erp` is a thin wrapper around the same
+`runBomMastErpSync()`, so the two paths cannot drift. The manual Supply History
+sync (`POST /api/supply-history/sync`) also runs `runBomMastErpSync()` first, so
+pressing the dashboard's Sync button refreshes BOMs without waiting for :05. No
+file here imports `@/app/actions`, so a scheduled run can never be served a
+cached Server Action result.
+
 
 ## `raw-material`
 
-Three sequential steps in `run-gmd-update.ts`:
+Four sequential steps in `run-gmd-update.ts`:
 
 1. **`runGmdCatalogueSync()`** (`gmd-update-catalogue.ts`) — `GMD UPDATION`
    tab → `RawMaterial`. Creates rows for ERP codes not yet in the DB; on
@@ -51,6 +77,10 @@ Three sequential steps in `run-gmd-update.ts`:
    `erpItemCode` (trim + upper-case). Writes only when the name differs.
    `itemNameAuto` is excluded from step 1's overwrite set, so this step is the
    sole writer.
+4. **`runActiveBomRules()`** (`lib/autoBomRun.ts`) — runs every **active**
+   Auto BOM rule (`/bom/auto`) and creates `NEW-BOM-…` BOMs for full items
+   that have no BOM. Inactive rules are skipped. Never throws: a failing rule
+   is logged and counted in `steps.autoBom.failed`.
 
 Steps are strictly sequential: a fatal failure in step 1 aborts before step 2,
 because refreshing stock against a half-synced table is not useful.

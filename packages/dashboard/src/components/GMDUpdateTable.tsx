@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useCallback, useEffect, type ReactNode } from "react";
-import { ChevronUp, ChevronDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check, Highlighter } from "lucide-react";
+import { ChevronUp, ChevronDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check, Highlighter, AlertTriangle } from "lucide-react";
 import GMDUpdateStatusBadge from "./GMDUpdateStatusBadge";
 import type { ContractReviewImage } from "../lib/types";
 import {
@@ -1011,6 +1011,17 @@ interface GMDUpdateTableProps {
   blankOnlyEditableColumns?: string[];
   dropdownRowCondition?: (header: string, row: unknown[]) => boolean;
   /**
+   * Columns whose cell value is encoded as `<value><separator><code>` (default
+   * separator `|`, e.g. BOLT WEIGHT `"0.38|SS"`). The cell renders a `<select>`
+   * of `options` (the code) beside the value; changing the select emits the
+   * chosen code via `onCellUpdate`. On rows where the column is not editable the
+   * same value/code pair is rendered as read-only text.
+   */
+  encodedDropdownColumns?: Record<
+    string,
+    { options: string[]; separator?: string }
+  >;
+  /**
    * Per-column sentinel checkboxes rendered in the column's filter dropdown
    * right after the built-in `(Blank)` option. Each option's `match` is
    * evaluated against the whole row, letting a page express a filter that
@@ -1051,6 +1062,16 @@ interface GMDUpdateTableProps {
    * (e.g. a density reference strip).
    */
   toolbarExtra?: ReactNode;
+  /**
+   * Ids of rows to mark with a warning: an amber row tint plus a warning
+   * triangle rendered in the `warningColumn` cell. Used to flag rows whose
+   * derived item name collides with another row's.
+   */
+  warningRowIds?: ReadonlySet<string>;
+  /** Column whose cell renders the warning triangle. */
+  warningColumn?: string;
+  /** Tooltip for the warning triangle. Defaults to "Duplicate derived item name". */
+  warningTitle?: string;
 }
 
 type CellBadge = NonNullable<GMDUpdateTableProps["cellBadges"]>[number];
@@ -1144,6 +1165,7 @@ castingRateInputs,
   onMatchCosts,
   blankOnlyEditableColumns,
   dropdownRowCondition,
+  encodedDropdownColumns,
   extraFilterOptions,
   filterState,
   filterActions,
@@ -1158,6 +1180,9 @@ castingRateInputs,
   diffHighlight,
   numericColumns,
   toolbarExtra,
+  warningRowIds,
+  warningColumn,
+  warningTitle,
 }: GMDUpdateTableProps) {
   const isControlled = !!filterState;
 
@@ -2130,6 +2155,37 @@ castingRateInputs,
             }}
           />
         );
+      } else if (encodedDropdownColumns?.[header]) {
+        const cfg = encodedDropdownColumns[header];
+        const sep = cfg.separator ?? "|";
+        const sepAt = display.indexOf(sep);
+        const valuePart = sepAt === -1 ? display : display.slice(0, sepAt);
+        const materialPart =
+          sepAt === -1 ? "" : display.slice(sepAt + sep.length).trim();
+        const current = materialPart || cfg.options[0] || "";
+        cellContent = (
+          <div className="flex items-center justify-between gap-2 w-full min-w-0">
+            <span className="font-mono-md text-foreground/80 truncate">
+              {valuePart || "—"}
+            </span>
+            <select
+              key={display + "-" + idx + "-" + cellIdx}
+              defaultValue={current}
+              onChange={(e) => handleCellUpdate(idx, cellIdx, e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 text-xs bg-transparent border-none outline-none cursor-pointer"
+            >
+              {materialPart && !cfg.options.includes(materialPart) && (
+                <option value={materialPart}>{materialPart}</option>
+              )}
+              {cfg.options.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
       } else if (
         STATUS_COLUMNS.has(header) ||
         categoryOptions?.[header] ||
@@ -2177,6 +2233,34 @@ castingRateInputs,
           />
         );
       }
+    } else if (encodedDropdownColumns?.[header]) {
+      const cfg = encodedDropdownColumns[header];
+      const sep = cfg.separator ?? "|";
+      const sepAt = display.indexOf(sep);
+      const valuePart = sepAt === -1 ? display : display.slice(0, sepAt);
+      const materialPart =
+        sepAt === -1 ? "" : display.slice(sepAt + sep.length).trim();
+      cellContent = (
+        <div className="flex items-center justify-between gap-2 w-full min-w-0">
+          <span className="font-mono-md text-foreground truncate">
+            {valuePart || "—"}
+          </span>
+          <select
+            disabled
+            defaultValue={materialPart || cfg.options[0] || ""}
+            className="shrink-0 text-xs bg-transparent border-none outline-none text-muted-foreground cursor-not-allowed"
+          >
+            {materialPart && !cfg.options.includes(materialPart) && (
+              <option value={materialPart}>{materialPart}</option>
+            )}
+            {cfg.options.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
     } else if (STATUS_COLUMNS.has(header)) {
       cellContent = <GMDUpdateStatusBadge value={display || null} />;
     } else if (NUMERIC_COLUMNS.has(header) || numericColumns?.has(header)) {
@@ -2997,7 +3081,9 @@ castingRateInputs,
                 </td>
               </tr>
             ) : (
-              paginatedWithIds.map(({ row, id }, idx) => (
+              paginatedWithIds.map(({ row, id }, idx) => {
+                const isWarned = !!id && !!warningRowIds?.has(id);
+                return (
                 <tr
                   key={id ?? idx}
                   className={`transition-colors hover:bg-muted/60 cursor-pointer ${
@@ -3149,11 +3235,13 @@ castingRateInputs,
                         : "";
                     const bgClass = rowIsDiff
                       ? diffBg
-                      : editableBg
-                        ? editableBg
-                        : frozenLeft !== undefined
-                          ? "bg-card"
-                          : "";
+                      : isWarned
+                        ? "bg-amber-100 dark:bg-amber-500/15"
+                        : editableBg
+                          ? editableBg
+                          : frozenLeft !== undefined
+                            ? "bg-card"
+                            : "";
 
                     return (
                       <td
@@ -3168,7 +3256,24 @@ castingRateInputs,
                           frozenLeft !== undefined ? { left: frozenLeft } : undefined
                         }
                       >
-                        {cellContent}
+                        {header === warningColumn && isWarned ? (
+                          <span
+                            className="flex items-center gap-1.5 min-w-0"
+                            title={
+                              warningTitle ?? "Duplicate derived item name"
+                            }
+                          >
+                            <AlertTriangle
+                              size={13}
+                              className="shrink-0 text-amber-600 dark:text-amber-400"
+                            />
+                            <span className="min-w-0 flex-1">
+                              {cellContent}
+                            </span>
+                          </span>
+                        ) : (
+                          cellContent
+                        )}
                       </td>
                     );
                   })}
@@ -3188,7 +3293,8 @@ castingRateInputs,
                     </td>
                   )}
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>

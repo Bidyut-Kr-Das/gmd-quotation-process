@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { hydrateFromServer, selectAllEnquiries, selectAllItems } from "@/lib/enquiriesSlice";
 import { setFilter } from "@/lib/filtersSlice";
+import { setClosedBomIds } from "@/lib/uiSlice";
 import type { EnquiryData, EnquiryItemData, DropdownOptions } from "@/lib/types";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import EnquiryTable from "@/components/table/EnquiryTable";
@@ -47,6 +48,7 @@ export default function DashboardContainer({
   const storeItems = useAppSelector(selectAllItems);
   const filters = useAppSelector((s) => s.filters);
   const generatedImages = useAppSelector((s) => s.ui.generatedImages);
+  const selectedEnquiryIds = useAppSelector((s) => s.ui.selectedEnquiryIds);
   const globalSearch = filters.globalSearch.trim();
 
   // Sidebar filter values synced with Redux filtersSlice
@@ -84,14 +86,26 @@ export default function DashboardContainer({
   // Use store data when hydrated, fallback to server prop for initial render
   const effectiveEnquiries = storeEnquiries.length > 0 ? storeEnquiries : enquiries;
 
-  // Fully filtered enquiries matching both sidebar and table header filters
+  // Scope: when dockets are selected in the table, the cards and analytics
+  // filters narrow to that selection; otherwise they span all enquiries.
+  const selectedEnquiryIdSet = useMemo(() => new Set(selectedEnquiryIds), [selectedEnquiryIds]);
+  const scopedEnquiries = useMemo(
+    () =>
+      selectedEnquiryIds.length > 0
+        ? effectiveEnquiries.filter((e) => selectedEnquiryIdSet.has(e.id))
+        : effectiveEnquiries,
+    [effectiveEnquiries, selectedEnquiryIds, selectedEnquiryIdSet]
+  );
+
+  // Fully filtered enquiries matching both sidebar and table header filters,
+  // further narrowed to the selected dockets (if any).
   const filteredEnquiries = useMemo(() => {
-    return effectiveEnquiries.filter((enquiry) => {
+    return scopedEnquiries.filter((enquiry) => {
       if (!enquiryPassesFilters(enquiry, filters, globalSearch, generatedImages)) return false;
       if (!enquiry.items || enquiry.items.length === 0) return true;
       return enquiry.items.some((item) => itemPassesFilters(item, filters, generatedImages));
     });
-  }, [effectiveEnquiries, filters, globalSearch, generatedImages]);
+  }, [scopedEnquiries, filters, globalSearch, generatedImages]);
 
   // Items of filtered enquiries that pass active item filters
   const analyticsItems = useMemo(() => {
@@ -197,6 +211,25 @@ export default function DashboardContainer({
     const allItems = enquiries.flatMap((e) => e.items as EnquiryItemData[]);
     dispatch(hydrateFromServer({ enquiries, items: allItems }));
   }, [enquiries, dispatch]);
+
+  // Seed the closed-BOM set once from the server-computed `closedBomIds`
+  // (VerifyBom.cBatch = "C"). Held in ui state so it survives the item
+  // replacements that inline edits and BOM selection trigger.
+  const derivedClosedBomIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of enquiries) {
+      for (const item of e.items ?? []) {
+        for (const id of item.closedBomIds ?? []) {
+          if (id) set.add(id);
+        }
+      }
+    }
+    return Array.from(set);
+  }, [enquiries]);
+
+  useEffect(() => {
+    dispatch(setClosedBomIds(derivedClosedBomIds));
+  }, [derivedClosedBomIds, dispatch]);
 
   const mergedDropdownOptions = useMemo(() => {
     const allItems = enquiries.flatMap((e) => e.items);

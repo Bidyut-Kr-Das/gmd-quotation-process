@@ -5,9 +5,8 @@ import { pnRatingBucket } from "./pnRatingMatcher";
  * records the matching ERP item code — which is the RM code everywhere else in
  * this codebase — against each V1..V4 variant column.
  *
- * Only SLV, SLV METAL and TPAV+SLV are mapped for now. All sit under
- * L8 "TRADING VALVES" with L2 "SLUICE VALVE", and the item name only decides
- * the L4 component:
+ * SLV, SLV METAL and TPAV+SLV sit under L8 "TRADING VALVES" with L2
+ * "SLUICE VALVE", and the item name only decides the L4 component:
  *
  *   SLV       -> L4 = METAL TO RUBBER
  *   TPAV+SLV  -> L4 = METAL TO RUBBER  (its sluice-valve body is a plain SLV)
@@ -17,11 +16,19 @@ import { pnRatingBucket } from "./pnRatingMatcher";
  * matching SLV row (same size / PN rating / V slot); it is a distinct base item
  * only for the indent family totals, not for the raw-material lookup.
  *
- * Each V column is one rising/9523 variant, which is exactly the L6 standard on
- * the raw material side:
+ * NRV sits under L8 "TRADING VALVES" with L2 "CHECK VALVE". The indent side has
+ * no L4 component for it, so the raw material is matched on size / PN rating /
+ * L6 alone (L4 is not constrained):
  *
- *   V1 -> NON-RISING        V2 -> NON-RISING-9523
- *   V3 -> RISING            V4 -> RISING-9523
+ *   NRV       -> L2 = CHECK VALVE
+ *
+ * Each V column is one variant, which is exactly the L6 standard on the raw
+ * material side. The standards differ per valve type:
+ *
+ *   SLUICE VALVE: V1 -> NON-RISING        V2 -> NON-RISING-9523
+ *                 V3 -> RISING            V4 -> RISING-9523
+ *   CHECK VALVE:  V1 -> SWING TYPE        V2 -> SWING TYPE 9523
+ *                 (V3/V4 have no standard, so those slots never resolve)
  *
  * Size is compared after stripping the unit suffix ("200MM" -> "200") and the
  * PN rating is compared through `pnRatingBucket` on both sides, so a raw
@@ -38,18 +45,59 @@ import { pnRatingBucket } from "./pnRatingMatcher";
  * row, so they are ignored entirely — there is deliberately no fallback.
  */
 
+/** L2-VALVE TYPE the sluice valve raw materials carry. */
+export const RM_CODE_VALVE_TYPE = "SLUICE VALVE";
+
+/** L2-VALVE TYPE the non-return (check) valve raw materials carry. */
+export const RM_CODE_CHECK_VALVE_TYPE = "CHECK VALVE";
+
+/** Every L2-VALVE TYPE the resolver understands. */
+export const RM_CODE_VALVE_TYPES = [
+  RM_CODE_VALVE_TYPE,
+  RM_CODE_CHECK_VALVE_TYPE,
+] as const;
+
+/** Substring of the L8 -ITEM CATEGORY value, which is "TRADING VALVES". */
+export const RM_CODE_ITEM_CATEGORY = "TRADING VALVE";
+
+/**
+ * L6 standard per V slot, keyed by the raw material's L2-VALVE TYPE. A null
+ * entry means the valve type has no variant in that slot, so a populated V
+ * column there is never matched.
+ */
+export const RM_CODE_STD_BY_SLOT_BY_VALVE_TYPE: Record<
+  string,
+  readonly (string | null)[]
+> = {
+  [RM_CODE_VALVE_TYPE]: ["NON-RISING", "NON-RISING-9523", "RISING", "RISING-9523"],
+  [RM_CODE_CHECK_VALVE_TYPE]: ["SWING TYPE", "SWING TYPE 9523", null, null],
+};
+
+/** Sluice-valve standards, kept for callers that only deal with the SLV family. */
+export const RM_CODE_STD_BY_SLOT =
+  RM_CODE_STD_BY_SLOT_BY_VALVE_TYPE[RM_CODE_VALVE_TYPE];
+
+/**
+ * Indent item -> raw-material lookup. `component` is the required L4 value, or
+ * null when the raw material is matched on size / PN / L6 alone (NRV has no
+ * component on the indent side).
+ */
+export const RM_CODE_MATCH_BY_ITEM: Record<
+  string,
+  { valveType: string; component: string | null }
+> = {
+  SLV: { valveType: RM_CODE_VALVE_TYPE, component: "METAL TO RUBBER" },
+  "TPAV+SLV": { valveType: RM_CODE_VALVE_TYPE, component: "METAL TO RUBBER" },
+  "SLV METAL": { valveType: RM_CODE_VALVE_TYPE, component: "METAL TO METAL" },
+  NRV: { valveType: RM_CODE_CHECK_VALVE_TYPE, component: null },
+};
+
+/** L4 component per indent item, kept for callers of the sluice-valve family. */
 export const RM_CODE_COMPONENT_BY_ITEM: Record<string, string> = {
   SLV: "METAL TO RUBBER",
   "TPAV+SLV": "METAL TO RUBBER",
   "SLV METAL": "METAL TO METAL",
 };
-
-export const RM_CODE_STD_BY_SLOT = [
-  "NON-RISING",
-  "NON-RISING-9523",
-  "RISING",
-  "RISING-9523",
-] as const;
 
 /**
  * L5- MATERIAL required by a "CS" category. The raw material master has no
@@ -59,11 +107,8 @@ export const RM_CODE_STD_BY_SLOT = [
  */
 export const RM_CODE_CARBON_STEEL = "CARBON STEEL/CAST STEEL";
 
-/** L2-VALVE TYPE the sluice valve raw materials carry. */
-export const RM_CODE_VALVE_TYPE = "SLUICE VALVE";
-
-/** Substring of the L8 -ITEM CATEGORY value, which is "TRADING VALVES". */
-export const RM_CODE_ITEM_CATEGORY = "TRADING VALVE";
+/** Component key used when an item does not constrain the L4 component. */
+const WILDCARD_COMPONENT = "*";
 
 export interface RawMaterialMatchRow {
   erpItemCode: string | null;
@@ -121,15 +166,29 @@ export function rmCodeSizeKey(value: string | null | undefined): string {
   return normalizeKeyPart(value).replace(/\s*(?:MM|IN|INCH)$/, "");
 }
 
+/**
+ * Standards are compared with hyphen/space separators collapsed, so a raw
+ * material "NON-RISING-9523" meets an indent "Non Rising 9523" and a
+ * "SWING TYPE-9523" meets "Swing type 9523".
+ */
+function normalizeStd(value: unknown): string {
+  return normalizeKeyPart(value).replace(/[-\/]+/g, " ");
+}
+
 function rmCodeKey(
+  valveType: string,
   size: string,
   component: string,
   std: string,
   pnBucket: string,
 ): string {
-  return [size, normalizeKeyPart(component), normalizeKeyPart(std), pnBucket].join(
-    "||",
-  );
+  return [
+    normalizeKeyPart(valveType),
+    size,
+    normalizeKeyPart(component),
+    normalizeStd(std),
+    pnBucket,
+  ].join("||");
 }
 
 function isTradingValve(value: string | null | undefined): boolean {
@@ -154,6 +213,10 @@ export function rmCodeRequiredMaterial(
  * L5- MATERIAL. A Set is used per material because `GMDUpdateItem.erpItemCode`
  * has no unique index and duplicate rows do exist in the sheet.
  */
+function isKnownValveType(value: string): boolean {
+  return (RM_CODE_VALVE_TYPES as readonly string[]).includes(value);
+}
+
 function buildRmCodeIndex(
   rows: RawMaterialMatchRow[],
 ): Map<string, Map<string, Set<string>>> {
@@ -163,15 +226,22 @@ function buildRmCodeIndex(
     const erpItemCode = (row.erpItemCode ?? "").trim();
     if (!erpItemCode) continue;
     if (!isTradingValve(row.l8ItemCategory)) continue;
-    if (normalizeKeyPart(row.l2ValveType) !== RM_CODE_VALVE_TYPE) continue;
+
+    const valveType = normalizeKeyPart(row.l2ValveType);
+    if (!isKnownValveType(valveType)) continue;
 
     const size = rmCodeSizeKey(row.l3Dia);
-    const component = normalizeKeyPart(row.l4Component);
-    const std = normalizeKeyPart(row.l6Std);
+    // Sluice valves are separated by L4 (METAL TO RUBBER vs METAL TO METAL);
+    // check valves are matched without constraining L4.
+    const component =
+      valveType === RM_CODE_VALVE_TYPE
+        ? normalizeKeyPart(row.l4Component)
+        : WILDCARD_COMPONENT;
+    const std = normalizeStd(row.l6Std);
     const pnBucket = pnRatingBucket(row.l7Dimension);
     if (!size || !component || !std || !pnBucket) continue;
 
-    const key = rmCodeKey(size, component, std, pnBucket);
+    const key = rmCodeKey(valveType, size, component, std, pnBucket);
     const material = normalizeKeyPart(row.l5Material);
     let byMaterial = index.get(key);
     if (!byMaterial) {
@@ -211,7 +281,7 @@ function collectCodes(
 
 /**
  * Resolves the RM code for every populated V1..V4 slot of every SLV / SLV METAL
- * / TPAV+SLV indent row. Rows for any other item (BFV, DPCV, NRV, ...) produce
+ * / TPAV+SLV / NRV indent row. Rows for any other item (BFV, DPCV, ...) produce
  * no update.
  *
  * `rawMaterials` must already be restricted to live rows by the caller; this
@@ -228,8 +298,15 @@ export function planIndentRmCodes(
   let unmatched = 0;
 
   for (const row of indentRows) {
-    const component = RM_CODE_COMPONENT_BY_ITEM[normalizeKeyPart(row.item)];
-    if (!component) continue;
+    const config = RM_CODE_MATCH_BY_ITEM[normalizeKeyPart(row.item)];
+    if (!config) continue;
+
+    const stdBySlot =
+      RM_CODE_STD_BY_SLOT_BY_VALVE_TYPE[config.valveType] ?? [];
+    const component =
+      config.component === null
+        ? WILDCARD_COMPONENT
+        : normalizeKeyPart(config.component);
 
     const size = rmCodeSizeKey(row.size);
     const pnBucket = pnRatingBucket(row.pnRating);
@@ -245,16 +322,19 @@ export function planIndentRmCodes(
     const codes: string[] = [];
 
     for (let slot = 0; slot < 4; slot++) {
-      // An empty V column has no variant, so it has no RM code either.
-      if (String(balances[slot] ?? "").trim() === "") {
+      const std = stdBySlot[slot];
+      // An empty V column has no variant, and a slot with no standard for this
+      // valve type has no raw material, so neither gets an RM code.
+      if (String(balances[slot] ?? "").trim() === "" || !std) {
         codes.push("");
         continue;
       }
 
       const key = rmCodeKey(
+        config.valveType,
         size,
         component,
-        RM_CODE_STD_BY_SLOT[slot],
+        std,
         pnBucket,
       );
       const matches = collectCodes(
@@ -283,4 +363,57 @@ export function planIndentRmCodes(
   }
 
   return { updates, resolved, ambiguous, unmatched };
+}
+
+export type RmCodeSlotKey =
+  | "rmCodeV1"
+  | "rmCodeV2"
+  | "rmCodeV3"
+  | "rmCodeV4";
+
+const RM_CODE_SLOT_KEYS: readonly RmCodeSlotKey[] = [
+  "rmCodeV1",
+  "rmCodeV2",
+  "rmCodeV3",
+  "rmCodeV4",
+];
+
+export interface RmCodeWrite {
+  id: string;
+  rmCodeV1?: string;
+  rmCodeV2?: string;
+  rmCodeV3?: string;
+  rmCodeV4?: string;
+}
+
+/**
+ * Narrows planned RM-code updates to the slots that actually need a write: a
+ * slot is written only when the plan is non-blank AND differs from the stored
+ * value. A blank plan is never written, so a hand-picked code survives a sync
+ * that failed to resolve that slot. Rows with no qualifying slot are dropped.
+ */
+export function planRmCodeWrites(
+  planned: IndentRmCodeUpdate[],
+  currentById: ReadonlyMap<
+    string,
+    { rmCodeV1: string | null; rmCodeV2: string | null; rmCodeV3: string | null; rmCodeV4: string | null }
+  >,
+): RmCodeWrite[] {
+  const writes: RmCodeWrite[] = [];
+  for (const update of planned) {
+    const current = currentById.get(update.id);
+    if (!current) continue;
+
+    const write: RmCodeWrite = { id: update.id };
+    let changed = false;
+    for (const key of RM_CODE_SLOT_KEYS) {
+      const next = update[key];
+      if (next.trim() === "") continue;
+      if (String(current[key] ?? "") === next) continue;
+      write[key] = next;
+      changed = true;
+    }
+    if (changed) writes.push(write);
+  }
+  return writes;
 }

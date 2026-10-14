@@ -1,5 +1,6 @@
 import type { Prisma } from "@gmd/db-quotation";
 import { prisma } from "@/lib/prisma";
+import { C_BATCH_VALUE } from "@/lib/gmd_lib/verify-bom-columns";
 
 /**
  * A stored value counts as present only when it is non-null and not blank.
@@ -165,6 +166,17 @@ export async function getNoUseBomIdSet(bomIds: string[]): Promise<Set<string>> {
   if (unique.length === 0) return new Set();
   const rows = await prisma.bom.findMany({
     where: { bomId: { in: unique }, components: { some: { noUse: "NO USE" } } },
+    select: { bomId: true },
+  });
+  return new Set(rows.map((r) => r.bomId));
+}
+
+// Quotation-scoped: bomIds with any component closed (cBatch = "C")
+export async function getClosedBomIdSet(bomIds: string[]): Promise<Set<string>> {
+  const unique = [...new Set(bomIds.filter(Boolean))];
+  if (unique.length === 0) return new Set();
+  const rows = await prisma.bom.findMany({
+    where: { bomId: { in: unique }, components: { some: { cBatch: C_BATCH_VALUE } } },
     select: { bomId: true },
   });
   return new Set(rows.map((r) => r.bomId));

@@ -34,6 +34,14 @@ export type EngineeringTab = {
   dataRange: string;
   /** Column captions, in order. Indexes match the row arrays. */
   columns: string[];
+  /**
+   * How many of the leading `columns` are sourced from the sheet. Any beyond
+   * this are **app-managed**: the sync never reads or writes them, while the
+   * read path still emits them (empty until populated from the DB/UI). That is
+   * what lets DB-written values (e.g. Flange `Total Weight in KG`) survive
+   * every sync. Defaults to all columns being sheet-sourced.
+   */
+  sheetColumnCount?: number;
   /** Captions rendered right-aligned in a tabular-nums face. */
   numericColumns: ReadonlySet<string>;
   /** Captions rendered as a status pill rather than plain text. */
@@ -48,6 +56,7 @@ export type EngineeringTab = {
    * rather than browsed directly.
    */
   hiddenInUi?: boolean;
+  hiddenColumns?: string[];
 };
 
 /* -------------------------------------------------------------------------- */
@@ -134,16 +143,22 @@ const FLANGE_COLUMNS = [
   // Display-only columns (sheet AA..AK). Not read by the sync; shown blank in
   // the Technical > Flange table and intended to be editable later.
   "DENSITY (gm/cm^3)",
-  "Total Waight in KG",
+  "Total Weight in KG",
   "TOTAL WEIGHT WITH (+)TOLERANCE",
   "TOTAL .WEIGHT (KG) Approx AS PER IS",
   "TOTAL WEIGHT WITH (-)TOLERANCE",
   "COST AS PER IS",
   "BOLT LENGTH (MM)",
   "BOLT DIA (MM)",
+  "Bolt Dimention",
+  "BOLT VOLUME",
+  "BOLT WEIGHT",
+  "NUT WEIGHT",
   "BOLT WEIGHT FOR CS (KG)",
   "BOLT WEIGHT FOR SS (KG)",
   "BOLT WEIGHT FOR AS (KG)",
+  "BOLT COST",
+  "NUT COST",
 ];
 
 const FLANGE_NUMERIC = new Set([
@@ -170,17 +185,26 @@ const FLANGE_NUMERIC = new Set([
   "SEAT PRESSURE",
   "BODY PRESSURE",
   "DENSITY (gm/cm^3)",
-  "Total Waight in KG",
+  "Total Weight in KG",
   "TOTAL WEIGHT WITH (+)TOLERANCE",
   "TOTAL .WEIGHT (KG) Approx AS PER IS",
   "TOTAL WEIGHT WITH (-)TOLERANCE",
   "COST AS PER IS",
   "BOLT LENGTH (MM)",
   "BOLT DIA (MM)",
+  "Bolt Dimention",
+  "BOLT VOLUME",
+  "BOLT WEIGHT",
+  "NUT WEIGHT",
   "BOLT WEIGHT FOR CS (KG)",
   "BOLT WEIGHT FOR SS (KG)",
   "BOLT WEIGHT FOR AS (KG)",
+  "BOLT COST",
+  "NUT COST",
 ]);
+
+/** How many of Flange's leading columns come from the sheet (A..Y). */
+export const FLANGE_SHEET_COLUMN_COUNT = 25;
 
 /* -------------------------------------------------------------------------- */
 /* GEAR BOX — gid 1266518282, headers in row 1, columns C..AG                  */
@@ -313,6 +337,8 @@ export const ENGINEERING_TABS: EngineeringTab[] = [
     gid: 0,
     dataRange: "A3:Y",
     columns: FLANGE_COLUMNS,
+    // First 25 columns (A..Y) come from the sheet; the last 11 are app-managed.
+    sheetColumnCount: FLANGE_SHEET_COLUMN_COUNT,
     numericColumns: FLANGE_NUMERIC,
     statusColumns: EMPTY_STATUS,
     defaultColumnWidths: {
@@ -323,6 +349,9 @@ export const ENGINEERING_TABS: EngineeringTab[] = [
       "RAISED FACE THICKNESS TOLERANCE (- MM)": 190,
     },
     wrapCells: true,
+    hiddenColumns: [
+      "DENSITY (gm/cm^3)",
+    ],
   },
   {
     key: "gear-box",

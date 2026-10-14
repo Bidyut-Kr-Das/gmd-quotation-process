@@ -60,7 +60,15 @@
     "docket:backfill-items": "tsx scripts/backfill-pending-docket-items.ts",
     "docket:backfill-items:apply": "tsx scripts/backfill-pending-docket-items.ts --apply",
     "rm:cost:round10": "tsx scripts/round-raw-material-cost-to-10.ts",
-    "rm:cost:round10:apply": "tsx scripts/round-raw-material-cost-to-10.ts --apply"
+    "rm:cost:round10:apply": "tsx scripts/round-raw-material-cost-to-10.ts --apply",
+    "flange:weight": "tsx scripts/compute-flange-weight.ts",
+    "flange:weight:apply": "tsx scripts/compute-flange-weight.ts --apply",
+    "pbg:sync": "tsx scripts/sync-pbg-data.ts",
+    "pbg:sync:apply": "tsx scripts/sync-pbg-data.ts --apply",
+    "physical:cost": "tsx scripts/backfill-physical-stock-cost-bom.ts",
+    "physical:cost:apply": "tsx scripts/backfill-physical-stock-cost-bom.ts --apply",
+    "physical:copy-stock-db": "tsx scripts/copy-physical-stock-to-stock-db.ts",
+    "physical:copy-stock-db:apply": "tsx scripts/copy-physical-stock-to-stock-db.ts --apply"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",
@@ -69,6 +77,7 @@
     "@base-ui/react": "^1.6.0",
     "@gmd/contract-review": "workspace:*",
     "@gmd/dashboard": "workspace:*",
+    "@gmd/db-stock": "workspace:*",
     "@gmd/db-quotation": "workspace:*",
     "@gmd/db-tender": "workspace:*",
     "@gmd/ui": "workspace:*",

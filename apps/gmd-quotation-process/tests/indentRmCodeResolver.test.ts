@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   planIndentRmCodes,
+  planRmCodeWrites,
   rmCodeSizeKey,
   rmCodeRequiredMaterial,
   RM_CODE_CARBON_STEEL,
@@ -260,12 +261,73 @@ test('rmCodeRequiredMaterial only constrains on a CS token', () => {
   assert.equal(rmCodeRequiredMaterial(null), null)
 })
 
-test('rows outside SLV, SLV METAL and TPAV+SLV are skipped entirely', () => {
+test('rows outside SLV, SLV METAL, TPAV+SLV and NRV are skipped entirely', () => {
   const raw = [rm()]
-  for (const item of ['BFV', 'DPCV', 'NRV', null]) {
+  for (const item of ['BFV', 'DPCV', null]) {
     const plan = planIndentRmCodes([indent({ item })], raw)
     assert.equal(plan.updates.length, 0, `expected ${item} to be skipped`)
   }
+})
+
+function nrvRm(overrides: Partial<RawMaterialMatchRow> = {}): RawMaterialMatchRow {
+  return rm({
+    erpItemCode: 'NRV120003',
+    l2ValveType: 'CHECK VALVE',
+    l4Component: 'DISC',
+    l6Std: 'SWING TYPE',
+    ...overrides,
+  })
+}
+
+test('NRV V1 resolves to the SWING TYPE raw material and V2 to SWING TYPE 9523', () => {
+  const plan = planIndentRmCodes(
+    [indent({ item: 'NRV', v1: '1', v2: '2' })],
+    [
+      nrvRm({ erpItemCode: 'NRV-SWING', l6Std: 'SWING TYPE' }),
+      nrvRm({ erpItemCode: 'NRV-SWING-9523', l6Std: 'SWING TYPE 9523' }),
+    ],
+  )
+  assert.equal(plan.updates.length, 1)
+  assert.equal(plan.updates[0].rmCodeV1, 'NRV-SWING')
+  assert.equal(plan.updates[0].rmCodeV2, 'NRV-SWING-9523')
+  assert.equal(plan.updates[0].rmCodeV3, '')
+  assert.equal(plan.updates[0].rmCodeV4, '')
+  assert.equal(plan.resolved, 2)
+})
+
+test('NRV matches a hyphen-separated SWING TYPE-9523 standard too', () => {
+  const plan = planIndentRmCodes(
+    [indent({ item: 'NRV', v1: '', v2: '2' })],
+    [nrvRm({ erpItemCode: 'NRV-SWING-9523', l6Std: 'SWING TYPE-9523' })],
+  )
+  assert.equal(plan.updates[0].rmCodeV2, 'NRV-SWING-9523')
+})
+
+test('NRV does not constrain the L4 component', () => {
+  const plan = planIndentRmCodes(
+    [indent({ item: 'NRV' })],
+    [nrvRm({ l4Component: 'SOMETHING ELSE' })],
+  )
+  assert.equal(plan.updates[0].rmCodeV1, 'NRV120003')
+})
+
+test('NRV requires L2 CHECK VALVE and never matches a sluice-valve raw material', () => {
+  const wrongValve = planIndentRmCodes(
+    [indent({ item: 'NRV' })],
+    [nrvRm({ l2ValveType: 'SLUICE VALVE' })],
+  )
+  assert.equal(wrongValve.updates[0].rmCodeV1, '')
+  assert.equal(wrongValve.unmatched, 1)
+
+  // A populated V3/V4 has no CHECK VALVE standard, so it is left blank without
+  // being counted as unmatched.
+  const spare = planIndentRmCodes(
+    [indent({ item: 'NRV', v1: '', v3: '1', v4: '1' })],
+    [nrvRm()],
+  )
+  assert.equal(spare.updates[0].rmCodeV3, '')
+  assert.equal(spare.updates[0].rmCodeV4, '')
+  assert.equal(spare.unmatched, 0)
 })
 
 test('rows without a usable size or PN rating are skipped', () => {
@@ -307,4 +369,47 @@ test('the resolver reports a count for every populated slot', () => {
   assert.equal(plan.unmatched, 3)
   // Nothing is double counted: all 5 populated slots land in exactly one bucket.
   assert.equal(plan.resolved + plan.ambiguous + plan.unmatched, 5)
+})
+
+test('a blank planned value is never written over a stored code', () => {
+  const plan = planIndentRmCodes([indent({ id: 'r1' })], [])
+  const current = new Map([
+    [
+      'r1',
+      { rmCodeV1: 'MANUAL1', rmCodeV2: '', rmCodeV3: '', rmCodeV4: '' },
+    ],
+  ])
+  // The resolver has no raw material, so every slot plans blank: nothing to do.
+  assert.deepEqual(planRmCodeWrites(plan.updates, current), [])
+})
+
+test('non-blank differing slots are written, unchanged slots are not', () => {
+  const planned = [
+    {
+      id: 'r1',
+      rmCodeV1: 'NEW1',
+      rmCodeV2: 'KEEP2',
+      rmCodeV3: '',
+      rmCodeV4: 'NEW4',
+    },
+  ]
+  const current = new Map([
+    [
+      'r1',
+      { rmCodeV1: 'OLD1', rmCodeV2: 'KEEP2', rmCodeV3: '', rmCodeV4: 'OLD4' },
+    ],
+  ])
+  assert.deepEqual(planRmCodeWrites(planned, current), [
+    { id: 'r1', rmCodeV1: 'NEW1', rmCodeV4: 'NEW4' },
+  ])
+})
+
+test('a row whose slots all match is dropped from the writes', () => {
+  const planned = [
+    { id: 'r1', rmCodeV1: 'SAME', rmCodeV2: '', rmCodeV3: '', rmCodeV4: '' },
+  ]
+  const current = new Map([
+    ['r1', { rmCodeV1: 'SAME', rmCodeV2: '', rmCodeV3: '', rmCodeV4: '' }],
+  ])
+  assert.deepEqual(planRmCodeWrites(planned, current), [])
 })

@@ -59,6 +59,7 @@ export interface ContractReviewActions {
   backfillContractReviewPnRatingBatchAction: BatchAction;
 
   sync?: () => Promise<ActionResult>;
+  recomputeIndentListingVersionsAction?: () => Promise<ActionResult>;
   syncContractReviewEnquiryFieldsAllAction?: () => Promise<ActionResult>;
   syncContractReviewEnquiryFieldsBatchAction?: BatchAction;
   syncContractReviewRmAvailAction?: () => Promise<ActionResult>;

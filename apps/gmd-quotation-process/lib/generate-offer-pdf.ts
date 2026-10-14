@@ -25,7 +25,18 @@ function extractDriveFileId(url: string | null | undefined): string | null {
   return null;
 }
 
-export async function generateOfferPdfAction(rowData: OfferLetterTemplateData, enquiryId?: string) {
+/**
+ * @param options.bypassFreeze When true the one-time Offer PDF freeze is
+ *   ignored — no `oneClickAccess` refusal and no `offerPdfGeneratedAt` write.
+ *   Used when the PDF is generated only to attach to a docket email, which is
+ *   independent of the manual "Generate PDF" one-time access.
+ */
+export async function generateOfferPdfAction(
+  rowData: OfferLetterTemplateData,
+  enquiryId?: string,
+  options?: { bypassFreeze?: boolean },
+) {
+  const bypassFreeze = options?.bypassFreeze === true;
   try {
     let finalRowData: OfferLetterTemplateData = { ...rowData };
 
@@ -43,8 +54,8 @@ export async function generateOfferPdfAction(rowData: OfferLetterTemplateData, e
       });
     }
 
-    // Apply oneClickAccess rules
-    if (dbEnquiry) {
+    // Apply oneClickAccess rules (skipped when generating solely for an email).
+    if (dbEnquiry && !bypassFreeze) {
       const check = oneClickAccess((dbEnquiry as any).apm, (dbEnquiry as any).offerPdfGeneratedAt)
       if (!check.allowed) {
         return { success: false, error: check.reason }
@@ -276,15 +287,19 @@ export async function generateOfferPdfAction(rowData: OfferLetterTemplateData, e
     // Generate PDF in memory (no filesystem write)
     const pdfBuffer = await generateOfferLetterPdf(templateSource, finalRowData, {});
 
-    // Upload generated PDF to Google Drive
+    // Upload generated PDF to Google Drive (uploadFileToDrive also grants
+    // "anyone with the link" read access, so the returned URL is shareable).
+    let driveUrl: string | null = null;
     try {
-      await uploadFileToDrive(fileName, "application/pdf", pdfBuffer.toString("base64"));
+      const uploaded = await uploadFileToDrive(fileName, "application/pdf", pdfBuffer.toString("base64"));
+      driveUrl = uploaded.url;
     } catch (e) {
       console.error("Failed to upload generated PDF to Google Drive:", e);
     }
 
-    // If apm === "Yes", freeze after first successful generation (one-time)
-    if (dbEnquiry && (dbEnquiry as any).apm === "Yes" && !(dbEnquiry as any).offerPdfGeneratedAt) {
+    // If apm === "Yes", freeze after first successful generation (one-time).
+    // Skipped when generating only to attach to an email.
+    if (!bypassFreeze && dbEnquiry && (dbEnquiry as any).apm === "Yes" && !(dbEnquiry as any).offerPdfGeneratedAt) {
       try {
         const { auth } = await import("@/auth")
         const session = await auth()
@@ -311,6 +326,7 @@ export async function generateOfferPdfAction(rowData: OfferLetterTemplateData, e
       pdfBase64: pdfBuffer.toString("base64"),
       fileName,
       docketNo: finalRowData.docketNo,
+      driveUrl,
     };
   } catch (error: any) {
     console.error(`Error generating PDF for docket ${rowData.docketNo}:`, error);

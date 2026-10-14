@@ -68,7 +68,7 @@ test('variant routing: 9523 goes to SLV V2 and TPAV V4', () => {
   assert.equal(m['TPAV']?.[4], '60')
 })
 
-test('variant routing: Rising -> SLV V3 and TPAV V2; Rising 9523 -> SLV V4 and TPAV V4', () => {
+test('variant routing: Rising -> SLV V3 and TPAV V1; Rising 9523 -> SLV V4 and TPAV V4', () => {
   const tslv = row({
     item: 'TPAV+SLV',
     total: '70',
@@ -81,9 +81,55 @@ test('variant routing: Rising -> SLV V3 and TPAV V2; Rising 9523 -> SLV V4 and T
   assert.equal(m['SLV']?.[7], '30')
   assert.equal(m['SLV']?.[8], '40')
   assert.equal(m['SLV']?.[9 + 2], 'Rising')
-  assert.equal(m['TPAV']?.[6], '30')
+  // SLV keeps Rising verbatim; the TPAV label drops the SLV-only token.
+  assert.equal(m['TPAV']?.[9], 'Base')
+  assert.equal(m['TPAV']?.[12], '9523')
+  // RISING is SLV-only: the TPAV part is plain -> V1, not the spare V2.
+  assert.equal(m['TPAV']?.[5], '30')
+  assert.equal(m['TPAV']?.[6], '')
   assert.equal(m['TPAV']?.[8], '40')
   assert.equal(m['TPAV']?.[4], '70')
+})
+
+test('TPAV-side label drops the SLV-only Rising token; SLV keeps it', () => {
+  const tslv = row({
+    item: 'TPAV+SLV',
+    total: '40',
+    v: ['10', '10', '10', '10'],
+    cats: ['Rising', 'Rising 9523', 'Base', 'Rising CS'],
+  })
+
+  const m = byItem(merge([tslv]).rows)
+
+  // TPAV V1 collects rising-only + base amounts, labelled plain.
+  assert.equal(m['TPAV']?.[5], '20')
+  assert.equal(m['TPAV']?.[9], 'Base')
+  assert.equal(m['TPAV']?.[10], 'CS')
+  assert.equal(m['TPAV']?.[12], '9523')
+  for (let i = 9; i <= 12; i++) {
+    assert.doesNotMatch(String(m['TPAV']?.[i] ?? ''), /Rising/i)
+  }
+
+  // SLV keeps the source labels untouched.
+  assert.equal(m['SLV']?.[9], 'Rising')
+  assert.equal(m['SLV']?.[10], 'Rising 9523')
+  assert.equal(m['SLV']?.[11], 'Base')
+  assert.equal(m['SLV']?.[12], 'Rising CS')
+})
+
+test('risings-only labels collapse to Base, comma lists keep the non-rising part', () => {
+  const tslv = row({
+    item: 'TPAV+SLV',
+    total: '5',
+    v: ['5', '', '', ''],
+    cats: ['Rising, Rising CS', '', '', ''],
+  })
+
+  const m = byItem(merge([tslv]).rows)
+
+  assert.equal(m['TPAV']?.[6], '5')
+  assert.equal(m['TPAV']?.[10], 'CS')
+  assert.equal(m['SLV']?.[9], 'Rising, Rising CS')
 })
 
 test('missing SLV/TPAV targets are synthesized so no balance is lost', () => {
@@ -168,4 +214,38 @@ test('multiple variants accumulate into the same synthesized target slots', () =
   // TPAV: Base -> V1, 9523 -> V4.
   assert.equal(m['TPAV']?.[5], '10')
   assert.equal(m['TPAV']?.[8], '20')
+})
+
+test('sourceIds lists the stored rows behind a folded target row', () => {
+  const tpav = row({ item: 'TPAV', total: '100', v: ['100', '', '', ''], cats: ['Base'] }) // id0
+  const slv = row({ item: 'SLV', total: '200', v: ['200', '', '', ''], cats: ['Base'] }) // id1
+  const tslv = row({ item: 'TPAV+SLV', total: '50', v: ['50', '', '', ''], cats: ['Base'] }) // id2
+
+  const { rows, sourceIds } = merge([tpav, slv, tslv])
+
+  const slvIdx = rows.findIndex((r) => r[0] === 'SLV')
+  const tpavIdx = rows.findIndex((r) => r[0] === 'TPAV')
+  // The target's own id first, then the contributing compound row.
+  assert.deepEqual(sourceIds[slvIdx], ['id1', 'id2'])
+  assert.deepEqual(sourceIds[tpavIdx], ['id0', 'id2'])
+})
+
+test('sourceIds of an untouched row is just its own id', () => {
+  const bfv = row({ item: 'BFV', total: '700' }) // id0
+  const { sourceIds } = merge([bfv])
+  assert.deepEqual(sourceIds[0], ['id0'])
+})
+
+test('sourceIds of a synthesized target are the contributing ids, never syn::', () => {
+  const tslv = row({ item: 'TPAV+SLV', total: '80', v: ['80', '', '', ''], cats: ['Base'] }) // id0
+
+  const { rows, ids, sourceIds } = merge([tslv])
+
+  assert.equal(rows.length, 2)
+  for (const sources of sourceIds) {
+    assert.deepEqual(sources, ['id0'])
+    assert.ok(sources.every((id) => !id.startsWith('syn::')))
+  }
+  // The row ids are still generated, so `rows`/`ids` stay aligned.
+  assert.ok(ids.every((id) => id.startsWith('syn::')))
 })

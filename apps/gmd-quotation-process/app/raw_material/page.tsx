@@ -65,11 +65,18 @@ const CASCADE_LEVEL_HEADERS = [
   "L1",
   "L2-VALVE TYPE",
   "L3-DIA",
-  "L7-DIMENSION",
   "L4-COMPONENT",
   "L5- MATERIAL",
   "L6-STD",
+  "L7-DIMENSION",
 ];
+
+/** NEW ITEM STATUS values the catalogue treats as gone; never flagged as duplicates. */
+const DEDUP_SKIPPED_STATUSES = new Set([
+  "CLOSED",
+  "TO BE CLOSED",
+  "TO BE LOCKED",
+]);
 
 interface SheetData {
   headers: string[];
@@ -92,9 +99,17 @@ function isMoveToNewItemsStatus(value: string | null): boolean {
 // Stable descriptor list so GMDUpdateTable's row predicate keeps a stable dep.
 const RAW_MATERIAL_BATCH_FILTERS = [cBatchFilter()];
 
-type CastingKey = "DI" | "CS" | "CI" | "SS" | "Bronze";
+type CastingKey = "DI" | "CS" | "CI" | "SS" | "Bronze" | "MS" | "GI";
 
-const CASTING_KEYS: CastingKey[] = ["DI", "CS", "CI", "SS", "Bronze"];
+const CASTING_KEYS: CastingKey[] = [
+  "DI",
+  "CS",
+  "CI",
+  "SS",
+  "Bronze",
+  "MS",
+  "GI",
+];
 
 const CASTING_RATE_MATCHERS: {
   key: CastingKey;
@@ -154,10 +169,10 @@ function rowToGMDUpdateItem(
     l1: String(row[3] ?? ""),
     l2ValveType: String(row[4] ?? ""),
     l3Dia: String(row[5] ?? ""),
-    l7Dimension: String(row[6] ?? ""),
-    l4Component: String(row[7] ?? ""),
-    l5Material: String(row[8] ?? ""),
-    l6Std: String(row[9] ?? ""),
+    l4Component: String(row[6] ?? ""),
+    l5Material: String(row[7] ?? ""),
+    l6Std: String(row[8] ?? ""),
+    l7Dimension: String(row[9] ?? ""),
     l8ItemCategory: String(row[10] ?? ""),
     um: String(row[11] ?? ""),
     availableStock: String(row[12] ?? ""),
@@ -260,6 +275,8 @@ export default function Home() {
     CI: "",
     SS: "",
     Bronze: "",
+    MS: "",
+    GI: "",
   });
   const saveRateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [transferredIds, setTransferredIds] = useState<string[]>([]);
@@ -509,6 +526,30 @@ export default function Home() {
   );
 
   const totalRows = allItems.length;
+
+  // Ids of rows whose derived item name is shared by more than one raw material
+  // row (catalogue-wide). Blank names are ignored, and rows the catalogue treats
+  // as gone (CLOSED / TO BE CLOSED / TO BE LOCKED) never count or get flagged.
+  const duplicateDerivedIds = useMemo(() => {
+    const live = allItems.filter(
+      (item) =>
+        !DEDUP_SKIPPED_STATUSES.has(
+          String(item.newItemStatus ?? "").trim().toUpperCase(),
+        ),
+    );
+    const counts = new Map<string, number>();
+    for (const item of live) {
+      const key = (item.itemNameDerived ?? "").trim().toUpperCase();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const ids = new Set<string>();
+    for (const item of live) {
+      const key = (item.itemNameDerived ?? "").trim().toUpperCase();
+      if (key && (counts.get(key) ?? 0) > 1) ids.add(item.id);
+    }
+    return ids;
+  }, [allItems]);
 
   const processedCost = useMemo(
     () => applyCastingCost(processedItems, castingRates),
@@ -1417,6 +1458,8 @@ export default function Home() {
                     cellBadges={cBatchBadges("ERP ITEM CODE")}
                     batchFilterHeader="ERP ITEM CODE"
                     batchPresenceFilters={RAW_MATERIAL_BATCH_FILTERS}
+                    warningRowIds={duplicateDerivedIds}
+                    warningColumn="ITEM NAME (derived)"
                     fullHeight
                   />
                 </ResizablePanel>
@@ -1453,6 +1496,8 @@ export default function Home() {
                     cellBadges={cBatchBadges("ERP ITEM CODE")}
                     batchFilterHeader="ERP ITEM CODE"
                     batchPresenceFilters={RAW_MATERIAL_BATCH_FILTERS}
+                    warningRowIds={duplicateDerivedIds}
+                    warningColumn="ITEM NAME (derived)"
                     fullHeight
                   />
                 </ResizablePanel>
@@ -1486,6 +1531,8 @@ export default function Home() {
                     cellBadges={cBatchBadges("ERP ITEM CODE")}
                     batchFilterHeader="ERP ITEM CODE"
                     batchPresenceFilters={RAW_MATERIAL_BATCH_FILTERS}
+                    warningRowIds={duplicateDerivedIds}
+                    warningColumn="ITEM NAME (derived)"
                     onCellUpdate={handleTransferredCellUpdate}
                     pasteErpCodes={{
                       draft: pasteDraft,

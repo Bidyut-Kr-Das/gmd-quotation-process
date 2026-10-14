@@ -11,7 +11,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
     "db:studio": "prisma studio",
-    "db:triggers": "prisma db execute --file prisma/sql/bom-cost-triggers.sql"
+    "db:triggers": "prisma db execute --file prisma/sql/bom-cost-triggers.sql && prisma db execute --file prisma/migrations/20261011130000_rebuild_bom_cost_triggers/migration.sql"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

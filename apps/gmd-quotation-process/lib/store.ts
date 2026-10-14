@@ -5,6 +5,7 @@ import paginationReducer from "./paginationSlice";
 import uiReducer from "./uiSlice";
 import dialogsReducer from "./dialogsSlice";
 import gmdUpdateReducer from "./gmdUpdateSlice";
+import physicalStockReducer from "./physicalStockSlice";
 import supplyHistoryFiltersReducer from "./supplyHistoryFiltersSlice";
 import bisStatusFiltersReducer from "./bisStatusFiltersSlice";
 
@@ -17,6 +18,7 @@ export const makeStore = () => {
       ui: uiReducer,
       dialogs: dialogsReducer,
       gmdUpdate: gmdUpdateReducer,
+      physicalStock: physicalStockReducer,
       supplyHistoryFilters: supplyHistoryFiltersReducer,
       bisStatusFilters: bisStatusFiltersReducer,
     },

@@ -16,6 +16,9 @@ import { fetchBomRows, buildRmCostMap, DIRECT_M2M, getBomEntry, getCachedBomRows
 import { update2to1CostForItems, buildRawMaterialsCostMap, clear2to1BomCache } from "@/lib/gmd2to1CostLookup";
 import { getDistinctBomIds, getBomRmAvailBatch, resolveContractReviewBomIdsFromActuator, computeContractReviewRmAvail, getNoUseBomIdSet, normalizeActuatorPart, clearVerifyBomCache, findBomForItem, getBomCandidates } from "@/lib/verifyBomLookup";
 import { splitCsvLinks } from "@/lib/gmd_lib/contract-order-links";
+import { buildDocketEmailHtml, buildDocketEmailSubject } from "@/lib/docketEmailTemplate";
+import { sendDocketEmailViaN8n, DOCKET_EMAIL_ALWAYS_CC } from "@/lib/services/n8nEmail";
+import type { OfferLetterTemplateData } from "@/types/offer-lettter";
 import { buildDerivedItemName } from "@/lib/gmd_lib/derived-item-name";
 import { getUsdInrRate } from "@/lib/gmd_lib/exchangeRate";
 import { getRmStockMap, getRmTypeMap, syncDirectM2MAvailableStock } from "@/lib/directM2MStockLookup";
@@ -24,6 +27,18 @@ import { resolveImportedInhouse } from "@/lib/importInhouseMapping";
 import { makeImageKey } from "@/lib/imageKey";
 import { withHardcodedL7Options } from "@/lib/gmd_lib/sheet-columns";
 import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
+import {
+  buildDensityMap,
+  computeBoltVolumeMm3,
+  computeBoltWeightKg,
+  computeNutBoltCost,
+  computeNutWeightKg,
+  encodeBoltWeight,
+  parseNumber,
+  resolveBoltMaterial,
+  resolveBoltRateKey,
+  resolveMocDensity,
+} from "@/lib/technical/formulas";
 // LEGACY — superseded by the hourly `docket-creation` scheduler job
 // (schedular_function/docket-creation.ts). The imports below were used only by
 // the commented-out `createPendingDocketsAction`; restore them when re-enabling.
@@ -800,53 +815,6 @@ export async function deleteEnquiryItemAction(itemId: string) {
   }
 }
 
-// Bulk delete multiple items from a single enquiry. Enquiry is retained even if all items are deleted.
-// Single-enquiry constraint is enforced on server.
-export async function deleteEnquiryItemsAction(itemIds: string[]) {
-  try {
-    if (!itemIds || itemIds.length === 0) {
-      return { success: false, error: "No items selected." };
-    }
-
-    const uniqueIds = [...new Set(itemIds)];
-
-    const items = await prisma.enquiryItem.findMany({
-      where: { id: { in: uniqueIds } },
-      select: { id: true, enquiryId: true, itemName: true },
-    });
-
-    if (items.length === 0) {
-      return { success: false, error: "Items not found." };
-    }
-    if (items.length !== uniqueIds.length) {
-      return { success: false, error: "Some items not found. Please refresh and try again." };
-    }
-
-    const enquiryIds = [...new Set(items.map((i) => i.enquiryId))];
-    if (enquiryIds.length !== 1) {
-      return { success: false, error: "Bulk delete is allowed for a single enquiry only. Select items from one docket at a time." };
-    }
-    const enquiryId = enquiryIds[0];
-
-    console.log(`[Server] bulkDelete enquiry=${enquiryId} requested=${uniqueIds.length}`);
-
-    await prisma.enquiryItem.deleteMany({
-      where: { id: { in: uniqueIds }, enquiryId },
-    });
-
-    const remaining = await prisma.enquiryItem.count({
-      where: { enquiryId },
-    });
-
-    const enquiryDeleted = false;
-
-    return { success: true, data: { deletedIds: uniqueIds, enquiryId, enquiryDeleted, remaining } };
-  } catch (error: any) {
-    console.error("Error bulk deleting items:", error);
-    return { success: false, error: error.message || "Failed to delete items." };
-  }
-}
-
 /**
  * Deletes a blank docket that was flagged as a duplicate of another docket.
  *
@@ -941,7 +909,14 @@ export async function updateEnquiryFieldAction(
     // Duplicate flag is a plain Yes/No marker.
     if (field === "duplicate") {
       if (value !== null && value !== "" && value !== "Yes" && value !== "No") {
-        return { success: false, error: "Duplicate must be Yes, No, or blank." }
+        return { success: false, error: "Duplicate must be Yes, No, or blank." };
+      }
+    }
+    // Docket email approval (tick/cross). Cross (false) also clears the sent
+    // marker so the docket can be re-approved and sent again.
+    if (field === "emailApproved") {
+      if (value !== true && value !== false) {
+        return { success: false, error: "emailApproved must be true or false." };
       }
     }
     const prev = await prisma.enquiry.findUnique({
@@ -958,6 +933,10 @@ export async function updateEnquiryFieldAction(
     if (field === "apm" && parsedVal !== "Yes") {
       data.offerPdfGeneratedAt = null;
       data.offerPdfGeneratedBy = null;
+    }
+    // Cross (un-approve) also clears the sent marker so a resend can happen.
+    if (field === "emailApproved" && parsedVal !== true) {
+      data.emailSentBy = null;
     }
     await prisma.enquiry.update({
       where: { id: enquiryId },
@@ -1007,6 +986,135 @@ export async function updateEnquiryFieldAction(
   } catch (error: any) {
     console.error(`Error updating enquiry ${field}:`, error);
     return { success: false, error: error.message || `Failed to update ${field}.` };
+  }
+}
+
+/**
+ * Sends the docket's quotation email through the n8n Gmail webhook.
+ *
+ * Preconditions (enforced server-side): the docket is ticked (`emailApproved`),
+ * has not been sent before (`emailSentBy` null), and has a recipient
+ * (`senderEmail`). The Offer PDF is generated and attached; Cc comes from the
+ * comma-separated `emailAddress`. On success the sent marker is persisted; on
+ * any failure nothing is written and the error is returned to the client.
+ *
+ * The email is sent as a reply inside the linked `DocketQuotationThread` (the
+ * latest thread whose `docketNo` matches this docket number) so it lands on the
+ * RFQ conversation instead of starting a new one. When no linked thread exists
+ * the action returns "Linked email thread not found" and sends nothing.
+ */
+export async function sendDocketEmailAction(enquiryId: string) {
+  try {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "You must be logged in to send this email." };
+    }
+    const userId = (session.user as any).id ?? (session.user as any).email ?? "unknown";
+
+    const enquiry = await prisma.enquiry.findUnique({
+      where: { id: enquiryId },
+      include: { items: { orderBy: { position: "asc" } } },
+    });
+    if (!enquiry) return { success: false, error: "Docket not found." };
+    if (!enquiry.emailApproved) {
+      return { success: false, error: "Approve this docket (tick) before sending." };
+    }
+    if (enquiry.emailSentBy) {
+      return { success: false, error: "This docket email has already been sent." };
+    }
+    const to = (enquiry.senderEmail || "").trim();
+    if (!to) {
+      return { success: false, error: "No recipient (sender email) on this docket." };
+    }
+
+    // The quotation must go back as a reply in the thread the RFQ arrived on.
+    // Resolve the latest thread linked to this docket number and refuse to send
+    // (rather than start a detached thread) when there is none.
+    const { findLatestLinkedThread } = await import("@/lib/docketThreadResolver");
+    const linkedThread = await findLatestLinkedThread(enquiry.docketNumber);
+    if (!linkedThread) {
+      return { success: false, error: "Linked email thread not found" };
+    }
+
+    // Always Cc the fixed address, merged with the docket's other emails and
+    // de-duplicated case-insensitively.
+    const ccEmails = (enquiry.emailAddress || "")
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean);
+    if (!ccEmails.some((e) => e.toLowerCase() === DOCKET_EMAIL_ALWAYS_CC)) {
+      ccEmails.push(DOCKET_EMAIL_ALWAYS_CC);
+    }
+    const cc = ccEmails.join(", ");
+
+    // Reuse the Offer PDF pipeline for the attachment.
+    const { generateOfferPdfAction } = await import("@/lib/generate-offer-pdf");
+    const pdfRes = await generateOfferPdfAction(
+      { docketNo: enquiry.docketNumber } as unknown as OfferLetterTemplateData,
+      enquiryId,
+      { bypassFreeze: true },
+    );
+    if (!pdfRes.success || !pdfRes.pdfBase64) {
+      return { success: false, error: pdfRes.error || "Failed to generate the offer PDF." };
+    }
+    const pdfBuffer = Buffer.from(pdfRes.pdfBase64, "base64");
+
+    // Project sentence source: project reference, else utility, else state.
+    const projectName =
+      (enquiry.projectReference || "").trim() ||
+      (enquiry.utility || "").trim() ||
+      (enquiry.state || "").trim();
+
+    // Item description: distinct merged item names (fallback raw item name).
+    const itemDescription = [
+      ...new Set(
+        enquiry.items
+          .map((item) => (item.itemNameMerge || item.itemName || "").trim())
+          .filter(Boolean),
+      ),
+    ].join(", ");
+
+    const deliverySchedule =
+      (enquiry.items.find((i) => (i.deliverySchedule || "").trim())?.deliverySchedule || "").trim() ||
+      "READY STOCK";
+
+    const state = (enquiry.state || "").trim();
+    const subject = buildDocketEmailSubject({ docketNumber: enquiry.docketNumber });
+    const html = buildDocketEmailHtml({
+      docketNumber: enquiry.docketNumber,
+      projectName,
+      itemDescription,
+      paymentTerms: enquiry.paymentTerms || "",
+      freight: `F.O.R. Site${state ? ` (${state})` : ""}`,
+      deliverySchedule,
+      pdfUrl: pdfRes.driveUrl ?? "",
+      fileName: pdfRes.fileName || `${enquiry.docketNumber}.pdf`,
+    });
+
+    const send = await sendDocketEmailViaN8n({
+      to,
+      cc,
+      subject,
+      html,
+      docketNumber: enquiry.docketNumber,
+      fileName: pdfRes.fileName || `${enquiry.docketNumber}.pdf`,
+      pdfBuffer,
+      threadId: linkedThread.threadId,
+    });
+    if (!send.success) {
+      return { success: false, error: send.error || "Email sending failed." };
+    }
+
+    const updated = await prisma.enquiry.update({
+      where: { id: enquiryId },
+      data: { emailSentBy: userId },
+      include: { items: { orderBy: { position: "asc" } } },
+    });
+    return { success: true, data: serializeEnquiry(updated) };
+  } catch (error: any) {
+    console.error("Error sending docket email:", error);
+    return { success: false, error: error.message || "Failed to send the docket email." };
   }
 }
 
@@ -4139,6 +4247,41 @@ export async function backfillContractReviewCostFromQuotationAction(
   }
 }
 
+export async function updateIndentRmCodeAction(input: {
+  sourceIds: string[];
+  slot: 1 | 2 | 3 | 4;
+  value: string;
+}): Promise<{ success: boolean; updated?: number; error?: string }> {
+  "use server";
+  try {
+    const sourceIds = (input.sourceIds ?? []).filter(
+      (id) => typeof id === "string" && id.trim() !== "",
+    );
+    const slot = Number(input.slot);
+    if (sourceIds.length === 0) {
+      return { success: false, error: "No stored rows behind this line." };
+    }
+    if (![1, 2, 3, 4].includes(slot)) {
+      return { success: false, error: "Invalid variant slot." };
+    }
+
+    const value = String(input.value ?? "").trim();
+    // Every stored row behind the displayed line gets the same value: a
+    // TPAV+SLV compound is folded into the SLV/TPAV rows it contributes to.
+    const result = await prisma.indentListing.updateMany({
+      where: { id: { in: sourceIds } },
+      data: { [`rmCodeV${slot}`]: value },
+    });
+    return { success: true, updated: result.count };
+  } catch (error: any) {
+    console.error("Error updating IndentListing RM code:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to update the RM code.",
+    };
+  }
+}
+
 export async function recomputeIndentListingVersionsAction() {
   "use server";
   try {
@@ -4263,8 +4406,12 @@ export async function recomputeIndentListingVersionsAction() {
       },
     });
 
-    const { planIndentRmCodes, RM_CODE_ITEM_CATEGORY, RM_CODE_VALVE_TYPE } =
-      await import("@/lib/indentRmCodeResolver");
+    const {
+      planIndentRmCodes,
+      planRmCodeWrites,
+      RM_CODE_ITEM_CATEGORY,
+      RM_CODE_VALVE_TYPES,
+    } = await import("@/lib/indentRmCodeResolver");
 
     const [rmCodeSourceRows, rawMaterials] = await Promise.all([
       prisma.indentListing.findMany({
@@ -4295,7 +4442,10 @@ export async function recomputeIndentListingVersionsAction() {
             contains: RM_CODE_ITEM_CATEGORY,
             mode: "insensitive",
           },
-          l2ValveType: { equals: RM_CODE_VALVE_TYPE, mode: "insensitive" },
+          l2ValveType: {
+            in: [...RM_CODE_VALVE_TYPES],
+            mode: "insensitive",
+          },
           newItemStatus: null,
         },
         select: {
@@ -4313,42 +4463,31 @@ export async function recomputeIndentListingVersionsAction() {
 
     const rmCodePlan = planIndentRmCodes(rmCodeSourceRows, rawMaterials);
     const rmCodeCurrentById = new Map(rmCodeSourceRows.map((r) => [r.id, r]));
-    const rmCodeUpdates = rmCodePlan.updates.filter((u) => {
-      const cur = rmCodeCurrentById.get(u.id);
-      if (!cur) return false;
-      return (
-        String(cur.rmCodeV1 ?? "") !== u.rmCodeV1 ||
-        String(cur.rmCodeV2 ?? "") !== u.rmCodeV2 ||
-        String(cur.rmCodeV3 ?? "") !== u.rmCodeV3 ||
-        String(cur.rmCodeV4 ?? "") !== u.rmCodeV4
-      );
-    });
+    // A blank planned value is never written, so a hand-picked code survives a
+    // sync that resolved nothing for that slot.
+    const rmCodeWrites = planRmCodeWrites(
+      rmCodePlan.updates,
+      rmCodeCurrentById,
+    );
 
     // syncedAt is deliberately left alone here: it tracks the Contract Review
     // sync, and an RM code pass is not a Contract Review sync.
-    if (rmCodeUpdates.length > 0) {
+    if (rmCodeWrites.length > 0) {
       await prisma.$transaction(
-        rmCodeUpdates.map((u) =>
-          prisma.indentListing.update({
-            where: { id: u.id },
-            data: {
-              rmCodeV1: u.rmCodeV1,
-              rmCodeV2: u.rmCodeV2,
-              rmCodeV3: u.rmCodeV3,
-              rmCodeV4: u.rmCodeV4,
-            },
-          }),
-        ),
+        rmCodeWrites.map((w) => {
+          const { id, ...data } = w;
+          return prisma.indentListing.update({ where: { id }, data });
+        }),
       );
     }
 
     console.log(
-      `[indent-listing-rmcode] rawMaterials=${rawMaterials.length} rows=${rmCodePlan.updates.length} written=${rmCodeUpdates.length} resolved=${rmCodePlan.resolved} ambiguous=${rmCodePlan.ambiguous} unmatched=${rmCodePlan.unmatched}`,
+      `[indent-listing-rmcode] rawMaterials=${rawMaterials.length} rows=${rmCodePlan.updates.length} written=${rmCodeWrites.length} resolved=${rmCodePlan.resolved} ambiguous=${rmCodePlan.ambiguous} unmatched=${rmCodePlan.unmatched}`,
     );
 
     // Phase 3: publish the RM codes just written onto the Contract Review
     // COST CODE REF column. This reads rmCodeV1..V4 back from disk rather than
-    // reusing `rmCodeUpdates`, so a slot that matched several raw materials
+    // reusing `rmCodeWrites`, so a slot that matched several raw materials
     // lands on the contract exactly as the Indent Listing displays it.
     const { planContractCostCodeRefs } = await import(
       "@/lib/contractCostCodeRefResolver"
@@ -4415,7 +4554,7 @@ export async function recomputeIndentListingVersionsAction() {
 
     const rmCodeSummary =
       rmCodePlan.updates.length === 0
-        ? "No SLV / SLV METAL / TPAV+SLV indent rows to link."
+        ? "No SLV / SLV METAL / TPAV+SLV / NRV indent rows to link."
         : `${rmCodePlan.resolved} linked, ${rmCodePlan.ambiguous} with multiple RM codes, ${rmCodePlan.unmatched} with no RM code.`;
 
     const costCodeRefSummary =
@@ -4440,7 +4579,7 @@ export async function recomputeIndentListingVersionsAction() {
         recomputeSkipped,
         rmCode: {
           rows: rmCodePlan.updates.length,
-          written: rmCodeUpdates.length,
+          written: rmCodeWrites.length,
           resolved: rmCodePlan.resolved,
           ambiguous: rmCodePlan.ambiguous,
           unmatched: rmCodePlan.unmatched,
@@ -5301,6 +5440,14 @@ export async function syncContractReviewRmAvailAction() {
       "@/lib/contractPhysicalStock"
     );
 
+    // 0. Refresh the Indent Listing V1..V4 split, the RM codes and the Contract
+    //    Review COST CODE REF before the PHYSICAL STOCK step below reads that
+    //    ref. Without this an NRV / SLV code published since the last Indent
+    //    Listing recompute would be missed. The call is idempotent: the
+    //    destructive collapse is skipped once the rows are already collapsed,
+    //    but the RM code and cost code ref passes always run.
+    const indentRecompute = await recomputeIndentListingVersionsAction();
+
     // 1. Blank-fill GMDUpdateItem.availableStock from the stock-phys sheet
     const stockPhysMap = await fetchStockPhysicalSheet();
     const stockPhysCodes = Object.keys(stockPhysMap);
@@ -5399,6 +5546,7 @@ export async function syncContractReviewRmAvailAction() {
         stockPhysCodes: stockPhysCodes.length,
         rmAvailUpdated: rmAvailUpdates.length,
         physicalStockUpdated: physicalUpdates.length,
+        indentRecompute: indentRecompute?.data ?? null,
       },
     };
   } catch (error: any) {
@@ -5423,6 +5571,113 @@ export async function updateSupplyHistoryFieldAction(
     }
   );
   return { id, field, value };
+}
+
+/**
+ * Remembers the BOM a Supply History row should display. `bomId` comes from the
+ * row's BOM dropdown, which lists every BOM the row's raw material feeds into.
+ * The chosen BOM resolves to a specific `BomItem` so its component cost can be
+ * shown. Passing `null` clears the selection.
+ */
+export async function updateSupplyHistorySelectedBomAction(
+  supplyHistoryItemId: string,
+  bomId: string | null,
+) {
+  "use server";
+  try {
+    if (!bomId) {
+      await prisma.supplyHistoryItem.update({
+        where: { id: supplyHistoryItemId },
+        data: { selectedBomItemId: null },
+      });
+      return { success: true, data: { bomId: null } };
+    }
+
+    // Only a BOM that is actually linked to this Supply History row is valid.
+    const link = await prisma.supplyHistoryBomLink.findFirst({
+      where: { supplyHistoryItemId, bom: { is: { bomId } } },
+      select: { bomItemId: true },
+      orderBy: { bomItemId: "asc" },
+    });
+    if (!link) {
+      return {
+        success: false,
+        error: "Selected BOM is not linked to this Supply History row.",
+      } as const;
+    }
+
+    await prisma.supplyHistoryItem.update({
+      where: { id: supplyHistoryItemId },
+      data: { selectedBomItemId: link.bomItemId },
+    });
+    return { success: true, data: { bomId } };
+  } catch (e: unknown) {
+    console.error("[updateSupplyHistorySelectedBomAction] failed:", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to save BOM selection.",
+    } as const;
+  }
+}
+
+/**
+ * Manually edits the cost of the BOM currently selected on a Supply History row.
+ * The cost lives on the selected `BomItem` (shared with the BOM dashboard), not
+ * on `SupplyHistoryItem`, so this writes through to `BomItem.cost`.
+ */
+export async function updateSupplyHistoryBomCostAction(
+  supplyHistoryItemId: string,
+  value: string | number | null,
+) {
+  "use server";
+  try {
+    const item = await prisma.supplyHistoryItem.findUnique({
+      where: { id: supplyHistoryItemId },
+      select: { selectedBomItemId: true },
+    });
+    if (!item) {
+      return { success: false, error: "Supply History row not found." } as const;
+    }
+    if (!item.selectedBomItemId) {
+      return {
+        success: false,
+        error: "No BOM is selected for this row.",
+      } as const;
+    }
+
+    // Only a BomItem actually linked to this row may be edited.
+    const link = await prisma.supplyHistoryBomLink.findFirst({
+      where: { supplyHistoryItemId, bomItemId: item.selectedBomItemId },
+      select: { bomItemId: true },
+    });
+    if (!link) {
+      return {
+        success: false,
+        error: "Selected BOM is not linked to this Supply History row.",
+      } as const;
+    }
+
+    let cost: number | null = null;
+    if (value !== null && String(value).trim() !== "") {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) {
+        return { success: false, error: "BOM cost must be a number." } as const;
+      }
+      cost = parsed;
+    }
+
+    await prisma.bomItem.update({
+      where: { id: item.selectedBomItemId },
+      data: { cost },
+    });
+    return { success: true, data: { cost } };
+  } catch (e: unknown) {
+    console.error("[updateSupplyHistoryBomCostAction] failed:", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to update BOM cost.",
+    } as const;
+  }
 }
 
 export async function updateBisStatusFieldAction(
@@ -5463,6 +5718,8 @@ export async function getGMDCastingRatesAction() {
       CI: "",
       SS: "",
       Bronze: "",
+      MS: "",
+      GI: "",
     };
     for (const row of rows) {
       const eq = row.value.indexOf("=");
@@ -5502,6 +5759,95 @@ export async function saveGMDCastingRateAction(key: string, value: string) {
     return {
       success: false,
       error: error.message || "Failed to save casting rate.",
+    };
+  }
+}
+
+/**
+ * Set the bolt material (SS/GI) for a Flange row and recompute its bolt/nut
+ * weight and cost. MS/CS rows ignore the passed material and stay locked to the
+ * flange MOC; every other MOC defaults to GI when no material is passed. The
+ * BOLT WEIGHT cell encodes the result as `<weight>|<material>`; costs use the
+ * material's per-kg `GMD_CASTING_RATE` rate.
+ */
+export async function updateFlangeBoltWeightAction(id: string, material: string) {
+  "use server";
+  try {
+    const flange = await prisma.flange.findUnique({ where: { id } });
+    if (!flange) {
+      return { success: false, error: "Flange row not found." };
+    }
+
+    const [densityRows, rateRows] = await Promise.all([
+      prisma.density.findMany({
+        select: { material: true, densityGmCm3: true },
+      }),
+      prisma.lookupOption.findMany({
+        where: { type: "GMD_CASTING_RATE" },
+        select: { value: true },
+      }),
+    ]);
+    const densityByMaterial = buildDensityMap(densityRows);
+
+    const base = resolveBoltMaterial(flange.moc);
+    const chosen =
+      base === "MS" || base === "CS"
+        ? base
+        : material === "GI" || material === "SS"
+          ? material
+          : "GI";
+
+    const volume = computeBoltVolumeMm3(
+      parseNumber(flange.boltDiaMm),
+      parseNumber(flange.boltLengthMm),
+    );
+    const density = resolveMocDensity(chosen, densityByMaterial);
+    const weightKg = computeBoltWeightKg(volume, density);
+    const nutWeightKg = computeNutWeightKg(weightKg);
+
+    // Per-kg rate for the chosen material, from "KEY=rate" lookup rows.
+    const rateKey = resolveBoltRateKey(chosen);
+    let ratePerKg: number | null = null;
+    if (rateKey != null) {
+      const rateRow = rateRows.find((r) => {
+        const eq = r.value.indexOf("=");
+        return eq !== -1 && r.value.slice(0, eq).trim() === rateKey;
+      });
+      if (rateRow) {
+        ratePerKg = parseNumber(rateRow.value.slice(rateRow.value.indexOf("=") + 1));
+      }
+    }
+    const { boltCost, nutCost } = computeNutBoltCost(
+      weightKg,
+      nutWeightKg,
+      ratePerKg,
+    );
+
+    const updated = await prisma.flange.update({
+      where: { id },
+      data: {
+        boltWeight: encodeBoltWeight(weightKg, chosen),
+        nutWeight: nutWeightKg != null ? nutWeightKg.toFixed(2) : "",
+        boltCost: boltCost != null ? boltCost.toFixed(2) : "",
+        nutCost: nutCost != null ? nutCost.toFixed(2) : "",
+      },
+    });
+
+    return {
+      success: true,
+      data: {
+        boltWeight: updated.boltWeight,
+        nutWeight: updated.nutWeight,
+        boltCost: updated.boltCost,
+        nutCost: updated.nutCost,
+      },
+    };
+  } catch (error) {
+    console.error("Error updating flange bolt weight:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to update bolt weight.",
     };
   }
 }

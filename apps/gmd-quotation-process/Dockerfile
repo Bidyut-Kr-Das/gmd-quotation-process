@@ -24,6 +24,7 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 # Dummy URLs so Prisma and Next.js can generate and build without a database.
 ENV QUOTATION_DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 ENV TENDER_DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+ENV STOCK_DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN pnpm turbo run build --filter=gmd-quotation-process
 
 # stage 3: runtime
