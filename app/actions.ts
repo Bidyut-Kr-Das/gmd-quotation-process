@@ -1002,9 +1002,13 @@ export async function updateEnquiryFieldAction(
  * The email is sent as a reply inside the linked `DocketQuotationThread` (the
  * latest thread whose `docketNo` matches this docket number) so it lands on the
  * RFQ conversation instead of starting a new one. When no linked thread exists
- * the action returns "Linked email thread not found" and sends nothing.
+ * the action returns `code: "NO_THREAD"` and sends nothing — unless the caller
+ * passes `allowNoThread`, which sends it as a plain new email instead.
  */
-export async function sendDocketEmailAction(enquiryId: string) {
+export async function sendDocketEmailAction(
+  enquiryId: string,
+  allowNoThread = false,
+) {
   try {
     const { auth } = await import("@/auth");
     const session = await auth();
@@ -1029,13 +1033,19 @@ export async function sendDocketEmailAction(enquiryId: string) {
       return { success: false, error: "No recipient (sender email) on this docket." };
     }
 
-    // The quotation must go back as a reply in the thread the RFQ arrived on.
-    // Resolve the latest thread linked to this docket number and refuse to send
-    // (rather than start a detached thread) when there is none.
+    // The quotation should go back as a reply in the thread the RFQ arrived on.
+    // Resolve the latest thread linked to this docket number. When there is
+    // none, refuse (code NO_THREAD) unless the caller opted into a plain new
+    // email via allowNoThread.
     const { findLatestLinkedThread } = await import("@/lib/docketThreadResolver");
     const linkedThread = await findLatestLinkedThread(enquiry.docketNumber);
-    if (!linkedThread) {
-      return { success: false, error: "Linked email thread not found" };
+    if (!linkedThread && !allowNoThread) {
+      return {
+        success: false,
+        error: "Linked email thread not found",
+        // Lets the client offer "send as a new mail" instead of failing.
+        code: "NO_THREAD" as const,
+      };
     }
 
     // Always Cc the fixed address, merged with the docket's other emails and
@@ -1101,7 +1111,7 @@ export async function sendDocketEmailAction(enquiryId: string) {
       docketNumber: enquiry.docketNumber,
       fileName: pdfRes.fileName || `${enquiry.docketNumber}.pdf`,
       pdfBuffer,
-      threadId: linkedThread.threadId,
+      threadId: linkedThread?.threadId,
     });
     if (!send.success) {
       return { success: false, error: send.error || "Email sending failed." };

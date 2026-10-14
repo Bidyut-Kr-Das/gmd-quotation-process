@@ -5884,6 +5884,7 @@ function SendEmailCell({ enquiry }: { enquiry: EnquiryData }) {
   const dispatch = useAppDispatch();
   const [sending, setSending] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [noThreadOpen, setNoThreadOpen] = useState(false);
 
   const approved = !!enquiry.emailApproved;
   const sentBy = enquiry.emailSentBy ?? null;
@@ -5914,18 +5915,37 @@ function SendEmailCell({ enquiry }: { enquiry: EnquiryData }) {
     }
   };
 
-  const handleSend = async () => {
-    if (!canSend) return;
+  const doSend = async (allowNoThread: boolean) => {
     setSending(true);
     const toastId = toast.loading("Sending email...");
     try {
-      await dispatch(sendDocketEmail(enquiry.id)).unwrap();
+      await dispatch(sendDocketEmail({ enquiryId: enquiry.id, allowNoThread })).unwrap();
       toast.success("Email sent.", { id: toastId });
+      setNoThreadOpen(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : typeof e === "string" ? e : "Failed to send email", { id: toastId });
+      // No linked thread: let the user decide to send it as a new mail instead.
+      if (e && typeof e === "object" && (e as { code?: string }).code === "NO_THREAD") {
+        toast.dismiss(toastId);
+        setNoThreadOpen(true);
+        return;
+      }
+      const msg =
+        e && typeof e === "object" && "error" in e
+          ? String((e as { error?: unknown }).error)
+          : e instanceof Error
+            ? e.message
+            : typeof e === "string"
+              ? e
+              : "Failed to send email";
+      toast.error(msg, { id: toastId });
     } finally {
       setSending(false);
     }
+  };
+
+  const handleSend = () => {
+    if (!canSend) return;
+    void doSend(false);
   };
 
   if (sent) {
@@ -5999,6 +6019,38 @@ function SendEmailCell({ enquiry }: { enquiry: EnquiryData }) {
         {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
         {sending ? "Sending" : "Send"}
       </button>
+
+      <Dialog
+        open={noThreadOpen}
+        onOpenChange={(v) => {
+          if (!v && !sending) setNoThreadOpen(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">
+              No linked email thread
+            </DialogTitle>
+          </DialogHeader>
+          <p className="py-2 text-sm text-muted-foreground">
+            This docket isn&apos;t linked to a Gmail thread, so the quotation
+            can&apos;t be sent as a reply. Send it as a new email instead?
+          </p>
+          <DialogFooter className="pt-2 border-t border-border flex justify-end gap-2">
+            <DialogClose render={<Button type="button" variant="outline" size="sm" disabled={sending} />}>
+              Cancel
+            </DialogClose>
+            <Button
+              type="button"
+              size="sm"
+              disabled={sending}
+              onClick={() => void doSend(true)}
+            >
+              {sending ? "Sending..." : "Send as new mail"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

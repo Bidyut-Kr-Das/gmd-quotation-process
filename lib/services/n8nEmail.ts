@@ -81,7 +81,12 @@ export async function sendDocketEmailViaN8n(
       // n8n may respond with an empty/plain body; that is still a success.
     }
 
-    console.log("[n8n-email] sent", { docketNumber: payload.docketNumber, status: response.status });
+    console.log("[n8n-email] sent", {
+      docketNumber: payload.docketNumber,
+      status: response.status,
+      // Presence of a thread id is what makes n8n reply in-thread vs send new.
+      threadId: payload.threadId ?? "",
+    });
     return { success: true, messageId };
   } catch (error) {
     console.error("[n8n-email] error", error);

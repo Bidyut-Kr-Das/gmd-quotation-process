@@ -11,8 +11,8 @@
       "id": "webhook-send-docket-email",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [0, 0],
+      "typeVersion": 2.1,
+      "position": [-368, 0],
       "webhookId": "send-docket-email"
     },
     {
@@ -21,8 +21,8 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "loose",
-            "version": 2
+            "typeValidation": "strict",
+            "version": 3
           },
           "conditions": [
             {
@@ -41,10 +41,10 @@
         "options": {}
       },
       "id": "if-has-recipient",
-      "name": "Has Recipient",
+      "name": "If",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [220, 0]
+      "typeVersion": 2.3,
+      "position": [-144, 0]
     },
     {
       "parameters": {
@@ -52,8 +52,8 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "loose",
-            "version": 2
+            "typeValidation": "strict",
+            "version": 3
           },
           "conditions": [
             {
@@ -74,8 +74,8 @@
       "id": "if-has-thread",
       "name": "Has Thread",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [440, 0]
+      "typeVersion": 2.3,
+      "position": [-144, 208]
     },
     {
       "parameters": {
@@ -88,10 +88,12 @@
         }
       },
       "id": "gmail-get-thread",
-      "name": "Gmail - Get Thread",
+      "name": "Get Thread",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
-      "position": [660, -80],
+      "typeVersion": 2.2,
+      "position": [256, 256],
+      "webhookId": "gmail-get-thread",
+      "onError": "continueErrorOutput",
       "credentials": {
         "gmailOAuth2": {
           "id": "REPLACE_WITH_GMAIL_OAUTH2_CREDENTIAL_ID",
@@ -107,32 +109,31 @@
       "name": "Pick Last Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [880, -80]
+      "position": [480, 96]
     },
     {
       "parameters": {
-        "resource": "message",
         "operation": "reply",
         "messageId": "={{ $json.messageId }}",
-        "emailType": "html",
         "message": "={{ $json.body.html }}",
         "options": {
-          "ccList": "={{ $json.body.cc }}",
           "attachmentsUi": {
             "attachmentsBinary": [
               {
-                "property": "attachment",
-                "name": "={{ $json.body.fileName }}"
+                "property": "attachment"
               }
             ]
-          }
+          },
+          "ccList": "={{ $json.body.cc }}"
         }
       },
       "id": "gmail-reply",
-      "name": "Gmail - Reply",
+      "name": "Reply",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
-      "position": [1100, -80],
+      "typeVersion": 2.2,
+      "position": [736, 80],
+      "webhookId": "gmail-reply",
+      "onError": "continueErrorOutput",
       "credentials": {
         "gmailOAuth2": {
           "id": "REPLACE_WITH_GMAIL_OAUTH2_CREDENTIAL_ID",
@@ -142,29 +143,36 @@
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "send",
+        "jsCode": "// Reply path failed: restore the original webhook body + attachment binary\n// so 'Send a message' still has $json.body.* and $binary.attachment.\nconst webhook = $('Webhook').first();\nreturn [{ json: webhook.json, binary: webhook.binary }];"
+      },
+      "id": "fallback-item",
+      "name": "Fallback Item",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [816, 384]
+    },
+    {
+      "parameters": {
         "sendTo": "={{ $json.body.to }}",
         "subject": "={{ $json.body.subject }}",
-        "emailType": "html",
         "message": "={{ $json.body.html }}",
         "options": {
-          "ccList": "={{ $json.body.cc }}",
           "attachmentsUi": {
             "attachmentsBinary": [
               {
-                "property": "attachment",
-                "name": "={{ $json.body.fileName }}"
+                "property": "attachment"
               }
             ]
-          }
+          },
+          "ccList": "={{ $json.body.cc }}"
         }
       },
       "id": "gmail-send",
-      "name": "Gmail - Send",
+      "name": "Send a message",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
-      "position": [660, 200],
+      "typeVersion": 2.2,
+      "position": [432, -272],
+      "webhookId": "gmail-send",
       "credentials": {
         "gmailOAuth2": {
           "id": "REPLACE_WITH_GMAIL_OAUTH2_CREDENTIAL_ID",
@@ -175,28 +183,30 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { \"success\": true, \"messageId\": $json.id, \"threadId\": $json.threadId } }}",
-        "options": {}
-      },
-      "id": "respond-ok",
-      "name": "Respond OK",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [1320, 0]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { \"success\": false, \"error\": \"Missing recipient (to)\" } }}",
+        "responseBody": "={\n  \"success\": false,\n  \"error\": \"Missing recipient (to)\"\n}",
         "options": {
           "responseCode": 400
         }
       },
       "id": "respond-error",
-      "name": "Respond Error",
+      "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [660, 400]
+      "typeVersion": 1.5,
+      "position": [112, -336]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\": true, \"messageId\": \"{{ $json.id }}\"}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-ok",
+      "name": "Respond to Webhook1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [832, -176]
     }
   ],
   "connections": {
@@ -204,14 +214,14 @@
       "main": [
         [
           {
-            "node": "Has Recipient",
+            "node": "If",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Has Recipient": {
+    "If": {
       "main": [
         [
           {
@@ -222,7 +232,7 @@
         ],
         [
           {
-            "node": "Respond Error",
+            "node": "Respond to Webhook",
             "type": "main",
             "index": 0
           }
@@ -233,25 +243,32 @@
       "main": [
         [
           {
-            "node": "Gmail - Get Thread",
+            "node": "Get Thread",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Gmail - Send",
+            "node": "Send a message",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Gmail - Get Thread": {
+    "Get Thread": {
       "main": [
         [
           {
             "node": "Pick Last Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback Item",
             "type": "main",
             "index": 0
           }
@@ -262,29 +279,47 @@
       "main": [
         [
           {
-            "node": "Gmail - Reply",
+            "node": "Reply",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Gmail - Reply": {
+    "Reply": {
       "main": [
         [
           {
-            "node": "Respond OK",
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback Item",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Gmail - Send": {
+    "Fallback Item": {
       "main": [
         [
           {
-            "node": "Respond OK",
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
             "type": "main",
             "index": 0
           }
@@ -293,13 +328,10 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
   "active": false,
   "pinData": {},
-  "versionId": "2",
-  "meta": {
-    "templateCredsSetupCompleted": false
-  },
   "tags": []
 }
