@@ -13,7 +13,9 @@ interface IndentListingData {
   headers: string[];
   rows: unknown[][];
   ids: string[];
+  sourceIds: string[][];
   metrics: VariantMetrics[][];
+  rmOptions: { code: string; name: string }[];
   totalRows: number;
   syncedAt: string | null;
 }
@@ -189,7 +191,10 @@ export default function IndentListingPage() {
           title="MC RECEIVED / PENDING"
           rows={data?.rows ?? []}
           ids={data?.ids ?? []}
+          sourceIds={data?.sourceIds ?? []}
           metrics={data?.metrics ?? []}
+          rmOptions={data?.rmOptions ?? []}
+          onRefresh={fetchData}
         />
       </div>
     </main>

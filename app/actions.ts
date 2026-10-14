@@ -4685,6 +4685,41 @@ export async function updateContractReviewFieldAction(
   }
 }
 
+export async function updateIndentRmCodeAction(input: {
+  sourceIds: string[];
+  slot: 1 | 2 | 3 | 4;
+  value: string;
+}): Promise<{ success: boolean; updated?: number; error?: string }> {
+  "use server";
+  try {
+    const sourceIds = (input.sourceIds ?? []).filter(
+      (id) => typeof id === "string" && id.trim() !== "",
+    );
+    const slot = Number(input.slot);
+    if (sourceIds.length === 0) {
+      return { success: false, error: "No stored rows behind this line." };
+    }
+    if (![1, 2, 3, 4].includes(slot)) {
+      return { success: false, error: "Invalid variant slot." };
+    }
+
+    const value = String(input.value ?? "").trim();
+    // Every stored row behind the displayed line gets the same value: a
+    // TPAV+SLV compound is folded into the SLV/TPAV rows it contributes to.
+    const result = await prisma.indentListing.updateMany({
+      where: { id: { in: sourceIds } },
+      data: { [`rmCodeV${slot}`]: value },
+    });
+    return { success: true, updated: result.count };
+  } catch (error: any) {
+    console.error("Error updating IndentListing RM code:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to update the RM code.",
+    };
+  }
+}
+
 export async function recomputeIndentListingVersionsAction() {
   "use server";
   try {
@@ -4809,8 +4844,12 @@ export async function recomputeIndentListingVersionsAction() {
       },
     });
 
-    const { planIndentRmCodes, RM_CODE_ITEM_CATEGORY, RM_CODE_VALVE_TYPES } =
-      await import("@/lib/indentRmCodeResolver");
+    const {
+      planIndentRmCodes,
+      planRmCodeWrites,
+      RM_CODE_ITEM_CATEGORY,
+      RM_CODE_VALVE_TYPES,
+    } = await import("@/lib/indentRmCodeResolver");
 
     const [rmCodeSourceRows, rawMaterials] = await Promise.all([
       prisma.indentListing.findMany({
@@ -4862,42 +4901,31 @@ export async function recomputeIndentListingVersionsAction() {
 
     const rmCodePlan = planIndentRmCodes(rmCodeSourceRows, rawMaterials);
     const rmCodeCurrentById = new Map(rmCodeSourceRows.map((r) => [r.id, r]));
-    const rmCodeUpdates = rmCodePlan.updates.filter((u) => {
-      const cur = rmCodeCurrentById.get(u.id);
-      if (!cur) return false;
-      return (
-        String(cur.rmCodeV1 ?? "") !== u.rmCodeV1 ||
-        String(cur.rmCodeV2 ?? "") !== u.rmCodeV2 ||
-        String(cur.rmCodeV3 ?? "") !== u.rmCodeV3 ||
-        String(cur.rmCodeV4 ?? "") !== u.rmCodeV4
-      );
-    });
+    // A blank planned value is never written, so a hand-picked code survives a
+    // sync that resolved nothing for that slot.
+    const rmCodeWrites = planRmCodeWrites(
+      rmCodePlan.updates,
+      rmCodeCurrentById,
+    );
 
     // syncedAt is deliberately left alone here: it tracks the Contract Review
     // sync, and an RM code pass is not a Contract Review sync.
-    if (rmCodeUpdates.length > 0) {
+    if (rmCodeWrites.length > 0) {
       await prisma.$transaction(
-        rmCodeUpdates.map((u) =>
-          prisma.indentListing.update({
-            where: { id: u.id },
-            data: {
-              rmCodeV1: u.rmCodeV1,
-              rmCodeV2: u.rmCodeV2,
-              rmCodeV3: u.rmCodeV3,
-              rmCodeV4: u.rmCodeV4,
-            },
-          }),
-        ),
+        rmCodeWrites.map((w) => {
+          const { id, ...data } = w;
+          return prisma.indentListing.update({ where: { id }, data });
+        }),
       );
     }
 
     console.log(
-      `[indent-listing-rmcode] rawMaterials=${rawMaterials.length} rows=${rmCodePlan.updates.length} written=${rmCodeUpdates.length} resolved=${rmCodePlan.resolved} ambiguous=${rmCodePlan.ambiguous} unmatched=${rmCodePlan.unmatched}`,
+      `[indent-listing-rmcode] rawMaterials=${rawMaterials.length} rows=${rmCodePlan.updates.length} written=${rmCodeWrites.length} resolved=${rmCodePlan.resolved} ambiguous=${rmCodePlan.ambiguous} unmatched=${rmCodePlan.unmatched}`,
     );
 
     // Phase 3: publish the RM codes just written onto the Contract Review
     // COST CODE REF column. This reads rmCodeV1..V4 back from disk rather than
-    // reusing `rmCodeUpdates`, so a slot that matched several raw materials
+    // reusing `rmCodeWrites`, so a slot that matched several raw materials
     // lands on the contract exactly as the Indent Listing displays it.
     const { planContractCostCodeRefs } = await import(
       "@/lib/contractCostCodeRefResolver"
@@ -4989,7 +5017,7 @@ export async function recomputeIndentListingVersionsAction() {
         recomputeSkipped,
         rmCode: {
           rows: rmCodePlan.updates.length,
-          written: rmCodeUpdates.length,
+          written: rmCodeWrites.length,
           resolved: rmCodePlan.resolved,
           ambiguous: rmCodePlan.ambiguous,
           unmatched: rmCodePlan.unmatched,

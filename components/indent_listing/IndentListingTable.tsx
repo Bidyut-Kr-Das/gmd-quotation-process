@@ -1,9 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
+import { toast } from "sonner";
+import { updateIndentRmCodeAction } from "@/app/actions";
 import MultiSelectFilter, { BLANK } from "@/components/table/MultiSelectFilter";
 import Pagination from "@/components/table/Pagination";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 import type { VariantMetrics } from "@/lib/indentListingMetrics";
 
 interface IndentListingTableProps {
@@ -12,6 +15,12 @@ interface IndentListingTableProps {
   ids: string[];
   /** Per-row, per-variant metrics aligned with `rows`. */
   metrics: VariantMetrics[][];
+  /** Stored-row ids behind each displayed row, aligned with `rows`. */
+  sourceIds: string[][];
+  /** Raw materials offered by the hand-pick RM code dropdown. */
+  rmOptions: { code: string; name: string }[];
+  /** Re-fetch the listing after a hand-picked RM code is saved. */
+  onRefresh: () => void;
 }
 
 // Row layout (17 fields) produced by `lib/indentListingRead.ts`:
@@ -145,11 +154,72 @@ function compareCell(a: string, b: string, numeric: boolean): number {
   return a.localeCompare(b, undefined, { numeric: true });
 }
 
+// Keeps the hand-picked RM code inside this leaf and commits upward after 300ms, so
+// rapid picks do not fire overlapping writes/refreshes with a stale value.
+function RmCodeCell({
+  label,
+  options,
+  optionLabels,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  optionLabels: Record<string, string>;
+  selected: string[];
+  onChange: (value: string[]) => void;
+}) {
+  const selectedKey = JSON.stringify(selected);
+  const [local, setLocal] = useState(selected);
+  const [prevKey, setPrevKey] = useState(selectedKey);
+  const debounced = useDebounce(local, 300);
+  const isPickingRef = useRef(false);
+
+  // Adjust during render rather than in an effect, so a refresh from outside shows in
+  // the dropdown on the same commit instead of one render later.
+  if (selectedKey !== prevKey) {
+    setPrevKey(selectedKey);
+    setLocal(selected);
+  }
+
+  // An incoming value means the change came from outside, not from picking here. Without
+  // this the still-pending debounced pick would be committed back and bounce the selection.
+  useEffect(() => {
+    isPickingRef.current = false;
+  }, [selectedKey]);
+
+  useEffect(() => {
+    if (isPickingRef.current && JSON.stringify(debounced) !== selectedKey)
+      onChange(debounced);
+  }, [debounced, selectedKey, onChange]);
+
+  return (
+    <MultiSelectFilter
+      label={label}
+      allLabel="—"
+      options={options}
+      cascadedOptions={options}
+      optionLabels={optionLabels}
+      selected={local}
+      onChange={(vals) => {
+        isPickingRef.current = true;
+        setLocal(vals);
+      }}
+      renderButtonLabel={(sel) => (sel.length > 0 ? sel.join(", ") : "—")}
+      align="end"
+      className="h-5 w-auto max-w-full gap-1 border-0 bg-transparent px-1 py-0 text-[10px] font-mono font-medium normal-case text-[#0f62fe] hover:bg-[#0f62fe]/10 dark:text-primary"
+    />
+  );
+}
+
 export default function IndentListingTable({
   title,
   rows,
   ids,
   metrics,
+  sourceIds,
+  rmOptions,
+  onRefresh,
 }: IndentListingTableProps) {
   const [sortIdx, setSortIdx] = useState<number | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
@@ -179,6 +249,35 @@ export default function IndentListingTable({
   const getMetrics = useCallback(
     (row: unknown[]) => metricsByRow.get(row),
     [metricsByRow],
+  );
+
+  // Row reference -> its stored source ids, so an edit reaches every DB row the
+  // displayed (possibly merged or synthesized) line is built from.
+  const sourceIdsByRow = useMemo(() => {
+    const map = new Map<unknown[], string[]>();
+    rows.forEach((row, i) => map.set(row, sourceIds[i] ?? []));
+    return map;
+  }, [rows, sourceIds]);
+
+  const rmCodes = useMemo(() => rmOptions.map((o) => o.code), [rmOptions]);
+  const rmOptionLabels = useMemo(
+    () => Object.fromEntries(rmOptions.map((o) => [o.code, `${o.code} — ${o.name}`])),
+    [rmOptions],
+  );
+
+  const handleRmCodeChange = useCallback(
+    async (row: unknown[], slot: number, value: string) => {
+      const targets = sourceIdsByRow.get(row) ?? [];
+      if (targets.length === 0) return;
+      const res = await updateIndentRmCodeAction({
+        sourceIds: targets,
+        slot: (slot + 1) as 1 | 2 | 3 | 4,
+        value,
+      });
+      if (res.success) onRefresh();
+      else toast.error(res.error ?? "Failed to update the RM code.");
+    },
+    [sourceIdsByRow, onRefresh],
   );
 
   // Mouse drag handler for column resizing. Paints straight to the DOM during
@@ -325,9 +424,10 @@ export default function IndentListingTable({
         col.categoryIdx === undefined ? "" : cellText(row, col.categoryIdx);
       const rmCode =
         col.rmCodeIdx === undefined ? "" : cellText(row, col.rmCodeIdx);
+      const targets = sourceIdsByRow.get(row) ?? [];
 
       if (value === "") return "—";
-      if (category === "" && rmCode === "") return value;
+      if (category === "" && rmCode === "" && targets.length === 0) return value;
 
       return (
         <span className="flex flex-col items-end gap-0.5">
@@ -339,11 +439,27 @@ export default function IndentListingTable({
               </span>
             )}
           </span>
-          {rmCode !== "" && (
+          {targets.length > 0 ? (
+            // Stored rows exist behind this line, so the code is hand-pickable.
+            <RmCodeCell
+              label={`${col.slotLabel} RM code`}
+              options={rmCodes}
+              optionLabels={rmOptionLabels}
+              selected={
+                rmCode === ""
+                  ? []
+                  : rmCode
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+              }
+              onChange={(vals) => handleRmCodeChange(row, col.slot, vals.join(", "))}
+            />
+          ) : rmCode !== "" ? (
             <span className="text-[10px] font-mono font-medium text-[#0f62fe] dark:text-primary">
               {rmCode}
             </span>
-          )}
+          ) : null}
         </span>
       );
     }

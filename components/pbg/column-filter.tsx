@@ -32,12 +32,17 @@ export function ColumnFilterPopover({
     onChange(empty ? undefined : merged);
   }
 
-  const multiselect =
-    def.type === "select" || (def.type === "text" && def.filter === "multiselect");
+  const showMultiSelect = def.type !== "files" && def.type !== "links";
+
+  // Keep already-selected values visible even when cascading rules them out of
+  // the current option list, so a selection never silently disappears.
+  const valueOptions = Array.from(
+    new Set([...distinct, ...(filter.selected ?? [])]),
+  );
 
   return (
-    <div className="w-72 p-3">
-      <div className="mb-2 flex items-center justify-between">
+    <div className="w-72 space-y-3 p-3">
+      <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-slate-700">{def.label}</span>
         <button
           type="button"
@@ -48,15 +53,7 @@ export function ColumnFilterPopover({
         </button>
       </div>
 
-      {multiselect && (
-        <MultiSelect
-          options={distinct}
-          selected={filter.selected ?? []}
-          onChange={(values) => patch({ selected: values })}
-        />
-      )}
-
-      {def.type === "text" && !multiselect && (
+      {def.type === "text" && (
         <input
           type="text"
           value={filter.text ?? ""}
@@ -123,6 +120,19 @@ export function ColumnFilterPopover({
               className={inputClass}
             />
           </label>
+        </div>
+      )}
+
+      {showMultiSelect && (
+        <div>
+          <span className="mb-1 block text-[11px] font-medium text-slate-500">
+            Values
+          </span>
+          <MultiSelect
+            options={valueOptions}
+            selected={filter.selected ?? []}
+            onChange={(values) => patch({ selected: values })}
+          />
         </div>
       )}
     </div>

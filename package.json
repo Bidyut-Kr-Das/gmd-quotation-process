@@ -64,6 +64,8 @@
     "rm:cost:round10:apply": "tsx scripts/round-raw-material-cost-to-10.ts --apply",
     "flange:weight": "tsx scripts/compute-flange-weight.ts",
     "flange:weight:apply": "tsx scripts/compute-flange-weight.ts --apply",
+    "pbg:sync": "tsx scripts/sync-pbg-data.ts",
+    "pbg:sync:apply": "tsx scripts/sync-pbg-data.ts --apply",
     "physical:cost": "tsx scripts/backfill-physical-stock-cost-bom.ts",
     "physical:cost:apply": "tsx scripts/backfill-physical-stock-cost-bom.ts --apply",
     "physical:copy-neon": "tsx scripts/copy-physical-stock-to-neon.ts",
