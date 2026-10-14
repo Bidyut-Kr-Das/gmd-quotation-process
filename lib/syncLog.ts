@@ -20,6 +20,7 @@ import { prisma } from "@/lib/prisma";
 export const SYNC_LOG_KIND = {
   executionTracking: "execution-tracking",
   accMaster: "acc-master",
+  erpContractNo: "erp-contract-no",
 } as const;
 
 export type SyncLogKind = (typeof SYNC_LOG_KIND)[keyof typeof SYNC_LOG_KIND];

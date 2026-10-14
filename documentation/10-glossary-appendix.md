@@ -17,6 +17,7 @@
 | **Sale Bill script (optional)** | `SALE_BILL_SPREADSHEET_ID` | Env | `GID 0` | `A:ZZZ` | `FORMATTED_VALUE` | `getOAuthClient` | `scripts/import-sale-bill.ts` |
 | **Execution Tracking** `ACC_MASTER` | `GMD_EXECUTION_TRACKING_SPREADSHEET_ID` | Env | `ACC_MASTER_GID` 566954129 | `A1:ZZZ` | `FORMATTED_VALUE` | `getOAuthClient` | `schedular_function/acc-master-sync.ts` → `acc_master` |
 | **Execution Tracking** `SALE_BILL` | `GMD_EXECUTION_TRACKING_SPREADSHEET_ID` | Env | `SALE_BILL_GID` 604337671 | `A1:ZZZ` | `FORMATTED_VALUE` | `getOAuthClient` | `lib/executionTrackingSync.ts` → `SupplyHistoryItem` |
+| **Execution Tracking** `MC` | `GMD_EXECUTION_TRACKING_SPREADSHEET_ID` | Env | `MC_GID` 1910912133 | `A1:ZZZ` | `FORMATTED_VALUE` | `getOAuthClient` | `lib/erpContractNoSync.ts` → `SupplyHistoryItem.erpContractNo` |
 
 **Env vars (set in deployment `.env`):** Only `DATABASE_URL` currently present locally `D:\gmd-quotation-process\.env`; expected but missing locally: `GOOGLE_SPREADSHEET_ID`, `SUPPLY_HISTORY_SPREADSHEET_ID`, `CONTRACT_SHEET_SPREADSHEET_ID`, `SALE_BILL_SPREADSHEET_ID`, `GDRIVE_*`, `OPENAI*`, `GEMINI*`, `N8N_WEBHOOK`, `GOOGLE_DRIVE` etc — see `lib/gmd_lib/google-sheets.ts`, `app/api/**/sync/route.ts`.
 
@@ -131,6 +132,7 @@ SALE_BILL_SPREADSHEET_ID=...         # optional scripts/import-sale-bill.ts
 GMD_EXECUTION_TRACKING_SPREADSHEET_ID=...  # execution-tracking sync + acc-master refresh
 ACC_MASTER_GID=566954129             # tab gid: ACC_CODE -> ACC_NAME (acc_master table)
 SALE_BILL_GID=604337671              # tab gid: the per-invoice execution rows
+MC_GID=1910912133                    # tab gid: ORDER_VRNO (VRNO) -> CONTRACT_VRNO (erpContractNo)
 
 # Google OAuth (files credentials.json + token.json must exist, or set these)
 # credentials.json installed/web client_id/client_secret/redirect_uris[0]

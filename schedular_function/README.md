@@ -12,12 +12,12 @@ Where an algorithm already existed there, it was copied rather than imported
 
 ## Jobs
 
-Seven hourly jobs plus `execution-tracking`, which runs every 2 hours. All are
-staggered so no two heavy ones collide.
+Eight hourly jobs plus `execution-tracking` and `erp-contract-no`, which run
+every 2 hours. All are staggered so no two heavy ones collide.
 
-| :00 | :05 | :15 | :20 | :30 | :35 | :40 | :45 |
-|---|---|---|---|---|---|---|---|
-| `raw-material` | `bom-mast` | `supply-history` | `docket-creation` | `contract-review` | `acc-master` | `execution-tracking` | `c-batch` |
+| :00 | :05 | :15 | :20 | :30 | :35 | :40 | :45 | :50 |
+|---|---|---|---|---|---|---|---|---|
+| `raw-material` | `bom-mast` | `supply-history` | `docket-creation` | `contract-review` | `acc-master` | `execution-tracking` | `c-batch` | `erp-contract-no` |
 
 | Job | Endpoint | Ofelia job name | Reads |
 |---|---|---|---|
@@ -29,6 +29,7 @@ staggered so no two heavy ones collide.
 | ACC Master refresh | `POST /api/scheduler/acc-master` | `acc-master-sync` | `ACC_MASTER` |
 | Execution Tracking sync | `POST /api/scheduler/execution-tracking` | `execution-tracking-sync` | `SALE_BILL` (+ the local `acc_master`) |
 | C Batch marks | `POST /api/scheduler/c-batch` | `c-batch-sync` | `ITEM MASTER ERP` |
+| ERP Contract No sync | `POST /api/scheduler/erp-contract-no` | `erp-contract-no-sync` | `SALE_BILL`, `MC` |
 
 The stagger is deliberate. `raw-material`, `supply-history` and
 `contract-review` each full-table-read the tables the others write. `bom-mast`
@@ -40,7 +41,11 @@ the code -> name list `execution-tracking` (:40) joins on, and
 `execution-tracking` runs after `supply-history` (:15) so it patches rows that
 job just wrote — `execution-tracking` is the one job on a slower clock, firing at
 :40 of every **even** hour (`0 40 */2 * * *`), so a 2-hourly run still lands in an
-hour whose `:35` and `:15` already ran. `c-batch` runs last and can safely overlap
+hour whose `:35` and `:15` already ran.
+`erp-contract-no` (:50) is the second job on that even-hour clock
+(`0 50 */2 * * *`): it runs after `execution-tracking` so the rows that job
+inserted for a brand-new invoice at :40 get their contract number in the same
+pass. `c-batch` runs last and can safely overlap
 any of them: it writes
 **only** the `cBatch` column, which no other scheduled job touches.
 `docket-creation` runs at `:20`, between `supply-history` and `contract-review`,
@@ -672,6 +677,66 @@ npm run exec:sync -- --fy 26-27 --apply --no-log      # write without a sync_log
 curl -X POST "$BASE/execution-tracking?dryRun=1&fy=2025-26" -H "x-api-key: $GMD_SYNC_API_KEY"
 ```
 
+## `erp-contract-no`
+
+Single step: `runErpContractNoStep()` in `erp-contract-no-sync.ts`, delegating to
+`runErpContractNoSync()` (`lib/erpContractNoSync.ts`) — the same engine the CLI
+(`npm run contractno:sync`) and `POST /api/scheduler/erp-contract-no` use.
+
+Reads the `SALE_BILL_GID` and `MC_GID` tabs of
+`GMD_EXECUTION_TRACKING_SPREADSHEET_ID` and writes
+`SupplyHistoryItem.erpContractNo`. The scheduler uses the current fiscal year
+(April start); the CLI takes `--fy`.
+
+### The join is invoice-level, and that was measured
+
+`SALE BILL.ORDER_VRNO = MC.VRNO -> MC.CONTRACT_VRNO`. Measured on FY 2026-27:
+
+- 487 SALE BILL rows, **103 distinct `ORDER_VRNO`** (136 distinct invoices — two
+  invoices can share one order), 2 rows with a blank `ORDER_VRNO`;
+- all 103 orders are present in MC;
+- MC carries **708 `VRNO`s and none holds more than one `CONTRACT_VRNO`**, so the
+  order -> contract lookup is 1:1 and the write is per **invoice** (`VRNO`):
+  every `SupplyHistoryItem` row of a matched invoice gets the same contract.
+
+The `rowIds` actually written are only the rows whose stored value differs, so an
+invoice that is already correct produces no write and no `syncedAt` bump.
+
+### Write policy
+
+| Case | Rule |
+|---|---|
+| stored `erpContractNo` equals MC's `CONTRACT_VRNO` | **left alone**, counted `unchangedInvoices` |
+| stored value blank | **filled** (`filledRows`) |
+| stored value non-blank **and different** | **overwritten** — MC wins (`overwrittenRows`); `--gap-fill` turns this into a no-op |
+| MC `CONTRACT_VRNO` blank, or the `ORDER_VRNO` unknown to MC | **no write**, counted `noContractOnMc` / `unmatchedOrderVrno` — a blank cell never clears a value |
+| SALE BILL lines carry no `ORDER_VRNO` for a DB invoice | **no write**, counted `noOrderVrnoInSheet` |
+| MC `VRNO` with more than one `CONTRACT_VRNO` | reported as `mcConflicts`; the lexicographically first value is used |
+| deletions | none |
+
+### Two writers of `erpContractNo`
+
+`supply-history` (:15) also writes this column, from MASTER's `ERP CONTRACT NO`.
+On FY 2026-27 the two sources agree on every comparable row (254 of 254), so
+there is no flip-flop — but `overwrittenRows > 0` is the signal to watch: if
+MASTER ever carries a different spelling for the same row, the two jobs will
+rewrite each other every hour. Making `supply-history` stop owning the column is
+the clean follow-up if that ever happens.
+
+### Manual control
+
+```sh
+npm run contractno:headers                             # read-only: both tabs' headers + column map + DB counts
+npm run contractno:sync -- --fy 26-27                  # dry run, prints the report
+npm run contractno:sync -- --fy 26-27 --limit 20        # smoke test the first 20 invoices
+npm run contractno:sync -- --fy 26-27 --apply           # write
+npm run contractno:sync -- --fy 26-27 --apply --gap-fill # write, but never overwrite a stored value
+npm run contractno:sync -- --fy 26-27 --apply --no-log   # write without a sync_log row
+
+# the same engine over HTTP (dryRun / fy are optional)
+curl -X POST "$BASE/erp-contract-no?dryRun=1&fy=2025-26" -H "x-api-key: $GMD_SYNC_API_KEY"
+```
+
 ## Write policy
 
 ### `acc-master`
@@ -698,6 +763,16 @@ curl -X POST "$BASE/execution-tracking?dryRun=1&fy=2025-26" -H "x-api-key: $GMD_
 | item codes sharing a description | folded into one row by `mergeByDescription` when every other field agrees |
 | new rows | inserted for a `(invoice, item code)` pair the year does not hold; refused and counted in `blockedInserts` only when no fold and no refresh can resolve the name |
 | `syncedAt` | stamped only on rows actually written |
+| deletions | none |
+
+### `erp-contract-no`
+
+| Column | Rule |
+|---|---|
+| `erpContractNo` | set to MC's `CONTRACT_VRNO` for the invoice, keyed on `SALE BILL.ORDER_VRNO = MC.VRNO`. **Filled** when blank, **overwritten** when it differs (MC wins; `--gap-fill` prevents the overwrite) |
+| `erpContractNo`, MC value blank or order unmatched | left alone — a blank never clears a stored value |
+| `syncedAt` | stamped only on rows actually written |
+| every other column | never touched |
 | deletions | none |
 
 ### `raw-material`

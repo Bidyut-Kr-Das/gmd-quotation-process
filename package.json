@@ -77,7 +77,10 @@
     "prisma:neon:status": "prisma migrate status --config prisma.neon.config.ts",
     "exec:sync": "tsx scripts/sync-execution-tracking.ts",
     "exec:sync:apply": "tsx scripts/sync-execution-tracking.ts --apply",
-    "exec:headers": "tsx scripts/sync-execution-tracking.ts --dump-headers"
+    "exec:headers": "tsx scripts/sync-execution-tracking.ts --dump-headers",
+    "contractno:sync": "tsx scripts/sync-erp-contract-no.ts",
+    "contractno:sync:apply": "tsx scripts/sync-erp-contract-no.ts --apply",
+    "contractno:headers": "tsx scripts/sync-erp-contract-no.ts --dump-headers"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",
