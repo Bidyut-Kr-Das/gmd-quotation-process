@@ -12,16 +12,17 @@ Where an algorithm already existed there, it was copied rather than imported
 
 ## Jobs
 
-Six hourly jobs, staggered so no two heavy ones collide.
+Seven hourly jobs, staggered so no two heavy ones collide.
 
-| :00 | :05 | :15 | :20 | :30 | :45 |
-|---|---|---|---|---|---|
-| `raw-material` | `bom-mast` | `supply-history` | `docket-creation` | `contract-review` | `c-batch` |
+| :00 | :05 | :10 | :15 | :20 | :30 | :45 |
+|---|---|---|---|---|---|---|
+| `raw-material` | `bom-mast` | `physical-stock-cost-bom` | `supply-history` | `docket-creation` | `contract-review` | `c-batch` |
 
 | Job | Endpoint | Ofelia job name | Reads |
 |---|---|---|---|
 | Raw Material sync | `POST /api/scheduler/raw-material` | `raw-material-sync` | `GMD UPDATION`, `stock-phys` |
 | BOM MAST ERP sync | `POST /api/scheduler/bom-mast` | `bom-mast-sync` | `BOM MAST ERP` |
+| Physical Stock cost / BOM ID | `POST /api/scheduler/physical-stock-cost-bom` | `physical-stock-cost-bom-sync` | local `FullItem` / `Bom` / `BomItem` → Neon `PhysicalStock` |
 | Supply History MASTER sync | `POST /api/scheduler/supply-history` | `supply-history-sync` | `MASTER`, GMD Clientwise ORDER LIST |
 | Pending docket creation | `POST /api/scheduler/docket-creation` | `docket-creation-sync` | `docket_quotation_threads`, `enquiries` |
 | Contract Review sync | `POST /api/scheduler/contract-review` | `contract-review-sync` | `CONTRACTS`, `DUMP`, `stock-phys`, `INSPECTION OFFER DUMP` |
@@ -351,6 +352,45 @@ Three of the four code columns have **no index**: `SupplyHistoryItem.erpItemCode
 `RawMaterial.erpItemCode` is indexed. Selecting by `id` avoids `IN` on those
 columns, so the job is cheaper than the original — but `ContractReview` and
 `EnquiryItem` are still full scans.
+
+## `physical-stock-cost-bom`
+
+Single step in `run-physical-stock-cost-bom.ts`, delegating to
+`applyPhysicalStockDerivations()` (`lib/gmd_lib/physical-stock-derive.ts`),
+which recomputes `cost` / `bom_id` for every row of the **Neon** `PhysicalStock`
+table.
+
+This is the scheduled form of `npm run physical:cost` / `physical:cost:apply`
+(`scripts/backfill-physical-stock-cost-bom.ts`, dry-run by default — the
+scheduler always writes).
+
+**Cross-database.** The BOM graph is read from the **local** database:
+candidate BOMs for an `erp_code` are the union of BOMs owned by the `FullItem`
+whose `itemCode` = the code, plus BOMs that consume the code as a component
+(`BomItem.rawMaterial` / `BomItem.fullItem`). Effective cost per candidate is
+the owning `FullItem.cost` — the DB trigger keeps `FullItem.cost =
+MAX(BomItem.cost)` — falling back to `RawMaterial.cost`. The chosen values are
+written to the **Neon** `PhysicalStock` table. There is **no shared
+transaction**; the step is idempotent and safe to re-run.
+
+**Write policy:** an existing `bom_id` is preserved while it is still a valid
+candidate; otherwise the highest-cost BOM becomes the default. `cost` is always
+refreshed to the effective cost of the selected (or default) BOM. **No other
+column is ever touched** — not the user-editable fields (`remarks`, `item_type`,
+`price`, `moq`, `if_less_than_moq_extra_charges`, `drawing_technical_data`) and
+not the sheet-owned fields. Writes are chunked at 200.
+
+Scheduled at :10 — after `bom-mast` (:05), whose `FullItem` / `Bom` / `BomItem`
+rows this step reads. It writes only Neon, so it never contends with another job
+for the local database.
+
+`physical-stock-cost-bom-sync.sh` only needs the same failure guards as
+`bom-mast-sync.sh`: a fatal error throws out of the orchestrator and arrives as a
+non-200/`success:false`.
+
+**Deployment prerequisite:** `NEON_DATABASE_URL` must be present in the app's
+production env (`.env.production`) for this job (and the Physical Stock page)
+to reach Neon.
 
 ## `docket-creation`
 
