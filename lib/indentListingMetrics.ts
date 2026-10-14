@@ -2,10 +2,11 @@
  * Per-variant metrics rendered under each of V1..V4 on the Indent Listing.
  *
  * Every value is derived from data another table already owns:
- *   - MC RECEIVED / MC PENDING / ORDERED QTY / PENDING ORDER QTY are summed
- *     from Contract Review, grouped by the RM code(s) a contract row is costed
- *     against (`costCodeRef`) — the same code the indent row publishes per
- *     variant.
+ *   - MC RECEIVED / MC PENDING / PENDING ORDER QTY are summed from Contract
+ *     Review, grouped by the RM code(s) a contract row is costed against
+ *     (`costCodeRef`) — the same code the indent row publishes per variant.
+ *   - ORDERED QTY is the raw-material master's `orderDelivery` ("Order Qty"),
+ *     summed by ERP code.
  *   - STOCK comes from the raw-material master's `availableStock`, the column
  *     the `stock-phys` sheet feeds (`SUM OF PHYSICAL STOCK` -> `availableStock`).
  *
@@ -92,19 +93,34 @@ export function buildContractMetricsByRmCode(
   return map;
 }
 
-/** Key raw-material stock by ERP code, ignoring blank / non-numeric values. */
-export function buildStockByRmCode(
-  rows: { erpItemCode: string | null; availableStock: string | null }[],
+/** Key a raw-material numeric field by ERP code, ignoring blank / non-numeric values. */
+function buildNumberByRmCode<K extends string>(
+  rows: ({ erpItemCode: string | null } & Record<K, string | null>)[],
+  key: K,
 ): Map<string, number> {
   const map = new Map<string, number>();
   for (const row of rows) {
     const code = String(row.erpItemCode ?? "").trim().toUpperCase();
     if (!code) continue;
-    const stock = parseNumber(row.availableStock);
-    if (stock === null) continue;
-    map.set(code, stock);
+    const value = parseNumber(row[key]);
+    if (value === null) continue;
+    map.set(code, value);
   }
   return map;
+}
+
+/** Key raw-material stock by ERP code. */
+export function buildStockByRmCode(
+  rows: { erpItemCode: string | null; availableStock: string | null }[],
+): Map<string, number> {
+  return buildNumberByRmCode(rows, "availableStock");
+}
+
+/** Key the raw-material "Order Qty" (`orderDelivery`) by ERP code. */
+export function buildOrderQtyByRmCode(
+  rows: { erpItemCode: string | null; orderDelivery: string | null }[],
+): Map<string, number> {
+  return buildNumberByRmCode(rows, "orderDelivery");
 }
 
 /** Metrics for a single variant slot, summed across its RM code list. */
@@ -112,16 +128,18 @@ export function buildVariantMetrics(
   rmCodeCell: unknown,
   stockByCode: Map<string, number>,
   contractByCode: Map<string, ContractAggregate>,
+  orderQtyByCode: Map<string, number>,
 ): VariantMetrics {
   const codes = splitRmCodes(rmCodeCell);
 
   let received = 0;
   let pending = 0;
-  let ordered = 0;
   let pendingOrder = 0;
   let stock = 0;
+  let order = 0;
   let hasContract = false;
   let hasStock = false;
+  let hasOrder = false;
 
   for (const code of codes) {
     const contract = contractByCode.get(code);
@@ -129,7 +147,6 @@ export function buildVariantMetrics(
       hasContract = true;
       received += contract.received;
       pending += contract.pending;
-      ordered += contract.ordered;
       pendingOrder += contract.pendingOrder;
     }
     const value = stockByCode.get(code);
@@ -137,13 +154,18 @@ export function buildVariantMetrics(
       hasStock = true;
       stock += value;
     }
+    const orderQty = orderQtyByCode.get(code);
+    if (orderQty !== undefined) {
+      hasOrder = true;
+      order += orderQty;
+    }
   }
 
   return {
     mcReceived: hasContract ? formatNumber(received) : null,
     mcPending: hasContract ? formatNumber(pending) : null,
     stock: hasStock ? formatNumber(stock) : null,
-    orderedQty: hasContract ? formatNumber(ordered) : null,
+    orderedQty: hasOrder ? formatNumber(order) : null,
     pendingOrderQty: hasContract ? formatNumber(pendingOrder) : null,
   };
 }
@@ -157,10 +179,11 @@ export function buildRowVariantMetrics(
   rmCodeIdxs: number[],
   stockByCode: Map<string, number>,
   contractByCode: Map<string, ContractAggregate>,
+  orderQtyByCode: Map<string, number>,
 ): VariantMetrics[][] {
   return rows.map((row) =>
     rmCodeIdxs.map((idx) =>
-      buildVariantMetrics(row[idx], stockByCode, contractByCode),
+      buildVariantMetrics(row[idx], stockByCode, contractByCode, orderQtyByCode),
     ),
   );
 }
