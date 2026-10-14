@@ -53,6 +53,7 @@ const AVAILABLE_STOCK_IDX = 11;
  * user-owned and is never touched.
  */
 const NON_EDITABLE_FIELDS = [
+  "itemNameAuto",
   "l1",
   "l2ValveType",
   "l3Dia",

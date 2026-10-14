@@ -17,6 +17,7 @@ import {
   buildItemMasterNameMap,
   syncContractReviewItemNames,
   syncRawMaterialItemNames,
+  syncFullItemItemNames,
   type ItemNamePassResult,
 } from "@/lib/gmd_lib/item-name-sync";
 
@@ -56,6 +57,14 @@ export async function runContractReviewItemNameSync(): Promise<ItemNameSyncResul
 export async function runRawMaterialItemNameSync(): Promise<ItemNameSyncResult> {
   const map = await buildItemMasterNameMap();
   const pass = await syncRawMaterialItemNames(map.nameByCode);
+  const fullItem = await syncFullItemItemNames(map.nameByCode);
+  logResult("full-item", {
+    ...fullItem,
+    tabTitle: map.tabTitle,
+    duplicateCodes: map.duplicateCodes,
+    conflictCodes: map.conflictCodes,
+    conflictSamples: map.conflictSamples,
+  });
   const result: ItemNameSyncResult = {
     ...pass,
     tabTitle: map.tabTitle,
