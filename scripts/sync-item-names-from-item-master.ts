@@ -4,6 +4,7 @@ import {
   buildItemMasterNameMap,
   syncContractReviewItemNames,
   syncRawMaterialItemNames,
+  syncFullItemItemNames,
   type ItemNamePassResult,
 } from "../lib/gmd_lib/item-name-sync";
 
@@ -54,10 +55,14 @@ async function main() {
   const rm = await syncRawMaterialItemNames(map.nameByCode, { dryRun });
   logPass("RawMaterial", rm);
 
-  const failed = cr.failedWrites + rm.failedWrites;
+  const fi = await syncFullItemItemNames(map.nameByCode, { dryRun });
+  logPass("FullItem", fi);
+
+  const failed = cr.failedWrites + rm.failedWrites + fi.failedWrites;
   console.log(
     `\n[item-name-sync] Done. ContractReview updated=${cr.updated}, ` +
-      `RawMaterial updated=${rm.updated}, failedWrites=${failed}.` +
+      `RawMaterial updated=${rm.updated}, FullItem updated=${fi.updated}, ` +
+      `failedWrites=${failed}.` +
       (APPLY ? "" : " (dry run - no writes)") +
       "\n",
   );
