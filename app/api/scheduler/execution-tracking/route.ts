@@ -1,5 +1,5 @@
 /**
- * Ofelia entry point for the hourly Execution Tracking sync.
+ * Ofelia entry point for the Execution Tracking sync (every 2 hours).
  *
  * Refreshes `acc_master`, then diffs the `SALE_BILL_GID` tab of
  * `GMD_EXECUTION_TRACKING_SPREADSHEET_ID` into `SupplyHistoryItem` for the

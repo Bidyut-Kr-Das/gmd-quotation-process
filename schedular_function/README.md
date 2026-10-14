@@ -12,7 +12,8 @@ Where an algorithm already existed there, it was copied rather than imported
 
 ## Jobs
 
-Eight hourly jobs, staggered so no two heavy ones collide.
+Seven hourly jobs plus `execution-tracking`, which runs every 2 hours. All are
+staggered so no two heavy ones collide.
 
 | :00 | :05 | :15 | :20 | :30 | :35 | :40 | :45 |
 |---|---|---|---|---|---|---|---|
@@ -37,7 +38,10 @@ components resolve against) and before `supply-history`, whose
 Supply History sees fresh BOMs in the same hourly pass. `acc-master` (:35) fills
 the code -> name list `execution-tracking` (:40) joins on, and
 `execution-tracking` runs after `supply-history` (:15) so it patches rows that
-job just wrote. `c-batch` runs last and can safely overlap any of them: it writes
+job just wrote — `execution-tracking` is the one job on a slower clock, firing at
+:40 of every **even** hour (`0 40 */2 * * *`), so a 2-hourly run still lands in an
+hour whose `:35` and `:15` already ran. `c-batch` runs last and can safely overlap
+any of them: it writes
 **only** the `cBatch` column, which no other scheduled job touches.
 `docket-creation` runs at `:20`, between `supply-history` and `contract-review`,
 so contract-review's same-hour pass can backfill `contractNo` on the dockets it

@@ -1,8 +1,9 @@
 /**
  * Scheduled job — Execution Tracking sync.
  *
- * Runs at :40, after `acc-master` (:35) has refreshed the code -> name list, and
- * after `supply-history` (:15) has written the MASTER rows this sync patches.
+ * Runs at :40 of every even hour (every 2 hours), after `acc-master` (:35) has
+ * refreshed the code -> name list, and after `supply-history` (:15) has written
+ * the MASTER rows this sync patches.
  *
  * The in-flight latch matters twice over here: ofelia's `no-overlap = true`
  * cannot see the FY-dropdown button on `/supply_history`, and this job and that
@@ -79,7 +80,7 @@ export async function runScheduledExecutionTracking(
 
     return { success: true, job, startedAt, elapsedMs, steps };
   } finally {
-    // Always release, so a throw cannot wedge the next hourly run.
+    // Always release, so a throw cannot wedge the next scheduled run.
     inFlight.delete(job);
   }
 }

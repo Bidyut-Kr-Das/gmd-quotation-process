@@ -4,8 +4,9 @@
 # GMD_EXECUTION_TRACKING_SPREADSHEET_ID into SupplyHistoryItem for the current
 # fiscal year (April start).
 #
-# Scheduled at :40 — after acc-master (:35) has the name list ready and after
-# supply-history (:15) has written the MASTER rows this one patches.
+# Scheduled at :40 of every even hour (every 2 hours) — after acc-master (:35) has
+# the name list ready and after supply-history (:15) has written the MASTER rows
+# this one patches.
 #
 # Env (set in the ofelia container, not committed):
 #   GMD_APP_SERVER      base URL of this app, e.g. http://gmd-quotation-process:4570
