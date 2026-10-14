@@ -4,6 +4,7 @@ import {
   splitRmCodes,
   buildContractMetricsByRmCode,
   buildStockByRmCode,
+  buildOrderQtyByRmCode,
   buildVariantMetrics,
   buildRowVariantMetrics,
   type ContractMetricRow,
@@ -75,25 +76,39 @@ test('stock keys by ERP code and ignores blanks', () => {
   assert.equal(map.has('RSD3'), false)
 })
 
+test('order qty keys by ERP code and ignores blanks', () => {
+  const map = buildOrderQtyByRmCode([
+    { erpItemCode: 'RSD1', orderDelivery: '25' },
+    { erpItemCode: 'rsd2', orderDelivery: '1,000.50' },
+    { erpItemCode: '', orderDelivery: '4' },
+    { erpItemCode: 'RSD3', orderDelivery: '' },
+  ])
+
+  assert.equal(map.get('RSD1'), 25)
+  assert.equal(map.get('RSD2'), 1000.5)
+  assert.equal(map.has('RSD3'), false)
+})
+
 test('variant metrics sum across a comma-joined RM code list', () => {
   const stock = new Map([['AAA', 10], ['BBB', 5]])
+  const orderQty = new Map([['AAA', 4], ['BBB', 6]])
   const contracts = buildContractMetricsByRmCode([
     contract({ costCodeRef: 'AAA', mcReceivedPending: 'Received', orderQty: '2', balanceToProdOrd: '1' }),
     contract({ costCodeRef: 'BBB', mcReceivedPending: 'Pending', orderQty: '3', balanceToProdOrd: '2' }),
   ])
 
-  assert.deepEqual(buildVariantMetrics('AAA, BBB', stock, contracts), {
+  assert.deepEqual(buildVariantMetrics('AAA, BBB', stock, contracts, orderQty), {
     mcReceived: '2',
     mcPending: '3',
     stock: '15',
-    orderedQty: '5',
+    orderedQty: '10',
     pendingOrderQty: '3',
   })
 })
 
 test('variant metrics are blank when the RM code resolves to nothing', () => {
   assert.deepEqual(
-    buildVariantMetrics('NOPE', new Map(), new Map()),
+    buildVariantMetrics('NOPE', new Map(), new Map(), new Map()),
     {
       mcReceived: null,
       mcPending: null,
@@ -102,7 +117,7 @@ test('variant metrics are blank when the RM code resolves to nothing', () => {
       pendingOrderQty: null,
     },
   )
-  assert.deepEqual(buildVariantMetrics(null, new Map(), new Map()), {
+  assert.deepEqual(buildVariantMetrics(null, new Map(), new Map(), new Map()), {
     mcReceived: null,
     mcPending: null,
     stock: null,
@@ -113,18 +128,19 @@ test('variant metrics are blank when the RM code resolves to nothing', () => {
 
 test('buildRowVariantMetrics reads rmCodeV1..V4 positions', () => {
   const stock = new Map([['AAA', 7]])
+  const orderQty = new Map([['AAA', 42]])
   const contracts = buildContractMetricsByRmCode([
     contract({ costCodeRef: 'AAA', mcReceivedPending: 'Received', orderQty: '9', balanceToProdOrd: '1' }),
   ])
   const row = new Array(17).fill('')
   row[13] = 'AAA'
 
-  const metrics = buildRowVariantMetrics([row], [13, 14, 15, 16], stock, contracts)
+  const metrics = buildRowVariantMetrics([row], [13, 14, 15, 16], stock, contracts, orderQty)
 
   assert.equal(metrics.length, 1)
   assert.equal(metrics[0].length, 4)
   assert.equal(metrics[0][0].stock, '7')
-  assert.equal(metrics[0][0].orderedQty, '9')
+  assert.equal(metrics[0][0].orderedQty, '42')
   assert.equal(metrics[0][1].stock, null)
   assert.equal(metrics[0][3].mcReceived, null)
 })

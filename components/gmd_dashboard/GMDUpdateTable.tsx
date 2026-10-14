@@ -720,6 +720,12 @@ const WRAPPED_CELL_BOX =
   "max-h-16 overflow-y-auto overflow-x-hidden cell-scrollable whitespace-normal leading-normal break-words";
 
 /**
+ * Max height (px) for a multiline editable cell. `max-h-12` is 48px, which at
+ * text-xs/leading-normal shows ~2 lines before the cell starts scrolling.
+ */
+const MULTILINE_CELL_MAX_PX = 48;
+
+/**
  * A column-filter checkbox whose match logic is supplied by the caller instead
  * of being derived from the column's own cell value. Rendered in `MultiSelect`
  * right after the built-in `(Blank)` option.
@@ -1025,6 +1031,13 @@ interface GMDUpdateTableProps {
    */
   sortByType?: boolean;
   /**
+   * Editable free-text columns that should render as a word-wrapped, multiline
+   * `<textarea>` (auto-grows up to ~2 lines, then scrolls inside the cell)
+   * instead of a single-line `<input>`. Off by default so other dashboards keep
+   * single-line editing.
+   */
+  multilineEditableColumns?: string[];
+  /**
    * Per-column default widths in px, keyed by header. Seeds columnWidths on
    * mount only, so a manual drag-resize still wins for the rest of the session
    * (and is still discarded on reload). Columns absent from the map fall
@@ -1193,6 +1206,7 @@ castingRateInputs,
   onSetVerdict,
   columnGroups,
   sortByType,
+  multilineEditableColumns,
   defaultColumnWidths,
   wrapCells,
   onDeleteRow,
@@ -1988,6 +2002,18 @@ castingRateInputs,
   };
 
   /**
+   * Auto-grows a multiline cell `<textarea>` from one line up to
+   * `MULTILINE_CELL_MAX_PX`, letting it scroll internally beyond that. Also
+   * used as the element `ref`, so it sizes on mount / when the cell remounts.
+   */
+  const autoGrowCell = useCallback((el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height =
+      Math.min(el.scrollHeight, MULTILINE_CELL_MAX_PX) + "px";
+  }, []);
+
+  /**
    * Class string for a text cell. `scrollable` is false inside a collapsed
    * group, because the group column caps and scrolls itself as a whole —
    * capping each child too would nest a scroller inside a scroller and clip the
@@ -2253,6 +2279,25 @@ castingRateInputs,
               </option>
             ))}
           </select>
+        );
+      } else if (multilineEditableColumns?.includes(header)) {
+        // Long free-text editable column (e.g. Remarks): word-wrapped, grows
+        // with content up to 2 lines then scrolls inside the cell, so the
+        // column width and empty-row height stay unchanged.
+        cellContent = (
+          <textarea
+            key={display + "-" + idx + "-" + cellIdx}
+            ref={autoGrowCell}
+            rows={1}
+            defaultValue={display}
+            onInput={(e) => autoGrowCell(e.currentTarget)}
+            onBlur={(e) => {
+              if (e.target.value !== display) {
+                handleCellUpdate(idx, cellIdx, e.target.value);
+              }
+            }}
+            className="block w-full max-h-12 p-0 text-xs bg-transparent border-none outline-none resize-none overflow-y-auto overflow-x-hidden cell-scrollable whitespace-pre-wrap leading-normal break-words"
+          />
         );
       } else {
         cellContent = (

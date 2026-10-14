@@ -1002,9 +1002,13 @@ export async function updateEnquiryFieldAction(
  * The email is sent as a reply inside the linked `DocketQuotationThread` (the
  * latest thread whose `docketNo` matches this docket number) so it lands on the
  * RFQ conversation instead of starting a new one. When no linked thread exists
- * the action returns "Linked email thread not found" and sends nothing.
+ * the action returns `code: "NO_THREAD"` and sends nothing — unless the caller
+ * passes `allowNoThread`, which sends it as a plain new email instead.
  */
-export async function sendDocketEmailAction(enquiryId: string) {
+export async function sendDocketEmailAction(
+  enquiryId: string,
+  allowNoThread = false,
+) {
   try {
     const { auth } = await import("@/auth");
     const session = await auth();
@@ -1029,13 +1033,19 @@ export async function sendDocketEmailAction(enquiryId: string) {
       return { success: false, error: "No recipient (sender email) on this docket." };
     }
 
-    // The quotation must go back as a reply in the thread the RFQ arrived on.
-    // Resolve the latest thread linked to this docket number and refuse to send
-    // (rather than start a detached thread) when there is none.
+    // The quotation should go back as a reply in the thread the RFQ arrived on.
+    // Resolve the latest thread linked to this docket number. When there is
+    // none, refuse (code NO_THREAD) unless the caller opted into a plain new
+    // email via allowNoThread.
     const { findLatestLinkedThread } = await import("@/lib/docketThreadResolver");
     const linkedThread = await findLatestLinkedThread(enquiry.docketNumber);
-    if (!linkedThread) {
-      return { success: false, error: "Linked email thread not found" };
+    if (!linkedThread && !allowNoThread) {
+      return {
+        success: false,
+        error: "Linked email thread not found",
+        // Lets the client offer "send as a new mail" instead of failing.
+        code: "NO_THREAD" as const,
+      };
     }
 
     // Always Cc the fixed address, merged with the docket's other emails and
@@ -1101,7 +1111,7 @@ export async function sendDocketEmailAction(enquiryId: string) {
       docketNumber: enquiry.docketNumber,
       fileName: pdfRes.fileName || `${enquiry.docketNumber}.pdf`,
       pdfBuffer,
-      threadId: linkedThread.threadId,
+      threadId: linkedThread?.threadId,
     });
     if (!send.success) {
       return { success: false, error: send.error || "Email sending failed." };
@@ -3654,6 +3664,20 @@ export async function setNewItemStatusWithCostMergeAction(
   "use server";
   const stored = value == null || value.trim() === "" ? null : value;
 
+  // A closed row moving back to blank is a reopen — notify n8n after the write.
+  const before = await prisma.rawMaterial.findUnique({
+    where: { id },
+    select: { erpItemCode: true, newItemStatus: true },
+  });
+  const reopened =
+    stored === null &&
+    ERP_CLOSED_STATUSES.has((before?.newItemStatus ?? "").trim().toUpperCase());
+  const notifyReopened = async () => {
+    if (reopened && before?.erpItemCode) {
+      await sendOpenItemsAction(before.erpItemCode);
+    }
+  };
+
   const empty = {
     merged: false,
     noCost: false,
@@ -3702,6 +3726,7 @@ export async function setNewItemStatusWithCostMergeAction(
       where: { id },
       data: { newItemStatus: stored },
     });
+    await notifyReopened();
     return { success: true, data: empty };
   }
 
@@ -3723,6 +3748,8 @@ export async function setNewItemStatusWithCostMergeAction(
       data: { newItemStatus: stored, costMerged: true },
     }),
   ]);
+
+  await notifyReopened();
 
   return {
     success: true,
@@ -6883,5 +6910,164 @@ export async function uploadImageForComboAction(data: {
   } catch (error: any) {
     console.error("uploadImageForComboAction failed:", error);
     return { success: false, error: error?.message || "Upload failed." };
+  }
+}
+
+/** NEW ITEM STATUS values that mark a raw material as closed in the ERP. */
+const ERP_CLOSED_STATUSES = new Set([
+  "CLOSED",
+  "TO BE CLOSED",
+  "TO BE LOCKED",
+]);
+
+export type ErpItemUpdateType =
+  | "RenameItems"
+  | "Close items"
+  | "Open items"
+  | "Open and rename items";
+
+/** Payload row — `itemname` is sent by RenameItems only. */
+type ErpItemUpdateRow = { itemcode: string; itemname?: string };
+
+/**
+ * Selects `RawMaterial` rows and POSTs `{ type, items }` to the
+ * "[GMD]Update Erp Item" n8n webhook (`N8N_ERP_ITEM_WEBHOOK_URL`). The n8n Code
+ * node renders the mail body per `type`; this action only shapes the payload.
+ */
+export async function sendErpItemUpdateAction(
+  type: ErpItemUpdateType = "RenameItems",
+): Promise<{ success: boolean; sent: number; error?: string }> {
+  const webhookUrl = process.env.N8N_ERP_ITEM_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.warn("[erp-item-update] N8N_ERP_ITEM_WEBHOOK_URL not set, skipping send");
+    return { success: false, sent: 0, error: "Webhook not configured (N8N_ERP_ITEM_WEBHOOK_URL)." };
+  }
+
+  try {
+    let items: ErpItemUpdateRow[];
+
+    if (type === "RenameItems") {
+      // Live rows (status not closed) whose derived item name differs from the
+      // ERP auto name; the derived name travels as `itemname`.
+      const rows = await prisma.rawMaterial.findMany({
+        select: {
+          erpItemCode: true,
+          itemNameAuto: true,
+          itemNameDerived: true,
+          newItemStatus: true,
+        },
+      });
+
+      items = rows
+        .filter(
+          (r) =>
+            !ERP_CLOSED_STATUSES.has(
+              (r.newItemStatus ?? "").trim().toUpperCase(),
+            ),
+        )
+        .filter((r) => {
+          const derived = (r.itemNameDerived ?? "").trim();
+          return derived !== "" && derived !== (r.itemNameAuto ?? "").trim();
+        })
+        .map((r) => ({
+          itemcode: (r.erpItemCode ?? "").trim(),
+          itemname: (r.itemNameDerived ?? "").trim(),
+        }))
+        .filter((r) => r.itemcode !== "");
+    } else if (type === "Close items") {
+      // Closed rows not yet marked in batch C. Item code only.
+      const rows = await prisma.rawMaterial.findMany({
+        select: { erpItemCode: true, newItemStatus: true, cBatch: true },
+      });
+
+      items = rows
+        .filter((r) =>
+          ERP_CLOSED_STATUSES.has((r.newItemStatus ?? "").trim().toUpperCase()),
+        )
+        .filter((r) => (r.cBatch ?? "").trim().toUpperCase() !== C_BATCH_VALUE)
+        .map((r) => ({ itemcode: (r.erpItemCode ?? "").trim() }))
+        .filter((r) => r.itemcode !== "");
+    } else {
+      // shortcut: Open items / Open and rename items need their own row rules.
+      return { success: false, sent: 0, error: `Selection logic for "${type}" is not implemented yet.` };
+    }
+
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, items }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      console.warn("[erp-item-update] send failed", { type, status: response.status, body });
+      return { success: false, sent: 0, error: `n8n responded ${response.status}` };
+    }
+
+    console.log("[erp-item-update] sent", { type, count: items.length });
+    return { success: true, sent: items.length };
+  } catch (error: any) {
+    console.error("[erp-item-update] error", error);
+    return {
+      success: false,
+      sent: 0,
+      error: error?.message || "Failed to reach the ERP item-update webhook.",
+    };
+  }
+}
+
+/**
+ * Notifies n8n to open (re-activate) a single reopened raw material — fired when
+ * a row's NEW ITEM STATUS falls from CLOSED / TO BE CLOSED / TO BE LOCKED to
+ * blank. Sends "Open and rename items" when the derived name differs from the ERP
+ * auto name, otherwise "Open items". One item, one email.
+ */
+export async function sendOpenItemsAction(
+  erpItemCode: string,
+): Promise<{ success: boolean; sent: number; type?: ErpItemUpdateType; error?: string }> {
+  const webhookUrl = process.env.N8N_ERP_ITEM_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.warn("[erp-item-open] N8N_ERP_ITEM_WEBHOOK_URL not set, skipping send");
+    return { success: false, sent: 0, error: "Webhook not configured (N8N_ERP_ITEM_WEBHOOK_URL)." };
+  }
+
+  const code = (erpItemCode ?? "").trim();
+  if (!code) return { success: false, sent: 0, error: "Missing item code." };
+
+  try {
+    const row = await prisma.rawMaterial.findUnique({
+      where: { erpItemCode: code },
+      select: { itemNameAuto: true, itemNameDerived: true },
+    });
+    if (!row) return { success: false, sent: 0, error: `Raw material ${code} not found.` };
+
+    const derived = (row.itemNameDerived ?? "").trim();
+    const rename = derived !== "" && derived !== (row.itemNameAuto ?? "").trim();
+    const type: ErpItemUpdateType = rename ? "Open and rename items" : "Open items";
+    const items: ErpItemUpdateRow[] = rename
+      ? [{ itemcode: code, itemname: derived }]
+      : [{ itemcode: code }];
+
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, items }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      console.warn("[erp-item-open] send failed", { code, type, status: response.status, body });
+      return { success: false, sent: 0, type, error: `n8n responded ${response.status}` };
+    }
+
+    console.log("[erp-item-open] sent", { code, type });
+    return { success: true, sent: 1, type };
+  } catch (error: any) {
+    console.error("[erp-item-open] error", error);
+    return {
+      success: false,
+      sent: 0,
+      error: error?.message || "Failed to reach the ERP item-update webhook.",
+    };
   }
 }

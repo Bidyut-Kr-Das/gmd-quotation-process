@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { applyTpavSlvMerge } from "./indentListingFamilySum";
 import {
   buildContractMetricsByRmCode,
+  buildOrderQtyByRmCode,
   buildRowVariantMetrics,
   buildStockByRmCode,
   type VariantMetrics,
@@ -73,12 +74,13 @@ export async function getMergedIndentListing(): Promise<MergedIndentListing> {
     items.map((i) => i.id),
   );
 
-  // Per-variant metrics for the merged rows. Stock comes from the raw-material
-  // master (`availableStock`, the column stock-phys feeds); the Contract Review
-  // quantities are grouped by `costCodeRef`, the RM code published per variant.
+  // Per-variant metrics for the merged rows. Stock and ORDERED QTY come from
+  // the raw-material master (`availableStock` and `orderDelivery`, "Order Qty");
+  // the Contract Review quantities are grouped by `costCodeRef`, the RM code
+  // published per variant.
   const [rawMaterials, contractRows] = await Promise.all([
     prisma.rawMaterial.findMany({
-      select: { erpItemCode: true, availableStock: true },
+      select: { erpItemCode: true, availableStock: true, orderDelivery: true },
     }),
     prisma.contractReview.findMany({
       where: { costCodeRef: { not: null } },
@@ -92,12 +94,14 @@ export async function getMergedIndentListing(): Promise<MergedIndentListing> {
   ]);
 
   const stockByCode = buildStockByRmCode(rawMaterials);
+  const orderQtyByCode = buildOrderQtyByRmCode(rawMaterials);
   const contractByCode = buildContractMetricsByRmCode(contractRows);
   const metrics = buildRowVariantMetrics(
     rows,
     RM_CODE_IDXS,
     stockByCode,
     contractByCode,
+    orderQtyByCode,
   );
 
   const lastSynced = items.reduce(

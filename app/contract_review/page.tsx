@@ -3655,6 +3655,7 @@ tileSize,
                 onCellUpdate={handleCellUpdate}
                 columnGroups={CONTRACT_REVIEW_COLUMN_GROUPS}
                 sortByType
+                multilineEditableColumns={["Remarks"]}
                 defaultColumnWidths={CONTRACT_REVIEW_COLUMN_WIDTHS}
                 cellBadges={[
                   ...cBatchBadges("ITEM_CODE"),
