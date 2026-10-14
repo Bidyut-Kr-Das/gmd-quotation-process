@@ -27,6 +27,8 @@ permissions:
 jobs:
   build-and-push:
     name: Build & Push Docker Image
+    # Only the org repo deploys; forks skip both jobs (deploy needs this one).
+    if: github.repository_owner == 'Laser-Power-Infra'
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.vars.outputs.short_sha }}
