@@ -12,19 +12,22 @@ Where an algorithm already existed there, it was copied rather than imported
 
 ## Jobs
 
-Six hourly jobs, staggered so no two heavy ones collide.
+Seven hourly ofelia jobs, staggered so no two heavy ones collide, plus `pbg`,
+which ofelia runs on its own `@every 1h12m` (1.2h) cadence.
 
-| :00 | :05 | :15 | :20 | :30 | :45 |
-|---|---|---|---|---|---|
-| `raw-material` | `bom-mast` | `supply-history` | `docket-creation` | `contract-review` | `c-batch` |
+| :00 | :05 | :10 | :15 | :20 | :30 | :45 |
+|---|---|---|---|---|---|---|
+| `raw-material` | `bom-mast` | `physical-stock-cost-bom` | `supply-history` | `docket-creation` | `contract-review` | `c-batch` |
 
 | Job | Endpoint | Ofelia job name | Reads |
 |---|---|---|---|
 | Raw Material sync | `POST /api/scheduler/raw-material` | `raw-material-sync` | `GMD UPDATION`, `stock-phys` |
 | BOM MAST ERP sync | `POST /api/scheduler/bom-mast` | `bom-mast-sync` | `BOM MAST ERP` |
+| Physical Stock cost / BOM ID | `POST /api/scheduler/physical-stock-cost-bom` | `physical-stock-cost-bom-sync` | local `FullItem` / `Bom` / `BomItem` → Neon `PhysicalStock` |
 | Supply History MASTER sync | `POST /api/scheduler/supply-history` | `supply-history-sync` | `MASTER`, GMD Clientwise ORDER LIST |
 | Pending docket creation | `POST /api/scheduler/docket-creation` | `docket-creation-sync` | `docket_quotation_threads`, `enquiries` |
 | Contract Review sync | `POST /api/scheduler/contract-review` | `contract-review-sync` | `CONTRACTS`, `DUMP`, `stock-phys`, `INSPECTION OFFER DUMP` |
+| PBG sheet sync *(every 1.2h)* | `POST /api/scheduler/pbg` | `pbg-sync` | PBG sheet tab → `PbgData` |
 | C Batch marks | `POST /api/scheduler/c-batch` | `c-batch-sync` | `ITEM MASTER ERP` |
 
 The stagger is deliberate. `raw-material`, `supply-history` and
@@ -37,6 +40,12 @@ can safely overlap any of them: it writes **only** the `cBatch` column, which no
 other scheduled job touches. `docket-creation` runs at `:20`, between
 `supply-history` and `contract-review`, so contract-review's same-hour pass can
 backfill `contractNo` on the dockets it creates.
+
+`pbg` is off this hourly grid: ofelia runs it on `@every 1h12m` (72 minutes).
+`@every` is Go-duration syntax (the same syntax ofelia uses for `@every 30s`),
+because a plain cron cannot express "every 72 minutes". The interval counts from
+when ofelia starts, not wall-clock. It writes only `PbgData`, which no other
+scheduled job touches, so overlap with any other job is harmless.
 
 ## `bom-mast`
 
@@ -352,6 +361,84 @@ Three of the four code columns have **no index**: `SupplyHistoryItem.erpItemCode
 columns, so the job is cheaper than the original — but `ContractReview` and
 `EnquiryItem` are still full scans.
 
+## `physical-stock-cost-bom`
+
+Single step in `run-physical-stock-cost-bom.ts`, delegating to
+`applyPhysicalStockDerivations()` (`lib/gmd_lib/physical-stock-derive.ts`),
+which recomputes `cost` / `bom_id` for every row of the **Neon** `PhysicalStock`
+table.
+
+This is the scheduled form of `npm run physical:cost` / `physical:cost:apply`
+(`scripts/backfill-physical-stock-cost-bom.ts`, dry-run by default — the
+scheduler always writes).
+
+**Cross-database.** The BOM graph is read from the **local** database:
+candidate BOMs for an `erp_code` are the union of BOMs owned by the `FullItem`
+whose `itemCode` = the code, plus BOMs that consume the code as a component
+(`BomItem.rawMaterial` / `BomItem.fullItem`). Effective cost per candidate is
+the owning `FullItem.cost` — the DB trigger keeps `FullItem.cost =
+MAX(BomItem.cost)` — falling back to `RawMaterial.cost`. The chosen values are
+written to the **Neon** `PhysicalStock` table. There is **no shared
+transaction**; the step is idempotent and safe to re-run.
+
+**Write policy:** an existing `bom_id` is preserved while it is still a valid
+candidate; otherwise the highest-cost BOM becomes the default. `cost` is always
+refreshed to the effective cost of the selected (or default) BOM. **No other
+column is ever touched** — not the user-editable fields (`remarks`, `item_type`,
+`price`, `moq`, `if_less_than_moq_extra_charges`, `drawing_technical_data`) and
+not the sheet-owned fields. Writes are chunked at 200.
+
+Scheduled at :10 — after `bom-mast` (:05), whose `FullItem` / `Bom` / `BomItem`
+rows this step reads. It writes only Neon, so it never contends with another job
+for the local database.
+
+`physical-stock-cost-bom-sync.sh` only needs the same failure guards as
+`bom-mast-sync.sh`: a fatal error throws out of the orchestrator and arrives as a
+non-200/`success:false`.
+
+**Deployment prerequisite:** `NEON_DATABASE_URL` must be present in the app's
+production env (`.env.production`) for this job (and the Physical Stock page)
+to reach Neon.
+
+## `pbg`
+
+Single step in `run-pbg.ts`, delegating to `syncPbgData()`
+(`lib/pbg/pbg-data.ts`) — the **same function** the PBG dashboard's Sync button
+calls (`syncPbgDataAction`), so the scheduled and manual paths cannot drift.
+
+Reads the PBG sheet tab and upserts only the sheet-owned columns, keyed on the
+BG number: `BG_NO`, `BG_AMT` → `bgAmtFc`, `CANCELLED_STATUS` → `status`,
+`MARGIN %` → `marginPct`, `MARGIN_AMT` → `marginAmount` and
+`BENEFICIARY_NAME` → `clientName`. A BG number absent from the DB is inserted;
+an existing row is updated only where the sheet value is non-blank and differs.
+A blank (`-`, `--`, `—`, `–`) never clears a stored value. Nothing is ever
+deleted, and every other column (PO no., PO date, `bankGuarantee`,
+`validityOn`, …) is left untouched.
+
+Run by ofelia on `@every 1h12m` (72 minutes) — see the *Jobs* grid note. It
+writes only `PbgData`, which no other scheduled job touches, so overlap with any
+other job is harmless.
+
+`pbg-sync.sh` needs only the credential probe and the `success:false` guard:
+`syncPbgData()` throws on a failed write rather than counting rejects, so there
+is no `failedWrites` counter to grep for.
+
+### Deployment (infra repo)
+
+The app side ships with the normal image. The schedule itself lives in the infra
+repo/container:
+
+1. Add the `[job-local "pbg-sync"]` block from `infra/pbg.conf` to the ofelia
+   config the daemon loads.
+2. Place `infra/pbg-sync.sh` at `/scripts/api/pbg-sync.sh` and `chmod +x`.
+3. `GMD_APP_SERVER` and `GMD_SYNC_API_KEY` are already set for the other seven
+   jobs — no new secret is needed.
+4. Reload or restart ofelia.
+
+Verify: `GET $GMD_APP_SERVER/api/scheduler/pbg` with `x-api-key` returns
+`auth:"ok"`; `docker logs <ofelia> | grep pbg` shows the run; the app logs a
+`[SCHEDULER] pbg ... done` block.
+
 ## `docket-creation`
 
 Single step: `runPendingDocketCreation()` in `docket-creation.ts`. For every
@@ -492,10 +579,19 @@ Stock-step edge cases:
 | `invoiceNo` / `itemName` | immutable join keys |
 | deletions | none |
 
+### `pbg`
+
+| Column | Rule |
+|---|---|
+| `bgNo` (`BG_NO`) | join key — immutable |
+| `bgAmtFc` (`BG_AMT`), `status` (`CANCELLED_STATUS`), `marginPct` (`MARGIN %`), `marginAmount` (`MARGIN_AMT`), `clientName` (`BENEFICIARY_NAME`) | inserted for new BG numbers; overwritten on existing rows only when the sheet value is non-blank and differs |
+| blank sheet values, including `-` `--` `—` `–` | **never** overwrite and **never** clear a stored value |
+| `poNumber`, `poDate`, `bgDate`, `expiryDate`, `claimDate`, `contactPerson`, `contactNumber`, `remark`, `bankGuarantee`, `validityOn` | never touched (PO/PO date are derived at read time from Supply History) |
+| deletions | none |
+
 ### `c-batch`
 
 | Table | Column | Rule |
-|---|---|---|
 | `RawMaterial`, `ContractReview`, `SupplyHistoryItem`, `EnquiryItem` | `cBatch` | set to `"C"` when any code column matches. **Set-only** — never cleared, never overwritten once marked. No other column is touched, and `VerifyBom` is not touched at all. |
 
 ### `docket-creation`
@@ -709,6 +805,10 @@ curl -i -X POST -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/contract-review"
 
 # verify credentials WITHOUT running the job
 curl -i -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/contract-review"
+curl -i -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/pbg"
+
+# run the PBG sheet sync
+curl -i -X POST -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/pbg"
 ```
 
 Inspect the container logs for the `[SCHEDULER]` blocks, which print the full

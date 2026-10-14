@@ -49,6 +49,23 @@ const PRESERVE_UI_FIELDS = new Set([
   "dateOfContract",
 ]);
 
+// Fields where a "Pending" value written by the Contract Review default
+// backfill is a placeholder, not a real UI edit. For these, a DB value of
+// "Pending" is treated like an empty cell so the sheet can still supply the
+// real value. Any other non-blank value (a manual edit) stays protected.
+// mcReceivedPending has no sheet column today, so listing it here is a no-op.
+const PENDING_PLACEHOLDER_FIELDS = new Set([
+  "clearanceStatus",
+  "mcReceivedPending",
+]);
+
+function isPendingPlaceholder(field: string, value: unknown): boolean {
+  return (
+    PENDING_PLACEHOLDER_FIELDS.has(field) &&
+    String(value ?? "").trim().toUpperCase() === "PENDING"
+  );
+}
+
 // Derived / UI-managed fields: never written by sync (create or update).
 // `costCodeRef` is derived too but is absent from CONTRACTS_SHEET_COLUMNS, so
 // mapContractReviewRow never emits it and the update loop below cannot reach it
@@ -171,7 +188,13 @@ export async function POST() {
         const dbVal = (existing as unknown as Record<string, unknown>)[field];
 
         if (PRESERVE_UI_FIELDS.has(field)) {
-          if (isNullOrEmpty(dbVal) && !isNullOrEmpty(sheetVal)) {
+          const dbMissing =
+            isNullOrEmpty(dbVal) || isPendingPlaceholder(field, dbVal);
+          if (
+            dbMissing &&
+            !isNullOrEmpty(sheetVal) &&
+            String(dbVal ?? "").trim() !== String(sheetVal).trim()
+          ) {
             (filtered as Record<string, unknown>)[field] = sheetVal;
             hasDataChange = true;
             changedColumns[field] = (changedColumns[field] ?? 0) + 1;

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "PhysicalStock" ADD COLUMN     "form_date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

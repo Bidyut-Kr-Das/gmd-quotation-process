@@ -4151,6 +4151,87 @@ export async function backfillContractReviewInspectionBatchAction(ids: string[])
   }
 }
 
+/**
+ * Defaults the Contract Review CLEARANCE STATUS and MC Received/Pending columns
+ * for any of the given rows whose field is still blank: CLEARANCE STATUS →
+ * "PENDING" (uppercase, matching the flow chart and the sheet's existing values)
+ * and MC Received/Pending → "Pending" (matching its dropdown and chart filter).
+ * Populated fields are left untouched, except that a mixed-case "Pending"
+ * clearance placeholder is normalised to "PENDING".
+ *
+ * The "PENDING"/"Pending" values written here are treated as placeholders by the
+ * sheet sync (see PENDING_PLACEHOLDER_FIELDS in
+ * app/api/contract-review/sync/route.ts), so the CONTRACTS sheet can still
+ * supply the real value later.
+ */
+export async function backfillContractReviewClearanceMcPendingBatchAction(
+  ids: string[],
+) {
+  "use server";
+  try {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (unique.length === 0) return { success: true, data: [] };
+    const items = await prisma.contractReview.findMany({
+      where: { id: { in: unique } },
+      select: { id: true, clearanceStatus: true, mcReceivedPending: true },
+    });
+    const updates = items
+      .map((i) => {
+        const clearance = String(i.clearanceStatus ?? "").trim();
+        const mc = String(i.mcReceivedPending ?? "").trim();
+        const clearanceBlank = clearance === "";
+        // Normalise the mixed-case placeholder ("Pending") to canonical "PENDING".
+        const clearanceNeedsNormalize =
+          !clearanceBlank &&
+          clearance.toUpperCase() === "PENDING" &&
+          clearance !== "PENDING";
+        const mcBlank = mc === "";
+        if (!clearanceBlank && !clearanceNeedsNormalize && !mcBlank) return null;
+        const patch: { clearanceStatus?: string; mcReceivedPending?: string } =
+          {};
+        if (clearanceBlank || clearanceNeedsNormalize)
+          patch.clearanceStatus = "PENDING";
+        if (mcBlank) patch.mcReceivedPending = "Pending";
+        return {
+          id: i.id,
+          clearanceStatus: patch.clearanceStatus ?? i.clearanceStatus ?? "",
+          mcReceivedPending: patch.mcReceivedPending ?? i.mcReceivedPending ?? "",
+          promise: prisma.contractReview.update({
+            where: { id: i.id },
+            data: patch,
+          }),
+        };
+      })
+      .filter((u): u is NonNullable<typeof u> => u !== null);
+    if (updates.length > 0) {
+      const chunkSize = 200;
+      for (let i = 0; i < updates.length; i += chunkSize) {
+        const chunk = updates.slice(i, i + chunkSize);
+        await prisma.$transaction(chunk.map((u) => u.promise));
+      }
+    }
+    return {
+      success: true,
+      data: updates.map((u) => ({
+        id: u.id,
+        clearanceStatus: u.clearanceStatus,
+        mcReceivedPending: u.mcReceivedPending,
+      })),
+    };
+  } catch (error: any) {
+    console.error(
+      "Error backfilling ContractReview CLEARANCE STATUS / MC Received/Pending:",
+      error,
+    );
+    return {
+      success: false,
+      error:
+        error.message ||
+        "Failed to backfill CLEARANCE STATUS / MC Received/Pending.",
+    };
+  }
+}
+
 export async function backfillContractReviewPnRatingBatchAction(ids: string[]) {
   "use server";
   try {

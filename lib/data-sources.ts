@@ -1051,7 +1051,7 @@ const CONTRACT_REVIEW_SYNC: SyncOperation[] = [
     columns: [...CONTRACTS_COLUMNS, ...DUMP_COLUMNS],
     dbModels: ["ContractReview", "VerifyBom", "Enquiry"],
     writePolicy:
-      "Join key = ITEM_CODE + CONTRACT NO. ContractReview has NO @@unique on that pair (dropped in 20260905063935), so findFirst is non-deterministic when duplicates exist. 11 PRESERVE_UI_FIELDS are gap-fill only, 5 SKIP_FIELDS are never written, everything else overwrites when it differs. Blank sheet never clears. No deletes — row counts only grow.",
+      "Join key = ITEM_CODE + CONTRACT NO. ContractReview has NO @@unique on that pair (dropped in 20260905063935), so findFirst is non-deterministic when duplicates exist. 11 PRESERVE_UI_FIELDS are gap-fill only, 5 SKIP_FIELDS are never written, everything else overwrites when it differs. Blank sheet never clears. For clearanceStatus (and mcReceivedPending), a \"PENDING\"/\"Pending\" placeholder written by the Contract Review default backfill is treated as blank (case-insensitive), so the sheet can still supply the real value (PENDING_PLACEHOLDER_FIELDS in app/api/contract-review/sync/route.ts). No deletes — row counts only grow.",
     cadence: "every-sync",
   },
   {
