@@ -15,6 +15,7 @@ import {
   backfillContractReviewOrderListBatchAction,
   backfillContractReviewOfferPendingDoneBatchAction,
   backfillContractReviewInspectionBatchAction,
+  backfillContractReviewClearanceMcPendingBatchAction,
   backfillContractReviewPnRatingBatchAction,
   backfillContractReviewCostFromQuotationAction,
   syncContractReviewEnquiryFieldsBatchAction,
@@ -141,6 +142,7 @@ const STATE_IDX = CONTRACT_REVIEW_HEADERS.indexOf("STATE");
 const UTILITY_IDX = CONTRACT_REVIEW_HEADERS.indexOf("UTILITY");
 const PROJECT_REFERENCE_IDX = CONTRACT_REVIEW_HEADERS.indexOf("PROJECT REFERENCE");
 const INSPECTION_IDX = CONTRACT_REVIEW_HEADERS.indexOf("Inspection");
+const CLEARANCE_STATUS_IDX = CONTRACT_REVIEW_HEADERS.indexOf("CLEARANCE STATUS");
 const MC_IDX = CONTRACT_REVIEW_HEADERS.indexOf("MC Received/Pending");
 const OFFER_NUMBER_IDX = CONTRACT_REVIEW_HEADERS.indexOf("OFFER NUMBER");
 const OFFER_PENDING_DONE_IDX =
@@ -1365,6 +1367,55 @@ export default function ContractReviewPage() {
             if (v === undefined) return row;
             const next = [...row];
             if (INSPECTION_IDX !== -1) next[INSPECTION_IDX] = v ?? "";
+            return next;
+          }),
+        };
+      });
+    });
+  }, [data, headers]);
+
+  // Auto-backfill CLEARANCE STATUS and MC Received/Pending for rows whose field
+  // is blank: CLEARANCE STATUS → "PENDING", MC Received/Pending → "Pending".
+  // Also normalises a mixed-case "Pending" clearance placeholder to "PENDING".
+  // Populated values are left untouched. Rows are marked processed regardless so
+  // a deliberate later clear is not re-defaulted.
+  const autoClearanceMcPendingRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!data) return;
+    const pending: string[] = [];
+    data.rows.forEach((row, i) => {
+      const id = data.ids[i];
+      if (!id || autoClearanceMcPendingRef.current.has(id)) return;
+      autoClearanceMcPendingRef.current.add(id);
+      const clearance =
+        CLEARANCE_STATUS_IDX === -1
+          ? ""
+          : String(row[CLEARANCE_STATUS_IDX] ?? "").trim();
+      const clearanceBlank = clearance === "";
+      const clearanceNeedsNormalize =
+        clearance !== "" &&
+        clearance.toUpperCase() === "PENDING" &&
+        clearance !== "PENDING";
+      const mcBlank =
+        MC_IDX === -1 || String(row[MC_IDX] ?? "").trim() === "";
+      if (clearanceBlank || clearanceNeedsNormalize || mcBlank)
+        pending.push(id);
+    });
+    if (!pending.length) return;
+    backfillContractReviewClearanceMcPendingBatchAction(pending).then((res) => {
+      if (!res?.success || !res.data) return;
+      const map = new Map(res.data.map((d) => [d.id, d]));
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          rows: prev.rows.map((row, i) => {
+            const v = map.get(prev.ids[i]);
+            if (!v) return row;
+            const next = [...row];
+            if (CLEARANCE_STATUS_IDX !== -1)
+              next[CLEARANCE_STATUS_IDX] = v.clearanceStatus ?? "";
+            if (MC_IDX !== -1) next[MC_IDX] = v.mcReceivedPending ?? "";
             return next;
           }),
         };
@@ -3603,6 +3654,7 @@ tileSize,
                 }}
                 onCellUpdate={handleCellUpdate}
                 columnGroups={CONTRACT_REVIEW_COLUMN_GROUPS}
+                sortByType
                 defaultColumnWidths={CONTRACT_REVIEW_COLUMN_WIDTHS}
                 cellBadges={[
                   ...cBatchBadges("ITEM_CODE"),
