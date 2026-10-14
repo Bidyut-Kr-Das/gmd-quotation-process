@@ -54,6 +54,7 @@ model PhysicalStock {
   // to the RawMaterial.cost. `bom_id` is the BOM carrying that highest cost.
   cost                           String?
   bom_id                         String?
+    form_date                           DateTime @default(now())
   created_at                     DateTime @default(now())
   updated_at                     DateTime @updatedAt
 
