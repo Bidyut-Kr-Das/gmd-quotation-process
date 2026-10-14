@@ -341,6 +341,52 @@ export async function backfillInspection(ids: string[]): Promise<ActionResult> {
   }
 }
 
+/**
+ * Defaults blank CLEARANCE STATUS to "PENDING" and blank MC Received/Pending to
+ * "Pending"; a mixed-case "Pending" clearance is normalised to "PENDING".
+ * The quotation sheet sync treats these values as placeholders, so the
+ * CONTRACTS sheet can still supply the real value later.
+ */
+export async function backfillClearanceMcPending(ids: string[]): Promise<ActionResult> {
+  try {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (unique.length === 0) return { success: true, data: [] };
+    const items = await tenderPrisma.contractReview.findMany({
+      where: { id: { in: unique } },
+      select: { id: true, clearanceStatus: true, mcReceivedPending: true },
+    });
+    const updates = items.flatMap((i) => {
+      const clearance = String(i.clearanceStatus ?? "").trim();
+      const patch: { clearanceStatus?: string; mcReceivedPending?: string } = {};
+      if (clearance.toUpperCase() === "PENDING" ? clearance !== "PENDING" : clearance === "")
+        patch.clearanceStatus = "PENDING";
+      if (String(i.mcReceivedPending ?? "").trim() === "") patch.mcReceivedPending = "Pending";
+      return Object.keys(patch).length ? [{ i, patch }] : [];
+    });
+    for (let n = 0; n < updates.length; n += 200) {
+      await tenderPrisma.$transaction(
+        updates
+          .slice(n, n + 200)
+          .map((u) => tenderPrisma.contractReview.update({ where: { id: u.i.id }, data: u.patch })),
+      );
+    }
+    return {
+      success: true,
+      data: updates.map(({ i, patch }) => ({
+        id: i.id,
+        clearanceStatus: patch.clearanceStatus ?? i.clearanceStatus ?? "",
+        mcReceivedPending: patch.mcReceivedPending ?? i.mcReceivedPending ?? "",
+      })),
+    };
+  } catch (error) {
+    console.error("Error backfilling ContractReview CLEARANCE STATUS / MC Received/Pending:", error);
+    return {
+      success: false,
+      error: errorMessage(error, "Failed to backfill CLEARANCE STATUS / MC Received/Pending."),
+    };
+  }
+}
+
 export async function backfillPnRating(ids: string[]): Promise<ActionResult> {
   try {
     const unique = [...new Set(ids.filter(Boolean))];

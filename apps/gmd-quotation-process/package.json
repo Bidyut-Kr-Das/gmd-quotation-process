@@ -68,7 +68,9 @@
     "physical:cost": "tsx scripts/backfill-physical-stock-cost-bom.ts",
     "physical:cost:apply": "tsx scripts/backfill-physical-stock-cost-bom.ts --apply",
     "physical:copy-stock-db": "tsx scripts/copy-physical-stock-to-stock-db.ts",
-    "physical:copy-stock-db:apply": "tsx scripts/copy-physical-stock-to-stock-db.ts --apply"
+    "physical:copy-stock-db:apply": "tsx scripts/copy-physical-stock-to-stock-db.ts --apply",
+    "pbg:validity:normalise": "tsx scripts/normalise-pbg-validity.ts",
+    "pbg:validity:normalise:apply": "tsx scripts/normalise-pbg-validity.ts --apply"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",

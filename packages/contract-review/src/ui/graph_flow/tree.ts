@@ -52,7 +52,7 @@ export const LIVE_TREE: FlowNode = {
   children: [
     {
       id: "liveApproved",
-      filter: { column: "CLEARANCE STATUS", values: ["APPROVED"] },
+      filter: { column: "CLEARANCE STATUS", values: ["APPROVED", "NA", "NR"] },
       label: "Approved",
       accent: "text-emerald-300",
       edge: "rgb(110 231 183)",

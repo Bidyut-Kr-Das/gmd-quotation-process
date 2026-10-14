@@ -57,6 +57,7 @@ export interface ContractReviewActions {
   backfillContractReviewOfferPendingDoneBatchAction: BatchAction;
   backfillContractReviewInspectionBatchAction: BatchAction;
   backfillContractReviewPnRatingBatchAction: BatchAction;
+  backfillContractReviewClearanceMcPendingBatchAction: BatchAction;
 
   sync?: () => Promise<ActionResult>;
   recomputeIndentListingVersionsAction?: () => Promise<ActionResult>;

@@ -235,10 +235,20 @@ export const addAttachments = createAsyncThunk(
 
 export const sendDocketEmail = createAsyncThunk(
   "enquiries/sendDocketEmail",
-  async (enquiryId: string, { rejectWithValue }) => {
-    const result = await sendDocketEmailAction(enquiryId);
+  async (
+    {
+      enquiryId,
+      allowNoThread = false,
+    }: { enquiryId: string; allowNoThread?: boolean },
+    { rejectWithValue }
+  ) => {
+    const result = await sendDocketEmailAction(enquiryId, allowNoThread);
     if (!result.success) {
-      return rejectWithValue(result.error || "Failed to send docket email");
+      return rejectWithValue({
+        error: result.error || "Failed to send docket email",
+        // "NO_THREAD" lets the cell offer to send as a new mail instead.
+        code: "code" in result ? result.code : undefined,
+      });
     }
     return result.data!;
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useCallback, useEffect, type ReactNode } from "react";
-import { ChevronUp, ChevronDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check, Highlighter, AlertTriangle } from "lucide-react";
+import { ChevronUp, ChevronDown, ArrowUpDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check, Highlighter, AlertTriangle } from "lucide-react";
 import GMDUpdateStatusBadge from "./GMDUpdateStatusBadge";
 import type { ContractReviewImage } from "../lib/types";
 import {
@@ -622,7 +622,20 @@ function compareDates(aVal: unknown, bVal: unknown, dir: number): number {
   return (aT! < bT! ? -1 : 1) * dir;
 }
 
-function cellCompare(aVal: unknown, bVal: unknown, dir: number): number {
+function cellCompare(
+  aVal: unknown,
+  bVal: unknown,
+  dir: number,
+  numericStrings = false,
+): number {
+  if (numericStrings) {
+    const aNumeric = parseSortNumber(aVal);
+    const bNumeric = parseSortNumber(bVal);
+    if (aNumeric !== null && bNumeric !== null) {
+      if (aNumeric === bNumeric) return 0;
+      return (aNumeric < bNumeric ? -1 : 1) * dir;
+    }
+  }
   const aNum = typeof aVal === "number" ? aVal : NaN;
   const bNum = typeof bVal === "number" ? bVal : NaN;
   if (!isNaN(aNum) && !isNaN(bNum)) return (aNum - bNum) * dir;
@@ -634,6 +647,30 @@ function cellCompare(aVal: unknown, bVal: unknown, dir: number): number {
   if (aNull) return dir;
   if (bNull) return -dir;
   return aKey.localeCompare(bKey, undefined, { numeric: true }) * dir;
+}
+
+/**
+ * Strict numeric parse used by the typed (Contract Review) sort. Handles sheet
+ * number strings with thousands separators, a trailing percent, currency
+ * symbols, and the literal "Infinity". Returns null for anything that is not a
+ * pure number, so text columns (e.g. "PN-10/16") keep their natural ordering.
+ */
+function parseSortNumber(value: unknown): number | null {
+  if (typeof value === "number")
+    return Number.isFinite(value) ? value : Number.isNaN(value) ? null : value;
+  const s = String(value ?? "").trim();
+  if (!s) return null;
+  const low = s.toLowerCase();
+  if (low === "infinity" || low === "+infinity") return Infinity;
+  if (low === "-infinity") return -Infinity;
+  const normalised = s
+    .replace(/,/g, "")
+    .replace(/%/g, "")
+    .replace(/[$₹€£]/g, "")
+    .trim();
+  if (!/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(normalised)) return null;
+  const n = Number(normalised);
+  return Number.isNaN(n) ? null : n;
 }
 
 function cellEq(rowA: unknown[], rowB: unknown[], colIdx: number): boolean {
@@ -685,6 +722,12 @@ const FROZEN_VISIBLE_COLUMNS = 2;
  */
 const WRAPPED_CELL_BOX =
   "max-h-16 overflow-y-auto overflow-x-hidden cell-scrollable whitespace-normal leading-normal break-words";
+
+/**
+ * Max height (px) for a multiline editable cell. `max-h-12` is 48px, which at
+ * text-xs/leading-normal shows ~2 lines before the cell starts scrolling.
+ */
+const MULTILINE_CELL_MAX_PX = 48;
 
 /**
  * A column-filter checkbox whose match logic is supplied by the caller instead
@@ -989,6 +1032,22 @@ interface GMDUpdateTableProps {
   onSetVerdict?: (id: string, verdict: string | null) => Promise<void>;
   columnGroups?: ColumnGroup[];
   /**
+   * Typed sort (used by Contract Review): a newly-clicked column starts
+   * ascending for text (A→Z) and numbers (lowest→highest), but descending for
+   * date columns (latest→oldest). Numeric comparison also understands sheet
+   * number strings with thousands separators, decimals, a trailing percent and
+   * the literal "Infinity". Off by default so other dashboards keep their
+   * current descending-first behaviour.
+   */
+  sortByType?: boolean;
+  /**
+   * Editable free-text columns that should render as a word-wrapped, multiline
+   * `<textarea>` (auto-grows up to ~2 lines, then scrolls inside the cell)
+   * instead of a single-line `<input>`. Off by default so other dashboards keep
+   * single-line editing.
+   */
+  multilineEditableColumns?: string[];
+  /**
    * Per-column default widths in px, keyed by header. Seeds columnWidths on
    * mount only, so a manual drag-resize still wins for the rest of the session
    * (and is still discarded on reload). Columns absent from the map fall
@@ -1159,6 +1218,8 @@ castingRateInputs,
   verdictsById,
   onSetVerdict,
   columnGroups,
+  sortByType,
+  multilineEditableColumns,
   defaultColumnWidths,
   wrapCells,
   onDeleteRow,
@@ -1466,7 +1527,9 @@ castingRateInputs,
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
       setSortColumn(colIndex);
-      setSortDirection("desc");
+      const h = headers[colIndex] ?? "";
+      // Typed sort: dates start latest→oldest, text A→Z, numbers lowest→highest.
+      setSortDirection(sortByType && !isDateHeader(h) ? "asc" : "desc");
     }
     setCurrentPage(1);
   };
@@ -1558,13 +1621,13 @@ castingRateInputs,
       if (sortColumn !== null) {
         const c = isDateSort
           ? compareDates(a.row[sortColumn], b.row[sortColumn], dir)
-          : cellCompare(a.row[sortColumn], b.row[sortColumn], dir);
+          : cellCompare(a.row[sortColumn], b.row[sortColumn], dir, sortByType);
         if (c !== 0) return c;
       }
       return a.i - b.i;
     });
     return decorated;
-  }, [rows, ids, sortColumn, sortDirection, isGrouped, groupByIdx, headers]);
+  }, [rows, ids, sortColumn, sortDirection, isGrouped, groupByIdx, headers, sortByType]);
 
   const rowSearchCache = useMemo(() => {
     const cache = new Map<unknown[], string>();
@@ -1949,6 +2012,18 @@ castingRateInputs,
   };
 
   /**
+   * Auto-grows a multiline cell `<textarea>` from one line up to
+   * `MULTILINE_CELL_MAX_PX`, letting it scroll internally beyond that. Also
+   * used as the element `ref`, so it sizes on mount / when the cell remounts.
+   */
+  const autoGrowCell = useCallback((el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height =
+      Math.min(el.scrollHeight, MULTILINE_CELL_MAX_PX) + "px";
+  }, []);
+
+  /**
    * Class string for a text cell. `scrollable` is false inside a collapsed
    * group, because the group column caps and scrolls itself as a whole —
    * capping each child too would nest a scroller inside a scroller and clip the
@@ -2214,6 +2289,25 @@ castingRateInputs,
               </option>
             ))}
           </select>
+        );
+      } else if (multilineEditableColumns?.includes(header)) {
+        // Long free-text editable column (e.g. Remarks): word-wrapped, grows
+        // with content up to 2 lines then scrolls inside the cell, so the
+        // column width and empty-row height stay unchanged.
+        cellContent = (
+          <textarea
+            key={display + "-" + idx + "-" + cellIdx}
+            ref={autoGrowCell}
+            rows={1}
+            defaultValue={display}
+            onInput={(e) => autoGrowCell(e.currentTarget)}
+            onBlur={(e) => {
+              if (e.target.value !== display) {
+                handleCellUpdate(idx, cellIdx, e.target.value);
+              }
+            }}
+            className="block w-full max-h-12 p-0 text-xs bg-transparent border-none outline-none resize-none overflow-y-auto overflow-x-hidden cell-scrollable whitespace-pre-wrap leading-normal break-words"
+          />
         );
       } else {
         cellContent = (
@@ -2767,6 +2861,8 @@ castingRateInputs,
                             !!dateRanges[ch]?.from ||
                             !!dateRanges[ch]?.to ||
                             !!dateRanges[ch]?.blank;
+                          const chIdx = headers.indexOf(ch);
+                          const childSorted = chIdx !== -1 && sortColumn === chIdx;
                           return (
                             <div key={ch} className="min-w-0 flex flex-col gap-1">
                               {isDateFilterHeader(ch) ? (
@@ -2827,6 +2923,29 @@ castingRateInputs,
                                     <X size={10} />
                                   </button>
                                 )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (chIdx !== -1) handleSort(chIdx);
+                                  }}
+                                  className={`shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-accent transition-colors ${
+                                    childSorted
+                                      ? "text-foreground"
+                                      : "text-foreground/50 hover:text-foreground"
+                                  }`}
+                                  title={`Sort by ${ch}`}
+                                >
+                                  {childSorted ? (
+                                    sortDirection === "asc" ? (
+                                      <ChevronUp size={10} />
+                                    ) : (
+                                      <ChevronDown size={10} />
+                                    )
+                                  ) : (
+                                    <ArrowUpDown size={10} />
+                                  )}
+                                </button>
                               </div>
                             </div>
                           );

@@ -2,6 +2,7 @@
 
 import {
   applyColumnFlags,
+  backfillClearanceMcPending,
   backfillInspection,
   backfillOfferPendingDone,
   backfillPnRating,
@@ -114,6 +115,16 @@ export const backfillContractReviewInspectionBatchAction = withLog(
     return backfillInspection(ids);
   },
   logBackfill("Inspection"),
+);
+
+export const backfillContractReviewClearanceMcPendingBatchAction = withLog(
+  async (ids: string[]) => {
+    await requireUser();
+    const a = await access();
+    if (!a.isEnabled("CLEARANCE STATUS") || !a.isEnabled("MC Received/Pending")) return NOT_ALLOWED;
+    return backfillClearanceMcPending(ids);
+  },
+  logBackfill("CLEARANCE STATUS / MC Received/Pending"),
 );
 
 export const backfillContractReviewPnRatingBatchAction = withLog(

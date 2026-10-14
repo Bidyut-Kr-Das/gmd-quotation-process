@@ -247,3 +247,55 @@ export async function syncRawMaterialItemNames(
 
   return c;
 }
+
+export async function syncFullItemItemNames(
+  nameByCode: Map<string, string>,
+  options: ItemNamePassOptions = {},
+): Promise<ItemNamePassResult> {
+  const {
+    dryRun = false,
+    chunkSize = DEFAULT_ITEM_NAME_CHUNK,
+    sampleLimit = DEFAULT_SAMPLE_LIMIT,
+  } = options;
+
+  const c = emptyPass();
+  const updates: Update[] = [];
+
+  const rows = await prisma.fullItem.findMany({
+    select: { id: true, itemCode: true, itemName: true },
+  });
+  c.rows = rows.length;
+
+  for (const row of rows) {
+    const key = keyOf(row.itemCode);
+    if (!key) {
+      c.blankKey++;
+      continue;
+    }
+    const name = nameByCode.get(key);
+    if (!name) {
+      c.unmatched++;
+      continue;
+    }
+    c.matched++;
+    if (name === (row.itemName ?? "")) {
+      c.unchanged++;
+      continue;
+    }
+    c.updated++;
+    if (dryRun && c.samples.length < sampleLimit) {
+      c.samples.push(`${row.itemCode}: "${row.itemName ?? ""}" -> "${name}"`);
+    }
+    updates.push({ id: row.id, data: { itemName: name } });
+  }
+
+  if (!dryRun) {
+    c.failedWrites = await applyUpdates(
+      updates,
+      (u) => prisma.fullItem.update({ where: { id: u.id }, data: u.data }),
+      chunkSize,
+    );
+  }
+
+  return c;
+}
