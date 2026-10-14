@@ -43,7 +43,13 @@ import { PbgTree } from "@/components/pbg/pbg-tree";
 import { SyncButton } from "@/components/pbg/sync-button";
 import { ColumnVisibility } from "@/components/pbg/column-visibility";
 import { Popover } from "@/components/pbg/popover";
-import { ColumnsIcon, SearchIcon, XIcon } from "@/components/pbg/icons";
+import {
+  ColumnsIcon,
+  DownloadIcon,
+  SearchIcon,
+  XIcon,
+} from "@/components/pbg/icons";
+import { buildPbgExportRows, pbgExportFileName } from "@/lib/pbg/export";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -162,6 +168,7 @@ export function PbgTable({
   const [treeOpen, setTreeOpen] = useState(true);
   const [undoStack, setUndoStack] = useState<CellChange[]>([]);
   const [redoStack, setRedoStack] = useState<CellChange[]>([]);
+  const [exporting, setExporting] = useState(false);
 
   const activeColumns = useMemo(
     () => PBG_COLUMN_DEFS.filter((def) => visible.includes(def.key)),
@@ -231,6 +238,22 @@ export function PbgTable({
       router.replace(`${pathname}${query}`, { scroll: false });
     });
   }
+
+  // Exports the currently filtered rows and visible columns to an .xlsx file.
+  // `xlsx` is imported on demand so it stays out of the initial bundle.
+  const handleExportExcel = useCallback(async () => {
+    setExporting(true);
+    try {
+      const XLSX = await import("xlsx");
+      const rows = buildPbgExportRows(filtered, activeColumns);
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "PBG");
+      XLSX.writeFile(workbook, pbgExportFileName());
+    } finally {
+      setExporting(false);
+    }
+  }, [filtered, activeColumns]);
 
   const applyChange = useCallback(
     async (
@@ -528,6 +551,17 @@ export function PbgTable({
           )}
 
           <SyncButton />
+
+          <button
+            type="button"
+            onClick={() => void handleExportExcel()}
+            disabled={exporting || filtered.length === 0}
+            title="Export the filtered records to Excel"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <DownloadIcon />
+            {exporting ? "Exporting…" : "Export"}
+          </button>
         </div>
       </div>
 

@@ -206,25 +206,26 @@ function CellEditor({
   }
 
   if (kind === "text" && def.options && def.options.length > 0) {
-    const listId = `pbg-options-${def.key}`;
+    const choices = [
+      ...(value && !def.options.includes(value) ? [value] : []),
+      ...def.options,
+    ];
+    if (!value) choices.unshift("");
     return (
-      <>
-        <input
-          ref={inputRef}
-          type="text"
-          list={listId}
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          onKeyDown={onKeyDown}
-          onBlur={() => finish(null)}
-          className={baseClass}
-        />
-        <datalist id={listId}>
-          {def.options.map((option) => (
-            <option key={option} value={option} />
-          ))}
-        </datalist>
-      </>
+      <select
+        ref={selectRef}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={onKeyDown}
+        onBlur={() => finish(null)}
+        className={baseClass}
+      >
+        {choices.map((option) => (
+          <option key={option || "__empty"} value={option}>
+            {option || "—"}
+          </option>
+        ))}
+      </select>
     );
   }
 
