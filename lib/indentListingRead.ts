@@ -15,6 +15,12 @@ export interface MergedIndentListing {
   rows: unknown[][];
   /** Ids aligned with `rows`; synthesized rows get a generated id. */
   ids: string[];
+  /**
+   * Stored-row ids behind each displayed row, aligned with `rows`. A merged row
+   * lists its own id plus every contributing `TPAV+SLV` id; a synthesized row
+   * lists only its contributing ids. Empty when the row has no stored source.
+   */
+  sourceIds: string[][];
   /** Per-row, per-variant (V1..V4) metrics aligned with `rows`. */
   metrics: VariantMetrics[][];
   totalRows: number;
@@ -32,7 +38,14 @@ export async function getMergedIndentListing(): Promise<MergedIndentListing> {
   });
 
   if (items.length === 0) {
-    return { rows: [], ids: [], metrics: [], totalRows: 0, syncedAt: null };
+    return {
+      rows: [],
+      ids: [],
+      sourceIds: [],
+      metrics: [],
+      totalRows: 0,
+      syncedAt: null,
+    };
   }
 
   const rawRows = items.map((item) => [
@@ -55,7 +68,7 @@ export async function getMergedIndentListing(): Promise<MergedIndentListing> {
     item.rmCodeV4,
   ]);
 
-  const { rows, ids } = applyTpavSlvMerge(
+  const { rows, ids, sourceIds } = applyTpavSlvMerge(
     rawRows,
     items.map((i) => i.id),
   );
@@ -96,6 +109,7 @@ export async function getMergedIndentListing(): Promise<MergedIndentListing> {
   return {
     rows,
     ids,
+    sourceIds,
     metrics,
     totalRows: rows.length,
     syncedAt: lastSynced?.toISOString() ?? null,

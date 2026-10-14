@@ -6,7 +6,11 @@ export type CellValue = string | number | Date | null;
 
 export const STATUS_OPTIONS = ["OPEN", "CLOSED", "RUNNING"];
 
-const EDITABLE_KEYS = new Set<ColumnKey>(PBG_COLUMN_DEFS.map((d) => d.key));
+const EDITABLE_KEYS = new Set<ColumnKey>(
+  PBG_COLUMN_DEFS.filter((d) => d.type !== "files" && !d.readonly).map(
+    (d) => d.key,
+  ),
+);
 const COLUMN_BY_KEY = new Map<ColumnKey, ColumnDef>(
   PBG_COLUMN_DEFS.map((d) => [d.key, d]),
 );

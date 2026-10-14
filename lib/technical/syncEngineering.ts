@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ENGINEERING_TABS, findTab } from "./tableConfig";
 import { fetchEngineeringSheet } from "./googleSheets";
 import { rowToRecord, sheetFieldCount, TAB_FIELDS } from "./engineeringModels";
+import { canonicalizeDensityRows } from "./formulas";
 import type { EngineeringTab } from "./types";
 
 /**
@@ -103,13 +104,26 @@ async function markSynced(tabKey: string, totalRows: number): Promise<string> {
  * It has no app-managed columns and no user edits, so it is replaced wholesale
  * (`skipDuplicates` tolerates a repeated material) — a positional reconcile
  * would otherwise risk a unique collision when the sheet rows are reordered.
+ *
+ * Records are passed through `canonicalizeDensityRows`, so known sheet typos are
+ * corrected (ALLOY ATEEL -> ALLOY STEEL) and canonical rows the sheet omits
+ * (GALVANIZED IRON 7.85) are always present.
  */
 async function replaceDensity(tab: EngineeringTab): Promise<TabSyncResult> {
   try {
     const { rows } = await fetchEngineeringSheet(tab);
-    const records = rows.map((row, index) => ({
+    const canonical = canonicalizeDensityRows(
+      rows.map((row) => {
+        const record = rowToRecord(tab.key, row);
+        return {
+          material: String(record.material ?? ""),
+          densityGmCm3: String(record.densityGmCm3 ?? ""),
+        };
+      }),
+    );
+    const records = canonical.map((row, index) => ({
       rowIndex: index,
-      ...rowToRecord(tab.key, row),
+      ...row,
     }));
 
     const data = records as unknown as Prisma.DensityCreateManyInput[];

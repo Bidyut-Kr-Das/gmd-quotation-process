@@ -9,12 +9,14 @@ import {
   computeBoltWeightKg,
   computeCastingCost,
   computeFlangeWeightRange,
+  computeNutBoltCost,
   computeNutWeightKg,
   decodeBoltWeight,
   encodeBoltWeight,
   formatBoltDimension,
   parseNumber,
   resolveBoltMaterial,
+  resolveBoltRateKey,
   resolveCastingKey,
   resolveMocDensity,
   resolveNominalBoltDiameter,
@@ -23,7 +25,8 @@ import {
 
 /**
  * Backfill `Flange.totalWeightKg` (+ `totalWeightTolerancePlus`,
- * `totalWeightToleranceMinus`), `densityGmCm3` and `costAsPerIs` from geometry +
+ * `totalWeightToleranceMinus`), `densityGmCm3`, `costAsPerIs` and the bolt/nut
+ * block (`boltWeight`/`nutWeight`, `boltCost`/`nutCost`) from geometry +
  * material density + the raw-material casting rates. Pure formulas live in
  * `lib/technical/formulas.ts`.
  *
@@ -33,8 +36,10 @@ import {
  * Only computable rows are written: a row is skipped when its MOC has no density
  * or a required dimension is missing. `costAsPerIs` = casting rate × nominal
  * weight; rows whose MOC has no casting rate (e.g. MS/FS) keep their weights but
- * get a blank cost. Because the engineering sync treats these columns as
- * app-managed (see `sheetColumnCount`), the values survive every sync.
+ * get a blank cost. Bolt/nut cost = weight × the material's per-kg rate (SS/GI/
+ * MS/CS); a missing rate leaves those lines blank. Because the engineering sync
+ * treats these columns as app-managed (see `sheetColumnCount`), the values
+ * survive every sync.
  */
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -93,6 +98,8 @@ async function main() {
   let boltVolumeComputed = 0;
   let boltWeightComputed = 0;
   let nutWeightComputed = 0;
+  let boltCostComputed = 0;
+  let nutCostComputed = 0;
   let updated = 0;
   let unchanged = 0;
   const skipped: Skipped[] = [];
@@ -136,7 +143,7 @@ async function main() {
 
     // Bolt volume / weight / nut weight (cylinder), stored as "<weight>|MOC".
     // MS/CS lock to the flange MOC; every other MOC keeps a stored SS/GI choice
-    // (default SS). GI has no density yet, so its weight stays blank.
+    // (default GI). GI resolves to the canonical GALVANIZED IRON density.
     const boltMaterialBase = resolveBoltMaterial(flange.moc);
     const storedBolt = decodeBoltWeight(flange.boltWeight);
     const boltMaterial =
@@ -144,7 +151,7 @@ async function main() {
         ? boltMaterialBase
         : storedBolt.material === "GI" || storedBolt.material === "SS"
           ? storedBolt.material
-          : "SS";
+          : "GI";
     const boltVolume = computeBoltVolumeMm3(boltDia, boltLength);
     const boltVolumeStr = boltVolume != null ? toFixedString(boltVolume, 2) : "";
     const boltDensity = resolveMocDensity(boltMaterial, densityByMaterial);
@@ -155,6 +162,21 @@ async function main() {
     if (boltVolume != null) boltVolumeComputed++;
     if (boltWeightKg != null) boltWeightComputed++;
     if (nutWeightKg != null) nutWeightComputed++;
+
+    // Bolt/nut cost = weight × the material's per-kg casting rate. The nut shares
+    // the bolt's material; a missing rate leaves both lines blank.
+    const boltRateKey = resolveBoltRateKey(boltMaterial);
+    const boltRate =
+      boltRateKey != null ? castingRates.get(boltRateKey) ?? null : null;
+    const { boltCost, nutCost } = computeNutBoltCost(
+      boltWeightKg,
+      nutWeightKg,
+      boltRate,
+    );
+    const boltCostStr = boltCost != null ? toFixedString(boltCost, 2) : "";
+    const nutCostStr = nutCost != null ? toFixedString(nutCost, 2) : "";
+    if (boltCost != null) boltCostComputed++;
+    if (nutCost != null) nutCostComputed++;
 
     // Weight / cost need a density and the ring dimensions.
     let densityVal: number | null = null;
@@ -227,6 +249,8 @@ async function main() {
     if (String(flange.boltVolume ?? "").trim() !== boltVolumeStr) data.boltVolume = boltVolumeStr;
     if (String(flange.boltWeight ?? "").trim() !== boltWeightValue) data.boltWeight = boltWeightValue;
     if (String(flange.nutWeight ?? "").trim() !== nutWeightStr) data.nutWeight = nutWeightStr;
+    if (String(flange.boltCost ?? "").trim() !== boltCostStr) data.boltCost = boltCostStr;
+    if (String(flange.nutCost ?? "").trim() !== nutCostStr) data.nutCost = nutCostStr;
 
     if (Object.keys(data).length === 0) {
       unchanged++;
@@ -290,6 +314,8 @@ async function main() {
   console.log(`Bolt volume:       ${boltVolumeComputed}`);
   console.log(`Bolt weight:       ${boltWeightComputed}`);
   console.log(`Nut weight:        ${nutWeightComputed}`);
+  console.log(`Bolt cost:         ${boltCostComputed}`);
+  console.log(`Nut cost:          ${nutCostComputed}`);
   console.log(`${apply ? "Updated" : "Would update"}:     ${updated}`);
   console.log(`Already current:   ${unchanged}`);
   console.log(`Weight skipped:    ${skipped.length}`);

@@ -5,12 +5,39 @@ import path from "path";
 let oauth2ClientInstance: InstanceType<typeof OAuth2Client> | null = null;
 
 /**
+ * Builds an OAuth2 client from environment variables when they are present.
+ * This lets deployments without credentials.json/token.json files still talk
+ * to Google APIs (client id + secret + refresh token).
+ */
+function getEnvOAuthClient(): InstanceType<typeof OAuth2Client> | null {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    return null;
+  }
+
+  const oauth2Client = new OAuth2Client(clientId, clientSecret);
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  return oauth2Client;
+}
+
+/**
  * Initializes and returns the singleton OAuth2 client.
- * Reads config from credentials.json/token.json and persists token updates dynamically.
+ *
+ * Prefers GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN from the
+ * environment; falls back to credentials.json/token.json when those are absent.
  */
 export function getOAuthClient() {
   if (oauth2ClientInstance) {
     return oauth2ClientInstance;
+  }
+
+  const envClient = getEnvOAuthClient();
+  if (envClient) {
+    oauth2ClientInstance = envClient;
+    return envClient;
   }
 
   const credentialsPath = path.join(process.cwd(), "credentials.json");

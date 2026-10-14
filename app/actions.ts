@@ -30,10 +30,12 @@ import {
   buildDensityMap,
   computeBoltVolumeMm3,
   computeBoltWeightKg,
+  computeNutBoltCost,
   computeNutWeightKg,
   encodeBoltWeight,
   parseNumber,
   resolveBoltMaterial,
+  resolveBoltRateKey,
   resolveMocDensity,
 } from "@/lib/technical/formulas";
 // LEGACY — superseded by the hourly `docket-creation` scheduler job
@@ -4132,6 +4134,87 @@ export async function backfillContractReviewInspectionBatchAction(ids: string[])
   }
 }
 
+/**
+ * Defaults the Contract Review CLEARANCE STATUS and MC Received/Pending columns
+ * for any of the given rows whose field is still blank: CLEARANCE STATUS →
+ * "PENDING" (uppercase, matching the flow chart and the sheet's existing values)
+ * and MC Received/Pending → "Pending" (matching its dropdown and chart filter).
+ * Populated fields are left untouched, except that a mixed-case "Pending"
+ * clearance placeholder is normalised to "PENDING".
+ *
+ * The "PENDING"/"Pending" values written here are treated as placeholders by the
+ * sheet sync (see PENDING_PLACEHOLDER_FIELDS in
+ * app/api/contract-review/sync/route.ts), so the CONTRACTS sheet can still
+ * supply the real value later.
+ */
+export async function backfillContractReviewClearanceMcPendingBatchAction(
+  ids: string[],
+) {
+  "use server";
+  try {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (unique.length === 0) return { success: true, data: [] };
+    const items = await prisma.contractReview.findMany({
+      where: { id: { in: unique } },
+      select: { id: true, clearanceStatus: true, mcReceivedPending: true },
+    });
+    const updates = items
+      .map((i) => {
+        const clearance = String(i.clearanceStatus ?? "").trim();
+        const mc = String(i.mcReceivedPending ?? "").trim();
+        const clearanceBlank = clearance === "";
+        // Normalise the mixed-case placeholder ("Pending") to canonical "PENDING".
+        const clearanceNeedsNormalize =
+          !clearanceBlank &&
+          clearance.toUpperCase() === "PENDING" &&
+          clearance !== "PENDING";
+        const mcBlank = mc === "";
+        if (!clearanceBlank && !clearanceNeedsNormalize && !mcBlank) return null;
+        const patch: { clearanceStatus?: string; mcReceivedPending?: string } =
+          {};
+        if (clearanceBlank || clearanceNeedsNormalize)
+          patch.clearanceStatus = "PENDING";
+        if (mcBlank) patch.mcReceivedPending = "Pending";
+        return {
+          id: i.id,
+          clearanceStatus: patch.clearanceStatus ?? i.clearanceStatus ?? "",
+          mcReceivedPending: patch.mcReceivedPending ?? i.mcReceivedPending ?? "",
+          promise: prisma.contractReview.update({
+            where: { id: i.id },
+            data: patch,
+          }),
+        };
+      })
+      .filter((u): u is NonNullable<typeof u> => u !== null);
+    if (updates.length > 0) {
+      const chunkSize = 200;
+      for (let i = 0; i < updates.length; i += chunkSize) {
+        const chunk = updates.slice(i, i + chunkSize);
+        await prisma.$transaction(chunk.map((u) => u.promise));
+      }
+    }
+    return {
+      success: true,
+      data: updates.map((u) => ({
+        id: u.id,
+        clearanceStatus: u.clearanceStatus,
+        mcReceivedPending: u.mcReceivedPending,
+      })),
+    };
+  } catch (error: any) {
+    console.error(
+      "Error backfilling ContractReview CLEARANCE STATUS / MC Received/Pending:",
+      error,
+    );
+    return {
+      success: false,
+      error:
+        error.message ||
+        "Failed to backfill CLEARANCE STATUS / MC Received/Pending.",
+    };
+  }
+}
+
 export async function backfillContractReviewPnRatingBatchAction(ids: string[]) {
   "use server";
   try {
@@ -4602,6 +4685,41 @@ export async function updateContractReviewFieldAction(
   }
 }
 
+export async function updateIndentRmCodeAction(input: {
+  sourceIds: string[];
+  slot: 1 | 2 | 3 | 4;
+  value: string;
+}): Promise<{ success: boolean; updated?: number; error?: string }> {
+  "use server";
+  try {
+    const sourceIds = (input.sourceIds ?? []).filter(
+      (id) => typeof id === "string" && id.trim() !== "",
+    );
+    const slot = Number(input.slot);
+    if (sourceIds.length === 0) {
+      return { success: false, error: "No stored rows behind this line." };
+    }
+    if (![1, 2, 3, 4].includes(slot)) {
+      return { success: false, error: "Invalid variant slot." };
+    }
+
+    const value = String(input.value ?? "").trim();
+    // Every stored row behind the displayed line gets the same value: a
+    // TPAV+SLV compound is folded into the SLV/TPAV rows it contributes to.
+    const result = await prisma.indentListing.updateMany({
+      where: { id: { in: sourceIds } },
+      data: { [`rmCodeV${slot}`]: value },
+    });
+    return { success: true, updated: result.count };
+  } catch (error: any) {
+    console.error("Error updating IndentListing RM code:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to update the RM code.",
+    };
+  }
+}
+
 export async function recomputeIndentListingVersionsAction() {
   "use server";
   try {
@@ -4726,8 +4844,12 @@ export async function recomputeIndentListingVersionsAction() {
       },
     });
 
-    const { planIndentRmCodes, RM_CODE_ITEM_CATEGORY, RM_CODE_VALVE_TYPES } =
-      await import("@/lib/indentRmCodeResolver");
+    const {
+      planIndentRmCodes,
+      planRmCodeWrites,
+      RM_CODE_ITEM_CATEGORY,
+      RM_CODE_VALVE_TYPES,
+    } = await import("@/lib/indentRmCodeResolver");
 
     const [rmCodeSourceRows, rawMaterials] = await Promise.all([
       prisma.indentListing.findMany({
@@ -4779,42 +4901,31 @@ export async function recomputeIndentListingVersionsAction() {
 
     const rmCodePlan = planIndentRmCodes(rmCodeSourceRows, rawMaterials);
     const rmCodeCurrentById = new Map(rmCodeSourceRows.map((r) => [r.id, r]));
-    const rmCodeUpdates = rmCodePlan.updates.filter((u) => {
-      const cur = rmCodeCurrentById.get(u.id);
-      if (!cur) return false;
-      return (
-        String(cur.rmCodeV1 ?? "") !== u.rmCodeV1 ||
-        String(cur.rmCodeV2 ?? "") !== u.rmCodeV2 ||
-        String(cur.rmCodeV3 ?? "") !== u.rmCodeV3 ||
-        String(cur.rmCodeV4 ?? "") !== u.rmCodeV4
-      );
-    });
+    // A blank planned value is never written, so a hand-picked code survives a
+    // sync that resolved nothing for that slot.
+    const rmCodeWrites = planRmCodeWrites(
+      rmCodePlan.updates,
+      rmCodeCurrentById,
+    );
 
     // syncedAt is deliberately left alone here: it tracks the Contract Review
     // sync, and an RM code pass is not a Contract Review sync.
-    if (rmCodeUpdates.length > 0) {
+    if (rmCodeWrites.length > 0) {
       await prisma.$transaction(
-        rmCodeUpdates.map((u) =>
-          prisma.indentListing.update({
-            where: { id: u.id },
-            data: {
-              rmCodeV1: u.rmCodeV1,
-              rmCodeV2: u.rmCodeV2,
-              rmCodeV3: u.rmCodeV3,
-              rmCodeV4: u.rmCodeV4,
-            },
-          }),
-        ),
+        rmCodeWrites.map((w) => {
+          const { id, ...data } = w;
+          return prisma.indentListing.update({ where: { id }, data });
+        }),
       );
     }
 
     console.log(
-      `[indent-listing-rmcode] rawMaterials=${rawMaterials.length} rows=${rmCodePlan.updates.length} written=${rmCodeUpdates.length} resolved=${rmCodePlan.resolved} ambiguous=${rmCodePlan.ambiguous} unmatched=${rmCodePlan.unmatched}`,
+      `[indent-listing-rmcode] rawMaterials=${rawMaterials.length} rows=${rmCodePlan.updates.length} written=${rmCodeWrites.length} resolved=${rmCodePlan.resolved} ambiguous=${rmCodePlan.ambiguous} unmatched=${rmCodePlan.unmatched}`,
     );
 
     // Phase 3: publish the RM codes just written onto the Contract Review
     // COST CODE REF column. This reads rmCodeV1..V4 back from disk rather than
-    // reusing `rmCodeUpdates`, so a slot that matched several raw materials
+    // reusing `rmCodeWrites`, so a slot that matched several raw materials
     // lands on the contract exactly as the Indent Listing displays it.
     const { planContractCostCodeRefs } = await import(
       "@/lib/contractCostCodeRefResolver"
@@ -4906,7 +5017,7 @@ export async function recomputeIndentListingVersionsAction() {
         recomputeSkipped,
         rmCode: {
           rows: rmCodePlan.updates.length,
-          written: rmCodeUpdates.length,
+          written: rmCodeWrites.length,
           resolved: rmCodePlan.resolved,
           ambiguous: rmCodePlan.ambiguous,
           unmatched: rmCodePlan.unmatched,
@@ -6134,6 +6245,8 @@ export async function getGMDCastingRatesAction() {
       CI: "",
       SS: "",
       Bronze: "",
+      MS: "",
+      GI: "",
     };
     for (const row of rows) {
       const eq = row.value.indexOf("=");
@@ -6179,8 +6292,10 @@ export async function saveGMDCastingRateAction(key: string, value: string) {
 
 /**
  * Set the bolt material (SS/GI) for a Flange row and recompute its bolt/nut
- * weight. MS/CS rows ignore the passed material and stay locked to their flange
- * MOC. The BOLT WEIGHT cell encodes the result as `<weight>|<material>`.
+ * weight and cost. MS/CS rows ignore the passed material and stay locked to the
+ * flange MOC; every other MOC defaults to GI when no material is passed. The
+ * BOLT WEIGHT cell encodes the result as `<weight>|<material>`; costs use the
+ * material's per-kg `GMD_CASTING_RATE` rate.
  */
 export async function updateFlangeBoltWeightAction(id: string, material: string) {
   "use server";
@@ -6190,9 +6305,15 @@ export async function updateFlangeBoltWeightAction(id: string, material: string)
       return { success: false, error: "Flange row not found." };
     }
 
-    const densityRows = await prisma.density.findMany({
-      select: { material: true, densityGmCm3: true },
-    });
+    const [densityRows, rateRows] = await Promise.all([
+      prisma.density.findMany({
+        select: { material: true, densityGmCm3: true },
+      }),
+      prisma.lookupOption.findMany({
+        where: { type: "GMD_CASTING_RATE" },
+        select: { value: true },
+      }),
+    ]);
     const densityByMaterial = buildDensityMap(densityRows);
 
     const base = resolveBoltMaterial(flange.moc);
@@ -6201,7 +6322,7 @@ export async function updateFlangeBoltWeightAction(id: string, material: string)
         ? base
         : material === "GI" || material === "SS"
           ? material
-          : "SS";
+          : "GI";
 
     const volume = computeBoltVolumeMm3(
       parseNumber(flange.boltDiaMm),
@@ -6211,17 +6332,42 @@ export async function updateFlangeBoltWeightAction(id: string, material: string)
     const weightKg = computeBoltWeightKg(volume, density);
     const nutWeightKg = computeNutWeightKg(weightKg);
 
+    // Per-kg rate for the chosen material, from "KEY=rate" lookup rows.
+    const rateKey = resolveBoltRateKey(chosen);
+    let ratePerKg: number | null = null;
+    if (rateKey != null) {
+      const rateRow = rateRows.find((r) => {
+        const eq = r.value.indexOf("=");
+        return eq !== -1 && r.value.slice(0, eq).trim() === rateKey;
+      });
+      if (rateRow) {
+        ratePerKg = parseNumber(rateRow.value.slice(rateRow.value.indexOf("=") + 1));
+      }
+    }
+    const { boltCost, nutCost } = computeNutBoltCost(
+      weightKg,
+      nutWeightKg,
+      ratePerKg,
+    );
+
     const updated = await prisma.flange.update({
       where: { id },
       data: {
         boltWeight: encodeBoltWeight(weightKg, chosen),
         nutWeight: nutWeightKg != null ? nutWeightKg.toFixed(2) : "",
+        boltCost: boltCost != null ? boltCost.toFixed(2) : "",
+        nutCost: nutCost != null ? nutCost.toFixed(2) : "",
       },
     });
 
     return {
       success: true,
-      data: { boltWeight: updated.boltWeight, nutWeight: updated.nutWeight },
+      data: {
+        boltWeight: updated.boltWeight,
+        nutWeight: updated.nutWeight,
+        boltCost: updated.boltCost,
+        nutCost: updated.nutCost,
+      },
     };
   } catch (error) {
     console.error("Error updating flange bolt weight:", error);
