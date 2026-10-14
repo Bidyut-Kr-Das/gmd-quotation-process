@@ -492,30 +492,148 @@ Column mapping is declarative — `SALE_BILL_COLUMN_MAP` in
 and report all iterate it. **Adding a column is one line.**
 
 `consigneeName` is the one field not on the sheet: it is `ACC_NAME` for the row's
-`CONSIGNEE_CODE`, resolved through `acc_master`.
+account code — SALE BILL's **`ACC_CODE`**, resolved through `acc_master`.
 
-### The match key is invoice number, with one guard
+The tab also carries a `CONSIGNEE_CODE` column, and the two are not the same
+thing: `ACC_CODE` is the **billed party**, `CONSIGNEE_CODE` is the **ship-to**.
+They disagree on 357 of the 5,117 rows. Measured on the FY 26-27 disagreements,
+the DB's stored `consigneeName` matched the `CONSIGNEE_CODE` name in 15 of 15
+non-blank cases and the `ACC_CODE` name in none — so a run keyed on `ACC_CODE`
+rewrites those rows to the billed party. That is the intended behaviour here
+(the name always lands in `consigneeName` either way); switching back is a
+one-line change to `SALE_BILL_KEY_HEADERS.accountCode`.
 
-`SupplyHistoryItem` allows several rows per `INVOICE NO` — one per line item — and
-that is common, not exceptional: 65 of the FY 2026-27 invoices own more than one
-row. So a sheet row is matched by invoice number, and when that yields several DB
-rows the record is narrowed by `ITEM_CODE`. If the item code is blank or matches
-more than one candidate, the record is counted as `ambiguous` and **skipped**.
+### The sheet is a line ledger; the table is one row per (invoice, item)
 
-The alternative — writing one line's quantity onto all its siblings — would
-corrupt them silently, so the guard trades a visible count for invisible damage.
-`ambiguous` is in the response, the log and the ofelia script (which warns).
-Persistently non-zero `ambiguous` means the sheet needs an item code on those
-rows.
+This is the shape that matters, and it was measured rather than assumed. For FY
+2026-27: the sheet's 487 rows are **401 distinct `(VRNO, ITEM_CODE)` groups over
+138 invoices** — the same item code appears on the same invoice more than once
+(31 groups), because the sheet records each issue line. `SupplyHistoryItem` holds
+**one** row per `(invoiceNo, erpItemCode)` — that pair is unique in the year, 0
+duplicates — and its `quantity` is the **sum** of the sheet's lines. Verified on
+all 320 pairs the two sides share: the sum matched the stored quantity in every
+single case, with zero exceptions.
+
+So the engine **folds the sheet's lines per `(invoiceNo, ITEM_CODE)` and sums
+`QTYISSUED`** before diffing. This is not a nicety: taking the first line would
+have written `96` over a stored `627` on GD26Y-00014 (three lines: 96 + 106 +
+425) and corrupted 23 of those 320 rows. The first dry run did exactly that, which
+is what the smoke test is for.
+
+Grouping is on the item code, so a line that carries no code stays its own group
+and is matched by invoice number alone (see below).
+
+### Matching is the exact (invoice, item code) pair
+
+A group matches the DB row with the same invoice number **and** item code. When no
+such row exists it is a genuine new line, so the engine inserts rather than
+touching a sibling — the earlier `invoiceNo`-only rule would have written a new
+line's values onto whatever row the invoice happened to have.
+
+Two cases stay conservative, both counted as `ambiguous` and skipped:
+
+- **no item code on the sheet and the invoice owns several DB rows** — nothing can
+  tell which row the line belongs to;
+- **several DB rows share one `(invoice, item code)` pair** — 7 such pairs exist in
+  the whole table, none in this year.
+
+### Inserting needs a name, so it is resolved locally
+
+`SupplyHistoryItem.itemName` is `NOT NULL`, and in practice never blank (0 of
+15,467 rows). The sheet has no item name, so `lib/erpItemNameLookup.ts` resolves
+one from what the DB already knows, in order: the name the item was supplied
+under before (`SupplyHistoryItem`, most recent), then `FullItem.itemName`, then
+`RawMaterial.itemNameAuto` / `itemNameDerived`, then `VerifyBom.itemName`.
+
+Measured on the 54 codes FY 2026-27 needs but the table does not hold: 40 resolved
+from step 1, all the rest from the following steps. Only a code no source knows
+stays blank, and that is counted as `unnamedInserts` so the gap is visible rather
+than invented.
+
+An insert whose resolved name the invoice already uses is counted as
+`blockedInserts` and skipped: the DB unique key is `(invoiceNo, itemName)`, so two
+different item codes carrying the same name text on one invoice cannot both be
+stored. Three such rows exist in FY 2026-27. Disambiguating them (appending the
+item code to the name) is a one-line change if that ever matters; leaving the DB's
+key alone was the deliberate choice.
+
+### Two more layers: the description is what the table keys on
+
+The table's identity is `(invoiceNo, itemName)` — a **description**, not a code —
+so two rows that share a description on one invoice cannot both be stored. Two
+layers keep that from losing data. Both are pure functions in
+`lib/executionTrackingSync.ts`, unit-tested.
+
+**1. Folding across item codes** (`mergeByDescription`). When different item codes
+share a description on the same invoice, their rows fold into one and the
+quantities are added — exactly what happens when the same code is listed twice.
+Measured live in FY 2026-27:
+
+```
+GD26Y-00055  FRD020002 (6) + FSD040001 (20)   ->  FSD040001 qty 26
+GD26Y-00098  FSD040001     + FRD020002        ->  FRD020002 qty 103
+GD26Y-00126  FSD040113 (9) + FSD040050 (32)   ->  FSD040050 qty 41
+GD26Y-00126  FSD040001 (1) + FRD020002 (16)   ->  FRD020002 qty 17
+GD26Y-00136  FSD040038     + FSD040025        ->  FSD040025 qty 69
+```
+
+**The fold keys on the ERP master name** (`resolveMasterNames`: `FullItem` →
+`RawMaterial` → `VerifyBom`, trailing `_` trimmed, `SupplyHistoryItem` excluded),
+**never on the stored supply name.** That distinction is load-bearing:
+`FVC030011` (`..._150_...`) and `FVC030012` (`..._200_...`) are different
+products, but their *stored* names both read `..._200` because one is mislabelled.
+Keying on the stored name merged a 150 mm into a 200 mm (`GD26Y-00019`,
+`GD26Y-00082`, `GD26Y-00086`) and a gear box into an O-ring (`GD26Y-00092`). Keyed
+on the master name, neither folds, and both invoices are plain updates.
+
+Rules: the fold happens only when **everything except the quantity and the item
+code matches** — uom, LR, canonical state, consignee address, account code. If any
+differ, the rows are genuinely different entries and are left to the refusal path
+below. The survivor is a code the invoice **already has a row for** where one
+exists, so the fold lands as an update rather than a second insert that would
+double-count; otherwise the lexicographically lowest. A code with no master name is
+never folded. As with the line merge, a non-numeric quantity is never summed.
+
+**2. Refreshing a stale stored name** (`planNameRefresh`). Sometimes the name an
+insert needs is already held by a row whose *own* item code uses a different
+description elsewhere in the table. On `GD26Y-00055` the `FSD040001` row sat under
+the description the ERP master gives `FRD020002`, while every other `FSD040001` row
+reads `Sluice Valve Ductile Iron Resilient Seated PN 1.0 HW OP. 100 MM`.
+Refreshing that row to its own current name frees the other code's name and both
+lines land.
+
+Since the fold above now handles `GD26Y-00055` (it folds `FRD020002` into the
+existing `FSD040001` row), this repair did not fire in the last dry run —
+`nameRefreshes` was 0. It is kept because a collision can still arise that the fold
+cannot settle.
+
+This is the only case in which the sync writes `itemName` on an existing row. It
+refuses — leaving the insert counted in `blockedInserts` — when there is no such
+row, when that row was already refreshed in this run, when its code has no known
+current name, when the current name *is* the name we want to free (the rename
+would collide immediately), or when the invoice already uses that name elsewhere.
+Refreshes are applied **before** the inserts, since an insert needing the freed
+name would otherwise be rejected.
+
+**Insert naming.** A new row is stored under its **supply** name (`resolveItemNames`),
+because that is the vocabulary the MASTER sync matches on. Only when that name is
+already taken on the invoice — and the stale-name repair did not apply — does the
+row fall back to its **ERP master name**, which is what distinguishes two codes
+whose stored names collide. Using the master name for *every* insert would desync
+185 of the 979 codes that have both names (they use a different vocabulary), so the
+fallback is deliberately narrow.
+
+Together these are why `blockedInserts` is 0 for FY 2026-27 where it was 2, and why
+`GD26Y-00126` contributes 12 rows instead of 11 plus a refusal.
 
 ### The fiscal year must match on both sides
 
-A row is only considered when the sheet's own FY column equals the requested year
-(any spelling: `26-27`, `2026-27`, `2026-2027`, `2627` — see
-`normalizeFiscalYear`), and the DB preload is scoped to the same year. Because
-`financialYear` is free text that older rows may have written differently, the
-preload queries the variants in `fiscalYearVariants` and the comparison is on the
-normalised form.
+A row is only considered when the sheet's own FY column — `ACC_YEAR` on the live
+sheet, values `25-26` / `26-27` — equals the requested year (any spelling:
+`26-27`, `2026-27`, `2026-2027`, `2627`; see `normalizeFiscalYear`), and the DB
+preload is scoped to the same year. Because `financialYear` is free text that
+older rows may have written differently, the preload queries the variants in
+`fiscalYearVariants` and the comparison is on the normalised form.
 
 ### Two writes the engine deliberately refuses
 
@@ -527,12 +645,6 @@ normalised form.
   the same thing (`Chattisgarh` vs `CHATTISGARH`) is never rewritten. An
   unrecognised value (`MH`, `Other`) leaves the field alone and lands in the
   report's `stateSkipped` samples.
-
-An insert carries a **blank `itemName`**: the sheet has no item name, and
-`itemName` is `NOT NULL`. The row is visible on `/supply_history` for an operator
-to name. Only the first sheet row for an invoice can insert — the DB unique key is
-`(invoiceNo, itemName)`, so a second blank-name row for the same invoice cannot
-exist; it is counted as a duplicate instead.
 
 ### Every run is logged
 
@@ -546,6 +658,7 @@ table shared: `"execution-tracking"` and `"acc-master"` today.
 
 ```sh
 npm run exec:headers                                  # read-only: real headers + column map + acc_master state
+npm run exec:sync -- --acc-only --apply               # fill acc_master (cache refresh, not business data)
 npm run exec:sync -- --fy 26-27                       # dry run, prints the report
 npm run exec:sync -- --fy 26-27 --limit 20            # smoke test the first 20 rows
 npm run exec:sync -- --fy 26-27 --apply               # write
@@ -571,11 +684,15 @@ curl -X POST "$BASE/execution-tracking?dryRun=1&fy=2025-26" -H "x-api-key: $GMD_
 
 | Column | Rule |
 |---|---|
-| `quantity`, `uom`, `lrNoDt`, `consigneeAddress`, `erpItemCode`, `consigneeName` | overwritten when the sheet value is non-blank and differs |
+| `quantity` | the **sum** of the sheet's lines for that `(invoice, item code)`, **plus** any row folded in by the description merge; a non-numeric value is never summed — the first non-blank is kept |
+| `uom`, `lrNoDt`, `consigneeAddress`, `erpItemCode`, `consigneeName` | overwritten when the merged sheet value is non-blank and differs |
 | `state` | overwritten when the sheet value is a recognised Indian state and the canonical form differs; written in Title Case |
 | blank / `-` `--` `—` `–` cells | never overwrite, never clear |
-| `invoiceNo`, `itemName`, `financialYear` | immutable on an existing row |
-| new rows | inserted with `itemName = ""`, the target fiscal year, `syncedAt` |
+| `invoiceNo` | match key, never written |
+| `itemName` | resolved by `lib/erpItemNameLookup.ts` on insert; on an existing row it is written **only** by the stale-name refresh (`planNameRefresh`), which frees a name a colliding insert needs |
+| `financialYear` | set to the target year on insert; immutable on an existing row |
+| item codes sharing a description | folded into one row by `mergeByDescription` when every other field agrees |
+| new rows | inserted for a `(invoice, item code)` pair the year does not hold; refused and counted in `blockedInserts` only when no fold and no refresh can resolve the name |
 | `syncedAt` | stamped only on rows actually written |
 | deletions | none |
 

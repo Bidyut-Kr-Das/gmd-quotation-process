@@ -36,14 +36,25 @@ export const ACC_MASTER_HEADERS = {
 export const SALE_BILL_KEY_HEADERS = {
   /** VRNO — the invoice number. First half of the match key. */
   invoiceNo: "VRNO",
-  /** CONSIGNEE_CODE — looked up against ACC_MASTER/`acc_master`. */
-  consigneeCode: "CONSIGNEE_CODE",
   /**
-   * The fiscal year column. The sheet uses the short label (`26-27`) while
-   * SupplyHistoryItem stores the four-digit form (`2026-27`), so the value is
-   * normalised — see `normalizeFiscalYear`.
+   * The account code used to resolve the consignee name from ACC_MASTER /
+   * `acc_master`. It is SALE BILL's **`ACC_CODE`** (column B), deliberately, per
+   * the sheet owner.
+   *
+   * The tab also carries a `CONSIGNEE_CODE` column, and the two mean different
+   * things: `ACC_CODE` is the **billed party**, `CONSIGNEE_CODE` is the **ship-to**
+   * party. They differ on 357 of the 5,117 rows. Whichever is chosen, the name
+   * lands in `SupplyHistoryItem.consigneeName` either way.
    */
-  financialYearAliases: ["FY", "FINANCIAL YEAR"],
+  accountCode: "ACC_CODE",
+  /**
+   * The fiscal year column, `ACC_YEAR` on the live sheet (values `25-26`,
+   * `26-27` — the short label), while `SupplyHistoryItem` stores the four-digit
+   * form (`2026-27`). The value is normalised — see `normalizeFiscalYear`. The
+   * other names are accepted so a renamed column does not silently stop the
+   * filter; `FY`/`FINANCIAL YEAR` are the names the MASTER sheet uses.
+   */
+  financialYearAliases: ["ACC_YEAR", "FY", "FINANCIAL YEAR"],
 } as const;
 
 /** Fields of `SupplyHistoryItem` this sync owns. */
@@ -69,8 +80,8 @@ export const SALE_BILL_COLUMN_MAP: readonly { sheet: string; db: SaleBillField }
 ];
 
 /**
- * `consigneeName` is not on the sheet: it is `ACC_NAME` for the row's
- * `CONSIGNEE_CODE`, resolved through `acc_master`.
+ * `consigneeName` is not on the sheet: it is `ACC_NAME` for the row's account
+ * code (`SALE_BILL_KEY_HEADERS.accountCode`), resolved through `acc_master`.
  */
 export const CONSIGNEE_NAME_FIELD = "consigneeName" as const;
 

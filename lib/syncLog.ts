@@ -35,16 +35,27 @@ export type SyncLogFieldChange = {
   to: string;
 };
 
-/** One row the run added or changed. */
+/**
+ * One row the run added or changed.
+ *
+ * `action` also carries the two folding outcomes the sync can produce:
+ * `"merged"` — the row was folded into another one (same invoice + description,
+ * different item code), so its quantity was added to the survivor rather than
+ * stored separately. `"skipped"` — the row was refused, with `reason` set.
+ */
 export type SyncLogChange = {
   /** Stable identifier of the matched row — invoice number, plus the item code when known. */
   key: string;
-  action: "insert" | "update";
+  action: "insert" | "update" | "skipped" | "merged";
   fields: SyncLogFieldChange[];
   /** DB row id(s) written. Empty on a dry run. */
   rowIds?: string[];
+  /**
+   * Why a row was skipped or merged. Set for `"skipped"`, and for `"merged"` it
+   * names the row the quantity was folded into.
+   */
+  reason?: string;
 };
-
 /**
  * How many row-detail entries a single run keeps. A first apply over a whole
  * fiscal year can touch thousands of rows; the cap keeps the row small while

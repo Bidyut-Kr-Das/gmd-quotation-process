@@ -49,10 +49,16 @@ if echo "$body" | grep -q '"failedWrites":[1-9]'; then
 fi
 
 # An ambiguous invoice is a data-shape signal worth shouting about: the sheet has
-# rows whose invoice maps to several DB rows that ITEM_CODE cannot split, so those
-# rows were deliberately left alone. Surface it rather than let it pass quietly.
+# a line with no item code whose invoice maps to several DB rows, so it was
+# deliberately left alone. Surface it rather than let it pass quietly.
 if echo "$body" | grep -q '"ambiguous":[1-9]'; then
   echo "WARN: execution-tracking skipped one or more ambiguous invoices (see body)"
+fi
+
+# An insert refused because the invoice already carries a row under that item
+# name (the DB key is invoiceNo + itemName). Visible, not silent.
+if echo "$body" | grep -q '"blockedInserts":[1-9]'; then
+  echo "WARN: execution-tracking could not insert one or more rows (name already used on the invoice)"
 fi
 
 echo "OK: execution-tracking sync completed"
