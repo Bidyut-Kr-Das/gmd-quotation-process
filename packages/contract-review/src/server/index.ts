@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma as tenderPrisma, type ContractReview } from "@gmd/db-tender";
+import { prisma as tenderPrisma, type ContractReview, type Prisma } from "@gmd/db-tender";
 import {
   CONTRACT_REVIEW_HEADERS,
   dbContractReviewToRow,
@@ -53,8 +53,18 @@ export const CONTRACT_REVIEW_EDITABLE_FIELDS = new Set([
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
 
-export function loadContractReviewItems(): Promise<ContractReview[]> {
-  return tenderPrisma.contractReview.findMany({ orderBy: { syncedAt: "desc" } });
+/** `where` scopes the rows to what the host app may see; omit it for every row. */
+export function loadContractReviewItems(where?: Prisma.ContractReviewWhereInput): Promise<ContractReview[]> {
+  return tenderPrisma.contractReview.findMany({ where, orderBy: { syncedAt: "desc" } });
+}
+
+/** Keeps only the ids that match `where`, so writes cannot reach rows outside the app's scope. */
+export async function idsInScope(ids: string[], where: Prisma.ContractReviewWhereInput): Promise<string[]> {
+  const rows = await tenderPrisma.contractReview.findMany({
+    where: { AND: [where, { id: { in: ids } }] },
+    select: { id: true },
+  });
+  return rows.map((r) => r.id);
 }
 
 export function toContractReviewData(items: ContractReview[]): ContractReviewData {
