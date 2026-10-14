@@ -206,26 +206,26 @@ function CellEditor({
   }
 
   if (kind === "text" && def.options && def.options.length > 0) {
-    const choices = [
-      ...(value && !def.options.includes(value) ? [value] : []),
-      ...def.options,
-    ];
-    if (!value) choices.unshift("");
+    const listId = `${def.key}-options`;
     return (
-      <select
-        ref={selectRef}
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        onKeyDown={onKeyDown}
-        onBlur={() => finish(null)}
-        className={baseClass}
-      >
-        {choices.map((option) => (
-          <option key={option || "__empty"} value={option}>
-            {option || "—"}
-          </option>
-        ))}
-      </select>
+      <>
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          list={listId}
+          autoComplete="off"
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={onKeyDown}
+          onBlur={() => finish(null)}
+          className={baseClass}
+        />
+        <datalist id={listId}>
+          {def.options.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      </>
     );
   }
 
