@@ -7,10 +7,11 @@ import {
 } from "@/lib/gmd_lib/physical-stock-derive";
 
 /**
- * Backfill PhysicalStock.cost / bom_id from the FullItem + RawMaterial BOM
- * relations. `cost` is the highest owning FullItem.cost (the DB trigger keeps
- * FullItem.cost = MAX BomItem.cost) with RawMaterial.cost fallback; `bom_id` is
- * the BOM carrying that highest cost.
+ * Backfill PhysicalStock.cost / bom_id / majorminor_marking from the FullItem +
+ * RawMaterial BOM relations. `cost` is the highest owning FullItem.cost (the DB
+ * trigger keeps FullItem.cost = MAX BomItem.cost) with RawMaterial.cost
+ * fallback; `bom_id` is the BOM carrying that highest cost; `majorminor_marking`
+ * is RawMaterial.majorMarking matched on erpItemCode.
  *
  *   npm run physical:cost          # dry run
  *   npm run physical:cost:apply    # write
@@ -24,7 +25,13 @@ async function main() {
   );
 
   const rows = await neonPrisma.physicalStock.findMany({
-    select: { id: true, erp_code: true, cost: true, bom_id: true },
+    select: {
+      id: true,
+      erp_code: true,
+      cost: true,
+      bom_id: true,
+      majorminor_marking: true,
+    },
   });
   const codes = [...new Set(rows.map((r) => norm(r.erp_code)).filter(Boolean))];
   const derivations = await derivePhysicalStockByCodes(codes);
@@ -33,6 +40,7 @@ async function main() {
   let withCost = 0;
   let noRelation = 0;
   let changed = 0;
+  let majorMinorChanged = 0;
 
   for (const row of rows) {
     const code = norm(row.erp_code);
@@ -49,7 +57,15 @@ async function main() {
     const nextCost = nextBomId
       ? (d.costByBom[nextBomId] ?? d.fallbackCost ?? d.maxCost)
       : d.maxCost;
-    if (nextCost !== row.cost || nextBomId !== row.bom_id) changed++;
+    const nextMajorMinor = d.majorminorMarking ?? null;
+    if (nextMajorMinor !== row.majorminor_marking) majorMinorChanged++;
+    if (
+      nextCost !== row.cost ||
+      nextBomId !== row.bom_id ||
+      nextMajorMinor !== row.majorminor_marking
+    ) {
+      changed++;
+    }
   }
 
   console.log(`Rows               : ${rows.length}`);
@@ -58,6 +74,7 @@ async function main() {
   console.log(`Rows with a cost   : ${withCost}`);
   console.log(`Rows with no BOM   : ${noRelation}`);
   console.log(`Rows that would change: ${changed}`);
+  console.log(`  ...majorminor_marking: ${majorMinorChanged}`);
 
   if (!apply) {
     console.log(`\nDry run only. Re-run with --apply to write.\n`);
@@ -65,7 +82,10 @@ async function main() {
   }
 
   const result = await applyPhysicalStockDerivations();
-  console.log(`\nApplied: scanned=${result.scanned} updated=${result.updated}\n`);
+  console.log(
+    `\nApplied: scanned=${result.scanned} updated=${result.updated} ` +
+      `majorMinorUpdated=${result.majorMinorUpdated}\n`,
+  );
 }
 
 main()

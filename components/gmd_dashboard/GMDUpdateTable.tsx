@@ -22,7 +22,8 @@ import {
   BOM_ID_FILTER_VALUES,
   getBomIdCategory,
 } from "../../lib/gmd_lib/bomCategory";
-import { parseGmdDate } from "../../lib/gmd_lib/dateParse";
+import { parseGmdDate, CANONICAL_DATE } from "../../lib/gmd_lib/dateParse";
+import { format } from "date-fns";
 import DebouncedSearchInput from "@/components/table/DebouncedSearchInput";
 import Pagination from "./Pagination";
 import { useAppDispatch } from "@/lib/hooks";
@@ -602,6 +603,22 @@ function isDateHeader(header: string): boolean {
   return l.includes("date") || l.includes("warranty");
 }
 
+/**
+ * Columns that identify "the same physical item" for the ERP-duplicate detector.
+ * Two rows agreeing on all of these but holding different ERP codes are the same
+ * stock counted twice, so they are tinted yellow. Header names (not DB fields)
+ * because `COL_INDEX_TO_DB_FIELD` in this shared component is the raw-material map.
+ */
+const DUPLICATE_KEY_HEADERS = [
+  "location",
+  "L2-VALVE TYPE",
+  "L7-DIMENSION",
+  "L4-COMPONENT",
+  "L5- MATERIAL",
+  "L6-STD",
+  "L8 -ITEM CATEGORY",
+];
+
 function compareDates(aVal: unknown, bVal: unknown, dir: number): number {
   const aStr = String(aVal ?? "").trim();
   const bStr = String(bVal ?? "").trim();
@@ -1121,6 +1138,12 @@ interface GMDUpdateTableProps {
   warningColumn?: string;
   /** Tooltip for the warning triangle. Defaults to "Duplicate derived item name". */
   warningTitle?: string;
+  /**
+   * Enables the ERP-duplicate detector: rows sharing the same location + L-columns
+   * but carrying a different ERP CODE are tinted yellow (and flagged in the ERP
+   * CODE cell), with a "Duplicates only" toggle in the ERP CODE filter.
+   */
+  duplicateErpHighlight?: boolean;
 }
 
 type CellBadge = NonNullable<GMDUpdateTableProps["cellBadges"]>[number];
@@ -1231,6 +1254,7 @@ castingRateInputs,
   warningRowIds,
   warningColumn,
   warningTitle,
+  duplicateErpHighlight,
 }: GMDUpdateTableProps) {
   const isControlled = !!filterState;
 
@@ -1258,6 +1282,7 @@ castingRateInputs,
     Record<string, boolean>
   >({});
   const [highlightDiff, setHighlightDiff] = useState(false);
+  const [showOnlyDuplicateErp, setShowOnlyDuplicateErp] = useState(false);
 
   const currentPage = isControlled
     ? filterState!.currentPage
@@ -1346,7 +1371,7 @@ castingRateInputs,
     [filterActions, setCurrentPage],
   );
 
-  const DATE_FILTER_CANDIDATES = useMemo(() => new Set(["Date", "expiryDate", "DATE OF CONTRACT", "LC DATE/RTGS DATE", "LAST DATE OF SHIPMENT/DATE OF LC"]), []);
+  const DATE_FILTER_CANDIDATES = useMemo(() => new Set(["Date", "DATE", "expiryDate", "DATE OF CONTRACT", "LC DATE/RTGS DATE", "LAST DATE OF SHIPMENT/DATE OF LC"]), []);
   const dateColIdx = useMemo(() => {
     for (const cand of DATE_FILTER_CANDIDATES) {
       const idx = headers.indexOf(cand);
@@ -1578,6 +1603,7 @@ castingRateInputs,
       setLocalDateRanges({});
     }
     setPresenceFilters({ drawing: false, image: false });
+    setShowOnlyDuplicateErp(false);
     setCurrentPage(1);
     onReset?.();
   };
@@ -1589,6 +1615,7 @@ castingRateInputs,
     globalSearch.trim() !== "" ||
     dateFrom !== "" ||
     dateTo !== "" ||
+    showOnlyDuplicateErp ||
     presenceFilters.drawing ||
     presenceFilters.image ||
     Object.values(dateRanges).some((r) => r.from || r.to || r.blank);
@@ -1628,8 +1655,35 @@ castingRateInputs,
     return cache;
   }, [rows, headers]);
 
+  // ERP-duplicate detector (opt-in): rows that share the same location + L-columns
+  // but carry a different ERP CODE are the same item counted twice.
+  const duplicateRowSet = useMemo(() => {
+    if (!duplicateErpHighlight) return new Set<unknown[]>();
+    const erpIdx = headers.indexOf("ERP CODE");
+    if (erpIdx === -1) return new Set<unknown[]>();
+    const keyIdxs = DUPLICATE_KEY_HEADERS.map((h) => headers.indexOf(h)).filter(
+      (i) => i !== -1,
+    );
+    if (keyIdxs.length === 0) return new Set<unknown[]>();
+    const keyOf = (row: unknown[]) =>
+      keyIdxs.map((i) => String(row[i] ?? "").trim()).join("\u0001");
+    const groups = new Map<string, Set<string>>();
+    for (const row of rows) {
+      const key = keyOf(row);
+      const codes = groups.get(key) ?? new Set<string>();
+      codes.add(String(row[erpIdx] ?? "").trim());
+      groups.set(key, codes);
+    }
+    const result = new Set<unknown[]>();
+    for (const row of rows) {
+      if ((groups.get(keyOf(row))?.size ?? 0) > 1) result.add(row);
+    }
+    return result;
+  }, [duplicateErpHighlight, rows, headers]);
+
   const rowPassesFilters = useCallback(
     (row: unknown[], opts: { excludeHeader?: string; id?: string } = {}): boolean => {
+      if (showOnlyDuplicateErp && !duplicateRowSet.has(row)) return false;
       const gs = globalSearch;
       if (gs.trim()) {
         const q = gs.toLowerCase();
@@ -1774,6 +1828,8 @@ castingRateInputs,
       itemImagesByCode,
       batchPresenceFilters,
       extraFilterOptions,
+      showOnlyDuplicateErp,
+      duplicateRowSet,
     ],
   );
 
@@ -2351,6 +2407,27 @@ castingRateInputs,
       cellContent = (
         <span className="font-mono-md text-right text-foreground">
           {display || "—"}
+        </span>
+      );
+    } else if (header === "MAJOR/MINOR MARKING") {
+      const isYes = display === "true";
+      const isNo = display === "false";
+      cellContent = isYes ? (
+        <span className="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
+          Yes
+        </span>
+      ) : isNo ? (
+        <span className="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
+          No
+        </span>
+      ) : (
+        <span className="block text-gray-400">—</span>
+      );
+    } else if (isDateHeader(header)) {
+      const parsed = parseDate(display);
+      cellContent = (
+        <span className={textCellClass(scrollable)} title={display}>
+          {parsed ? format(parsed, CANONICAL_DATE) : display || "—"}
         </span>
       );
     } else if (header === "ORDER LIST") {
@@ -3107,6 +3184,24 @@ castingRateInputs,
                         </div>
                       ) : (
                         <div className="flex flex-col gap-1 mt-1.5">
+                          {header === "ERP CODE" && duplicateErpHighlight && (
+                            <label
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-1.5 text-[10px] font-medium normal-case tracking-normal text-foreground/70 cursor-pointer select-none"
+                              title="Show only rows sharing location & L-columns with a different ERP code"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={showOnlyDuplicateErp}
+                                onChange={(e) => {
+                                  setShowOnlyDuplicateErp(e.target.checked);
+                                  setCurrentPage(1);
+                                }}
+                                className="accent-amber-600 dark:accent-amber-400"
+                              />
+                              Duplicates only
+                            </label>
+                          )}
                           <MultiSelect
                             options={
                               filterAttachmentColumn &&
@@ -3190,11 +3285,16 @@ castingRateInputs,
             ) : (
               paginatedWithIds.map(({ row, id }, idx) => {
                 const isWarned = !!id && !!warningRowIds?.has(id);
+                const isDuplicate = duplicateRowSet.has(row);
                 return (
                 <tr
                   key={id ?? idx}
-                  className={`transition-colors hover:bg-muted/60 cursor-pointer ${
-                    selectedIndex === idx ? "bg-blue-50 dark:bg-blue-500/10" : ""
+                  className={`transition-colors cursor-pointer ${
+                    selectedIndex === idx
+                      ? "bg-blue-50 dark:bg-blue-500/10"
+                      : isDuplicate
+                        ? "bg-yellow-100 dark:bg-yellow-500/10 hover:bg-yellow-200 dark:hover:bg-yellow-500/20"
+                        : "hover:bg-muted/60"
                   }`}
                   onClick={() => onSelect(idx)}
                 >
@@ -3344,11 +3444,13 @@ castingRateInputs,
                       ? diffBg
                       : isWarned
                         ? "bg-amber-100 dark:bg-amber-500/15"
-                        : editableBg
-                          ? editableBg
-                          : frozenLeft !== undefined
-                            ? "bg-card"
-                            : "";
+                        : isDuplicate
+                          ? "bg-yellow-100 dark:bg-yellow-500/10"
+                          : editableBg
+                            ? editableBg
+                            : frozenLeft !== undefined
+                              ? "bg-card"
+                              : "";
 
                     return (
                       <td
@@ -3369,6 +3471,19 @@ castingRateInputs,
                             title={
                               warningTitle ?? "Duplicate derived item name"
                             }
+                          >
+                            <AlertTriangle
+                              size={13}
+                              className="shrink-0 text-amber-600 dark:text-amber-400"
+                            />
+                            <span className="min-w-0 flex-1">
+                              {cellContent}
+                            </span>
+                          </span>
+                        ) : header === "ERP CODE" && isDuplicate ? (
+                          <span
+                            className="flex items-center gap-1.5 min-w-0"
+                            title="Same location & L-columns as another row with a different ERP code"
                           >
                             <AlertTriangle
                               size={13}

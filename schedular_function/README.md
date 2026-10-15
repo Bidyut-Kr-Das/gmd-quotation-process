@@ -404,8 +404,8 @@ columns, so the job is cheaper than the original — but `ContractReview` and
 
 Single step in `run-physical-stock-cost-bom.ts`, delegating to
 `applyPhysicalStockDerivations()` (`lib/gmd_lib/physical-stock-derive.ts`),
-which recomputes `cost` / `bom_id` for every row of the **Neon** `PhysicalStock`
-table.
+which recomputes `cost` / `bom_id` / `majorminor_marking` for every row of the
+**Neon** `PhysicalStock` table.
 
 This is the scheduled form of `npm run physical:cost` / `physical:cost:apply`
 (`scripts/backfill-physical-stock-cost-bom.ts`, dry-run by default — the
@@ -422,10 +422,15 @@ transaction**; the step is idempotent and safe to re-run.
 
 **Write policy:** an existing `bom_id` is preserved while it is still a valid
 candidate; otherwise the highest-cost BOM becomes the default. `cost` is always
-refreshed to the effective cost of the selected (or default) BOM. **No other
-column is ever touched** — not the user-editable fields (`remarks`, `item_type`,
+refreshed to the effective cost of the selected (or default) BOM.
+`majorminor_marking` is derived from `RawMaterial.majorMarking` matched on
+`erpItemCode`: `true` for `'true'`, `false` for `'false'`, `null` when no
+RawMaterial matches (or the flag is blank). **No other column is ever touched**
+— not the user-editable fields (`remarks`, `item_type`,
 `price`, `moq`, `if_less_than_moq_extra_charges`, `drawing_technical_data`) and
-not the sheet-owned fields. Writes are chunked at 200.
+not the sheet-owned fields. Writes are chunked at 100 inside a Neon
+transaction with an extended timeout (large first-run batches exceed the
+default 5s).
 
 Scheduled at :10 — after `bom-mast` (:05), whose `FullItem` / `Bom` / `BomItem`
 rows this step reads. It writes only Neon, so it never contends with another job
