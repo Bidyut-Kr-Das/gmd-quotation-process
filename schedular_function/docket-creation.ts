@@ -41,6 +41,7 @@ import { buildPartyEmailMap } from "@/lib/enquiryEmailSync";
 import { parseThreadAttachments } from "@/lib/docketSnapshot";
 import { buildSnapshotAttachment } from "@/lib/docketSnapshotPdf";
 import { extractEmailsFromValue } from "@/lib/enquiryEmailParty";
+import { istDayWindow } from "@/lib/docketPending";
 import { extractDocketItems } from "./docket-item-extraction";
 import type { ParsedDocketItem } from "./docket-item-parser";
 import pLimit from "p-limit";
@@ -58,12 +59,14 @@ export interface PendingDocketCreated {
 }
 
 export interface PendingDocketCreationResult {
-  /** Threads flagged `pendingDocket = true` with no docket number. */
+  /** Today's threads flagged `pendingDocket = true` with no docket number. */
   pending: number;
   /** Dockets actually created (or planned, when `dryRun`). */
   created: number;
   /** Dockets that threw during creation. A non-zero value fails the shell job. */
   failed: number;
+  /** Today's candidates skipped because their mail already has a docket. */
+  skippedAlreadyDocketed: number;
   /** Snapshots that could not be rendered/uploaded; the docket still exists. */
   snapshotFailures: number;
   /** Total `EnquiryItem` rows extracted across all dockets. */
@@ -88,23 +91,37 @@ export interface PendingDocketCreationOptions {
 }
 
 /**
- * Materializes dockets for `DocketQuotationThread` rows flagged
+ * Materializes dockets for today's `DocketQuotationThread` rows flagged
  * `pendingDocket = true`. For each thread it creates a header-only `Enquiry`
  * (no items) with an auto-generated docket number, resolving the party name by
  * matching the thread's external emails against previous dockets (falling back
  * to the thread's `partyName` / `sub_category`, then "Unknown"), then stamps the
  * thread with the new docket number and clears `pendingDocket`.
  *
- * Idempotent: a stamped thread leaves the pending set, so a repeated run is a
- * no-op. `pendingDocket` is set upstream by the external mail ingestion.
+ * Two limits, both deliberate:
+ *
+ * - **Today's mail only (IST).** Older flagged threads are left alone; this job
+ *   never backfills a backlog.
+ * - **One docket per mail.** A candidate whose mail already has a docket is
+ *   skipped, matched on `Enquiry.sourceThreadId`. This is the limit that matters:
+ *   the stamp written on the thread below is *not* durable, because the external
+ *   mail ingestion re-syncs the row and clears `docketNo` back to NULL with
+ *   `pendingDocket = true` within the hour. Before `sourceThreadId` existed, one
+ *   NCC mail was docketed 11 times, once per hourly run. The link lives on the
+ *   `Enquiry`, which the ingestion never touches.
  */
 export async function runPendingDocketCreation(
   options: PendingDocketCreationOptions = {},
 ): Promise<PendingDocketCreationResult> {
   const dryRun = options.dryRun ?? false;
 
-  const pending = await prisma.docketQuotationThread.findMany({
-    where: { pendingDocket: true, docketNo: null },
+  const { start, end } = istDayWindow(new Date());
+  const candidates = await prisma.docketQuotationThread.findMany({
+    where: {
+      pendingDocket: true,
+      docketNo: null,
+      date: { gte: start, lt: end },
+    },
     orderBy: { date: "asc" },
     select: {
       id: true,
@@ -124,12 +141,26 @@ export async function runPendingDocketCreation(
     },
   });
 
+  const alreadyLinked = candidates.length
+    ? await prisma.enquiry.findMany({
+        where: { sourceThreadId: { in: candidates.map((t) => t.threadId) } },
+        select: { sourceThreadId: true },
+      })
+    : [];
+  const docketed = new Set(alreadyLinked.map((e) => e.sourceThreadId));
+  const pending = candidates.filter((t) => !docketed.has(t.threadId));
+  const skippedAlreadyDocketed = candidates.length - pending.length;
+
   if (pending.length === 0) {
-    console.log("[docket-creation] no pendingDocket threads to convert.");
+    console.log(
+      `[docket-creation] no pendingDocket threads to convert ` +
+        `(today=${candidates.length} alreadyDocketed=${skippedAlreadyDocketed}).`,
+    );
     return {
       pending: 0,
       created: 0,
       failed: 0,
+      skippedAlreadyDocketed,
       snapshotFailures: 0,
       itemsExtracted: 0,
       threadsWithItems: 0,
@@ -229,6 +260,7 @@ export async function runPendingDocketCreation(
       pending: pending.length,
       created: enriched.length,
       failed: 0,
+      skippedAlreadyDocketed,
       snapshotFailures: 0,
       itemsExtracted,
       threadsWithItems,
@@ -282,6 +314,8 @@ export async function runPendingDocketCreation(
             enquiryDate: p.date ?? new Date(),
             emailAddress: p.emailAddress,
             senderEmail: p.senderEmail,
+            // Durable "this mail is already docketed" link — see the note above.
+            sourceThreadId: p.threadId,
             attachments: { create: attachmentRows },
             items: { create: itemCreates(p.items) },
           },
@@ -306,6 +340,7 @@ export async function runPendingDocketCreation(
 
   console.log(
     `[docket-creation] pending=${pending.length} created=${created.length} failed=${failed} ` +
+      `alreadyDocketed=${skippedAlreadyDocketed} ` +
       `items=${itemsExtracted} withItems=${threadsWithItems} withoutItems=${threadsWithoutItems} ` +
       `parserHits=${parserHits} aiFallbacks=${aiFallbacks} snapshotFailures=${snapshotFailures} ` +
       `attachmentFetchFailures=${attachmentFetchFailures}`,
@@ -315,6 +350,7 @@ export async function runPendingDocketCreation(
     pending: pending.length,
     created: created.length,
     failed,
+    skippedAlreadyDocketed,
     snapshotFailures,
     itemsExtracted,
     threadsWithItems,

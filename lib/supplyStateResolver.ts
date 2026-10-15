@@ -195,6 +195,64 @@ FEW-SHOTS:
   }
 }
 
+/** Small joiners that stay lower-case in the Title Case form. */
+const TITLE_CASE_LOWER = new Set(["and", "of", "the"]);
+
+function toTitleCase(value: string): string {
+  return value
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) =>
+      TITLE_CASE_LOWER.has(word)
+        ? word
+        : word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join(" ");
+}
+
+/**
+ * Normalises a state coming from a sheet column (e.g. the execution-tracking
+ * `CONSG_STATE_NAME`) to the form `SupplyHistoryItem.state` holds, so the two
+ * can be compared.
+ *
+ * Returns the canonical Title Case name for a recognised state — `"WEST BENGAL"`
+ * and `"West Bengal"` both give `"West Bengal"` — and `null` for anything else
+ * (`"MH"`, `"Other"`, a misspelling with no alias, blank). Callers write only on
+ * a non-null result, which is what keeps the column free of junk.
+ *
+ * `"Other Territory"` is accepted because the table already stores it as a GST
+ * place-of-supply; the 36 states/UTs remain the reference list.
+ *
+ * Comparison note: because this collapses spelling variants
+ * (`"Chattisgarh"` / `"CHATTISGARH"` -> `"Chhattisgarh"`), a row whose state
+ * already means the same thing is never rewritten — only a genuinely different
+ * state, or an unrecognised value being replaced, causes a write.
+ */
+export function canonicalizeState(
+  value: string | null | undefined,
+): string | null {
+  if (value === null || value === undefined) return null;
+  const upper = String(value)
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\.+$/, "")
+    .toUpperCase();
+  if (!upper) return null;
+
+  const exact = (INDIAN_STATES as readonly string[]).find((s) => s === upper);
+  if (exact) return toTitleCase(exact);
+
+  for (const canonical of INDIAN_STATES) {
+    const aliases = STATE_ALIASES[canonical];
+    if (aliases?.some((a) => a.toUpperCase() === upper)) {
+      return toTitleCase(canonical);
+    }
+  }
+
+  if (upper === "OTHER TERRITORY") return "Other Territory";
+  return null;
+}
+
 /**
  * Main resolver: keyword first, AI fallback if keyword misses.
  */

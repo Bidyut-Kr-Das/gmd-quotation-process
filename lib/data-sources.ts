@@ -448,7 +448,7 @@ const QUOTATION_CALC_COLUMNS = cols(
   ["(enquiry) pbg", "cost multiplier", "PbgCost.costPct"],
   ["(enquiry) state", "cost multiplier", "TransportationCost; full load at productCost >= 50,00,000"],
   ["(derived)", "cost", "productCost x 1.08 + flats + productCost x 1.08 x pctSum"],
-  ["(derived)", "vaPercent", "((quotedRate / cost) - 1) x 100, or the anchor when rate is set"],
+  ["(derived)", "vaPercent", "the anchor: ((quotedRate / cost) - 1) x 100 only when Validation = Yes, or when no VA% is set"],
   ["(derived)", "quotedRate", "roundUp(cost x (1 + vaPercent / 100))"],
   ["(derived)", "quotedRateGst", "quotedRate x 1.18"],
   ["(derived)", "itemWiseTotalValue", "quantity x quotedRate"],
@@ -2160,7 +2160,7 @@ const QUOTATION_COST_SYNC: SyncOperation[] = [
     ],
     columns: QUOTATION_CALC_COLUMNS,
     writePolicy:
-      "cost = productCost x 1.08 + extension + bypass + productCost x 1.08 x (payment% + inspection% + PBG% + transport%). Transportation switches partLoad to fullLoad at productCost >= 5,000,000. VA% and quotedRate are mutually anchoring: whichever one the user set is kept and the other is derived from it; if neither was set, quotedRate wins as the anchor. An explicit user clear is respected and never re-filled. quotedRate is rounded up via roundUp().",
+      "cost = productCost x 1.08 + extension + bypass + productCost x 1.08 x (payment% + inspection% + PBG% + transport%). Transportation switches partLoad to fullLoad at productCost >= 5,000,000. On a cost change, VA% and quotedRate stay mutually anchoring: by default VA% is held and quotedRate is derived; when Validation = Yes the validated quotedRate is frozen and VA% is derived instead. An explicit user edit of either field still derives the other, and both are read-only on a Validation = Yes row. An explicit user clear is respected and never re-filled. quotedRate is rounded up via roundUp().",
     cadence: "on-demand",
   },
   {

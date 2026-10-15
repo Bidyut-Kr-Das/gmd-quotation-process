@@ -817,12 +817,13 @@ export async function deleteEnquiryItemAction(itemId: string) {
 }
 
 /**
- * Deletes a blank docket that was flagged as a duplicate of another docket.
+ * Deletes a docket that was flagged as a duplicate of another docket, together
+ * with its items (Prisma cascade on EnquiryItem / Attachment).
  *
- * Safety: only allowed when `duplicate === "Yes"`, a `duplicateOfDocket` is set,
- * and the docket has NO items. The source thread (matched by docketNo) is
- * re-pointed at the original docket so the mail links there and the blank docket
- * is never recreated.
+ * Safety: only allowed when `duplicate === "Yes"` and a `duplicateOfDocket`
+ * pointing at a *different*, still-existing docket is set. The source thread
+ * (matched by docketNo) is re-pointed at the original docket so the mail links
+ * there and the duplicate is never recreated.
  */
 export async function deleteEnquiryAction(enquiryId: string) {
   try {
@@ -833,7 +834,6 @@ export async function deleteEnquiryAction(enquiryId: string) {
         docketNumber: true,
         duplicate: true,
         duplicateOfDocket: true,
-        _count: { select: { items: true } },
       },
     });
     if (!enquiry) {
@@ -844,19 +844,22 @@ export async function deleteEnquiryAction(enquiryId: string) {
       !isDeletableDuplicate({
         duplicate: enquiry.duplicate,
         duplicateOfDocket: enquiry.duplicateOfDocket,
-        itemCount: enquiry._count.items,
       })
     ) {
       return {
         success: false as const,
         error:
-          enquiry._count.items > 0
-            ? "Cannot delete: this docket has items."
-            : "Only a blank docket flagged as Duplicate = Yes with a selected original can be deleted.",
+          "Only a docket flagged as Duplicate = Yes with a selected original can be deleted.",
       };
     }
 
     const original = String(enquiry.duplicateOfDocket).trim();
+    if (original === enquiry.docketNumber) {
+      return {
+        success: false as const,
+        error: "The original docket cannot be itself. Pick a different original docket.",
+      };
+    }
     const originalExists = await prisma.enquiry.findUnique({
       where: { docketNumber: original },
       select: { id: true },
@@ -865,7 +868,8 @@ export async function deleteEnquiryAction(enquiryId: string) {
       return { success: false as const, error: `Original docket "${original}" no longer exists.` };
     }
 
-    // Link the source mail(s) to the original docket, then remove the blank one.
+    // Link the source mail(s) to the original docket, then remove the duplicate
+    // and its items.
     await prisma.docketQuotationThread.updateMany({
       where: { docketNo: enquiry.docketNumber },
       data: { docketNo: original, pendingDocket: false },
@@ -881,6 +885,7 @@ export async function deleteEnquiryAction(enquiryId: string) {
       success: true as const,
       data: { enquiryId, docketNumber: enquiry.docketNumber, duplicateOfDocket: original },
     };
+
   } catch (error: unknown) {
     console.error("Error deleting duplicate enquiry:", error);
     const message = error instanceof Error ? error.message : "Failed to delete docket.";
@@ -1469,6 +1474,7 @@ export async function updateItemFieldAction(
         erpItemCode: true,
         productCost: true,
         bomId: true,
+        validation: true,
         [field]: true,
       },
     });
@@ -1492,6 +1498,14 @@ export async function updateItemFieldAction(
           return { success: false, error: "Rate & cost columns are frozen after one-time PDF generation â€” revert APM to edit." };
         }
       }
+    }
+
+    // Validation=Yes freezes the rate block: VA% and quotedRate are derived, not editable.
+    if ((field === "quotedRate" || field === "vaPercent") && (prevFull as any).validation === "Yes") {
+      return {
+        success: false,
+        error: "Rate & VA% are locked for validated items (Validation = Yes) — VA% follows cost changes automatically.",
+      };
     }
 
     let parsedVal: any = value;

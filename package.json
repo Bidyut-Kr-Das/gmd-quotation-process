@@ -9,6 +9,7 @@
     "start": "next start --port 4570",
     "lint": "eslint",
     "typecheck": "tsc --noemit",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "seed:lookups": "tsx scripts/seed-lookup-options.ts",
     "bom:cost": "tsx scripts/update-product-cost-from-bom.ts",
     "round:qr": "tsx scripts/round-qr.ts",
@@ -60,6 +61,8 @@
     "bom:fix-stale:apply": "tsx scripts/fix-stale-bom-ids.ts --apply",
     "docket:backfill-items": "tsx scripts/backfill-pending-docket-items.ts",
     "docket:backfill-items:apply": "tsx scripts/backfill-pending-docket-items.ts --apply",
+    "docket:dedupe": "tsx scripts/dedupe-docket-threads.ts",
+    "docket:dedupe:apply": "tsx scripts/dedupe-docket-threads.ts --apply",
     "rm:cost:round10": "tsx scripts/round-raw-material-cost-to-10.ts",
     "rm:cost:round10:apply": "tsx scripts/round-raw-material-cost-to-10.ts --apply",
     "flange:weight": "tsx scripts/compute-flange-weight.ts",
@@ -79,7 +82,13 @@
     "prisma:neon:generate": "prisma generate --config prisma.neon.config.ts",
     "prisma:neon:deploy": "prisma migrate deploy --config prisma.neon.config.ts",
     "prisma:neon:migrate": "prisma migrate dev --config prisma.neon.config.ts",
-    "prisma:neon:status": "prisma migrate status --config prisma.neon.config.ts"
+    "prisma:neon:status": "prisma migrate status --config prisma.neon.config.ts",
+    "exec:sync": "tsx scripts/sync-execution-tracking.ts",
+    "exec:sync:apply": "tsx scripts/sync-execution-tracking.ts --apply",
+    "exec:headers": "tsx scripts/sync-execution-tracking.ts --dump-headers",
+    "contractno:sync": "tsx scripts/sync-erp-contract-no.ts",
+    "contractno:sync:apply": "tsx scripts/sync-erp-contract-no.ts --apply",
+    "contractno:headers": "tsx scripts/sync-erp-contract-no.ts --dump-headers"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",

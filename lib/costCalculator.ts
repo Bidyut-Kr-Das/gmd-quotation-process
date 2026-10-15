@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { matchItemType, matchMoc } from "./itemTypePatterns";
 import { roundUp } from "./rounding";
+import { resolveCostChangeAnchor } from "./rateAnchor";
 
 export function serializeItem(item: any) {
   return {
@@ -225,15 +226,18 @@ export async function recalculateItem(
   }
 
   // 4c. Cost was recalculated and neither was explicitly updated:
-  //     - If quotedRate is already set → recalculate vaPercent to match (preserve quotedRate as anchor)
-  //     - If quotedRate is null → recalculate quotedRate from vaPercent (preserve vaPercent as anchor)
+  //     - Default: VA% is the anchor, quotedRate is derived from it
+  //     - validation === "Yes": the validated quotedRate is frozen, VA% is derived
   const neitherExplicitlyUpdated = !(updates && (updates.quotedRate !== undefined || updates.vaPercent !== undefined));
   if (shouldRecalcCost && neitherExplicitlyUpdated && cost !== null && cost > 0) {
-    if (quotedRate !== null && quotedRate > 0) {
-      vaPercent = parseFloat((((quotedRate / cost) - 1) * 100).toFixed(2));
-    } else if (vaPercent !== null) {
-      quotedRate = roundUp(cost * (1 + vaPercent / 100));
-    }
+    const resolved = resolveCostChangeAnchor({
+      cost,
+      quotedRate,
+      vaPercent,
+      validation: item.validation,
+    });
+    quotedRate = resolved.quotedRate;
+    vaPercent = resolved.vaPercent;
   }
 
   // 4d. Fill nulls where possible (only if user didn't explicitly clear the field)

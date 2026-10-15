@@ -12,12 +12,12 @@ Where an algorithm already existed there, it was copied rather than imported
 
 ## Jobs
 
-Seven hourly ofelia jobs, staggered so no two heavy ones collide, plus `pbg`,
-which ofelia runs on its own `@every 1h12m` (1.2h) cadence.
+Eight hourly jobs plus `execution-tracking` and `erp-contract-no`, which run
+every 2 hours. All are staggered so no two heavy ones collide.
 
-| :00 | :05 | :10 | :15 | :20 | :30 | :45 |
-|---|---|---|---|---|---|---|
-| `raw-material` | `bom-mast` | `physical-stock-cost-bom` | `supply-history` | `docket-creation` | `contract-review` | `c-batch` |
+| :00 | :05 | :10 | :15 | :20 | :30 | :35 | :40 | :45 | :50 |
+|---|---|---|---|---|---|---|---|---|---|
+| `raw-material` | `bom-mast` | `physical-stock-cost-bom` | `supply-history` | `docket-creation` | `contract-review` | `acc-master` | `execution-tracking` | `c-batch` | `erp-contract-no` |
 
 | Job | Endpoint | Ofelia job name | Reads |
 |---|---|---|---|
@@ -27,19 +27,33 @@ which ofelia runs on its own `@every 1h12m` (1.2h) cadence.
 | Supply History MASTER sync | `POST /api/scheduler/supply-history` | `supply-history-sync` | `MASTER`, GMD Clientwise ORDER LIST |
 | Pending docket creation | `POST /api/scheduler/docket-creation` | `docket-creation-sync` | `docket_quotation_threads`, `enquiries` |
 | Contract Review sync | `POST /api/scheduler/contract-review` | `contract-review-sync` | `CONTRACTS`, `DUMP`, `stock-phys`, `INSPECTION OFFER DUMP` |
+| ACC Master refresh | `POST /api/scheduler/acc-master` | `acc-master-sync` | `ACC_MASTER` |
+| Execution Tracking sync | `POST /api/scheduler/execution-tracking` | `execution-tracking-sync` | `SALE_BILL` (+ the local `acc_master`) |
 | PBG sheet sync *(every 1.2h)* | `POST /api/scheduler/pbg` | `pbg-sync` | PBG sheet tab → `PbgData` |
 | C Batch marks | `POST /api/scheduler/c-batch` | `c-batch-sync` | `ITEM MASTER ERP` |
+| ERP Contract No sync | `POST /api/scheduler/erp-contract-no` | `erp-contract-no-sync` | `SALE_BILL`, `MC` |
 
 The stagger is deliberate. `raw-material`, `supply-history` and
 `contract-review` each full-table-read the tables the others write. `bom-mast`
 runs at :05, after `raw-material` (which owns the `RawMaterial` rows its
 components resolve against) and before `supply-history`, whose
 `SupplyHistoryBomLink` rebuild reads the `Bom`/`BomItem` graph it writes — so
-Supply History sees fresh BOMs in the same hourly pass. `c-batch` runs last and
-can safely overlap any of them: it writes **only** the `cBatch` column, which no
-other scheduled job touches. `docket-creation` runs at `:20`, between
-`supply-history` and `contract-review`, so contract-review's same-hour pass can
-backfill `contractNo` on the dockets it creates.
+Supply History sees fresh BOMs in the same hourly pass. `acc-master` (:35) fills
+the code -> name list `execution-tracking` (:40) joins on, and
+`execution-tracking` runs after `supply-history` (:15) so it patches rows that
+job just wrote — `execution-tracking` is the one job on a slower clock, firing at
+:40 of every **even** hour (`0 40 */2 * * *`), so a 2-hourly run still lands in an
+hour whose `:35` and `:15` already ran.
+`erp-contract-no` (:50) is the second job on that even-hour clock
+(`0 50 */2 * * *`): it runs after `execution-tracking` so the rows that job
+inserted for a brand-new invoice at :40 get their contract number in the same
+pass. `c-batch` runs last and can safely overlap
+any of them: it writes
+**only** the `cBatch` column, which no other scheduled job touches.
+`docket-creation` runs at `:20`, between `supply-history` and `contract-review`,
+so contract-review's same-hour pass can backfill `contractNo` on the dockets it
+creates.
+
 
 `pbg` is off this hourly grid: ofelia runs it on `@every 1h12m` (72 minutes).
 `@every` is Go-duration syntax (the same syntax ofelia uses for `@every 30s`),
@@ -446,9 +460,11 @@ Verify: `GET $GMD_APP_SERVER/api/scheduler/pbg` with `x-api-key` returns
 
 ## `docket-creation`
 
-Single step: `runPendingDocketCreation()` in `docket-creation.ts`. For every
-`DocketQuotationThread` row with `pendingDocket = true` **and** `docketNo = null`
-it creates an `Enquiry`, extracting line items from the mail content:
+Single step: `runPendingDocketCreation()` in `docket-creation.ts`. For **today's**
+`DocketQuotationThread` rows (IST calendar day, via `istDayWindow` in
+`lib/docketPending`, because the container runs UTC) with `pendingDocket = true`,
+`docketNo = null` and no docket already linked to the mail, it creates an
+`Enquiry`, extracting line items from the mail content:
 
 1. Allocates the next fiscal docket number(s) via `nextDocketSerials`
    (`lib/docketNumber`) from the current fiscal year's existing dockets.
@@ -470,7 +486,57 @@ it creates an `Enquiry`, extracting line items from the mail content:
 6. In one `$transaction`, creates the `Enquiry` **with its `EnquiryItem` rows**
    and stamps the thread with the new `docketNo` + clears `pendingDocket`.
 
-Idempotent: a stamped thread leaves the pending set, so a re-run is a no-op.
+### One docket per mail, and only today's mail
+
+Two limits, both deliberate:
+
+- **Today only.** Threads whose `date` is not in the current IST day are left
+  alone. The job never works through a backlog, and a thread with a null `date`
+  is never picked up.
+- **One docket per mail.** Candidates are skipped when `Enquiry.sourceThreadId`
+  already names their thread. This is the limit that actually holds: the stamp
+  written on the thread in step 6 is **not** durable, because the external mail
+  ingestion re-syncs the row and clears `docketNo` back to NULL with
+  `pendingDocket = true` within the hour. Before `sourceThreadId` existed, each
+  hourly run docketed the same NCC mail again — one thread reached 11 dockets.
+  The link lives on the `Enquiry`, which the ingestion never touches. Skipped
+  threads are counted in `skippedAlreadyDocketed`.
+
+### Cleaning up dockets that were created more than once
+
+`scripts/dedupe-docket-threads.ts` (`npm run docket:dedupe` / `:apply`) repairs
+dockets created before those limits existed. It resolves every docket back to its
+source thread by three rules, in order:
+
+- **A** — `thread.docketNo == docketNumber`.
+- **B** — an exact match on the mail attachment URLs the job linked as-is.
+- **C** — fallback for a mail that had **no attachments**, where B can never fire:
+  the single thread sharing the docket's `partyName`, in the same IST day, that
+  itself has no attachment links. Several candidates → left alone.
+
+Dockets resolving to the same thread are duplicates. Rule A/B groups are deduped
+automatically: keep the docket with items (else the earliest), re-point the thread
+at the keeper, link the keeper with `sourceThreadId`. A duplicate carrying work
+the keeper lacks (items, a selected contract, an offer PDF, an approved email, a
+duplicate pointer) is reported and **skipped**, never deleted — the same content
+check applies to items, so a duplicate with different lines is never dropped.
+
+Rule C is a heuristic, so a group resting on it is **reported only, never
+deleted**. Name it to act: `--rule-c-threads=<threadId>[,<threadId>]` deletes
+every docket in those groups and keeps none — for a mail whose real docket already
+exists under a different party name. An internal forward of a customer enquiry is
+the case that needs it: the forward is docketed under the company's own name while
+the customer's mail is docketed correctly, so every auto-created docket for the
+forward should go. A named group needs at least two dockets, and any docket a
+thread still points at is skipped rather than left dangling.
+
+Dry run by default:
+
+```bash
+npm run docket:dedupe                                  # report
+npm run docket:dedupe:apply                            # dedupe A/B groups
+npx tsx scripts/dedupe-docket-threads.ts --apply --rule-c-threads=<threadId>
+```
 
 ### Item extraction
 
@@ -513,9 +579,14 @@ runs the same extraction pipeline, and inserts the items. Dry run by default;
 
 ### `pendingDocket` is set upstream
 
-Nothing in this repo ever sets `pendingDocket = true` — the external mail
-ingestion does. This job only **consumes** the flag. If no ingestion is running,
-the job reports `pending: 0` and does nothing.
+Nothing in this repo sets `pendingDocket = true` for the creation job — the
+external mail ingestion does. This job only **consumes** the flag. If no
+ingestion is running, the job reports `pending: 0` and does nothing.
+
+The ingestion also **clears** `docketNo` back to NULL and re-sets
+`pendingDocket = true` when it re-syncs a thread row, so the stamp this job
+writes on the thread does not survive the hour. That is why the per-mail guard is
+`Enquiry.sourceThreadId` and not the stamp.
 
 ### Snapshot failures never abort a docket
 
@@ -532,7 +603,325 @@ were **removed**. The action is retained as a commented-out `LEGACY` block in
 `app/actions.ts`, with its now-unused imports commented alongside it. This folder
 is the source of truth for scheduled docket creation.
 
+## `acc-master`
+
+Single step: `runAccMasterSync()` in `acc-master-sync.ts`. Reads the
+`ACC_MASTER_GID` tab of `GMD_EXECUTION_TRACKING_SPREADSHEET_ID`
+(`FORMATTED_VALUE`, header row 1) and copies `ACC_CODE` / `ACC_NAME` into the
+local `acc_master` table.
+
+The point is to keep Google out of `execution-tracking`'s hot path: that job
+needs one name per consignee code, on every row it touches, every hour.
+`acc-master` publishes the whole list once, `lib/accMasterLookup.ts` reads it in
+one query, and the sync joins in memory.
+
+Notes:
+
+- Rows are matched on the **normalised** code (trim, collapse whitespace,
+  upper-case), so a casing change in the sheet updates the existing row instead
+  of creating a second one. The sheet's spelling is then kept as the stored
+  value.
+- A blank `ACC_NAME` never clears a stored name.
+- A duplicate `ACC_CODE` in the sheet keeps the first row and is counted
+  (`duplicateCodes`) — the codes are meant to be unique, so a duplicate is a
+  sheet problem the report should surface, not a reason to fail the run.
+- Rows the sheet no longer carries are **kept**. The list can only ever get more
+  complete, never wrong, which keeps the sync that reads it safe.
+- `execution-tracking` refreshes this table before it runs, so the manual path
+  does not depend on the :35 job having fired.
+
+## `execution-tracking`
+
+Single step: `runExecutionTrackingStep()` in `execution-tracking-sync.ts` — the
+ACC master refresh above, then `runExecutionTrackingSync()` from
+`lib/executionTrackingSync.ts`, the same engine the CLI
+(`npm run exec:sync`) and the `/supply_history` button use.
+
+Reads the `SALE_BILL_GID` tab of `GMD_EXECUTION_TRACKING_SPREADSHEET_ID` and
+diffs it into `SupplyHistoryItem`, for **one fiscal year**. The scheduler uses
+the current fiscal year (`getFiscalYearLabel`, April start, the same helper the
+docket numbers use — it yields the `2026-27` form the table stores); the button
+passes a year chosen in the UI; the CLI takes `--fy`.
+
+Column mapping is declarative — `SALE_BILL_COLUMN_MAP` in
+`lib/gmd_lib/execution-tracking-columns.ts` is a list of
+`{ sheetHeader, dbField }`, and the engine's preload, insert payload, diff loop
+and report all iterate it. **Adding a column is one line.**
+
+`consigneeName` is the one field not on the sheet: it is `ACC_NAME` for the row's
+account code — SALE BILL's **`ACC_CODE`**, resolved through `acc_master`.
+
+The tab also carries a `CONSIGNEE_CODE` column, and the two are not the same
+thing: `ACC_CODE` is the **billed party**, `CONSIGNEE_CODE` is the **ship-to**.
+They disagree on 357 of the 5,117 rows. Measured on the FY 26-27 disagreements,
+the DB's stored `consigneeName` matched the `CONSIGNEE_CODE` name in 15 of 15
+non-blank cases and the `ACC_CODE` name in none — so a run keyed on `ACC_CODE`
+rewrites those rows to the billed party. That is the intended behaviour here
+(the name always lands in `consigneeName` either way); switching back is a
+one-line change to `SALE_BILL_KEY_HEADERS.accountCode`.
+
+### The sheet is a line ledger; the table is one row per (invoice, item)
+
+This is the shape that matters, and it was measured rather than assumed. For FY
+2026-27: the sheet's 487 rows are **401 distinct `(VRNO, ITEM_CODE)` groups over
+138 invoices** — the same item code appears on the same invoice more than once
+(31 groups), because the sheet records each issue line. `SupplyHistoryItem` holds
+**one** row per `(invoiceNo, erpItemCode)` — that pair is unique in the year, 0
+duplicates — and its `quantity` is the **sum** of the sheet's lines. Verified on
+all 320 pairs the two sides share: the sum matched the stored quantity in every
+single case, with zero exceptions.
+
+So the engine **folds the sheet's lines per `(invoiceNo, ITEM_CODE)` and sums
+`QTYISSUED`** before diffing. This is not a nicety: taking the first line would
+have written `96` over a stored `627` on GD26Y-00014 (three lines: 96 + 106 +
+425) and corrupted 23 of those 320 rows. The first dry run did exactly that, which
+is what the smoke test is for.
+
+Grouping is on the item code, so a line that carries no code stays its own group
+and is matched by invoice number alone (see below).
+
+### Matching is the exact (invoice, item code) pair
+
+A group matches the DB row with the same invoice number **and** item code. When no
+such row exists it is a genuine new line, so the engine inserts rather than
+touching a sibling — the earlier `invoiceNo`-only rule would have written a new
+line's values onto whatever row the invoice happened to have.
+
+Two cases stay conservative, both counted as `ambiguous` and skipped:
+
+- **no item code on the sheet and the invoice owns several DB rows** — nothing can
+  tell which row the line belongs to;
+- **several DB rows share one `(invoice, item code)` pair** — 7 such pairs exist in
+  the whole table, none in this year.
+
+### Inserting needs a name, so it is resolved locally
+
+`SupplyHistoryItem.itemName` is `NOT NULL`, and in practice never blank (0 of
+15,467 rows). The sheet has no item name, so `lib/erpItemNameLookup.ts` resolves
+one from what the DB already knows, in order: the name the item was supplied
+under before (`SupplyHistoryItem`, most recent), then `FullItem.itemName`, then
+`RawMaterial.itemNameAuto` / `itemNameDerived`, then `VerifyBom.itemName`.
+
+Measured on the 54 codes FY 2026-27 needs but the table does not hold: 40 resolved
+from step 1, all the rest from the following steps. Only a code no source knows
+stays blank, and that is counted as `unnamedInserts` so the gap is visible rather
+than invented.
+
+An insert whose resolved name the invoice already uses is counted as
+`blockedInserts` and skipped: the DB unique key is `(invoiceNo, itemName)`, so two
+different item codes carrying the same name text on one invoice cannot both be
+stored. Three such rows exist in FY 2026-27. Disambiguating them (appending the
+item code to the name) is a one-line change if that ever matters; leaving the DB's
+key alone was the deliberate choice.
+
+### Two more layers: the description is what the table keys on
+
+The table's identity is `(invoiceNo, itemName)` — a **description**, not a code —
+so two rows that share a description on one invoice cannot both be stored. Two
+layers keep that from losing data. Both are pure functions in
+`lib/executionTrackingSync.ts`, unit-tested.
+
+**1. Folding across item codes** (`mergeByDescription`). When different item codes
+share a description on the same invoice, their rows fold into one and the
+quantities are added — exactly what happens when the same code is listed twice.
+Measured live in FY 2026-27:
+
+```
+GD26Y-00055  FRD020002 (6) + FSD040001 (20)   ->  FSD040001 qty 26
+GD26Y-00098  FSD040001     + FRD020002        ->  FRD020002 qty 103
+GD26Y-00126  FSD040113 (9) + FSD040050 (32)   ->  FSD040050 qty 41
+GD26Y-00126  FSD040001 (1) + FRD020002 (16)   ->  FRD020002 qty 17
+GD26Y-00136  FSD040038     + FSD040025        ->  FSD040025 qty 69
+```
+
+**The fold keys on the ERP master name** (`resolveMasterNames`: `FullItem` →
+`RawMaterial` → `VerifyBom`, trailing `_` trimmed, `SupplyHistoryItem` excluded),
+**never on the stored supply name.** That distinction is load-bearing:
+`FVC030011` (`..._150_...`) and `FVC030012` (`..._200_...`) are different
+products, but their *stored* names both read `..._200` because one is mislabelled.
+Keying on the stored name merged a 150 mm into a 200 mm (`GD26Y-00019`,
+`GD26Y-00082`, `GD26Y-00086`) and a gear box into an O-ring (`GD26Y-00092`). Keyed
+on the master name, neither folds, and both invoices are plain updates.
+
+Rules: the fold happens only when **everything except the quantity and the item
+code matches** — uom, LR, canonical state, consignee address, account code. If any
+differ, the rows are genuinely different entries and are left to the refusal path
+below. The survivor is a code the invoice **already has a row for** where one
+exists, so the fold lands as an update rather than a second insert that would
+double-count; otherwise the lexicographically lowest. A code with no master name is
+never folded. As with the line merge, a non-numeric quantity is never summed.
+
+**2. Refreshing a stale stored name** (`planNameRefresh`). Sometimes the name an
+insert needs is already held by a row whose *own* item code uses a different
+description elsewhere in the table. On `GD26Y-00055` the `FSD040001` row sat under
+the description the ERP master gives `FRD020002`, while every other `FSD040001` row
+reads `Sluice Valve Ductile Iron Resilient Seated PN 1.0 HW OP. 100 MM`.
+Refreshing that row to its own current name frees the other code's name and both
+lines land.
+
+Since the fold above now handles `GD26Y-00055` (it folds `FRD020002` into the
+existing `FSD040001` row), this repair did not fire in the last dry run —
+`nameRefreshes` was 0. It is kept because a collision can still arise that the fold
+cannot settle.
+
+This is the only case in which the sync writes `itemName` on an existing row. It
+refuses — leaving the insert counted in `blockedInserts` — when there is no such
+row, when that row was already refreshed in this run, when its code has no known
+current name, when the current name *is* the name we want to free (the rename
+would collide immediately), or when the invoice already uses that name elsewhere.
+Refreshes are applied **before** the inserts, since an insert needing the freed
+name would otherwise be rejected.
+
+**Insert naming.** A new row is stored under its **supply** name (`resolveItemNames`),
+because that is the vocabulary the MASTER sync matches on. Only when that name is
+already taken on the invoice — and the stale-name repair did not apply — does the
+row fall back to its **ERP master name**, which is what distinguishes two codes
+whose stored names collide. Using the master name for *every* insert would desync
+185 of the 979 codes that have both names (they use a different vocabulary), so the
+fallback is deliberately narrow.
+
+Together these are why `blockedInserts` is 0 for FY 2026-27 where it was 2, and why
+`GD26Y-00126` contributes 12 rows instead of 11 plus a refusal.
+
+### The fiscal year must match on both sides
+
+A row is only considered when the sheet's own FY column — `ACC_YEAR` on the live
+sheet, values `25-26` / `26-27` — equals the requested year (any spelling:
+`26-27`, `2026-27`, `2026-2027`, `2627`; see `normalizeFiscalYear`), and the DB
+preload is scoped to the same year. Because `financialYear` is free text that
+older rows may have written differently, the preload queries the variants in
+`fiscalYearVariants` and the comparison is on the normalised form.
+
+### Two writes the engine deliberately refuses
+
+- **A blank cell never clears a value**, including the dash sentinels `-` `--`
+  `—` `–`. Same rule as the MASTER sync.
+- **`state` is written only when the sheet value is a recognised Indian state**
+  (`canonicalizeState` in `lib/supplyStateResolver.ts`), and written in the DB's
+  Title Case. Comparison is on the canonical form, so a row that already means
+  the same thing (`Chattisgarh` vs `CHATTISGARH`) is never rewritten. An
+  unrecognised value (`MH`, `Other`) leaves the field alone and lands in the
+  report's `stateSkipped` samples.
+
+### Every run is logged
+
+`lib/syncLog.ts` writes one `sync_log` row per run — headline counts plus
+`details`, the before/after of every add and change, capped at
+`DETAIL_CAP` (2,000). A dry run is logged too (`mode = "dry-run"`), so the preview
+an operator looked at sits next to the apply that followed it. `kind` keeps the
+table shared: `"execution-tracking"` and `"acc-master"` today.
+
+### Manual control
+
+```sh
+npm run exec:headers                                  # read-only: real headers + column map + acc_master state
+npm run exec:sync -- --acc-only --apply               # fill acc_master (cache refresh, not business data)
+npm run exec:sync -- --fy 26-27                       # dry run, prints the report
+npm run exec:sync -- --fy 26-27 --limit 20            # smoke test the first 20 rows
+npm run exec:sync -- --fy 26-27 --apply               # write
+npm run exec:sync -- --fy 26-27 --apply --no-log      # write without a sync_log row
+
+# the same engine over HTTP (dryRun / fy are optional)
+curl -X POST "$BASE/execution-tracking?dryRun=1&fy=2025-26" -H "x-api-key: $GMD_SYNC_API_KEY"
+```
+
+## `erp-contract-no`
+
+Single step: `runErpContractNoStep()` in `erp-contract-no-sync.ts`, delegating to
+`runErpContractNoSync()` (`lib/erpContractNoSync.ts`) — the same engine the CLI
+(`npm run contractno:sync`) and `POST /api/scheduler/erp-contract-no` use.
+
+Reads the `SALE_BILL_GID` and `MC_GID` tabs of
+`GMD_EXECUTION_TRACKING_SPREADSHEET_ID` and writes
+`SupplyHistoryItem.erpContractNo`. The scheduler uses the current fiscal year
+(April start); the CLI takes `--fy`.
+
+### The join is invoice-level, and that was measured
+
+`SALE BILL.ORDER_VRNO = MC.VRNO -> MC.CONTRACT_VRNO`. Measured on FY 2026-27:
+
+- 487 SALE BILL rows, **103 distinct `ORDER_VRNO`** (136 distinct invoices — two
+  invoices can share one order), 2 rows with a blank `ORDER_VRNO`;
+- all 103 orders are present in MC;
+- MC carries **708 `VRNO`s and none holds more than one `CONTRACT_VRNO`**, so the
+  order -> contract lookup is 1:1 and the write is per **invoice** (`VRNO`):
+  every `SupplyHistoryItem` row of a matched invoice gets the same contract.
+
+The `rowIds` actually written are only the rows whose stored value differs, so an
+invoice that is already correct produces no write and no `syncedAt` bump.
+
+### Write policy
+
+| Case | Rule |
+|---|---|
+| stored `erpContractNo` equals MC's `CONTRACT_VRNO` | **left alone**, counted `unchangedInvoices` |
+| stored value blank | **filled** (`filledRows`) |
+| stored value non-blank **and different** | **overwritten** — MC wins (`overwrittenRows`); `--gap-fill` turns this into a no-op |
+| MC `CONTRACT_VRNO` blank, or the `ORDER_VRNO` unknown to MC | **no write**, counted `noContractOnMc` / `unmatchedOrderVrno` — a blank cell never clears a value |
+| SALE BILL lines carry no `ORDER_VRNO` for a DB invoice | **no write**, counted `noOrderVrnoInSheet` |
+| MC `VRNO` with more than one `CONTRACT_VRNO` | reported as `mcConflicts`; the lexicographically first value is used |
+| deletions | none |
+
+### Two writers of `erpContractNo`
+
+`supply-history` (:15) also writes this column, from MASTER's `ERP CONTRACT NO`.
+On FY 2026-27 the two sources agree on every comparable row (254 of 254), so
+there is no flip-flop — but `overwrittenRows > 0` is the signal to watch: if
+MASTER ever carries a different spelling for the same row, the two jobs will
+rewrite each other every hour. Making `supply-history` stop owning the column is
+the clean follow-up if that ever happens.
+
+### Manual control
+
+```sh
+npm run contractno:headers                             # read-only: both tabs' headers + column map + DB counts
+npm run contractno:sync -- --fy 26-27                  # dry run, prints the report
+npm run contractno:sync -- --fy 26-27 --limit 20        # smoke test the first 20 invoices
+npm run contractno:sync -- --fy 26-27 --apply           # write
+npm run contractno:sync -- --fy 26-27 --apply --gap-fill # write, but never overwrite a stored value
+npm run contractno:sync -- --fy 26-27 --apply --no-log   # write without a sync_log row
+
+# the same engine over HTTP (dryRun / fy are optional)
+curl -X POST "$BASE/erp-contract-no?dryRun=1&fy=2025-26" -H "x-api-key: $GMD_SYNC_API_KEY"
+```
+
 ## Write policy
+
+### `acc-master`
+
+| Column | Rule |
+|---|---|
+| `acc_code`, `acc_name` on a **new** code | written |
+| `acc_name` on an existing code | overwritten when the sheet value is non-blank and differs; a blank never clears |
+| `acc_code` on an existing code | updated to the sheet's spelling when it differs only in case/spacing; matched on the normalised form |
+| codes the sheet no longer lists | **kept** |
+| deletions | none |
+
+### `execution-tracking`
+
+| Column | Rule |
+|---|---|
+| `quantity` | the **sum** of the sheet's lines for that `(invoice, item code)`, **plus** any row folded in by the description merge; a non-numeric value is never summed — the first non-blank is kept |
+| `uom`, `lrNoDt`, `consigneeAddress`, `erpItemCode`, `consigneeName` | overwritten when the merged sheet value is non-blank and differs |
+| `state` | overwritten when the sheet value is a recognised Indian state and the canonical form differs; written in Title Case |
+| blank / `-` `--` `—` `–` cells | never overwrite, never clear |
+| `invoiceNo` | match key, never written |
+| `itemName` | resolved by `lib/erpItemNameLookup.ts` on insert; on an existing row it is written **only** by the stale-name refresh (`planNameRefresh`), which frees a name a colliding insert needs |
+| `financialYear` | set to the target year on insert; immutable on an existing row |
+| item codes sharing a description | folded into one row by `mergeByDescription` when every other field agrees |
+| new rows | inserted for a `(invoice, item code)` pair the year does not hold; refused and counted in `blockedInserts` only when no fold and no refresh can resolve the name |
+| `syncedAt` | stamped only on rows actually written |
+| deletions | none |
+
+### `erp-contract-no`
+
+| Column | Rule |
+|---|---|
+| `erpContractNo` | set to MC's `CONTRACT_VRNO` for the invoice, keyed on `SALE BILL.ORDER_VRNO = MC.VRNO`. **Filled** when blank, **overwritten** when it differs (MC wins; `--gap-fill` prevents the overwrite) |
+| `erpContractNo`, MC value blank or order unmatched | left alone — a blank never clears a stored value |
+| `syncedAt` | stamped only on rows actually written |
+| every other column | never touched |
+| deletions | none |
 
 ### `raw-material`
 
@@ -807,6 +1196,10 @@ curl -i -X POST -H "x-api-key: nope" "$BASE/raw-material"
 # correct key -> 200 (runs the job)
 curl -i -X POST -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/raw-material"
 curl -i -X POST -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/contract-review"
+
+# the execution-tracking pair: refresh the name list, then preview a year
+curl -i -X POST -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/acc-master"
+curl -i -X POST -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/execution-tracking?dryRun=1&fy=2026-27"
 
 # verify credentials WITHOUT running the job
 curl -i -H "x-api-key: $GMD_SYNC_API_KEY" "$BASE/contract-review"

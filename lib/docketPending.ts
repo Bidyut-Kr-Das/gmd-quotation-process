@@ -143,3 +143,19 @@ export function buildPartyMatcher(partyNames: string[]): (text: string) => strin
     return exact || hit;
   };
 }
+
+/**
+ * IST calendar day, as a half-open UTC window.
+ *
+ * The container runs UTC (no `TZ` is set anywhere in the Dockerfile or
+ * compose file), so a plain local-midnight boundary would roll over at 05:30
+ * IST and silently drop every mail received between 00:00 and 05:29 IST.
+ * Mails are IST, so the window is computed in IST and returned as UTC instants.
+ */
+export function istDayWindow(now: Date): { start: Date; end: Date } {
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(now.getTime() + IST_OFFSET_MS);
+  const startMs =
+    Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()) - IST_OFFSET_MS;
+  return { start: new Date(startMs), end: new Date(startMs + 24 * 60 * 60 * 1000) };
+}
