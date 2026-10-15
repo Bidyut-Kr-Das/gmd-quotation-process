@@ -1179,6 +1179,14 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   const handleItemFieldChange = async (itemId: string, field: string, val: string) => {
     const dbVal = val === "" ? null : val;
     console.log(`[Client] updateItemField item=${itemId} field=${field} val="${dbVal}"`);
+    // Validation=Yes freezes the rate block: VA% and quotedRate are system-controlled
+    if (field === "quotedRate" || field === "vaPercent") {
+      const parentItem = allItems.find((i) => i.id === itemId) || null;
+      if (parentItem?.validation === "Yes") {
+        toast.error("Rate & VA% are locked for validated items (Validation = Yes).");
+        return;
+      }
+    }
     // Client-side frozen guard: pricing columns (incl. quantity) are frozen after one-time PDF
     if (FROZEN_ITEM_FIELD_SET.has(field)) {
       const parentItem = allItems.find((i) => i.id === itemId) || null;

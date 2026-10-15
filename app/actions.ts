@@ -1469,6 +1469,7 @@ export async function updateItemFieldAction(
         erpItemCode: true,
         productCost: true,
         bomId: true,
+        validation: true,
         [field]: true,
       },
     });
@@ -1492,6 +1493,14 @@ export async function updateItemFieldAction(
           return { success: false, error: "Rate & cost columns are frozen after one-time PDF generation â€” revert APM to edit." };
         }
       }
+    }
+
+    // Validation=Yes freezes the rate block: VA% and quotedRate are derived, not editable.
+    if ((field === "quotedRate" || field === "vaPercent") && (prevFull as any).validation === "Yes") {
+      return {
+        success: false,
+        error: "Rate & VA% are locked for validated items (Validation = Yes) — VA% follows cost changes automatically.",
+      };
     }
 
     let parsedVal: any = value;
