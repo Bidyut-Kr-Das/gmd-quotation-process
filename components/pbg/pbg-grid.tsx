@@ -206,14 +206,15 @@ function CellEditor({
   }
 
   if (kind === "text" && def.options && def.options.length > 0) {
-    const listId = `pbg-options-${def.key}`;
+    const listId = `${def.key}-options`;
     return (
       <>
         <input
           ref={inputRef}
           type="text"
-          list={listId}
           value={value}
+          list={listId}
+          autoComplete="off"
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={onKeyDown}
           onBlur={() => finish(null)}

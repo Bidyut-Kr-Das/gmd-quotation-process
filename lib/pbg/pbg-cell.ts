@@ -1,5 +1,6 @@
 import { parseDate, parseNumber } from "@/lib/pbg/pbg";
 import { PBG_COLUMN_DEFS, type ColumnDef, type ColumnKey } from "@/lib/pbg/pbg-columns";
+import { formatValidityLabel } from "@/lib/pbg/validity";
 import type { PbgRecord } from "@/lib/pbg/pbg-data";
 
 export type CellValue = string | number | Date | null;
@@ -45,6 +46,10 @@ export function parseCellInput(key: ColumnKey, input: string): CellValue {
   if (raw === "") return null;
   if (def.type === "date") return parseDate(raw);
   if (def.type === "number") return parseNumber(raw);
+  if (key === "validityOn") {
+    if (raw === "-") return null;
+    return formatValidityLabel(raw) ?? raw;
+  }
   return raw;
 }
 
@@ -60,6 +65,10 @@ export function toRecordValue(key: ColumnKey, input: string): RecordValue {
     return date ? date.toISOString().slice(0, 10) : null;
   }
   if (def.type === "number") return parseNumber(raw);
+  if (key === "validityOn") {
+    if (raw === "-") return null;
+    return formatValidityLabel(raw) ?? raw;
+  }
   return raw;
 }
 

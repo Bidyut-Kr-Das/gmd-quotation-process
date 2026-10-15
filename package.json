@@ -66,6 +66,8 @@
     "flange:weight:apply": "tsx scripts/compute-flange-weight.ts --apply",
     "pbg:sync": "tsx scripts/sync-pbg-data.ts",
     "pbg:sync:apply": "tsx scripts/sync-pbg-data.ts --apply",
+    "pbg:validity:normalise": "tsx scripts/normalise-pbg-validity.ts",
+    "pbg:validity:normalise:apply": "tsx scripts/normalise-pbg-validity.ts --apply",
     "physical:cost": "tsx scripts/backfill-physical-stock-cost-bom.ts",
     "physical:cost:apply": "tsx scripts/backfill-physical-stock-cost-bom.ts --apply",
     "physical:copy-neon": "tsx scripts/copy-physical-stock-to-neon.ts",

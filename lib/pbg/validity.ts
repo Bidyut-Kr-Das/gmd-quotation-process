@@ -8,10 +8,12 @@
 
 export type Duration = { months: number; days: number };
 
-/** Dropdown suggestions for the Validity On column: years 1-5, months 1-11. */
+/** Dropdown options for the Validity On column. */
 export const VALIDITY_OPTIONS: string[] = [
-  ...Array.from({ length: 5 }, (_, i) => `${i + 1}y`),
-  ...Array.from({ length: 11 }, (_, i) => `${i + 1}m`),
+  "5 Year",
+  "3 Year",
+  "1 Year",
+  "18 Month",
 ];
 
 const UNIT_RE =
@@ -55,6 +57,33 @@ export function parseDuration(input: string | null | undefined): Duration | null
   days = Math.round(days);
   if (months === 0 && days === 0) return null;
   return { months, days };
+}
+
+/**
+ * Canonical readable label for a validity duration, e.g. "5y" -> "5 Year",
+ * "1y 6m" -> "18 Month", "90d" -> "90 Day". Whole years render as "N Year",
+ * otherwise the total months render as "N Month"; days are appended when
+ * present. Returns null when the value cannot be parsed.
+ *
+ * Idempotent: a value already in canonical form maps to itself, so this is
+ * safe to run on every save and in a backfill.
+ */
+export function formatValidityLabel(
+  input: string | null | undefined,
+): string | null {
+  const duration = parseDuration(input);
+  if (!duration) return null;
+
+  const { months, days } = duration;
+  const parts: string[] = [];
+  if (months > 0 && months % 12 === 0) {
+    parts.push(`${months / 12} Year`);
+  } else if (months > 0) {
+    parts.push(`${months} Month`);
+  }
+  if (days > 0) parts.push(`${days} Day`);
+
+  return parts.length > 0 ? parts.join(" ") : null;
 }
 
 /**

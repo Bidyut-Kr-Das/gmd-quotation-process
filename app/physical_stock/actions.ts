@@ -97,13 +97,15 @@ export async function updatePhysicalStockUsdCostAction(
   };
 }
 
-// Derived columns are never part of the sheet content key, otherwise a row whose
-// derived cost/bom_id is set would look "new" on every sync and be recreated.
-const DERIVED_FIELDS = new Set(["cost", "bom_id"]);
+// Columns the sheet does not carry and that must never feed the content key:
+// derived cost/bom_id are set by the derivation step, and form_date is DB-owned.
+// Including any of them would make an existing row look "new" on every sync and
+// be recreated.
+const NON_CONTENT_FIELDS = new Set(["cost", "bom_id", "form_date"]);
 
 const CONTENT_FIELDS = Array.from(
   new Set(Object.values(PHYSICAL_COL_INDEX_TO_DB_FIELD)),
-).filter((field) => !DERIVED_FIELDS.has(field));
+).filter((field) => !NON_CONTENT_FIELDS.has(field));
 
 function contentKey(record: Record<string, string | null>): string {
   const o: Record<string, string | null> = {};
