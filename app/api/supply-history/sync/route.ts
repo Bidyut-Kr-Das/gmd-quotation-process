@@ -6,6 +6,7 @@ import {
   SUPPLY_HISTORY_HEADERS,
   buildColumnMap,
   mapSheetRowToDb,
+  SYNC_EXCLUDED_FIELDS,
 } from "@/lib/gmd_lib/supply-history-columns";
 import {
   buildGmdClientwiseOrderLinkMap,
@@ -217,6 +218,8 @@ export async function POST() {
       for (const [field, sheetVal] of Object.entries(mapped)) {
         if (field === "invoiceNo" || field === "itemName" || field === "syncedAt" || field === "id" || field === "createdAt" || field === "updatedAt") continue;
         if (field.startsWith("derived") && !EDITABLE_FIELDS.has(field)) continue;
+        // Backfill-owned columns are never overwritten by the sheet.
+        if (SYNC_EXCLUDED_FIELDS.has(field)) continue;
         if (field === "orderList") {
           if (isBlankSheetVal(sheetVal)) continue;
           const dbVal = (existing as unknown as Record<string, unknown>)[field] as string | null;

@@ -41,6 +41,8 @@
     "bom:cost:derive:apply": "tsx scripts/backfill-verify-bom-cost.ts --apply",
     "delivery:backfill": "tsx scripts/backfill-delivery-schedule.ts",
     "delivery:backfill:apply": "tsx scripts/backfill-delivery-schedule.ts --apply",
+    "supply:service-period": "tsx scripts/backfill-supply-service-period.ts",
+    "supply:service-period:apply": "tsx scripts/backfill-supply-service-period.ts --apply",
     "import:backfill": "tsx scripts/backfill-import-inhouse.ts",
     "import:backfill:apply": "tsx scripts/backfill-import-inhouse.ts --apply",
     "delivery:lookup:sync": "tsx scripts/sync-delivery-schedule-lookup.ts",

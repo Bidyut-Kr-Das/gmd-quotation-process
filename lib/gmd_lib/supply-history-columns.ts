@@ -1,4 +1,5 @@
 import { C_BATCH_HEADER } from "./verify-bom-columns";
+import { computeServicePeriodComplete } from "./service-period";
 
 export const SUPPLY_HISTORY_HEADERS = [
   "item name",
@@ -85,13 +86,23 @@ export function mapSheetRowToDb(
     return String(row[sheetIdx] ?? "");
   };
 
+  // "service period complete" is stored as a decimal number of years (or blank).
+  // Normalise it once here so the manual sync and the scheduler both persist the
+  // same "Years Months Days" string; blanks fall back to Date -> now.
+  const date = getVal(5);
+  const servicePeriodComplete = computeServicePeriodComplete(
+    getVal(29),
+    date,
+    syncedAt,
+  );
+
   return {
     itemName:        getRequired(0),
     invoiceNo:       getRequired(1),
     financialYear:   getVal(2),
     partyName:       getVal(3),
     erpPartyName:    getVal(4),
-    date:            getVal(5),
+    date,
     partyOrderNo:    getVal(6),
     partyDate:       getVal(7),
     quantity:        getVal(8),
@@ -115,7 +126,7 @@ export function mapSheetRowToDb(
     state:           getVal(26),
     utility:         getVal(27),
     performanceCertificate: getVal(28),
-    servicePeriodComplete:   getVal(29),
+    servicePeriodComplete,
     warrantyValidTillAsPerContract: getVal(30),
     warrantyValidNot: getVal(31),
     bgNo:            getVal(32),
@@ -138,6 +149,16 @@ export const SUPPLY_HEADER_TO_DB_FIELD: Record<string, string> = {
   "State": "state",
   "UTILITY": "utility",
 };
+
+/**
+ * Fields whose DB value is OWNED by a backfill, not the sheet, so a sync must
+ * never overwrite them once set. The sheet value is still used on INSERT (the
+ * backfill then corrects it). Currently just the computed warranty verdict:
+ * `scripts/backfill-supply-service-period.ts` derives it from
+ * `warrantyValidTillAsPerContract` vs today. The till-date itself keeps syncing
+ * so the script always has fresh input.
+ */
+export const SYNC_EXCLUDED_FIELDS = new Set<string>(["warrantyValidNot"]);
 
 export function dbItemToRow(item: {
   financialYear: string | null;
