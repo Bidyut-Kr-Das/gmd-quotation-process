@@ -37,8 +37,12 @@ The app resolves the RFQ thread for the docket and sends its `threadId`, so the
 quotation is posted as a **reply inside that thread** instead of a new mail:
 
 - `Has Thread` (true when `threadId` is present) → `Get Thread` fetches the
-  thread → `Pick Last Message` takes its newest message id → `Reply` sends the
-  offer as a reply (same thread).
+  thread → `Pick Last Message` picks the newest message **sent by the party**
+  (`body.to`), falling back to the thread's first message (the original RFQ) when
+  the party has none → `Reply` sends the offer as a reply (same thread).
+  `Reply` has no To field: n8n derives the recipient from the message it replies
+  to, so targeting the newest message would mail whoever wrote last in the
+  thread — often an internal colleague, with the party dropped from the mail.
 - If `Get Thread` or `Reply` fails — e.g. the sending mailbox is not a
   participant in that thread — its error output runs `Fallback Item`, which
   restores the original body + attachment, and `Send a message` mails it as a

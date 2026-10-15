@@ -28,6 +28,7 @@ const DISPLAY_HEADERS = <const>[
   "PARTY Date",
   "Quantity",
   "UOM",
+  "RATE",
   "Value",
   "Gross Total- INVOICE VALUE",
   "LR NO & DT",

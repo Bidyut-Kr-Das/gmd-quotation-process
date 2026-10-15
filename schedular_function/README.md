@@ -24,7 +24,7 @@ every 2 hours. All are staggered so no two heavy ones collide.
 | Raw Material sync | `POST /api/scheduler/raw-material` | `raw-material-sync` | `GMD UPDATION`, `stock-phys` |
 | BOM MAST ERP sync | `POST /api/scheduler/bom-mast` | `bom-mast-sync` | `BOM MAST ERP` |
 | Physical Stock cost / BOM ID | `POST /api/scheduler/physical-stock-cost-bom` | `physical-stock-cost-bom-sync` | local `FullItem` / `Bom` / `BomItem` → Neon `PhysicalStock` |
-| Supply History MASTER sync | `POST /api/scheduler/supply-history` | `supply-history-sync` | `MASTER`, GMD Clientwise ORDER LIST |
+| Supply History MASTER sync | `POST /api/scheduler/supply-history` | `supply-history-sync` | `MASTER`, GMD Clientwise ORDER LIST, `SALE_BILL` (rate gap-fill) |
 | Pending docket creation | `POST /api/scheduler/docket-creation` | `docket-creation-sync` | `docket_quotation_threads`, `enquiries` |
 | Contract Review sync | `POST /api/scheduler/contract-review` | `contract-review-sync` | `CONTRACTS`, `DUMP`, `stock-phys`, `INSPECTION OFFER DUMP` |
 | ACC Master refresh | `POST /api/scheduler/acc-master` | `acc-master-sync` | `ACC_MASTER` |
@@ -270,14 +270,39 @@ Because a failed batch still returns `200` with `success: true`,
 
 ## `supply-history`
 
-Single step: `runSupplyHistorySync()` in `supply-history-sync.ts`. Reads the
-`MASTER` tab of `SUPPLY_HISTORY_SPREADSHEET_ID` plus
-`buildGmdClientwiseOrderLinkMap()` for ORDER LIST links — **4 Google calls per
-run**. Writes only `SupplyHistoryItem`, joined on
-`normalizeKey(invoiceNo) + "||" + normalizeKey(itemName)`.
+Two steps, in order:
+
+1. `runSupplyHistorySync()` in `supply-history-sync.ts`. Reads the `MASTER` tab of
+   `SUPPLY_HISTORY_SPREADSHEET_ID` plus `buildGmdClientwiseOrderLinkMap()` for
+   ORDER LIST links — **4 Google calls per run**. Writes only
+   `SupplyHistoryItem`, joined on
+   `normalizeKey(invoiceNo) + "||" + normalizeKey(itemName)`.
+2. `runSupplyRateBackfill()` in `lib/supplyRateBackfill.ts`. Reads the
+   `SALE_BILL_GID` tab of `GMD_EXECUTION_TRACKING_SPREADSHEET_ID` — **1 more
+   Google call** — and gap-fills `rate`, then `value = quantity x rate`. It runs
+   second on purpose: MASTER's own `Value` column lands first, and the backfill
+   only touches what is still blank, so the two writers cannot fight.
 
 This is the heaviest of the four: it full-table-reads `SupplyHistoryItem` and
 stamps `syncedAt` on nearly every row, every hour.
+
+### The rate backfill
+
+The `SALE_BILL` tab is keyed on the exact `(VRNO, ITEM_CODE)` pair, normalised on
+both sides — the same identity `execution-tracking` uses. It is read **without**
+a fiscal-year filter, so rows from every year backfill in one pass. A line with
+no item code cannot be attributed to one row when its invoice owns several, so
+it is skipped and counted (`skippedNoCode`) rather than guessed.
+
+Gap-fill only: `rate` is written only where the DB cell is blank, and `value`
+only where the DB cell is blank and both numbers parse (a rate already stored is
+used too). Nothing is overwritten or cleared.
+
+`value / quantity` is the RM unit cost in `lib/gmdBomCostLookup.ts`, so the rows
+this fills move quotation product cost.
+
+A failure here is caught and reported (`rateBackfillError`) rather than thrown —
+the MASTER row sync is the job's contract, the backfill is enrichment.
 
 ### What changed from the manual route
 
@@ -970,6 +995,8 @@ Stock-step edge cases:
 | blank sheet values, including `-` `--` `—` `–` | **never** overwrite and **never** clear a stored value |
 | `derivedItemType`, `derivedMoc`, `derivedSize` | never touched — populated out of band by `scripts/derive-supply-fields.ts` and the UI |
 | `cBatch` | never touched (owned by the `c-batch` job) |
+| `rate` | **gap-fill only** — filled from the `SALE_BILL` tab's `RATE` where blank; never the MASTER sync's (not in `mapSheetRowToDb`) |
+| `value` | two writers: the MASTER sync overwrites from MASTER's `Value` when non-blank and different; the rate backfill fills it where still blank, as `quantity x rate` |
 | `invoiceNo` / `itemName` | immutable join keys |
 | deletions | none |
 
