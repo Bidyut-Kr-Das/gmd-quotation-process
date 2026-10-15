@@ -189,13 +189,13 @@ test('resolvePartyForThread falls back to a real subCategory', () => {
   assert.deepEqual(r, { partyName: 'ACME VALVES', source: 'subCategory' })
 })
 
-test('isDeletableDuplicate requires Yes + a target + zero items', () => {
-  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: 'GMD/2026-27/1', itemCount: 0 }), true)
-  assert.equal(isDeletableDuplicate({ duplicate: 'yes', duplicateOfDocket: 'GMD/2026-27/1', itemCount: 0 }), true)
-  assert.equal(isDeletableDuplicate({ duplicate: 'No', duplicateOfDocket: 'GMD/2026-27/1', itemCount: 0 }), false)
-  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: '', itemCount: 0 }), false)
-  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: null, itemCount: 0 }), false)
-  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: 'GMD/2026-27/1', itemCount: 3 }), false)
+test('isDeletableDuplicate requires Yes + a target, items or not', () => {
+  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: 'GMD/2026-27/1' }), true)
+  assert.equal(isDeletableDuplicate({ duplicate: 'yes', duplicateOfDocket: 'GMD/2026-27/1' }), true)
+  assert.equal(isDeletableDuplicate({ duplicate: 'No', duplicateOfDocket: 'GMD/2026-27/1' }), false)
+  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: '' }), false)
+  assert.equal(isDeletableDuplicate({ duplicate: 'Yes', duplicateOfDocket: null }), false)
+  assert.equal(isDeletableDuplicate({ duplicate: null, duplicateOfDocket: null }), false)
 })
 
 test('resolvePartyForThread falls back to Unknown for sentinels / no data', () => {

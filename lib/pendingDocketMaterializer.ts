@@ -115,17 +115,18 @@ export function buildEmailPartyMap(input: {
 export interface DuplicateGuardInput {
   duplicate: string | null | undefined;
   duplicateOfDocket: string | null | undefined;
-  itemCount: number;
 }
 
 /**
- * A blank docket may be deleted only when it is flagged `duplicate = Yes`,
- * linked to an original docket, and has no items of its own.
+ * A docket may be deleted as a duplicate only when it is flagged
+ * `duplicate = Yes` and linked to an original docket. Any items it carries are
+ * deleted with it (Prisma cascade); the mail thread is re-pointed at the
+ * original by the caller.
  */
 export function isDeletableDuplicate(input: DuplicateGuardInput): boolean {
   const dup = String(input.duplicate ?? "").trim().toUpperCase();
   const target = String(input.duplicateOfDocket ?? "").trim();
-  return dup === "YES" && target !== "" && input.itemCount === 0;
+  return dup === "YES" && target !== "";
 }
 
 /**

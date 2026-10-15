@@ -993,3 +993,71 @@ model EngineeringSync {
 
   @@map("engineering_sync")
 }
+
+// ─────────────────────────────────────────────────────────────
+// Execution Tracking sync support.
+//
+// The `GMD_EXECUTION_TRACKING_SPREADSHEET_ID` workbook (the same file as the
+// BOM MAST ERP workbook) carries the per-invoice execution rows that the
+// `execution-tracking` sync diffs into `SupplyHistoryItem`, plus the
+// code -> consignee-name list it joins on.
+// ─────────────────────────────────────────────────────────────
+
+/// ACC_MASTER tab -> a local copy of "consignee code -> account name".
+///
+/// Refreshed hourly by the `acc-master` scheduler job so the
+/// `execution-tracking` sync needs no Google call to resolve a consignee name.
+/// Codes are unique in the sheet (confirmed with the sheet owner); a duplicate
+/// in the sheet is skipped by the sync (first row wins) and counted in its
+/// report rather than failing the run.
+model AccMaster {
+  id        String   @id @default(cuid())
+  accCode   String   @unique @map("acc_code")
+  accName   String?  @map("acc_name")
+  syncedAt  DateTime @default(now()) @map("synced_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([syncedAt])
+  @@map("acc_master")
+}
+
+/// Backend record of one sync run, plus the per-row diff of what it added or
+/// changed (`details`). Written by `lib/syncLog.ts`.
+///
+/// `kind` keeps the table reusable for other syncs later — the execution
+/// tracking sync writes `"execution-tracking"`, the ACC_MASTER refresh writes
+/// `"acc-master"`. A dry run is recorded too (`mode = "dry-run"`), so the
+/// preview a user looked at is in the log next to the apply that followed it.
+model SyncLog {
+  id            String    @id @default(cuid())
+  kind          String
+  financialYear String?   @map("financial_year")
+  /// "dry-run" | "apply"
+  mode          String
+  /// "success" | "partial" | "failed"
+  status        String
+  startedAt     DateTime  @default(now()) @map("started_at")
+  finishedAt    DateTime? @map("finished_at")
+  scanned       Int       @default(0)
+  /// Sheet rows that resolved to a DB row.
+  matched       Int       @default(0)
+  inserted      Int       @default(0)
+  updated       Int       @default(0)
+  unchanged     Int       @default(0)
+  skipped       Int       @default(0)
+  /// Consignee codes that are absent from `acc_master`.
+  accMisses     Int       @default(0) @map("acc_misses")
+  /// Sheet rows whose invoice maps to several DB rows that ITEM_CODE cannot split.
+  ambiguous     Int       @default(0)
+  failedWrites  Int       @default(0) @map("failed_writes")
+  error         String?
+  /// `SyncLogChange[]` — one entry per added/changed row, capped (see
+  /// `DETAIL_CAP` in `lib/syncLog.ts`). Never null.
+  details       Json      @default("[]")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([kind, financialYear])
+  @@index([startedAt])
+  @@map("sync_log")
+}

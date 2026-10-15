@@ -1112,9 +1112,12 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   const [deletingEnquiryId, setDeletingEnquiryId] = useState<string | null>(null);
   const handleDeleteDuplicate = async (enquiry: EnquiryData) => {
     if (!enquiry.duplicateOfDocket) return;
+    const itemCount = enquiry.items?.length ?? 0;
     if (
       !confirm(
-        `Delete blank docket ${enquiry.docketNumber} as a duplicate of ${enquiry.duplicateOfDocket}? Its source mail will be re-linked to ${enquiry.duplicateOfDocket}.`,
+        `Delete docket ${enquiry.docketNumber} as a duplicate of ${enquiry.duplicateOfDocket}?` +
+          (itemCount > 0 ? `\n\nIts ${itemCount} item(s) will also be deleted.` : "") +
+          `\nIts source mail will be re-linked to ${enquiry.duplicateOfDocket}.`,
       )
     )
       return;
@@ -4352,19 +4355,15 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                             </select>
                             <button
                               type="button"
-                              disabled={
-                                deletingEnquiryId === enquiry.id ||
-                                !enquiry.duplicateOfDocket ||
-                                (enquiry.items?.length ?? 0) > 0
-                              }
+                              disabled={deletingEnquiryId === enquiry.id || !enquiry.duplicateOfDocket}
                               onClick={() => handleDeleteDuplicate(enquiry)}
                               className="inline-flex items-center justify-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:hover:bg-rose-500/20 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                               title={
-                                (enquiry.items?.length ?? 0) > 0
-                                  ? "Cannot delete: this docket has items"
-                                  : !enquiry.duplicateOfDocket
-                                    ? "Select the original docket first"
-                                    : "Delete this blank duplicate docket"
+                                !enquiry.duplicateOfDocket
+                                  ? "Select the original docket first"
+                                  : (enquiry.items?.length ?? 0) > 0
+                                    ? `Delete this duplicate docket and its ${enquiry.items.length} item(s)`
+                                    : "Delete this duplicate docket"
                               }
                             >
                               <Trash2 className="h-3 w-3" />

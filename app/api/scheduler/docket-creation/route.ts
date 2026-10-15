@@ -1,10 +1,14 @@
 /**
  * Ofelia entry point for the hourly pending-docket creation.
  *
- * Materializes dockets for every `DocketQuotationThread` flagged
+ * Materializes dockets for today's `DocketQuotationThread` rows flagged
  * `pendingDocket = true`: creates a header-only `Enquiry`, links mail
  * attachments, generates the snapshot PDF, and stamps the thread with the new
- * docket number. Idempotent — a stamped thread leaves the pending set.
+ * docket number.
+ *
+ * One docket per mail: a candidate whose mail already has a docket is skipped on
+ * `Enquiry.sourceThreadId`, because the thread stamp is cleared by the external
+ * mail ingestion within the hour.
  *
  * Deliberately thin: all logic lives in `@/schedular_function`.
  */
