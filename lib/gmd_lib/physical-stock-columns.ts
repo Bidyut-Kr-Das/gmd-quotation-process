@@ -33,6 +33,7 @@ export const PHYSICAL_COLUMNS = [
   "DRAWING/ TECHNICAL DATA",
   "COST",
   "BOM ID",
+  "MAJOR/MINOR MARKING",
 ];
 
 // Index i must stay aligned with PHYSICAL_COLUMNS[i]: the page's cell-edit path
@@ -73,6 +74,7 @@ export const PHYSICAL_COL_INDEX_TO_DB_FIELD: Record<number, string> = {
   31: "drawing_technical_data",
   32: "cost",
   33: "bom_id",
+  34: "majorminor_marking",
 };
 
 export const PHYSICAL_NUMERIC_COLUMNS = new Set([

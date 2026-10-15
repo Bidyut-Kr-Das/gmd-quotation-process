@@ -5,6 +5,10 @@ import { RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import GMDUpdateTable from "@/components/gmd_dashboard/GMDUpdateTable";
 import GMDUpdateHeader from "@/components/gmd_dashboard/GMDUpdateHeader";
+import StockAnalyticsSidebar, {
+  type StockCardKind,
+  type MajorMinorKind,
+} from "@/components/gmd_dashboard/StockAnalyticsSidebar";
 import {
   PHYSICAL_COLUMNS,
   PHYSICAL_COL_INDEX_TO_DB_FIELD,
@@ -30,12 +34,27 @@ interface PhysicalStockApiResponse {
   totalRows: number;
 }
 
+const AVAILABLE_IDX = PHYSICAL_COLUMNS.indexOf("AVAILABLE QTY.");
+const RATE_IDX = PHYSICAL_COLUMNS.indexOf("rate/unit");
+const MAJOR_IDX = PHYSICAL_COLUMNS.indexOf("MAJOR/MINOR MARKING");
+
+function toNum(value: unknown): number {
+  const n = parseFloat(String(value ?? "").replace(/,/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
 export default function Home() {
   const dispatch = useAppDispatch();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
+  const [filteredRows, setFilteredRows] = useState<unknown[][]>([]);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [cardFilter, setCardFilter] = useState<StockCardKind | null>(null);
+  const [majorMinorFilter, setMajorMinorFilter] = useState<Set<MajorMinorKind>>(
+    new Set(),
+  );
 
   const loadData = useCallback(async () => {
     try {
@@ -64,6 +83,73 @@ export default function Home() {
   const ids = useAppSelector(selectPhysicalStockIds);
   const totalRows = useMemo(() => rows.length, [rows]);
   const bomIdOptionsById = useAppSelector(selectPhysicalStockBomIdOptions);
+
+  // Stat-card filter: keep rows with a positive available qty / value.
+  const baseRows = useMemo(() => {
+    if (!cardFilter) return { rows, ids };
+    const rowsOut: unknown[][] = [];
+    const idsOut: string[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const qty = toNum(rows[i][AVAILABLE_IDX]);
+      const rate = toNum(rows[i][RATE_IDX]);
+      if (cardFilter === "qty" && qty <= 0) continue;
+      if (cardFilter === "value" && rate * qty <= 0) continue;
+      rowsOut.push(rows[i]);
+      idsOut.push(ids[i]);
+    }
+    return { rows: rowsOut, ids: idsOut };
+  }, [rows, ids, cardFilter]);
+
+  const majorMinorCounts = useMemo(() => {
+    const counts: Record<MajorMinorKind, number> = { yes: 0, no: 0, blank: 0 };
+    for (const row of baseRows.rows) {
+      const value = row[MAJOR_IDX];
+      if (value === true) counts.yes++;
+      else if (value === false) counts.no++;
+      else counts.blank++;
+    }
+    return counts;
+  }, [baseRows]);
+
+  // Major/Minor card filter narrows the table without touching other filters.
+  const { displayRows, displayIds } = useMemo(() => {
+    if (majorMinorFilter.size === 0) {
+      return { displayRows: baseRows.rows, displayIds: baseRows.ids };
+    }
+    const rowsOut: unknown[][] = [];
+    const idsOut: string[] = [];
+    for (let i = 0; i < baseRows.rows.length; i++) {
+      const value = baseRows.rows[i][MAJOR_IDX];
+      const kind: MajorMinorKind =
+        value === true ? "yes" : value === false ? "no" : "blank";
+      if (!majorMinorFilter.has(kind)) continue;
+      rowsOut.push(baseRows.rows[i]);
+      idsOut.push(baseRows.ids[i]);
+    }
+    return { displayRows: rowsOut, displayIds: idsOut };
+  }, [baseRows, majorMinorFilter]);
+
+  const toggleMajorMinor = useCallback((kind: MajorMinorKind) => {
+    setMajorMinorFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(kind)) next.delete(kind);
+      else next.add(kind);
+      return next;
+    });
+  }, []);
+
+  // Sums follow the table's own column/global filters (onFilteredRowsChange).
+  const { availableQty, availableValue } = useMemo(() => {
+    let qty = 0;
+    let value = 0;
+    for (const row of filteredRows) {
+      const available = toNum(row[AVAILABLE_IDX]);
+      const rate = toNum(row[RATE_IDX]);
+      qty += available;
+      value += rate * available;
+    }
+    return { availableQty: qty, availableValue: value };
+  }, [filteredRows]);
 
   const handleCellUpdate = useCallback(
     async (id: string, colIndex: number, value: string) => {
@@ -139,22 +225,38 @@ export default function Home() {
             Loading physical stock...
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden mt-4">
-            <GMDUpdateTable
-              headers={PHYSICAL_COLUMNS}
-              rows={rows}
-              ids={ids}
-              selectedIndex={selectedIndex}
-              onSelect={setSelectedIndex}
-              title="Physical Stock"
-              editable
-              editableColumns={PHYSICAL_EDITABLE_COLUMNS}
-              numericColumns={PHYSICAL_NUMERIC_COLUMNS}
-              bomIdOptionsById={bomIdOptionsById}
-              onSelectBomId={handleSelectBomId}
-              onCellUpdate={handleCellUpdate}
-              fullHeight
+          <div className="flex-1 min-h-0 flex gap-4 mt-4">
+            <StockAnalyticsSidebar
+              availableQty={availableQty}
+              availableValue={availableValue}
+              collapsed={sidebarCollapsed}
+              onToggle={() => setSidebarCollapsed((c) => !c)}
+              activeCard={cardFilter}
+              onCardClick={(kind) =>
+                setCardFilter((prev) => (prev === kind ? null : kind))
+              }
+              majorMinorSelection={majorMinorFilter}
+              majorMinorCounts={majorMinorCounts}
+              onToggleMajorMinor={toggleMajorMinor}
             />
+            <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
+              <GMDUpdateTable
+                headers={PHYSICAL_COLUMNS}
+                rows={displayRows}
+                ids={displayIds}
+                selectedIndex={selectedIndex}
+                onSelect={setSelectedIndex}
+                title="Physical Stock"
+                editable
+                editableColumns={PHYSICAL_EDITABLE_COLUMNS}
+                numericColumns={PHYSICAL_NUMERIC_COLUMNS}
+                bomIdOptionsById={bomIdOptionsById}
+                onSelectBomId={handleSelectBomId}
+                onCellUpdate={handleCellUpdate}
+                onFilteredRowsChange={setFilteredRows}
+                fullHeight
+              />
+            </div>
           </div>
         )}
         {syncing && (

@@ -2208,6 +2208,20 @@ castingRateInputs,
             </button>
           </div>
         );
+      } else if (header === "MAJOR/MINOR MARKING") {
+        const isYes = display === "true";
+        const isNo = display === "false";
+        cellContent = isYes ? (
+          <span className="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
+            Yes
+          </span>
+        ) : isNo ? (
+          <span className="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
+            No
+          </span>
+        ) : (
+          <span className="block text-gray-400">—</span>
+        );
       } else if (isDateHeader(header)) {
         cellContent = (
           <DatePicker

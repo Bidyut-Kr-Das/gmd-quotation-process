@@ -47,6 +47,7 @@ export interface PhysicalStockRow {
   drawing_technical_data: string | null;
   cost: string | null;
   bom_id: string | null;
+  majorminor_marking: boolean | null;
 }
 
 const adapter = createEntityAdapter<PhysicalStockRow>();
@@ -96,8 +97,14 @@ const physicalStockSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase(updatePhysicalStockField.fulfilled, (state, action) => {
-      const { id, field, value } = action.payload;
-      adapter.updateOne(state, { id, changes: { [field]: value } });
+      const { id, field, value, item_wise_value } = action.payload;
+      adapter.updateOne(state, {
+        id,
+        changes: {
+          [field]: value,
+          ...(item_wise_value !== undefined ? { item_wise_value } : {}),
+        },
+      });
     });
     builder.addCase(updatePhysicalStockBomId.fulfilled, (state, action) => {
       const { id, bom_id, cost } = action.payload;

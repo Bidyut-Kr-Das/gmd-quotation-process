@@ -20,6 +20,12 @@ export interface PhysicalStockDerivation {
   fallbackCost: string | null;
   /** Max cost across candidates (or fallbackCost when there are none). */
   maxCost: string | null;
+  /**
+   * Major/minor marking taken from `RawMaterial.majorMarking` matched on
+   * `erpItemCode` = code: true when 'true', false when 'false', null when no
+   * RawMaterial matches or the flag is blank.
+   */
+  majorminorMarking: boolean | null;
 }
 
 const norm = (v: string | null | undefined) => (v ?? "").trim().toUpperCase();
@@ -58,7 +64,7 @@ export async function derivePhysicalStockByCodes(
   const [rawMaterials, fullItems] = await Promise.all([
     prisma.rawMaterial.findMany({
       where: { erpItemCode: codeFilter },
-      select: { erpItemCode: true, cost: true },
+      select: { erpItemCode: true, cost: true, majorMarking: true },
     }),
     prisma.fullItem.findMany({
       where: { itemCode: codeFilter },
@@ -67,10 +73,18 @@ export async function derivePhysicalStockByCodes(
   ]);
 
   const rmCostByCode = new Map<string, string>();
+  const rmMajorMarkingByCode = new Map<string, boolean | null>();
   for (const rm of rawMaterials) {
     const code = norm(rm.erpItemCode);
     const cost = toCostString(rm.cost);
     if (code && cost !== null) rmCostByCode.set(code, cost);
+    if (code) {
+      const marking = (rm.majorMarking ?? "").trim().toLowerCase();
+      rmMajorMarkingByCode.set(
+        code,
+        marking === "true" ? true : marking === "false" ? false : null,
+      );
+    }
   }
   const fullItemCostByCode = new Map<string, string>();
   for (const fi of fullItems) {
@@ -164,7 +178,14 @@ export async function derivePhysicalStockByCodes(
       defaultBomId = bomIds[0];
     }
 
-    out.set(code, { bomIds, defaultBomId, costByBom, fallbackCost, maxCost });
+    out.set(code, {
+      bomIds,
+      defaultBomId,
+      costByBom,
+      fallbackCost,
+      maxCost,
+      majorminorMarking: rmMajorMarkingByCode.get(code) ?? null,
+    });
   }
 
   return out;
@@ -191,9 +212,10 @@ export async function costForPhysicalStockBom(
 }
 
 /**
- * Recompute `cost` / `bom_id` for every Physical Stock row. An existing
- * `bom_id` is preserved as long as it is still a valid candidate; otherwise the
- * highest-cost BOM becomes the default. Always refreshes `cost`.
+ * Recompute `cost` / `bom_id` / `majorminor_marking` for every Physical Stock
+ * row. An existing `bom_id` is preserved as long as it is still a valid
+ * candidate; otherwise the highest-cost BOM becomes the default. Always
+ * refreshes `cost` and `majorminor_marking`.
  *
  * Cross-database: the BOM graph (FullItem/RawMaterial/Bom/BomItem) is read from
  * the LOCAL database while the results are written to the Neon PhysicalStock
@@ -203,14 +225,22 @@ export async function costForPhysicalStockBom(
 export async function applyPhysicalStockDerivations(): Promise<{
   scanned: number;
   updated: number;
+  majorMinorUpdated: number;
 }> {
   const rows = await neonPrisma.physicalStock.findMany({
-    select: { id: true, erp_code: true, cost: true, bom_id: true },
+    select: {
+      id: true,
+      erp_code: true,
+      cost: true,
+      bom_id: true,
+      majorminor_marking: true,
+    },
   });
   const codeSet = [...new Set(rows.map((r) => norm(r.erp_code)).filter(Boolean))];
   const derivations = await derivePhysicalStockByCodes(codeSet);
 
   const updates: ReturnType<typeof neonPrisma.physicalStock.update>[] = [];
+  let majorMinorUpdated = 0;
   for (const row of rows) {
     const code = norm(row.erp_code);
     const d = derivations.get(code);
@@ -227,19 +257,40 @@ export async function applyPhysicalStockDerivations(): Promise<{
         : d.maxCost;
     }
 
-    if (nextCost === row.cost && nextBomId === row.bom_id) continue;
+    // Majorminor marking comes from the RawMaterial's `majorMarking` flag; null
+    // when there is no RawMaterial with this erp_code.
+    const nextMajorMinor = d?.majorminorMarking ?? null;
+
+    if (
+      nextCost === row.cost &&
+      nextBomId === row.bom_id &&
+      nextMajorMinor === row.majorminor_marking
+    ) {
+      continue;
+    }
+    if (nextMajorMinor !== row.majorminor_marking) majorMinorUpdated++;
     updates.push(
       neonPrisma.physicalStock.update({
         where: { id: row.id },
-        data: { cost: nextCost, bom_id: nextBomId },
+        data: {
+          cost: nextCost,
+          bom_id: nextBomId,
+          majorminor_marking: nextMajorMinor,
+        },
       }),
     );
   }
 
-  const chunkSize = 200;
+  // Writes go to Neon, so the transaction must run on the Neon client with a
+  // timeout that tolerates remote round-trips (the default 5s is too short when
+  // many rows change at once, e.g. the first run after a new derived column).
+  const chunkSize = 100;
   for (let i = 0; i < updates.length; i += chunkSize) {
-    await prisma.$transaction(updates.slice(i, i + chunkSize));
+    await neonPrisma.$transaction(updates.slice(i, i + chunkSize), {
+      timeout: 120_000,
+      maxWait: 30_000,
+    });
   }
 
-  return { scanned: rows.length, updated: updates.length };
+  return { scanned: rows.length, updated: updates.length, majorMinorUpdated };
 }
