@@ -254,6 +254,7 @@ export default function Home() {
                 onSelectBomId={handleSelectBomId}
                 onCellUpdate={handleCellUpdate}
                 onFilteredRowsChange={setFilteredRows}
+                duplicateErpHighlight
                 fullHeight
               />
             </div>
