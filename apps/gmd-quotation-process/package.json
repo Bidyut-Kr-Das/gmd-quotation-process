@@ -94,6 +94,7 @@
     "@base-ui/react": "^1.6.0",
     "@gmd/contract-review": "workspace:*",
     "@gmd/dashboard": "workspace:*",
+    "@gmd/physical-stock": "workspace:*",
     "@gmd/db-stock": "workspace:*",
     "@gmd/db-quotation": "workspace:*",
     "@gmd/db-tender": "workspace:*",

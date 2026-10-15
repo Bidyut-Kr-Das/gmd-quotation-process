@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { stockPrisma } from "@/lib/stockPrisma";
-import { computeItemWiseValue } from "@/lib/gmd_lib/physical-stock-value";
+import { computeItemWiseValue } from "@gmd/physical-stock/columns";
 
 /**
  * One-time backfill: set `PhysicalStock.item_wise_value` to

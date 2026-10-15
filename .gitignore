@@ -10,3 +10,7 @@ next-env.d.ts
 
 # stray Prisma output from running generate at the repo root
 /app/generated
+
+# Google OAuth files read by lib/googleAuth.ts
+**/credentials.json
+**/token.json

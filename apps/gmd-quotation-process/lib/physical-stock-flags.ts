@@ -1,0 +1,21 @@
+import "server-only";
+import { resolvePhysicalStockFlags, type PhysicalStockFlags } from "@gmd/physical-stock/flags";
+import {
+  physicalStockDuplicateErpHighlight,
+  physicalStockEditableColumns,
+  physicalStockHiddenColumns,
+  physicalStockHiddenSidebar,
+  physicalStockNewItem,
+} from "@/flags";
+
+/** Evaluates this app's Physical Stock flags for the current request. */
+export async function getPhysicalStockFlags(): Promise<PhysicalStockFlags> {
+  const [hiddenColumns, editableColumns, hiddenSidebar, newItem, duplicateErpHighlight] = await Promise.all([
+    physicalStockHiddenColumns(),
+    physicalStockEditableColumns(),
+    physicalStockHiddenSidebar(),
+    physicalStockNewItem(),
+    physicalStockDuplicateErpHighlight(),
+  ]);
+  return resolvePhysicalStockFlags({ hiddenColumns, editableColumns, hiddenSidebar, newItem, duplicateErpHighlight });
+}
