@@ -1,9 +1,10 @@
 /**
  * Ofelia entry point for the Physical Stock cost / BOM ID derivation.
  *
- * Recomputes `cost` / `bom_id` for every PhysicalStock row. Reads the BOM graph
- * from the LOCAL database and writes the result to the stock DB PhysicalStock table
- * (cross-database; see `@/schedular_function/run-physical-stock-cost-bom`).
+ * Recomputes `cost` / `bom_id` / `majorminor_marking` for every PhysicalStock
+ * row. Reads the BOM graph from the LOCAL database and writes the result to the
+ * stock DB PhysicalStock table (cross-database; see
+ * `@/schedular_function/run-physical-stock-cost-bom`).
  *
  * Deliberately thin: all logic lives in `@/schedular_function`. This file only
  * does the HTTP concerns — auth, status codes, and shaping the response.
@@ -68,7 +69,7 @@ export async function GET(request: Request) {
     success: true,
     job: "physical-stock-cost-bom",
     auth: "ok",
-    note: "POST to run the job. Reads the local BOM graph, writes cost/bom_id to the stock DB.",
+    note: "POST to run the job. Reads the local BOM graph, writes cost/bom_id/majorminor_marking to the stock DB.",
   });
 }
 

@@ -54,6 +54,9 @@ model PhysicalStock {
   // to the RawMaterial.cost. `bom_id` is the BOM carrying that highest cost.
   cost                           String?
   bom_id                         String?
+  // Derived from RawMaterial.majorMarking by erpItemCode match: true = major
+  // ('true'), false = minor ('false'), null when no RawMaterial matches.
+  majorminor_marking             Boolean?
     form_date                           DateTime @default(now())
   created_at                     DateTime @default(now())
   updated_at                     DateTime @updatedAt

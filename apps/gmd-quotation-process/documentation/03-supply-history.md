@@ -1,6 +1,6 @@
 # 03 — Supply History — `/supply_history` (MASTER)
 
-> **What you see:** One big table of every past supply invoice (warranty/supply ledger). Headers like `INVOICE NO`, `ERP ITEM CODE`, `Quantity`, `Value`, `Party Mail Address`, plus derived `Item Type/MOC/Size`. Sync pulls from `MASTER` tab, enriches `ORDER LIST` link from a separate contract sheet, lets you edit `Party Mail Address` + three derived fields, and powers BOM cost (latest `Value/Quantity` per `ERP ITEM CODE`).
+> **What you see:** One big table of every past supply invoice (warranty/supply ledger). Headers like `INVOICE NO`, `ERP ITEM CODE`, `Quantity`, `RATE`, `Value`, `Party Mail Address`, plus derived `Item Type/MOC/Size`. Sync pulls from `MASTER` tab, enriches `ORDER LIST` link from a separate contract sheet, gap-fills `RATE` (and any blank `Value` as `Quantity x RATE`) from the `SALE_BILL` tab, lets you edit `Party Mail Address` + three derived fields, and powers BOM cost (latest `Value/Quantity` per `ERP ITEM CODE`).
 
 ## 1. What it does (Layman)
 
@@ -13,17 +13,18 @@
 | Sheet Name (tab) | Spreadsheet | GID / Range | Render | Auth | File |
 |------------------|-------------|-------------|--------|------|------|
 | **`MASTER`** (main — supply/invoice rows) | Env `SUPPLY_HISTORY_SPREADSHEET_ID` | Tab name exact `MASTER` → `"'MASTER'!A:ZZZ"` `app/api/supply-history/sync/route.ts` | `FORMATTED_VALUE` | `getOAuthClient()` `lib/googleAuth.ts` | `app/api/supply-history/sync/route.ts`, `lib/gmd_lib/supply-history-columns.ts` |
+| **`SALE_BILL`** (`RATE` gap-fill only) | Env `GMD_EXECUTION_TRACKING_SPREADSHEET_ID` | Tab resolved by `SALE_BILL_GID` → `A1:ZZZ`, all fiscal years | `FORMATTED_VALUE` | same | `lib/supplyRateBackfill.ts` |
 | **Contract sheet → `ORDER LIST` helper** (`GID 1367392830` Attach-link tab) | Env `CONTRACT_SHEET_SPREADSHEET_ID` | `sheetId=1367392830` looked up via `sheets.spreadsheets.get` then `!A:ZZZ` `FORMATTED_VALUE` | `FORMATTED_VALUE` | same | `lib/gmd_lib/contract-order-links.ts:buildContractOrderLinkMap()` |
 
 **No sheet → no data:** If `MASTER` missing, sync throws; if contract sheet helper fails, `ORDER LIST` stays `null` but sync still succeeds (try/catch silently).
 
 ## 3. Columns — Sheet → Database → UI (Column-wise)
 
-### 3.1 All 44 Sheet Columns (Exact Headers — Order is Sheet's Order in `MASTER`)
+### 3.1 All 45 Sheet Columns (Exact Headers — Order is Sheet's Order in `MASTER`)
 
 Headers are normalized `trim().toUpperCase().replace(/\s+/g," ")` before matching; duplicates resolved by **first unused match** via `used:Set` `lib/gmd_lib/supply-history-columns.ts:buildColumnMap`.
 
-Defined `SUPPLY_HISTORY_HEADERS[44]` `lib/gmd_lib/supply-history-columns.ts`:
+Defined `SUPPLY_HISTORY_HEADERS[45]` `lib/gmd_lib/supply-history-columns.ts`:
 
 | Canonical # | Exact Sheet Header | DB field `SupplyHistoryItem` `schema.prisma:148` | Sync `columnMap` index | Notes |
 |-------------|--------------------|-----------------------------------------------|------------------------|-------|
@@ -70,6 +71,7 @@ Defined `SUPPLY_HISTORY_HEADERS[44]` `lib/gmd_lib/supply-history-columns.ts`:
 | 40 | `MOC` (second — derived) | `derivedMoc` `:191` | 40 | Editable, merged `MOC = moc || derivedMoc` |
 | 41 | `Size` | `derivedSize` `:192` | 41 | Editable, merged `Size = sizeOfValve || derivedSize` |
 | 42 | `ORDER LIST` | `orderList` `:189` | 42 (sheet) but **enriched from contract sheet helper, not master** | Populated via `matchOrderLink(partyOrderNo, contractLinkMap)` `app/api/supply-history/sync/route.ts` |
+| 44 (`C` batch carrier is 43) | `RATE` | `rate` `:263` | — | **Not in `mapSheetRowToDb`** — the MASTER sync never writes it. Gap-filled from the `SALE_BILL` tab by `lib/supplyRateBackfill.ts`. Appended last so every index above stays put. |
 | — | syncedAt | `syncedAt` `:193` | — | set `new Date()` on sync |
 | — | `headers[4]` `ERP PARTY NAME` filtered out of display | — | — | `DISPLAY_HEADERS` excludes it |
 
@@ -84,7 +86,7 @@ The table **does not show all 44**. It shows reordered `DISPLAY_HEADERS` `app/ap
 
 ```
 INVOICE NO, item name, ERP ITEM CODE, FINANCIAL YEAR, party name, Date,
-PARTY Order No., ORDER LIST, PARTY Date, Quantity, UOM, Value,
+PARTY Order No., ORDER LIST, PARTY Date, Quantity, UOM, RATE, Value,
 Gross Total- INVOICE VALUE, LR NO & DT, DELIVERY DESTINATION,
 CONSIGNEE ADDRESS, CONSIGNEE NAME, ERP CONTRACT NO,
 Item Type, MOC, Size, CLASS OF VALVE, SPARES (TYPE),
@@ -99,7 +101,7 @@ PBG CLAIM TILL, PBG AMOUNT, Warranty Exp Date as Per Inv, Party Mail Address
 - `ERP PARTY NAME` hidden.
 - `ORDER LIST` shown but sourced from helper sheet, not MASTER.
 
-**Inverse:** `dbItemToRow(item)` `lib/gmd_lib/supply-history-columns.ts:dbItemToRow` builds row in `SUPPLY_HISTORY_HEADERS` order (44), last col `orderList` (from DB, not sheet col 42 directly).
+**Inverse:** `dbItemToRow(item)` `lib/gmd_lib/supply-history-columns.ts:dbItemToRow` builds row in `SUPPLY_HISTORY_HEADERS` order (45), last col `rate` (appended after `cBatch`, which sits at 43).
 
 ## 4. How Sync Works (Layman, Step-by-step)
 
@@ -127,9 +129,15 @@ PBG CLAIM TILL, PBG AMOUNT, Warranty Exp Date as Per Inv, Party Mail Address
    - If `existing`: **Strict preserve** `route.ts:82` — `isNullOrEmpty(v)=v==null||String(v).trim()==""` `route.ts:22`. Build `filtered={syncedAt}` and only add `field` where `isNullOrEmpty(existing[field]) && !isNullOrEmpty(mapped[field])`. Keys `invoiceNo/itemName/syncedAt` and `derived*` skipped. All 40 MASTER fields incl. `orderList/state/utility` only fill gaps — existing non-null values never overwritten.
    - If `hasDataChange`: `update(filtered)` else `update({syncedAt})` to bump timestamp `route.ts:95`.
 
-4. **Return:** `{count:upserted, patched, totalInSheet, syncedAt}` `route.ts:110` (`patched` = rows where at least one gap was filled).
+4. **Rate backfill + `value` gap-fill** `lib/supplyRateBackfill.ts` (runs after step 3):
+   - Reads the `SALE_BILL_GID` tab of `GMD_EXECUTION_TRACKING_SPREADSHEET_ID` (all fiscal years, `A1:ZZZ`, `FORMATTED_VALUE`) and reduces it to `(VRNO, ITEM_CODE)` → `RATE`, first non-blank wins. A line with no item code is skipped and counted — an invoice with several rows cannot be split.
+   - Loads only rows that have a blank to fill: `where OR [rate null/"", value null/""]`.
+   - Per row: fill `rate` only where blank; fill `value = quantity x rate` only where `value` is blank and both parse (a stored rate is used too). Nothing is overwritten or cleared.
+   - Same function runs as step 2 of the `supply-history` scheduler job (`schedular_function/run-supply-history.ts`), where a failure is reported as `rateBackfillError` and does not fail the MASTER sync.
 
-5. **GET for display** `app/api/supply-history/route.ts`:
+5. **Return:** `{count:upserted, patched, totalInSheet, syncedAt, rateBackfill, rateBackfillError}`.
+
+6. **GET for display** `app/api/supply-history/route.ts`:
    - `prisma.supplyHistoryItem.findMany`, map via `displayColumnMap = DISPLAY_HEADERS.map(h=>SUPPLY_HISTORY_HEADERS.indexOf(h))`, apply `MERGE_FIELDS` overrides, returns `{headers:DISPLAY_HEADERS, rows, ids, totalRows, syncedAt}`.
 
 ## 5. What You See on the Page
@@ -157,6 +165,7 @@ PBG CLAIM TILL, PBG AMOUNT, Warranty Exp Date as Per Inv, Party Mail Address
 ## 8. Source Files
 
 - `app/supply_history/page.tsx`, `app/api/supply-history/route.ts`, `app/api/supply-history/sync/route.ts`
-- `lib/gmd_lib/supply-history-columns.ts: SUPPLY_HISTORY_HEADERS[44], SUPPLY_HEADER_TO_DB_FIELD, mapSheetRowToDb/dbItemToRow`, `lib/gmd_lib/contract-order-links.ts:1367392830, normalizePo/matchOrderLink`
+- `lib/gmd_lib/supply-history-columns.ts: SUPPLY_HISTORY_HEADERS[45], SUPPLY_HEADER_TO_DB_FIELD, mapSheetRowToDb/dbItemToRow`, `lib/gmd_lib/contract-order-links.ts:1367392830, normalizePo/matchOrderLink`
+- `lib/supplyRateBackfill.ts` (RATE + `value = quantity x rate` gap-fill), `schedular_function/run-supply-history.ts`
 - `lib/gmdBomCostLookup.ts:14 parseDate, 122 buildRmCostMap`
 - `lib/supplyHistoryResolver.ts`, `lib/supplyHistoryFiltersSlice.ts`, `prisma/schema.prisma:148 SupplyHistoryItem`, `app/actions.ts:1065`

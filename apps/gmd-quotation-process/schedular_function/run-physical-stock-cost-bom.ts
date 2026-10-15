@@ -2,18 +2,22 @@
  * Scheduled job — Physical Stock cost / BOM ID derivation.
  *
  * Single step: `applyPhysicalStockDerivations()` (`lib/gmd_lib/physical-stock-derive.ts`),
- * which recomputes `cost` / `bom_id` for every row of the PhysicalStock table.
+ * which recomputes `cost` / `bom_id` / `majorminor_marking` for every row of the
+ * PhysicalStock table.
  *
  * Reads the BOM graph from the LOCAL database (candidate BOMs = those owned by
  * the `FullItem` whose `itemCode` = the row's `erp_code`, unioned with BOMs that
  * consume the code as a component; effective cost = owning `FullItem.cost`,
  * which a DB trigger keeps at `MAX(BomItem.cost)`, else `RawMaterial.cost`) and
- * writes only `cost` / `bom_id` back to the stock DB PhysicalStock table.
+ * writes `cost` / `bom_id` back to the stock DB PhysicalStock table. It also writes
+ * `majorminor_marking`, derived from `RawMaterial.majorMarking` matched on
+ * `erpItemCode` (true = 'true', false = 'false', null when there is no match).
  *
  * This is therefore a CROSS-DATABASE step: read local, write stock DB. There is no
  * shared transaction; the operation is idempotent and safe to re-run. An
  * existing `bom_id` is preserved while it is still a valid candidate, otherwise
- * the highest-cost BOM becomes the default. No other column is ever touched.
+ * the highest-cost BOM becomes the default. `cost`, `bom_id` and
+ * `majorminor_marking` are the only columns ever touched.
  *
  * Scheduled at :10 — after `bom-mast` (:05), whose `FullItem` / `Bom` / `BomItem`
  * rows this step reads, and before `supply-history` (:15). It writes only the stock DB,
@@ -32,8 +36,10 @@ export type JobName = "physical-stock-cost-bom";
 export type PhysicalStockDeriveResult = {
   /** Rows scanned in the stock DB PhysicalStock table. */
   scanned: number;
-  /** Rows whose cost / bom_id actually changed. */
+  /** Rows whose cost / bom_id / majorminor_marking actually changed. */
   updated: number;
+  /** Of `updated`, rows whose majorminor_marking changed. */
+  majorMinorUpdated: number;
 };
 
 export type ScheduledPhysicalStockCostBomResult = {
@@ -69,7 +75,8 @@ export async function runScheduledPhysicalStockCostBom(): Promise<ScheduledPhysi
 
     console.log(
       `[scheduler] ${job} finished in ${elapsedMs}ms — ` +
-        `scanned=${steps.derive.scanned} updated=${steps.derive.updated}`,
+        `scanned=${steps.derive.scanned} updated=${steps.derive.updated} ` +
+        `majorMinorUpdated=${steps.derive.majorMinorUpdated}`,
     );
     console.log(`########## [SCHEDULER] ${job} done ##########\n`);
 

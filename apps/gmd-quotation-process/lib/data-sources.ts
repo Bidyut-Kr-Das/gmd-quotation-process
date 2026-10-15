@@ -448,7 +448,7 @@ const QUOTATION_CALC_COLUMNS = cols(
   ["(enquiry) pbg", "cost multiplier", "PbgCost.costPct"],
   ["(enquiry) state", "cost multiplier", "TransportationCost; full load at productCost >= 50,00,000"],
   ["(derived)", "cost", "productCost x 1.08 + flats + productCost x 1.08 x pctSum"],
-  ["(derived)", "vaPercent", "((quotedRate / cost) - 1) x 100, or the anchor when rate is set"],
+  ["(derived)", "vaPercent", "the anchor: ((quotedRate / cost) - 1) x 100 only when Validation = Yes, or when no VA% is set"],
   ["(derived)", "quotedRate", "roundUp(cost x (1 + vaPercent / 100))"],
   ["(derived)", "quotedRateGst", "quotedRate x 1.18"],
   ["(derived)", "itemWiseTotalValue", "quantity x quotedRate"],
@@ -811,6 +811,32 @@ const SUPPLY_HISTORY_SYNC: SyncOperation[] = [
     dbModels: ["SupplyHistoryItem"],
     writePolicy:
       "Join key = INVOICE NO + item name (both trimmed/upper-cased), matched against the @@unique index. 6 EDITABLE_FIELDS are gap-fill only (partyMailAddress, derivedItemType/Moc/Size, state, utility); every other field overwrites when it differs. A blank sheet cell never clears a DB value. No deletes.",
+    cadence: "every-sync",
+  },
+  {
+    id: "sh-rate-backfill",
+    name: "Rate backfill (sale bill)",
+    kind: "backfill",
+    file: "lib/supplyRateBackfill.ts",
+    line: "214-300",
+    purpose:
+      "Gap-fills SupplyHistoryItem.rate from the SALE_BILL tab's RATE column, then value = quantity x rate. Second step of the supply-history job, after the MASTER sync.",
+    direction: "sheet-to-db",
+    trigger: "api-only",
+    triggerLabel:
+      "POST /api/scheduler/supply-history (step 2), and app/api/supply-history/sync/route.ts (the Sync button)",
+    sheetTab: "SALE_BILL",
+    sheetGid: "env SALE_BILL_GID",
+    sheetRange: "'<tab>'!A1:ZZZ",
+    headerRow: 1,
+    columns: cols(
+      ["VRNO", "(join key)", "half 1 — trimmed, upper-cased"],
+      ["ITEM_CODE", "(join key)", "half 2 — trimmed, upper-cased"],
+      ["RATE", "rate", "gap-fill only — written where the DB cell is blank"],
+    ),
+    dbModels: ["SupplyHistoryItem"],
+    writePolicy:
+      "Gap-fill only, no deletes. rate is written only where blank; value = quantity x rate only where value is blank and both numbers parse (a rate already stored is used too). Nothing is overwritten or cleared. Sheet lines with no item code are skipped — an invoice with several rows cannot split them.",
     cadence: "every-sync",
   },
   {
@@ -2077,7 +2103,7 @@ const QUOTATION_COST_SYNC: SyncOperation[] = [
     ],
     columns: QUOTATION_CALC_COLUMNS,
     writePolicy:
-      "cost = productCost x 1.08 + extension + bypass + productCost x 1.08 x (payment% + inspection% + PBG% + transport%). Transportation switches partLoad to fullLoad at productCost >= 5,000,000. VA% and quotedRate are mutually anchoring: whichever one the user set is kept and the other is derived from it; if neither was set, quotedRate wins as the anchor. An explicit user clear is respected and never re-filled. quotedRate is rounded up via roundUp().",
+      "cost = productCost x 1.08 + extension + bypass + productCost x 1.08 x (payment% + inspection% + PBG% + transport%). Transportation switches partLoad to fullLoad at productCost >= 5,000,000. On a cost change, VA% and quotedRate stay mutually anchoring: by default VA% is held and quotedRate is derived; when Validation = Yes the validated quotedRate is frozen and VA% is derived instead. An explicit user edit of either field still derives the other, and both are read-only on a Validation = Yes row. An explicit user clear is respected and never re-filled. quotedRate is rounded up via roundUp().",
     cadence: "on-demand",
   },
   {

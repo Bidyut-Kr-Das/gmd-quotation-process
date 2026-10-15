@@ -6,6 +6,7 @@ import {
   SUPPLY_HISTORY_HEADERS,
   buildColumnMap,
   mapSheetRowToDb,
+  SYNC_EXCLUDED_FIELDS,
 } from "@/lib/gmd_lib/supply-history-columns";
 import {
   buildGmdClientwiseOrderLinkMap,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/gmd_lib/contract-order-links";
 import { rebuildSupplyHistoryBomLinks } from "@/lib/supplyHistoryBomSync";
 import { runBomMastErpSync } from "@/schedular_function/bom-mast-sync";
+import { runSupplyRateBackfill } from "@/lib/supplyRateBackfill";
 
 const SPREADSHEET_ID = process.env.SUPPLY_HISTORY_SPREADSHEET_ID;
 const SHEET_NAME = "MASTER";
@@ -217,6 +219,8 @@ export async function POST() {
       for (const [field, sheetVal] of Object.entries(mapped)) {
         if (field === "invoiceNo" || field === "itemName" || field === "syncedAt" || field === "id" || field === "createdAt" || field === "updatedAt") continue;
         if (field.startsWith("derived") && !EDITABLE_FIELDS.has(field)) continue;
+        // Backfill-owned columns are never overwritten by the sheet.
+        if (SYNC_EXCLUDED_FIELDS.has(field)) continue;
         if (field === "orderList") {
           if (isBlankSheetVal(sheetVal)) continue;
           const dbVal = (existing as unknown as Record<string, unknown>)[field] as string | null;
@@ -338,6 +342,18 @@ export async function POST() {
       console.error("[supply-sync] BOM link rebuild failed:", err);
     }
 
+    // Gap-fill `rate` (from the sale-bill tab) and `value = quantity x rate`.
+    // Non-fatal, like the BOM links: the MASTER row sync is the contract, this
+    // is an enrichment, so a failure is reported and the run still succeeds.
+    let rateBackfill: Awaited<ReturnType<typeof runSupplyRateBackfill>> | null = null;
+    let rateBackfillError: string | null = null;
+    try {
+      rateBackfill = await runSupplyRateBackfill();
+    } catch (err) {
+      rateBackfillError = err instanceof Error ? err.message : "Unknown error";
+      console.error("[supply-sync] rate backfill failed:", err);
+    }
+
     const elapsed = Date.now() - syncStart;
     console.log(`[supply-sync] Done elapsed=${elapsed}ms inserted=${inserted} patched=${patched} touched=${touched} skippedBlankKey=${skippedBlankKey} totalInSheet=${rawRows.length} orderLinkMap=${orderLinkMap.size} unmapped=${unmapped.length ? unmapped.join(",") : "none"}`);
     if (sampleChanges.length) {
@@ -358,6 +374,8 @@ export async function POST() {
       elapsedMs: elapsed,
       bomLinks,
       bomMast,
+      rateBackfill,
+      rateBackfillError,
     });
   } catch (error) {
     const message =
