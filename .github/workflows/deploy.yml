@@ -85,7 +85,7 @@ jobs:
       - name: Sync Latest docker-compose.yml
         shell: powershell
         run: |
-          Copy-Item -Path "apps/gmd-quotation-process/docker-compose.yml" -Destination "D:/gmd-quotation-process/docker-compose.yml" -Force
+          Copy-Item -Path "docker-compose.yml" -Destination "D:/gmd-quotation-process/docker-compose.yml" -Force
           Write-Host "✅ Synced latest docker-compose.yml to D:/gmd-quotation-process/"
 
       - name: Pull and Restart Container
