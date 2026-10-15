@@ -1,12 +1,13 @@
-name: Build and Deploy gmd-quotation-process
+name: Build and Deploy
 
 on:
   push:
     branches:
       - main  # Change to 'master' if your default branch is master
-    # Only this app and the shared packages affect the quotation image.
     paths:
-      - "apps/gmd-quotation-process/**"
+      - "apps/**"
+      - "Dockerfile"
+      - ".dockerignore"
       - "packages/**"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -26,7 +27,10 @@ permissions:
 
 jobs:
   build-and-push:
-    name: Build & Push Docker Image
+    name: Build & Push ${{ matrix.app }}
+    strategy:
+      matrix:
+        app: [gmd-quotation-process, gmd-tender-dashboard]
     # Only the org repo deploys; forks skip both jobs (deploy needs this one).
     if: github.repository_owner == 'Laser-Power-Infra'
     runs-on: ubuntu-latest
@@ -59,13 +63,14 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./apps/gmd-quotation-process/Dockerfile
+          file: ./Dockerfile
+          build-args: APP=${{ matrix.app }}
           push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
           tags: |
-            ghcr.io/${{ steps.repo_owner.outputs.owner }}/gmd-quotation-process:latest
-            ghcr.io/${{ steps.repo_owner.outputs.owner }}/gmd-quotation-process:${{ steps.vars.outputs.short_sha }}
+            ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.app }}:latest
+            ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.app }}:${{ steps.vars.outputs.short_sha }}
 
   deploy:
     name: Deploy to Server
