@@ -65,6 +65,7 @@ model Enquiry {
   contactNo           String?
   duplicate String?
   duplicateOfDocket String?
+  sourceThreadId String? @unique
   emailApproved    Boolean   @default(false)
   emailSentBy      String?
 
