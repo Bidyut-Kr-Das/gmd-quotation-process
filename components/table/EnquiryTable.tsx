@@ -7,6 +7,7 @@ import ActionsDropdown from "./ActionsDropdown";
 import DocketAttachmentsCell from "@/components/attachment/DocketAttachmentsCell";
 import Pagination from "./Pagination";
 import MultiSelectFilter, { BLANK, AVAILABLE } from "./MultiSelectFilter";
+import CellSelect from "./CellSelect";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import DebouncedSearchInput from "./DebouncedSearchInput";
 import { selectAllEnquiries, selectAllItems, updateEnquiryField, updateItemField, addAttachments, fetchItemCodes, updateProductCost, update2to1Cost, updateAllBomCosts, fetchContractReviewRates, populatePdCostValidation, deleteEnquiry, bulkUpdateValidation, bulkUpdateApm, clearQuotedRates, selectBomId, syncAvailableStock, sendDocketEmail } from "@/lib/enquiriesSlice";
@@ -247,6 +248,47 @@ function OthersInlineMultiSelect({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/** The item detail chips, shared by the collapsed "first item" row and every expanded item row. */
+function ItemDetailFields({
+  item,
+  dropdownOptions,
+  onChange,
+  isFrozen,
+}: {
+  item: EnquiryItemData;
+  dropdownOptions: DropdownOptions;
+  onChange: (itemId: string, field: string, value: string) => void;
+  isFrozen: boolean;
+}) {
+  const others = Array.isArray(item.others) ? item.others : [];
+  return (
+    <div className="flex flex-wrap gap-x-1.5 gap-y-1">
+      <CellSelect variant="chip" chipLabel="type" placeholder="-" value={item.itemType || ""} options={dropdownOptions.itemTypes} onChange={(v) => onChange(item.id, "itemType", v)} />
+      <CellSelect variant="chip" chipLabel="moc" placeholder="-" value={item.moc || ""} options={dropdownOptions.mocs} onChange={(v) => onChange(item.id, "moc", v)} />
+      <CellSelect variant="chip" chipLabel="size" placeholder="-" value={item.size || ""} options={dropdownOptions.sizes} onChange={(v) => onChange(item.id, "size", v)} />
+      <CellSelect variant="chip" chipLabel="pn_rating" placeholder="-" value={item.pnRating || ""} options={dropdownOptions.pnRatings} onChange={(v) => onChange(item.id, "pnRating", v)} />
+      <CellSelect variant="chip" chipLabel="operation_type" placeholder="-" value={item.operationType || ""} options={dropdownOptions.operationTypes} onChange={(v) => onChange(item.id, "operationType", v)} />
+      <CellSelect variant="chip" chipLabel="extension" placeholder="-" value={item.extension || ""} options={dropdownOptions.extensions} onChange={(v) => onChange(item.id, "extension", v)} />
+      <CellSelect variant="chip" chipLabel="bypass" placeholder="-" value={item.bypass || ""} options={dropdownOptions.bypasses} onChange={(v) => onChange(item.id, "bypass", v)} />
+      <div className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
+        other:
+        <div className="min-w-28">
+          <OthersInlineMultiSelect
+            value={others}
+            options={dropdownOptions.others}
+            onChange={(next) => {
+              if (JSON.stringify([...others].sort()) !== JSON.stringify([...next].sort())) {
+                onChange(item.id, "others", JSON.stringify(next));
+              }
+            }}
+          />
+        </div>
+      </div>
+      <CellSelect variant="chip" chipLabel="rm_type" placeholder="-" value={item.rmType || ""} options={RM_TYPE_OPTIONS} allowCustomValue disabled={isFrozen} onChange={(v) => onChange(item.id, "rmType", v)} />
     </div>
   );
 }
@@ -2300,12 +2342,6 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   const inputClass =
     "mt-1.5 w-full h-7 rounded border border-input bg-background px-2 py-0.5 text-[10px] font-normal text-foreground placeholder:text-muted-foreground outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 normal-case";
 
-  // Active inline cell dropdown styles (Google Sheets-like transparent border, visible chevron, hover background)
-  const cellSelectClass =
-    "w-full bg-transparent border-none text-xs text-foreground outline-none cursor-pointer focus:bg-accent focus:ring-1 focus:ring-blue-500 rounded p-1 hover:bg-muted/80 transition-colors normal-case font-medium";
-  const cellItemSelectClass =
-    "w-full bg-transparent border-none text-xs text-muted-foreground outline-none cursor-pointer focus:bg-accent focus:ring-1 focus:ring-blue-500 rounded p-1 hover:bg-muted/80 transition-colors normal-case font-medium";
-
   return (
     <div className="flex flex-col flex-1 min-h-0 w-full max-w-full min-w-0">
       {/* Table Toolbar */}
@@ -4000,22 +4036,15 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                     {/* Party Name */}
                     <td className="py-2.5 px-4 border-r border-b border-border last:border-r-0 truncate">
                       {editingPartyEnquiryId === enquiry.id ? (
-                        <select
+                        <CellSelect
+                          defaultOpen
                           value={enquiry.partyName}
-                          onChange={(e) => {
-                            handleEnquiryFieldChange(enquiry.id, "partyName", e.target.value);
-                            setEditingPartyEnquiryId(null);
-                          }}
-                          onBlur={() => setEditingPartyEnquiryId(null)}
-                          autoFocus
-                          className="w-full h-8 rounded border border-border bg-background px-2 py-0.5 text-xs text-foreground outline-none focus:border-blue-500 normal-case cursor-pointer font-semibold"
-                        >
-                          {dropdownOptions.partyNames.map((name) => (
-                            <option key={name} value={name}>
-                              {name}
-                            </option>
-                          ))}
-                        </select>
+                          options={dropdownOptions.partyNames}
+                          searchPlaceholder="Search party..."
+                          className="h-8 text-xs font-semibold"
+                          onChange={(v) => handleEnquiryFieldChange(enquiry.id, "partyName", v)}
+                          onClose={() => setEditingPartyEnquiryId(null)}
+                        />
                       ) : (
                         <div className="flex items-center justify-between w-full group truncate">
                           <div className="flex items-center gap-3 truncate">
@@ -4142,92 +4171,69 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
 
                     {/* 4. Enquiry Type Inline Select */}
                     <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
-                      <select
+                      <CellSelect
+                        placeholder="-"
                         value={enquiry.enquiryType || ""}
-                        onChange={(e) => handleEnquiryFieldChange(enquiry.id, "enquiryType", e.target.value)}
-                        className={cellSelectClass}
-                      >
-                        <option value="">-</option>
-                        {dropdownOptions.enquiryTypes.map((opt) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
+                        options={dropdownOptions.enquiryTypes}
+                        searchPlaceholder="Search enquiry type..."
+                        onChange={(v) => handleEnquiryFieldChange(enquiry.id, "enquiryType", v)}
+                      />
                     </td>
 
                     {/* State/Utility */}
                     <td className="py-2 px-2 border-r border-b border-border last:border-r-0 align-top">
                       <div className="flex flex-wrap gap-x-1.5 gap-y-1">
-                        <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5 w-full">
-                          state:
-                          <select
-                            value={enquiry.state || ""}
-                            onChange={(e) => handleEnquiryFieldChange(enquiry.id, "state", e.target.value)}
-                            className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium w-full"
-                          >
-                            <option value="">-</option>
-                            {dropdownOptions.states.map((opt) => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5 w-full">
-                          utility:
-                          <select
-                            value={enquiry.utility || ""}
-                            onChange={(e) => handleEnquiryFieldChange(enquiry.id, "utility", e.target.value)}
-                            className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium w-full"
-                          >
-                            <option value="">-</option>
-                            {dropdownOptions.utilities.map((opt) => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                        </label>
+                        <CellSelect
+                          variant="chip"
+                          chipLabel="state"
+                          placeholder="-"
+                          className="w-full"
+                          value={enquiry.state || ""}
+                          options={dropdownOptions.states}
+                          onChange={(v) => handleEnquiryFieldChange(enquiry.id, "state", v)}
+                        />
+                        <CellSelect
+                          variant="chip"
+                          chipLabel="utility"
+                          placeholder="-"
+                          className="w-full"
+                          value={enquiry.utility || ""}
+                          options={dropdownOptions.utilities}
+                          onChange={(v) => handleEnquiryFieldChange(enquiry.id, "utility", v)}
+                        />
                       </div>
                     </td>
 
                     {/* Payment Terms / PBG / Inspection */}
                     <td className="py-2 px-2 border-r border-b border-border last:border-r-0 align-top">
                       <div className="flex flex-wrap gap-x-1.5 gap-y-1">
-                        <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5 w-full">
-                          payment_terms:
-                          <select
-                            value={enquiry.paymentTerms || ""}
-                            onChange={(e) => handleEnquiryFieldChange(enquiry.id, "paymentTerms", e.target.value)}
-                            className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium w-full"
-                          >
-                            <option value="">-</option>
-                            {dropdownOptions.paymentTerms.map((opt) => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5 w-full">
-                          inspection:
-                          <select
-                            value={enquiry.inspection || ""}
-                            onChange={(e) => handleEnquiryFieldChange(enquiry.id, "inspection", e.target.value)}
-                            className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium w-full"
-                          >
-                            <option value="">-</option>
-                            {dropdownOptions.inspections.map((opt) => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5 w-full">
-                          pbg:
-                          <select
-                            value={enquiry.pbg || ""}
-                            onChange={(e) => handleEnquiryFieldChange(enquiry.id, "pbg", e.target.value)}
-                            className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium w-full"
-                          >
-                            <option value="">-</option>
-                            {dropdownOptions.pbgs.map((opt) => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                        </label>
+                        <CellSelect
+                          variant="chip"
+                          chipLabel="payment_terms"
+                          placeholder="-"
+                          className="w-full"
+                          value={enquiry.paymentTerms || ""}
+                          options={dropdownOptions.paymentTerms}
+                          onChange={(v) => handleEnquiryFieldChange(enquiry.id, "paymentTerms", v)}
+                        />
+                        <CellSelect
+                          variant="chip"
+                          chipLabel="inspection"
+                          placeholder="-"
+                          className="w-full"
+                          value={enquiry.inspection || ""}
+                          options={dropdownOptions.inspections}
+                          onChange={(v) => handleEnquiryFieldChange(enquiry.id, "inspection", v)}
+                        />
+                        <CellSelect
+                          variant="chip"
+                          chipLabel="pbg"
+                          placeholder="-"
+                          className="w-full"
+                          value={enquiry.pbg || ""}
+                          options={dropdownOptions.pbgs}
+                          onChange={(v) => handleEnquiryFieldChange(enquiry.id, "pbg", v)}
+                        />
                       </div>
                     </td>
 
@@ -4283,26 +4289,26 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
 
                     {/* 10. Order Status Inline Select */}
                     <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
-                      <select
+                      <CellSelect
+                        placeholder="-"
                         value={enquiry.orderStatus || ""}
-                        onChange={(e) => handleEnquiryFieldChange(enquiry.id, "orderStatus", e.target.value)}
-                        className={cellSelectClass}
-                      >
-                        <option value="">-</option>
-                        {dropdownOptions.orderStatuses.map((opt) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
+                        options={dropdownOptions.orderStatuses}
+                        searchPlaceholder="Search order status..."
+                        onChange={(v) => handleEnquiryFieldChange(enquiry.id, "orderStatus", v)}
+                      />
                     </td>
 
                     {/* Closure Status / Duplicate */}
                     <td className="py-2 px-1 border-r border-b border-border last:border-r-0">
                       <div className="flex flex-col gap-1">
-                        <select
+                        <CellSelect
+                          placeholder="-"
                           value={enquiry.closureStatus || ""}
-                          onChange={(e) => handleEnquiryFieldChange(enquiry.id, "closureStatus", e.target.value)}
+                          options={dropdownOptions.closureStatuses}
+                          allowCustomValue
+                          searchPlaceholder="Search closure status..."
+                          onChange={(v) => handleEnquiryFieldChange(enquiry.id, "closureStatus", v)}
                           className={cn(
-                            cellSelectClass,
                             enquiry.closureStatus === "Sent" && autoSentSet.has(enquiry.docketNumber) &&
                               "text-blue-600 font-semibold bg-blue-50/60 dark:bg-blue-950/30",
                             enquiry.closureStatus === "Pending" && autoPendingSet.has(enquiry.docketNumber) &&
@@ -4315,44 +4321,24 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                                 ? "No email found for this docket"
                                 : undefined
                           }
-                        >
-                          <option value="">-</option>
-                          {dropdownOptions.closureStatuses.map((opt) => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                          {enquiry.closureStatus && !dropdownOptions.closureStatuses.includes(enquiry.closureStatus) && (
-                            <option value={enquiry.closureStatus}>{enquiry.closureStatus}</option>
-                          )}
-                        </select>
-                        <select
+                        />
+                        <CellSelect
+                          placeholder="-"
                           value={enquiry.duplicate || ""}
-                          onChange={(e) => handleEnquiryFieldChange(enquiry.id, "duplicate", e.target.value)}
-                          className={cellSelectClass}
+                          options={["Yes", "No"]}
+                          onChange={(v) => handleEnquiryFieldChange(enquiry.id, "duplicate", v)}
                           title="Mark this docket as a duplicate"
-                        >
-                          <option value="">-</option>
-                          <option value="Yes">Yes</option>
-                          <option value="No">No</option>
-                        </select>
+                        />
                         {enquiry.duplicate === "Yes" && (
                           <>
-                            <select
+                            <CellSelect
+                              placeholder="- original -"
                               value={enquiry.duplicateOfDocket || ""}
-                              onChange={(e) =>
-                                handleEnquiryFieldChange(enquiry.id, "duplicateOfDocket", e.target.value)
-                              }
-                              className={cellSelectClass}
+                              options={enquiries.filter((e) => e.id !== enquiry.id).map((e) => e.docketNumber)}
+                              searchPlaceholder="Search docket no..."
+                              onChange={(v) => handleEnquiryFieldChange(enquiry.id, "duplicateOfDocket", v)}
                               title="Select the original docket this duplicates"
-                            >
-                              <option value="">- original -</option>
-                              {enquiries
-                                .filter((e) => e.id !== enquiry.id)
-                                .map((e) => (
-                                  <option key={e.id} value={e.docketNumber}>
-                                    {e.docketNumber}
-                                  </option>
-                                ))}
-                            </select>
+                            />
                             <button
                               type="button"
                               disabled={deletingEnquiryId === enquiry.id || !enquiry.duplicateOfDocket}
@@ -4441,131 +4427,12 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                     {/* Details */}
                     <td className="py-2 px-2 border-r border-b border-border last:border-r-0 align-top">
                       {firstItem ? (
-                        <div className="flex flex-wrap gap-x-1.5 gap-y-1">
-                          <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                            type:
-                            <select
-                              value={firstItem.itemType || ""}
-                              onChange={(e) => handleItemFieldChange(firstItem.id, "itemType", e.target.value)}
-                              className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                            >
-                              <option value="">-</option>
-                              {dropdownOptions.itemTypes.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                            moc:
-                            <select
-                              value={firstItem.moc || ""}
-                              onChange={(e) => handleItemFieldChange(firstItem.id, "moc", e.target.value)}
-                              className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                            >
-                              <option value="">-</option>
-                              {dropdownOptions.mocs.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                            size:
-                            <select
-                              value={firstItem.size || ""}
-                              onChange={(e) => handleItemFieldChange(firstItem.id, "size", e.target.value)}
-                              className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                            >
-                              <option value="">-</option>
-                              {dropdownOptions.sizes.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                            pn_rating:
-                            <select
-                              value={firstItem.pnRating || ""}
-                              onChange={(e) => handleItemFieldChange(firstItem.id, "pnRating", e.target.value)}
-                              className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                            >
-                              <option value="">-</option>
-                              {dropdownOptions.pnRatings.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                            operation_type:
-                            <select
-                              value={firstItem.operationType || ""}
-                              onChange={(e) => handleItemFieldChange(firstItem.id, "operationType", e.target.value)}
-                              className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                            >
-                              <option value="">-</option>
-                              {dropdownOptions.operationTypes.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                            extension:
-                            <select
-                              value={firstItem.extension || ""}
-                              onChange={(e) => handleItemFieldChange(firstItem.id, "extension", e.target.value)}
-                              className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                            >
-                              <option value="">-</option>
-                              {dropdownOptions.extensions.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                            bypass:
-                            <select
-                              value={firstItem.bypass || ""}
-                              onChange={(e) => handleItemFieldChange(firstItem.id, "bypass", e.target.value)}
-                              className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                            >
-                              <option value="">-</option>
-                              {dropdownOptions.bypasses.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <div className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                            other:
-                            <div className="min-w-28">
-                              <OthersInlineMultiSelect
-                                value={(firstItem as any).others || []}
-                                options={(dropdownOptions as any).others || ["flange", "gasket", "nut and bolt"]}
-                                onChange={(next) => {
-                                  const prev = ((firstItem as any).others || []) as string[];
-                                  if (JSON.stringify(prev.slice().sort()) !== JSON.stringify(next.slice().sort())) {
-                                    handleItemFieldChange(firstItem.id, "others", JSON.stringify(next));
-                                  }
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                            rm_type:
-                            <select
-                              value={firstItem.rmType || ""}
-                              disabled={isFrozen}
-                              onChange={(e) => handleItemFieldChange(firstItem.id, "rmType", e.target.value)}
-                              className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                            >
-                              <option value="">-</option>
-                              {firstItem.rmType && !RM_TYPE_OPTIONS.includes(firstItem.rmType) && (
-                                <option value={firstItem.rmType}>{firstItem.rmType}</option>
-                              )}
-                              {RM_TYPE_OPTIONS.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          </label>
-                        </div>
+                        <ItemDetailFields
+                          item={firstItem}
+                          dropdownOptions={dropdownOptions}
+                          onChange={handleItemFieldChange}
+                          isFrozen={isFrozen}
+                        />
                       ) : "-"}
                     </td>
 
@@ -4602,27 +4469,26 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                           const avail = (firstItem as any).availableBomIds as string[] | undefined;
                           const hasMulti = Array.isArray(avail) && avail.length > 1;
                           if (hasMulti) {
+                            const bomLabels: Record<string, string> = {};
+                            for (const b of avail!) bomLabels[b] = closedBomIdSet.has(b) ? `${b} (C - Closed BOM)` : b;
                             return (
-                              <select
+                              <CellSelect
+                                placeholder="-- select --"
+                                searchPlaceholder="Search BOM..."
                                 value={(firstItem as any).bomId || ""}
+                                options={avail!}
+                                optionLabels={bomLabels}
                                 disabled={isFrozen}
                                 title={isFrozen ? "Frozen after one-time PDF — revert APM to edit" : (avail || []).join(", ")}
-                                onChange={(e) => {
+                                onChange={(v) => {
                                   if (isFrozen) { toast.error("Rate & cost columns are frozen after one-time PDF generation — revert APM to edit."); return; }
-                                  const v = e.target.value || null;
-                                  toast.promise(dispatch(selectBomId({ itemId: firstItem.id, bomId: v })).unwrap(), {
+                                  toast.promise(dispatch(selectBomId({ itemId: firstItem.id, bomId: v || null })).unwrap(), {
                                     loading: "Saving BOM...",
                                     success: "BOM saved.",
                                     error: (err) => (typeof err === "string" ? err : err?.message || "Failed to save BOM."),
                                   });
                                 }}
-                                className="w-full text-[10px] border border-border rounded px-1 py-1 bg-background disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <option value="">-- select --</option>
-                                {avail!.map((b) => (
-                                  <option key={b} value={b}>{closedBomIdSet.has(b) ? `${b} (C - Closed BOM)` : b}</option>
-                                ))}
-                              </select>
+                              />
                             );
                           }
                           const bomId = (firstItem as any).bomId as string | undefined;
@@ -4981,18 +4847,13 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                     {/* Delivery Schedule */}
                     <td className="py-2 px-2 border-r border-b border-border last:border-r-0">
                       {firstItem ? (
-                        <select
+                        <CellSelect
+                          placeholder="-"
                           value={firstItem.deliverySchedule || ""}
-                          onChange={(e) => handleItemFieldChange(firstItem.id, "deliverySchedule", e.target.value)}
-                          className={cellItemSelectClass}
-                        >
-                          <option value="">-</option>
-                          {dropdownOptions.deliverySchedules
-                            .filter((opt) => opt !== "-")
-                            .map((opt) => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                        </select>
+                          options={dropdownOptions.deliverySchedules.filter((opt) => opt !== "-")}
+                          searchPlaceholder="Search delivery schedule..."
+                          onChange={(v) => handleItemFieldChange(firstItem.id, "deliverySchedule", v)}
+                        />
                       ) : "-"}
                     </td>
 
@@ -5115,131 +4976,12 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                         
                         {/* Details */}
                         <td className="py-2 px-2 border-r border-b border-border last:border-r-0 align-top">
-                          <div className="flex flex-wrap gap-x-1.5 gap-y-1">
-                            <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                              type:
-                              <select
-                                value={item.itemType || ""}
-                                onChange={(e) => handleItemFieldChange(item.id, "itemType", e.target.value)}
-                                className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                              >
-                                <option value="">-</option>
-                                {dropdownOptions.itemTypes.map((opt) => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                            </label>
-                            <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                              moc:
-                              <select
-                                value={item.moc || ""}
-                                onChange={(e) => handleItemFieldChange(item.id, "moc", e.target.value)}
-                                className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                              >
-                                <option value="">-</option>
-                                {dropdownOptions.mocs.map((opt) => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                            </label>
-                            <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                              size:
-                              <select
-                                value={item.size || ""}
-                                onChange={(e) => handleItemFieldChange(item.id, "size", e.target.value)}
-                                className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                              >
-                                <option value="">-</option>
-                                {dropdownOptions.sizes.map((opt) => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                            </label>
-                            <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                              pn_rating:
-                              <select
-                                value={item.pnRating || ""}
-                                onChange={(e) => handleItemFieldChange(item.id, "pnRating", e.target.value)}
-                                className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                              >
-                                <option value="">-</option>
-                                {dropdownOptions.pnRatings.map((opt) => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                            </label>
-                            <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                              operation_type:
-                              <select
-                                value={item.operationType || ""}
-                                onChange={(e) => handleItemFieldChange(item.id, "operationType", e.target.value)}
-                                className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                              >
-                                <option value="">-</option>
-                                {dropdownOptions.operationTypes.map((opt) => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                            </label>
-                            <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                              extension:
-                              <select
-                                value={item.extension || ""}
-                                onChange={(e) => handleItemFieldChange(item.id, "extension", e.target.value)}
-                                className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                              >
-                                <option value="">-</option>
-                                {dropdownOptions.extensions.map((opt) => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                            </label>
-                            <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                              bypass:
-                              <select
-                                value={item.bypass || ""}
-                                onChange={(e) => handleItemFieldChange(item.id, "bypass", e.target.value)}
-                                className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                              >
-                                <option value="">-</option>
-                                {dropdownOptions.bypasses.map((opt) => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                            </label>
-                            <div className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                              other:
-                              <div className="min-w-28">
-                                <OthersInlineMultiSelect
-                                  value={(item as any).others || []}
-                                  options={(dropdownOptions as any).others || ["flange", "gasket", "nut and bolt"]}
-                                  onChange={(next) => {
-                                    const prev = ((item as any).others || []) as string[];
-                                    if (JSON.stringify(prev.slice().sort()) !== JSON.stringify(next.slice().sort())) {
-                                      handleItemFieldChange(item.id, "others", JSON.stringify(next));
-                                    }
-                                  }}
-                                />
-                              </div>
-                            </div>
-                            <label className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
-                              rm_type:
-                              <select
-                                value={item.rmType || ""}
-                                disabled={isFrozen}
-                                onChange={(e) => handleItemFieldChange(item.id, "rmType", e.target.value)}
-                                className="bg-transparent border-none text-xs text-foreground outline-none cursor-pointer rounded px-0.5 py-0 hover:bg-muted/80 transition-colors normal-case font-medium"
-                              >
-                                <option value="">-</option>
-                                {item.rmType && !RM_TYPE_OPTIONS.includes(item.rmType) && (
-                                  <option value={item.rmType}>{item.rmType}</option>
-                                )}
-                                {RM_TYPE_OPTIONS.map((opt) => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                            </label>
-                          </div>
+                          <ItemDetailFields
+                            item={item}
+                            dropdownOptions={dropdownOptions}
+                            onChange={handleItemFieldChange}
+                            isFrozen={isFrozen}
+                          />
                         </td>
 
                         {/* Additional Item Quantity */}
@@ -5272,27 +5014,26 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                             const avail = (item as any).availableBomIds as string[] | undefined;
                             const hasMulti = Array.isArray(avail) && avail.length > 1;
                             if (hasMulti) {
+                              const bomLabels: Record<string, string> = {};
+                              for (const b of avail!) bomLabels[b] = closedBomIdSet.has(b) ? `${b} (C - Closed BOM)` : b;
                               return (
-                                <select
+                                <CellSelect
+                                  placeholder="-- select --"
+                                  searchPlaceholder="Search BOM..."
                                   value={(item as any).bomId || ""}
+                                  options={avail!}
+                                  optionLabels={bomLabels}
                                   disabled={isFrozen}
                                   title={isFrozen ? "Frozen after one-time PDF — revert APM to edit" : (avail || []).join(", ")}
-                                  onChange={(e) => {
+                                  onChange={(v) => {
                                     if (isFrozen) { toast.error("Rate & cost columns are frozen after one-time PDF generation — revert APM to edit."); return; }
-                                    const v = e.target.value || null;
-                                    toast.promise(dispatch(selectBomId({ itemId: item.id, bomId: v })).unwrap(), {
+                                    toast.promise(dispatch(selectBomId({ itemId: item.id, bomId: v || null })).unwrap(), {
                                       loading: "Saving BOM...",
                                       success: "BOM saved.",
                                       error: (err) => (typeof err === "string" ? err : err?.message || "Failed to save BOM."),
                                     });
                                   }}
-                                  className="w-full text-[10px] border border-border rounded px-1 py-1 bg-background disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <option value="">-- select --</option>
-                                  {avail!.map((b) => (
-                                    <option key={b} value={b}>{closedBomIdSet.has(b) ? `${b} (C - Closed BOM)` : b}</option>
-                                  ))}
-                                </select>
+                                />
                               );
                             }
                             const bomId = (item as any).bomId as string | undefined;
@@ -5619,18 +5360,13 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
 
                         {/* Delivery Schedule */}
                         <td className="py-2 px-2 border-r border-b border-border last:border-r-0">
-                          <select
+                          <CellSelect
+                            placeholder="-"
                             value={item.deliverySchedule || ""}
-                            onChange={(e) => handleItemFieldChange(item.id, "deliverySchedule", e.target.value)}
-                            className={cellItemSelectClass}
-                          >
-                            <option value="">-</option>
-                            {dropdownOptions.deliverySchedules
-                              .filter((opt) => opt !== "-")
-                              .map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                          </select>
+                            options={dropdownOptions.deliverySchedules.filter((opt) => opt !== "-")}
+                            searchPlaceholder="Search delivery schedule..."
+                            onChange={(v) => handleItemFieldChange(item.id, "deliverySchedule", v)}
+                          />
                         </td>
 
                       {/* Empty APM column - enquiry-based, only parent row has controls */}

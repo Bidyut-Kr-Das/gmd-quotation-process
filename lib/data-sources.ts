@@ -814,6 +814,32 @@ const SUPPLY_HISTORY_SYNC: SyncOperation[] = [
     cadence: "every-sync",
   },
   {
+    id: "sh-rate-backfill",
+    name: "Rate backfill (sale bill)",
+    kind: "backfill",
+    file: "lib/supplyRateBackfill.ts",
+    line: "214-300",
+    purpose:
+      "Gap-fills SupplyHistoryItem.rate from the SALE_BILL tab's RATE column, then value = quantity x rate. Second step of the supply-history job, after the MASTER sync.",
+    direction: "sheet-to-db",
+    trigger: "api-only",
+    triggerLabel:
+      "POST /api/scheduler/supply-history (step 2), and app/api/supply-history/sync/route.ts (the Sync button)",
+    sheetTab: "SALE_BILL",
+    sheetGid: "env SALE_BILL_GID",
+    sheetRange: "'<tab>'!A1:ZZZ",
+    headerRow: 1,
+    columns: cols(
+      ["VRNO", "(join key)", "half 1 — trimmed, upper-cased"],
+      ["ITEM_CODE", "(join key)", "half 2 — trimmed, upper-cased"],
+      ["RATE", "rate", "gap-fill only — written where the DB cell is blank"],
+    ),
+    dbModels: ["SupplyHistoryItem"],
+    writePolicy:
+      "Gap-fill only, no deletes. rate is written only where blank; value = quantity x rate only where value is blank and both numbers parse (a rate already stored is used too). Nothing is overwritten or cleared. Sheet lines with no item code are skipped — an invoice with several rows cannot split them.",
+    cadence: "every-sync",
+  },
+  {
     id: "sh-order-list",
     name: "ORDER LIST enrichment",
     kind: "sync",

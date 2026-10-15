@@ -260,6 +260,7 @@ model SupplyHistoryItem {
   derivedItemType                String?
   derivedMoc                     String?
   derivedSize                    String?
+  rate                         String?
   // Hidden data carrier. Drives the "C" chip beside the item code in the UI;
   // never rendered as its own column.
   cBatch                         String?

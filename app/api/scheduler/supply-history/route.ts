@@ -63,7 +63,7 @@ export async function GET(request: Request) {
     success: true,
     job: "supply-history",
     auth: "ok",
-    runs: ["masterSync"],
+    runs: ["masterSync", "rateBackfill"],
     note: "POST to run the job.",
   });
 }

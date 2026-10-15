@@ -56,6 +56,10 @@ export function buildDocketEmailHtml(data: DocketEmailData): string {
     ? ` for the requested ${esc(itemDescription)}`
     : "";
 
+  // The mail subject is the thread's when we reply into a thread, so repeat the
+  // offer subject in the body.
+  const subject = buildDocketEmailSubject(data);
+
   const terms = [
     termRow("Quotation Reference", docket),
     termRow("Payment Terms", data.paymentTerms),
@@ -84,6 +88,7 @@ export function buildDocketEmailHtml(data: DocketEmailData): string {
         <tr>
           <td style="font-size:15px; line-height:1.7; color:#222222;">
             <p style="margin:0 0 16px 0;">Dear Sir,</p>
+            <p style="margin:0 0 16px 0;"><strong>Subject:</strong> ${esc(subject)}</p>
             ${projectSentence}
             <p style="margin:0;">
               Please find our detailed offer below as per reference <strong>${esc(docket)}</strong>${itemClause}.

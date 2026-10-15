@@ -48,6 +48,10 @@ export const SUPPLY_HISTORY_HEADERS = [
   // and the page's hiddenColumns, and only used to drive the "C" chip inside the
   // ERP ITEM CODE cell.
   C_BATCH_HEADER,
+  // Sale-bill rate. Appended last so every existing index stays put. Never
+  // mapped by `mapSheetRowToDb` — the MASTER sync must not own it; it is
+  // gap-filled from the sale-bill tab by `lib/supplyRateBackfill.ts`.
+  "RATE",
 ] as const;
 
 function normalizeHeader(h: string): string {
@@ -184,6 +188,7 @@ export function dbItemToRow(item: {
   derivedMoc: string | null;
   derivedSize: string | null;
   cBatch: string | null;
+  rate: string | null;
 }): unknown[] {
   return [
     item.itemName, item.invoiceNo, item.financialYear,
@@ -203,5 +208,6 @@ export function dbItemToRow(item: {
     item.derivedItemType, item.derivedMoc, item.derivedSize,
     item.orderList,
     item.cBatch,
+    item.rate,
   ];
 }

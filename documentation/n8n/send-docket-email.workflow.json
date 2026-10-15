@@ -103,7 +103,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Reply needs the id of a message in the thread; use the newest one.\n// Carry the webhook form body and the attachment binary forward.\nconst webhook = $('Webhook').first();\nconst items = $input.all();\nconst last = items.length ? items[items.length - 1].json : {};\nreturn [{\n  json: { messageId: last.id, body: webhook.json.body },\n  binary: webhook.binary,\n}];"
+        "jsCode": "// Reply's To comes from the message being replied to, so target the party's own\n// message (newest match on body.to); else the thread's first message, which is\n// the original RFQ the thread was created from. Replying to the newest message\n// outright mails whoever wrote last - often an internal colleague.\n// Carry the webhook form body and the attachment binary forward.\nconst webhook = $('Webhook').first();\nconst body = webhook.json.body;\nconst emails = (v) => String(v || '').toLowerCase().match(/[^\\s<>,;\"]+@[^\\s<>,;\"]+/g) || [];\nconst wanted = emails(body.to);\nconst msgs = $input.all().sort((a, b) => Number(a.json.internalDate || 0) - Number(b.json.internalDate || 0));\nconst target = msgs.filter((m) => emails(m.json.From).some((a) => wanted.includes(a))).pop() || msgs[0];\nreturn [{ json: { messageId: target?.json.id, body }, binary: webhook.binary }];"
       },
       "id": "pick-last-message",
       "name": "Pick Last Message",
