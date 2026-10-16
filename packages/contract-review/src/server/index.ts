@@ -300,6 +300,7 @@ async function applyDerived(field: Field, updates: { id: string; value: string }
           data: { [field]: u.value },
         }),
       ),
+      { timeout: 30_000 },
     );
   }
   return updates.map((u) => ({ id: u.id, [field]: u.value }));
@@ -378,6 +379,7 @@ export async function backfillClearanceMcPending(ids: string[]): Promise<ActionR
         updates
           .slice(n, n + 200)
           .map((u) => tenderPrisma.contractReview.update({ where: { id: u.i.id }, data: u.patch })),
+        { timeout: 30_000 },
       );
     }
     return {

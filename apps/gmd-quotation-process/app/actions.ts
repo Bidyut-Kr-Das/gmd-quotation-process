@@ -3901,7 +3901,7 @@ export async function backfillContractReviewNoUseBatchAction(ids: string[]) {
         }),
       );
     if (updates.length > 0) {
-      await tenderPrisma.$transaction(updates);
+      await tenderPrisma.$transaction(updates, { timeout: 30_000 });
     }
     return {
       success: true,
@@ -4108,6 +4108,7 @@ export async function syncContractReviewEnquiryFieldsBatchAction(ids: string[]) 
               data: u.data,
             }),
           ),
+          { timeout: 30_000 },
         );
       }
     }
@@ -4586,6 +4587,7 @@ export async function recomputeIndentListingVersionsAction() {
             data: { costCodeRef: u.costCodeRef },
           }),
         ),
+        { timeout: 30_000 },
       );
     }
 
@@ -5553,7 +5555,7 @@ export async function syncContractReviewRmAvailAction() {
         }),
       );
     if (rmAvailUpdates.length > 0) {
-      await tenderPrisma.$transaction(rmAvailUpdates);
+      await tenderPrisma.$transaction(rmAvailUpdates, { timeout: 30_000 });
     }
 
     // 3. Push the PHYSICAL STOCK column: match each row's RM code (costCodeRef)
@@ -5576,6 +5578,7 @@ export async function syncContractReviewRmAvailAction() {
               data: { rmPhysicalStock: physicalMap.get(row.id) ?? null },
             }),
           ),
+          { timeout: 30_000 },
         );
       }
     }

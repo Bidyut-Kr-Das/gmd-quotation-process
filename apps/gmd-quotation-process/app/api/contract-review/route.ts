@@ -34,7 +34,7 @@ export async function GET() {
         }),
       );
     if (noUseUpdates.length > 0) {
-      await tenderPrisma.$transaction(noUseUpdates);
+      await tenderPrisma.$transaction(noUseUpdates, { timeout: 30_000 });
     }
     for (const item of items) {
       if (item.bomId) item.noUse = availMap.get(item.id) ?? null;

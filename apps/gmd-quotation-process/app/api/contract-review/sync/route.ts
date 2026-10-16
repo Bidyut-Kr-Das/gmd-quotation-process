@@ -249,7 +249,7 @@ export async function POST() {
         }),
       );
     if (noUseUpdates.length > 0) {
-      await tenderPrisma.$transaction(noUseUpdates);
+      await tenderPrisma.$transaction(noUseUpdates, { timeout: 30_000 });
     }
 
     // Backfill State / Utility / Project Reference from Enquiry by matching

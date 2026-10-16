@@ -130,6 +130,7 @@ export async function applyContractReviewEnquiryBackfill(
           },
         }),
       ),
+      { timeout: 30_000 },
     );
     applied += chunk.length;
   }

@@ -103,8 +103,8 @@ jobs:
           $env:APP_VERSION = $env:APP_VERSION
 
           
-          docker compose pull gmd-quotation-process
-          docker compose up -d --no-deps gmd-quotation-process
+          docker compose pull gmd-quotation-process gmd-tender-dashboard
+          docker compose up -d --no-deps gmd-quotation-process gmd-tender-dashboard
 
          
           $repo = "ghcr.io/laser-power-infra/gmd-quotation-process"
