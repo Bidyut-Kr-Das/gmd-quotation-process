@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Certificate of Satisfactory Performance</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Times New Roman', Times, serif;
+    margin: 0;
+    padding: 20px;
+    background: #e8e8e8;
+  }
+  .page {
+    max-width: 850px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 30px 50px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #000;
+  }
+  .letterhead-note {
+    text-align: center;
+    font-style: italic;
+    margin-bottom: 14px;
+  }
+  .date-line {
+    margin-bottom: 14px;
+  }
+  .title {
+    text-align: center;
+    font-weight: bold;
+    text-decoration: underline;
+    font-size: 16px;
+    margin-bottom: 14px;
+    letter-spacing: 1px;
+  }
+  p {
+    margin: 0 0 10px 0;
+    text-align: justify;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0 12px 0;
+  }
+  table th, table td {
+    border: 1px solid #000;
+    padding: 4px 8px;
+    text-align: center;
+    font-size: 13px;
+  }
+  table th {
+    font-weight: bold;
+  }
+  table td {
+    height: 24px;
+  }
+  .signoff {
+    margin-top: 6px;
+  }
+  .signoff p {
+    margin: 1px 0;
+    text-align: left;
+  }
+  .seal {
+    margin-top: 6px;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <p class="letterhead-note">(To be issued on the Customer's Official Letterhead)</p>
+
+  <p class="date-line">Date: _________________________</p>
+
+  <div class="title">CERTIFICATE OF SATISFACTORY PERFORMANCE</div>
+
+  <p>
+    This is to certify that the products supplied by Laser Power &amp; Infra Limited (CIN:
+    U14220WB1988PLC043591), having its Registered Office at Room 307, 4A Pollock
+    Street, Kolkata – 700001, West Bengal, Corporate Office at Adventz Infinity@5, BN
+    Block, 19th Floor – North Wing, Sector-V, Salt Lake, Kolkata – 700091, West Bengal, and
+    Manufacturing Units at Poly Park, Howrah – 711302, West Bengal and Plot No. F1, P.O.
+    Jakpur, Vidyasagar Industrial Park, Kharagpur, Paschim Medinipur – 721301, West
+    Bengal, against our Purchase Order No. {{partyRefNo}} dated {{partyRefDate}} executed
+    for {{partyName}} had been received and utilized for our project
+    requirements supplied during the period {{formatFY fy}}, amounting to a
+    total value of Rs. {{invoiceAmt}} (Rupees Only).
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:10%;">Sl No</th>
+        <th style="width:45%;">Item</th>
+        <th style="width:20%;">Quantity</th>
+        <th style="width:25%;">Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each items}}
+      <tr>
+        <td>{{inc @index}}</td>
+        <td>{{this.itemName}}</td>
+        <td>{{this.invoiceQty}}</td>
+        <td>{{this.saleBillDate}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <p>
+    Based on our experience, the supplied products were received in good condition, met
+    our purchase requirements and have been performing satisfactorily during service.
+  </p>
+
+  <p>
+    We are satisfied with the quality of the products, delivery performance and the
+    professional support provided by Laser Power &amp; Infra Limited during the execution of
+    the order.
+  </p>
+
+  <p>
+    We have been procuring various products from Laser Power &amp; Infra Limited for our
+    project requirements and find them to be a reliable supplier.
+  </p>
+
+  <p>Thanking you,</p>
+
+  <div class="signoff">
+    <p>For </p>
+    <p>Authorised Signatory</p>
+    <p>Name: </p>
+    <p>Designation: </p>
+    <p class="seal">Company Seal</p>
+  </div>
+
+</div>
+</body>
+</html>

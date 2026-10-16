@@ -1,9 +1,19 @@
-name: Build and Deploy gmd-quotation-process
+name: Build and Deploy
 
 on:
   push:
     branches:
       - main  # Change to 'master' if your default branch is master
+    paths:
+      - "apps/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".github/workflows/**"
 
 # 🟢 ADD THESE 3 LINES:
 concurrency:
@@ -17,7 +27,12 @@ permissions:
 
 jobs:
   build-and-push:
-    name: Build & Push Docker Image
+    name: Build & Push ${{ matrix.app }}
+    strategy:
+      matrix:
+        app: [gmd-quotation-process, gmd-tender-dashboard]
+    # Only the org repo deploys; forks skip both jobs (deploy needs this one).
+    if: github.repository_owner == 'Laser-Power-Infra'
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.vars.outputs.short_sha }}
@@ -49,12 +64,13 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          build-args: APP=${{ matrix.app }}
           push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
           tags: |
-            ghcr.io/${{ steps.repo_owner.outputs.owner }}/gmd-quotation-process:latest
-            ghcr.io/${{ steps.repo_owner.outputs.owner }}/gmd-quotation-process:${{ steps.vars.outputs.short_sha }}
+            ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.app }}:latest
+            ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.app }}:${{ steps.vars.outputs.short_sha }}
 
   deploy:
     name: Deploy to Server

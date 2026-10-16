@@ -1,0 +1,447 @@
+  [MATCH] 2026_JSEB_116888_1 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] eProcurement System Government of Jharkhand.pdf
+    [CREATED] sbd208.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] BOQ_158014.xls
+    [CREATED] work_158014.zip
+  [MATCH] 208/PR/JBVNL/2026-27 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] eProcurement System Government of Jharkhand.pdf
+    [CREATED] sbd208.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] BOQ_158014.xls
+    [CREATED] work_158014.zip
+  [MISS] 08265202 (docket: ENQ-20897-25-26, num: 20897) - no network folder found
+  [MISS] 14261026 (docket: ENQ-20893-25-26, num: 20893) - no network folder found
+  [MATCH] 2026_JSEB_115263_1 - 1 *tender*+*doc* folder(s), 8 file(s) found
+    [CREATED] eProcurement System Government of Jharkhand (2).pdf
+    [CREATED] eProcurement System Government of Jharkhand.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] 149GTP.pdf
+    [CREATED] 149TechnicalPart.pdf
+    [CREATED] 149TimeExtension.pdf
+    [CREATED] BOQ_155844.xls
+    [CREATED] work_155844.zip
+  [MATCH] 2026_UPCLC_97070_1 - 1 *tender*+*doc* folder(s), 6 file(s) found
+    [CREATED] eProcurement System Government of Uttarakhand.pdf
+    [CREATED] Tendernotice_1 (6).pdf
+    [CREATED] BOQ_114668.xls
+    [CREATED] PQRPartICCPI1920262027.xls
+    [CREATED] tenderdoc19.pdf
+    [CREATED] work_114668.zip
+  [MATCH] 2026_MPPKV_512732_1 - 1 *tender*+*doc* folder(s), 6 file(s) found
+    [CREATED] eProcurement System Government of Madhya Pradesh.pdf
+    [CREATED] TechnicalamdTS1972.pdf
+    [CREATED] Tendernotice_1 (7).pdf
+    [CREATED] BOQ_617512.xls
+    [CREATED] TS1972.pdf
+    [CREATED] work_617512.zip
+  [MATCH] CE(P&MM)/NPDCL/STN-19/26-27 - 1 *tender*+*doc* folder(s), 3 file(s) found
+    [CREATED] STN-19_25-26  4CX2.5 Sq.mm LT PVC Copper control cables.doc
+    [CREATED] TS and GTP Format.doc
+    [CREATED] Welcome to eProcurement - Tender Management System - Govt of ..._.pdf
+  [MATCH] 2026_PKVVC_516183_1 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] eProcurement System Government of Madhya Pradesh1.pdf
+    [CREATED] Tendernotice_1 (6).pdf
+    [CREATED] BOQ_622176.xls
+    [CREATED] TenderDocs1736.pdf
+    [CREATED] work_622176.zip
+  [MATCH] 2026_WBSED_1027817_1 - 1 *tender*+*doc* folder(s), 7 file(s) found
+    [CREATED] eProcurement System of Government of West Bengal.pdf
+    [CREATED] tech_prebid_2524796.pdf
+    [CREATED] Tendernotice_1 (2).pdf
+    [CREATED] Annex.pdf
+    [CREATED] BOQ_2524796.xls
+    [CREATED] Form.pdf
+    [CREATED] work_2524796.zip
+  [MATCH] TPCODL/CCG/2025-26/1000008287 - 1 *tender*+*doc* folder(s), 18 file(s) found
+    [CREATED] ANNEXURE-IX- CODE OF CONDUCT.pdf
+    [CREATED] ANNEXURE-VIII- Revised Safety Policy.pdf
+    [CREATED] Annexure-II_ IEEMA PV Formula - MVCC.PDF
+    [CREATED] Consolidated Pre-Bid Queries _Supply of Covered Conductor.pdf
+    [CREATED] Corrigendum -I_CCG_ Covered Conductor.pdf
+    [CREATED] Annexure-A1.xlsx
+    [CREATED] Annexure-A2.xlsx
+    [CREATED] Annexure-B.xlsx
+    [CREATED] GTP Sheets required to be shared with Bids.zip
+    [CREATED] F01(09.04.04)_Checklist for bidder Submission of Technical documents.xlsx
+    [CREATED] Format for submitting Pre-Bid Queries.xlsx
+    [CREATED] Tender Document_Covered Connductor _Odisha DISCOMs.pdf
+    [CREATED] TPCODL GCC - Supply.pdf
+    [CREATED] TPNODL GCC - Supply.pdf
+    [CREATED] TPSODL-  GCC - Supply.pdf
+    [CREATED] TPU-D-ENG-EHV-10062 R1_33 kV & 66 kV CC.pdf
+    [CREATED] TPU-D-ENG-HV-20068 R1_Covered Conductor.pdf
+    [CREATED] TPWODL GCC- Supply.pdf
+  [MATCH] cpc-31/2026-27 - 1 *tender*+*doc* folder(s), 17 file(s) found
+    [CREATED] TechnicalspecificationConductor.pdf
+    [CREATED] TenderSpecificationconductor.pdf
+    [CREATED] pricebidpantherconductorLOTI.xlsm
+    [CREATED] Processing_Fee_Lot_I.pdf
+    [CREATED] TechnocommercialsheetsLOTI.xlsm
+    [CREATED] Tender Notification_Lot-I.pdf
+    [CREATED] Tender_Fee_Lot_I.pdf
+    [CREATED] pricebidZebraconductorLOTII.xlsm
+    [CREATED] Processing_Fee_Lot_II.pdf
+    [CREATED] TechnocommercialsheetsLOTII.xlsm
+    [CREATED] Tender Notification_Lot-II.pdf
+    [CREATED] Tender_Fee_Lot_II.pdf
+    [CREATED] pricebidMooseconductorLOTIII.xlsm
+    [CREATED] Processing_Fee_Lot_III.pdf
+    [CREATED] TechnocommercialsheetsLOTIII.xlsm
+    [CREATED] Tender Notification_Lot-III.pdf
+    [CREATED] Tender_Fee_Lot_III.pdf
+  [MISS] IPRD_PR_006374/26-27 (docket: ENQ-20599-25-26, num: 20599) - no network folder found
+  [MISS] 134167 (docket: ENQ-20599-25-26, num: 20599) - no network folder found
+  [MATCH] 2026_PVVNV_1170559_1 - 1 *tender*+*doc* folder(s), 6 file(s) found
+    [CREATED] BOQ_2196556.xls
+    [CREATED] eProcurement System Government of Uttar Pradesh.pdf
+    [CREATED] TD.rar
+    [CREATED] Tendernotice_1 (3).pdf
+    [CREATED] TS.pdf
+    [CREATED] work_2196556.zip
+  [MATCH] 2026_MPPKV_512625_1 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] eProcurement System Government of Madhya Pradesh.pdf
+    [CREATED] Tendernotice_1 (6).pdf
+    [CREATED] BOQ_617407.xls
+    [CREATED] TS1968.pdf
+    [CREATED] work_617407.zip
+  [MATCH] AVV2627GLOB00161 - 1 *tender*+*doc* folder(s), 10 file(s) found
+    [CREATED] BG Format.pdf
+    [CREATED] BOQ_1035110.xls
+    [CREATED] eProcurement System Government of Rajasthan.pdf
+    [CREATED] GCCSectionII.pdf
+    [CREATED] GTP Format.pdf
+    [CREATED] ITBSectionI.pdf
+    [CREATED] SpecTN2151.pdf
+    [CREATED] Technical Deviation Format.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] TS.pdf
+  [MATCH] SPMPT- 19/2026-27 - 1 *tender*+*doc* folder(s), 3 file(s) found
+    [CREATED] SPMPT- 19 -2026-27- LT AB Cable XLPE 3Cx16+25Sqmm.doc
+    [CREATED] DocumentsList.zip
+    [CREATED] Welcome to eProcurement - Tender Management System - Govt of ..._.pdf
+  [MATCH] Tender Reference Number       TS 1704 AAA Rabbit and Dog Conductor Tender ID  2026_PKVVC_499972_1 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] eProcurement System Government of Madhya Pradesh.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] BOQ_602779.xls
+    [CREATED] DocumentTS1704RabbitDogConductor.pdf
+    [CREATED] work_602779.zip
+  [MATCH] 2026_JSEB_113059_1 - 1 *tender*+*doc* folder(s), 4 file(s) found
+    [CREATED] 1stCorrigendum19.pdf
+    [CREATED] eProcurement System Government of Jharkhand.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] work_152647.zip
+  [MATCH] 2026_MPPKV_512742_1 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] eProcurement System Government of Madhya Pradesh.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] BOQ_617517.xls
+    [CREATED] TS1973.pdf
+    [CREATED] work_617517.zip
+  [MATCH] SPMPT- 18/2026-2027 - 1 *tender*+*doc* folder(s), 4 file(s) found
+    [CREATED] DocumentsList (3).zip
+    [CREATED] SPMPT-18 -2026-27- LT AB Cable XLPE 2Cx16+25Sqmm.doc
+    [CREATED] SPMPT-18 -2026-27- LT AB Cable XLPE 2Cx16+25Sqmm.pdf
+    [CREATED] Welcome to eProcurement - Tender Management System - Govt of ..._.pdf
+  [MATCH] 2026_HBC_520685_1 - 1 *tender*+*doc* folder(s), 7 file(s) found
+    [CREATED] eProcurement System Government of Haryana_.pdf
+    [CREATED] Tendernotice_1 (5).pdf
+    [CREATED] Tendernotice_2.pdf
+    [CREATED] Tendernotice_3.pdf
+    [CREATED] Tendernotice_4.pdf
+    [CREATED] BOQ_599582.xls
+    [CREATED] work_599582.zip
+  [MISS] 2026_DPL_1025329_1 (docket: ENQ-19908-25-26, num: 19908) - no network folder found
+  [MISS] 102427146 (docket: ENQ-20595-25-26, num: 20595) - no network folder found
+  [MISS] 102254163 (docket: ENQ-20595-25-26, num: 20595) - no network folder found
+  [MATCH] 2026_WBSED_1027849_1 - 1 *tender*+*doc* folder(s), 7 file(s) found
+    [CREATED] eProcurement System of Government of West Bengal.pdf
+    [CREATED] tech_prebid_2524880.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] Annex.pdf
+    [CREATED] BOQ_2524880.xls
+    [CREATED] Form.pdf
+    [CREATED] work_2524880.zip
+  [MISS] NIT No. 60/PR/SBPDCL/2026 (docket: ENQ-20599-25-26, num: 20599) - no network folder found
+  [MATCH] TPCODL / CCG / 2026-27 / 1000009969 - 1 *tender*+*doc* folder(s), 12 file(s) found
+    [CREATED] 1. STD-Tender Document- LT AB Cable.pdf
+    [CREATED] 10. Pre-Bid Queries Format.xls
+    [CREATED] 2. TPU-D-ENG-LV-30003 (R1).pdf
+    [CREATED] 3. PV Circular.pdf
+    [CREATED] 4. GCC_Supply.pdf
+    [CREATED] 5-TPCODL- ANNEXURE-X- ENVIRONMENT POLICY.pdf
+    [CREATED] 6-TPCODL- ANNEXURE-IX- CODE OF CONDUCT.pdf
+    [CREATED] 7-TPCODL- ANNEXURE-VIII- Revised Safety Policy.pdf
+    [CREATED] 8-Ariba Handbook_Bidder.pdf
+    [CREATED] 9-One Page - ARIBA-Buyer Vendor Communication.pdf
+    [CREATED] ANNEXURE-I.xlsx
+    [CREATED] Corrigendum-1, LT AB Cable all.pdf
+  [MATCH] TPNODL/OT/2026-27/2500001185 - 1 *tender*+*doc* folder(s), 2 file(s) found
+    [CREATED] EMG BG Format.pdf
+    [CREATED] Tender NIT.pdf
+  [MATCH] Tender Reference Number       77/25/6326/LOK Tender ID        2026_BHEL_59400_1 - 1 *tender*+*doc* folder(s), 6 file(s) found
+    [CREATED] Corrigenda1.pdf
+    [CREATED] Corrigenda2.pdf
+    [CREATED] EMD-BG.pdf
+    [CREATED] Government eProcurement System.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] work_64294.zip
+  [MATCH] Tender Reference Number       P-68/2025-26/PC-III/LTABC Tender ID     2026_WBSED_1015452_1 - 1 *tender*+*doc* folder(s), 8 file(s) found
+    [CREATED] Date_extension_P68.pdf
+    [CREATED] eProcurement System of Government of West Bengal.pdf
+    [CREATED] tech_prebid_2495779.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] Annexures.pdf
+    [CREATED] BOQ_2495779.xls
+    [CREATED] Forms1.pdf
+    [CREATED] work_2495779.zip
+  [MATCH] 2026_WBSED_1027180_1 - 1 *tender*+*doc* folder(s), 3 file(s) found
+    [CREATED] tech_prebid_2523319.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] work_2523319.zip
+  [MATCH] 2026_WBSED_1027833_1 - 1 *tender*+*doc* folder(s), 10 file(s) found
+    [CREATED] Annex.pdf
+    [CREATED] BOQ_2524842.xls
+    [CREATED] eProcurement System of Government of West Bengal.pdf
+    [CREATED] Form.pdf
+    [CREATED] tech_prebid_2524842.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] Annex.pdf
+    [CREATED] BOQ_2524842.xls
+    [CREATED] Form.pdf
+    [CREATED] work_2524842.zip
+  [MATCH] TPCODL / CCG / 2026-27 / 1000009970 - 1 *tender*+*doc* folder(s), 14 file(s) found
+    [CREATED] 1. STD-Tender Document- Conductor.pdf
+    [CREATED] 10-Ariba Handbook_Bidder.pdf
+    [CREATED] 11-One Page - ARIBA-Buyer Vendor Communication.pdf
+    [CREATED] 12- Pre-Bid Queries Format.xls
+    [CREATED] 2. IEEMA Circular.pdf
+    [CREATED] 3. TPU-D-ENG-GEN-40064.pdf
+    [CREATED] 4. TPU-D-ENG-GEN-40065.pdf
+    [CREATED] 5. Annexure-II.pdf
+    [CREATED] 6. GCC_Supply.pdf
+    [CREATED] 7-TPCODL- ANNEXURE-X- ENVIRONMENT POLICY.pdf
+    [CREATED] 8-TPCODL- ANNEXURE-IX- CODE OF CONDUCT.pdf
+    [CREATED] 9-TPCODL- ANNEXURE-VIII- Revised Safety Policy.pdf
+    [CREATED] ANNEXURE-I.xlsx
+    [CREATED] Corrigendum-1, Conductor all.pdf
+  [MATCH] 2026_UPCLC_97069_1 - 1 *tender*+*doc* folder(s), 6 file(s) found
+    [CREATED] eProcurement System Government of Uttarakhand.pdf
+    [CREATED] Tendernotice_1 (6).pdf
+    [CREATED] BOQ_114667.xls
+    [CREATED] PQRPartICCPI1820262027.xls
+    [CREATED] tenderdoc18.pdf
+    [CREATED] work_114667.zip
+  [MISS] 2026_UPCLC_96968_1 (docket: ENQ-20796-25-26, num: 20796) - no network folder found
+  [MATCH] 2026_UPCLC_97178_1 - 1 *tender*+*doc* folder(s), 6 file(s) found
+    [CREATED] eProcurement System Government of Uttarakhand.pdf
+    [CREATED] Tendernotice_1 (6).pdf
+    [CREATED] BOQ_114781.xls
+    [CREATED] PQRPartICCPI2020262027.xls
+    [CREATED] tendoc20.pdf
+    [CREATED] work_114781.zip
+  [MATCH] 2026_UPCLC_96954_1 - 1 *tender*+*doc* folder(s), 6 file(s) found
+    [CREATED] eProcurement System Government of Uttarakhand.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] BOQ_114516.xls
+    [CREATED] PQR.xls
+    [CREATED] TenderDocument.pdf
+    [CREATED] work_114516.zip
+  [MATCH] 2026_UPCLC_97102_1 - 1 *tender*+*doc* folder(s), 6 file(s) found
+    [CREATED] eProcurement System Government of Uttarakhand.pdf
+    [CREATED] Tendernotice_1 (6).pdf
+    [CREATED] BOQ_114703.xls
+    [CREATED] PQRPartICCPI2120262027.xls
+    [CREATED] TenderdocRabbitCCPI2120262026.pdf
+    [CREATED] work_114703.zip
+  [MATCH] PGVCL/PROC/3Cx300mm2 XLPE Cable/Wire Free RCC/1263 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] 1263_Technical Specification and GTP.pdf
+    [CREATED] 1263_Tender Commercial Terms and Condition.pdf
+    [CREATED] 1263_Tender Notice and Schedule-A.pdf
+    [CREATED] 316149.pdf
+    [CREATED] Bid Submission for Technical Stage.pdf
+  [MATCH] STN-1589/26-27 (ID: 696808) - 1 *tender*+*doc* folder(s), 3 file(s) found
+    [CREATED] STN-1589- 11KV 3 Core 95 Sq mm XLPE UG Cable.pdf
+    [CREATED] Technical Specification-Telengana_3x95.pdf
+    [CREATED] Welcome to eProcurement - Tender Management System - Govt of ..._.pdf
+  [MATCH] 2026_PKVVC_516192_1 - 1 *tender*+*doc* folder(s), 7 file(s) found
+    [CREATED] BOQ_622162.xls
+    [CREATED] eProcurement System Government of Madhya Pradesh2.pdf
+    [CREATED] TenderDocs1737.pdf
+    [CREATED] Tendernotice_1 (6).pdf
+    [CREATED] BOQ_622162.xls
+    [CREATED] TenderDocs1737.pdf
+    [CREATED] work_622162 (1).zip
+  [MISS] 2026_UPCLC_96940_1 (docket: ENQ-20797-25-26, num: 20797) - no network folder found
+  [MATCH] 2026_UPCLC_96831_4 - 1 *tender*+*doc* folder(s), 18 file(s) found
+    [CREATED] eProcurement System Government of Uttarakhand.pdf
+    [CREATED] Tendernotice_1 (6).pdf
+    [CREATED] BOQ_114388.xls
+    [CREATED] CCPI11202627tenderdoc.pdf
+    [CREATED] PQRPartICCPI1120262027.xls
+    [CREATED] work_114388.zip
+    [CREATED] BOQ_114391.xls
+    [CREATED] CCPI11202627tenderdoc.pdf
+    [CREATED] PQRPartICCPI1120262027.xls
+    [CREATED] work_114391.zip
+    [CREATED] BOQ_114392.xls
+    [CREATED] CCPI11202627tenderdoc.pdf
+    [CREATED] PQRPartICCPI1120262027.xls
+    [CREATED] work_114392.zip
+    [CREATED] BOQ_114393.xls
+    [CREATED] CCPI11202627tenderdoc.pdf
+    [CREATED] PQRPartICCPI1120262027.xls
+    [CREATED] work_114393.zip
+  [MATCH] 2026_PVVNL_1159264_1 - 1 *tender*+*doc* folder(s), 6 file(s) found
+    [CREATED] corngdm.pdf
+    [CREATED] eProcurement System Government of Uttar Pradesh.pdf
+    [CREATED] Tendernotice_1 (6).pdf
+    [CREATED] BOQ_2172622.xls
+    [CREATED] tenderdoc59.pdf
+    [CREATED] work_2172622.zip
+  [MATCH] 2026_AEGCL_52569_1 - 1 *tender*+*doc* folder(s), 8 file(s) found
+    [CREATED] eProcurement System Government of Assam.pdf
+    [CREATED] Tendernotice_1 (6).pdf
+    [CREATED] BOQ_83053.xls
+    [CREATED] Executive.pdf
+    [CREATED] IFB_Panther.pdf
+    [CREATED] Vol1.pdf
+    [CREATED] Vol2.pdf
+    [CREATED] work_83053.zip
+  [MISS] 2026_JSEB_113820_1 (docket: ENQ-19774-25-26, num: 19774) - no network folder found
+  [MATCH] 2026_PKVVC_506451_1 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] eProcurement System Government of Madhya Pradesh.pdf
+    [CREATED] Tendernotice_1 (5).pdf
+    [CREATED] BOQ_610788.xls
+    [CREATED] DocumentTS1720ACSRConductor.pdf
+    [CREATED] work_610788.zip
+  [MISS] 2026_JSEB_113833_1 (docket: ENQ-19775-25-26, num: 19775) - no network folder found
+  [MATCH] MD/MK/04/1279 (2026_MKVVC_490403_1) - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] eProcurement System Government of Madhya Pradesh.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] BOQ_578803.xls
+    [CREATED] TenderDocument1279.pdf
+    [CREATED] work_578803.zip
+  [MATCH] CE(P)/WBSETCL/Control Cable-2nd call/25-26/30 dated 31.12.2025. (2025_SETCL_981092_1) - 1 *tender*+*doc* folder(s), 8 file(s) found
+    [CREATED] eProcurement System of Government of West Bengal.pdf
+    [CREATED] tech_prebid_2392524.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] Annexure.pdf
+    [CREATED] BOQ_2392524.xls
+    [CREATED] prebid_format.xls
+    [CREATED] Tech_Spec.pdf
+    [CREATED] work_2392524.zip
+  [MATCH] STN-1604/26-27 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] DocumentsList (4).zip
+    [CREATED] GTP Format.pdf
+    [CREATED] STN-1604- 11KV 3 Core 35 Sq mm XLPE UG Cable.pdf
+    [CREATED] TS.pdf
+    [CREATED] Welcome to eProcurement - Tender Management System - Govt of ..._ - Copy.pdf
+  [MATCH] KSEB/ CESCM/2026-27/ 00011/XD2 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] GCC.pdf
+    [CREATED] PartI.pdf
+    [CREATED] PartII.pdf
+    [CREATED] PartIII.pdf
+    [CREATED] Tendernotice_1.pdf
+  [NO-TENDER-DOCS] SPMPT- 17 /2026-27 - folder found, no *tender*+*doc* folder
+  [MATCH] EAV-41/2026-27 - 1 *tender*+*doc* folder(s), 8 file(s) found
+    [CREATED] BOQ_2196568.xls
+    [CREATED] eProcurement System Government of Uttar Pradesh.pdf
+    [CREATED] TD.doc
+    [CREATED] TD.rar
+    [CREATED] Technical Deviation Format.doc
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] TS.pdf
+    [CREATED] work_2196568.zip
+  [MISS] 102254160 (docket: ENQ-20595-25-26, num: 20595) - no network folder found
+  [MISS] 102254161 (docket: ENQ-20595-25-26, num: 20595) - no network folder found
+  [MATCH] P-04/26-27/PCIII/33/3C/40033 - 1 *tender*+*doc* folder(s), 3 file(s) found
+    [CREATED] tech_prebid_2523319.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] work_2523319.zip
+  [MISS] CC27FK005 (docket: ENQ-19637-25-26, num: 19637) - no network folder found
+  [MATCH] 2026_MPPKV_512640_1 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] eProcurement System Government of Madhya Pradesh.pdf
+    [CREATED] Tendernotice_1 (6).pdf
+    [CREATED] BOQ_617416.xls
+    [CREATED] TS1969.pdf
+    [CREATED] work_617416.zip
+  [MATCH] Tender Enquiry No.: NPCL/FY25-26/LTCAB/060 Dated 26.02.2026 - 1 *tender*+*doc* folder(s), 11 file(s) found
+    [CREATED] 364_Bidders Manual for E-bidding through SAP-SRM - 210226.pdf
+    [CREATED] 364_Corrigendum-1 for change in EMD amount.pdf
+    [CREATED] 364_GTP for 1.1 kV 1C 120 sq.mm. XLPE Insulated Unarmoured Cable for Overhead Use_Controlled Copy.pdf
+    [CREATED] 364_GTP LT ABC 120 SQ.MM.pdf
+    [CREATED] 364_NPCL - Pre-bid reply - Technical and Commercial.pdf
+    [CREATED] 364_Pre-bid query format.xlsx
+    [CREATED] 364_Technical Specification for Four Core Low Voltage Cable.pdf
+    [CREATED] 364_TECHNICAL SPECIFICATION LT ABC CABLE.pdf
+    [CREATED] 364_Tender Document for LT Cable - Lot-2 - 260226.pdf
+    [CREATED] 364_TS_1.1 kV 1-Core Cable_Controlled Copy.pdf
+    [CREATED] Corrigendum-2 for change in Technical Specifications (1).pdf
+  [MISS] CPC-31/2026-27 / LOT-I / LOT-II / LOT-III (docket: ENQ-20595-25-26, num: 20595) - no network folder found
+  [MATCH] CPC-31/2026-27 - 1 *tender*+*doc* folder(s), 17 file(s) found
+    [CREATED] TechnicalspecificationConductor.pdf
+    [CREATED] TenderSpecificationconductor.pdf
+    [CREATED] pricebidpantherconductorLOTI.xlsm
+    [CREATED] Processing_Fee_Lot_I.pdf
+    [CREATED] TechnocommercialsheetsLOTI.xlsm
+    [CREATED] Tender Notification_Lot-I.pdf
+    [CREATED] Tender_Fee_Lot_I.pdf
+    [CREATED] pricebidZebraconductorLOTII.xlsm
+    [CREATED] Processing_Fee_Lot_II.pdf
+    [CREATED] TechnocommercialsheetsLOTII.xlsm
+    [CREATED] Tender Notification_Lot-II.pdf
+    [CREATED] Tender_Fee_Lot_II.pdf
+    [CREATED] pricebidMooseconductorLOTIII.xlsm
+    [CREATED] Processing_Fee_Lot_III.pdf
+    [CREATED] TechnocommercialsheetsLOTIII.xlsm
+    [CREATED] Tender Notification_Lot-III.pdf
+    [CREATED] Tender_Fee_Lot_III.pdf
+  [MISS] L8266230 (docket: ENQ-20598-25-26, num: 20598) - no network folder found
+  [MATCH] 102449981 - 1 *tender*+*doc* folder(s), 8 file(s) found
+    [CREATED] BOQ_2196562.xls
+    [CREATED] eProcurement System Government of Uttar Pradesh.pdf
+    [CREATED] TD.doc
+    [CREATED] TD.rar
+    [CREATED] Technical Deviation.doc
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] TS.pdf
+    [CREATED] work_2196562.zip
+  [MATCH] 2026_JSEB_114304_1 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] eProcurement System Government of Jharkhand.pdf
+    [CREATED] Tendernotice_1 (6).pdf
+    [CREATED] BOQ_154395.xls
+    [CREATED] tenderdocuments.pdf
+    [CREATED] work_154395.zip
+  [MATCH] EAV-40/2026-27 - 1 *tender*+*doc* folder(s), 8 file(s) found
+    [CREATED] BOQ_2196562.xls
+    [CREATED] eProcurement System Government of Uttar Pradesh.pdf
+    [CREATED] TD.doc
+    [CREATED] TD.rar
+    [CREATED] Technical Deviation.doc
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] TS.pdf
+    [CREATED] work_2196562.zip
+  [MATCH] 2026_PVVNV_1170566_1 - 1 *tender*+*doc* folder(s), 8 file(s) found
+    [CREATED] BOQ_2196568.xls
+    [CREATED] eProcurement System Government of Uttar Pradesh.pdf
+    [CREATED] TD.doc
+    [CREATED] TD.rar
+    [CREATED] Technical Deviation Format.doc
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] TS.pdf
+    [CREATED] work_2196568.zip
+  [MATCH] 2026_PVVNV_1170562_1 - 1 *tender*+*doc* folder(s), 8 file(s) found
+    [CREATED] BOQ_2196562.xls
+    [CREATED] eProcurement System Government of Uttar Pradesh.pdf
+    [CREATED] TD.doc
+    [CREATED] TD.rar
+    [CREATED] Technical Deviation.doc
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] TS.pdf
+    [CREATED] work_2196562.zip
+  [MATCH] 2026_DPL_1029916_1 - 1 *tender*+*doc* folder(s), 5 file(s) found
+    [CREATED] EMD BG Format.pdf
+    [CREATED] eProcurement System of Government of West Bengal.pdf
+    [CREATED] Tendernotice_1.pdf
+    [CREATED] TS.pdf
+    [CREATED] work_2529143.zip

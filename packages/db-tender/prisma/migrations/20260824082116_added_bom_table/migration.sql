@@ -1,0 +1,62 @@
+-- CreateTable
+CREATE TABLE "Bom" (
+    "id" SERIAL NOT NULL,
+    "itemCode" TEXT NOT NULL,
+    "itemScheduleName" TEXT NOT NULL,
+    "itemName" TEXT,
+    "sheetTotalDiff" TEXT,
+    "bomType" TEXT,
+    "bomId" TEXT NOT NULL,
+    "option2" TEXT,
+    "option2Diff" TEXT,
+    "ccvSioplas" TEXT,
+    "ccvSioplasDiff" TEXT,
+    "cuTape" TEXT,
+    "cuTapePlusMinus" TEXT,
+    "cuTapeDiff" TEXT,
+    "alCu" TEXT,
+    "alCuPlusMinus" TEXT,
+    "alCuDiff" TEXT,
+    "alloy" TEXT,
+    "alloyPlusMinus" TEXT,
+    "alloyDiff" TEXT,
+    "armour" TEXT,
+    "armourPlusMinus" TEXT,
+    "armourDiff" TEXT,
+    "semicon" TEXT,
+    "semiconPlusMinus" TEXT,
+    "semiconDiff" TEXT,
+    "insulation" TEXT,
+    "insulationPlusMinus" TEXT,
+    "insulationDiff" TEXT,
+    "pvcInner" TEXT,
+    "pvcInnerPlusMinus" TEXT,
+    "pvcInnerDiff" TEXT,
+    "pvcOuter" TEXT,
+    "pvcOuterPlusMinus" TEXT,
+    "pvcOuterDiff" TEXT,
+    "pvcOuterInnerDiff" TEXT,
+    "filler" TEXT,
+    "fillerPlusMinus" TEXT,
+    "fillerDiff" TEXT,
+    "polyt" TEXT,
+    "polytPlusMinus" TEXT,
+    "polytDiff" TEXT,
+    "rubberCottonTape" TEXT,
+    "rubberCottonTapePlusMinus" TEXT,
+    "rubberCottonTapeDiff" TEXT,
+    "spclConstruction" TEXT,
+    "spclConstructionPlusMinus" TEXT,
+    "spclConstructionDiff" TEXT,
+    "finalOutput" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Bom_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "Bom_itemName_idx" ON "Bom"("itemName");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Bom_itemCode_bomId_key" ON "Bom"("itemCode", "bomId");

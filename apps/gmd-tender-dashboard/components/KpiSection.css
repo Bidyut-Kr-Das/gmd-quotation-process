@@ -1,0 +1,103 @@
+/* KpiSection.css - Premium styling for Dashboard KPI Cards */
+
+.kpi-grid-container {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr); /* 5 columns on large screens, wraps to 2 rows for 10 cards */
+  gap: 12px;
+  margin-bottom: 16px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+@media (max-width: 1200px) {
+  .kpi-grid-container {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .kpi-grid-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Individual KPI Card */
+.kpi-card {
+  position: relative;
+  background-color: #ffffff;
+  border: 1px solid #e1e6eb;
+  border-radius: 6px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 8px rgba(10, 37, 64, 0.04);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 85px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(10, 37, 64, 0.08);
+}
+
+/* Accent Indicators (Left Border Strip) */
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #d1d5db; /* Default Gray */
+}
+
+/* Theme Variances based on metric type */
+.kpi-card.theme-blue::before { background-color: var(--color-brand-accent); }
+.kpi-card.theme-green::before { background-color: #137333; }
+.kpi-card.theme-orange::before { background-color: #f5a623; }
+.kpi-card.theme-purple::before { background-color: #7b1fa2; }
+.kpi-card.theme-red::before { background-color: #c5221f; }
+.kpi-card.theme-gray::before { background-color: var(--color-brand); }
+
+/* Typographical hierarchy */
+.kpi-title {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 0 6px 0;
+  line-height: 1.2;
+}
+
+.kpi-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-brand);
+  margin: 0;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+}
+
+/* Color overrides for specific text highlights if desired */
+.kpi-card.theme-orange .kpi-value { color: #b06000; }
+.kpi-card.theme-purple .kpi-value { color: #7b1fa2; }
+.kpi-card.theme-red .kpi-value { color: #c5221f; }
+
+/* Small helper text in cards */
+.kpi-trend {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #70757a;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.kpi-trend.positive { color: #137333; }
+.kpi-trend.negative { color: #c5221f; }
+.kpi-trend.neutral { color: var(--color-brand-accent); }

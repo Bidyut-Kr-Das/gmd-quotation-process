@@ -1,0 +1,4397 @@
+[{
+  "itemCode": "FA0100082",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "4 CORE X 95 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 95 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1500121",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 35 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900210",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 50 SQ. MM. CC/AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0100030",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1400070",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL/UNARD (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1100007",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 70 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1100246",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 300 SQ. MM. CU/ARD - STRIP/B (XLPE)"
+}, {
+  "itemCode": "FC6500001",
+  "itemScheduleName": "30 STRAND",
+  "itemName": "ACSR : TIGER CONDUCTOR - 125 SQ. MM. (30/7/2.36)"
+}, {
+  "itemCode": "FA1800002",
+  "itemScheduleName": "RAILWAY-POWER CABLE -ARD",
+  "itemName": "2 CORE X 16 SQ. MM. CU/ARD - STRIP (PVC) - POWER CABLE"
+}, {
+  "itemCode": "FA0100046",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 95 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FC0800009",
+  "itemScheduleName": "STAY WIRE",
+  "itemName": "GALVANISED STEEL STAY WIRE (19/4.00 MM)"
+}, {
+  "itemCode": "FA0400035",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE AACSR MESSENGER) - 11KV"
+}, {
+  "itemCode": "FA2900058",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - 1 CORE X 100 SQ. MM. (AAAC) AL-59 - 11KV"
+}, {
+  "itemCode": "FA0400089",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 100 SQ MM (AB CABLES) (BARE) - 22 KV"
+}, {
+  "itemCode": "FA0200039",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "16 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900080",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 4 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1100056",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 240 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300312",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 120 SQ. MM. AL/ARD - STRIP (XLPE) - 22 KV"
+}, {
+  "itemCode": "FA0900156",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 2.5 SQ. MM. ALU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200063",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "5 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FC3700029",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "AAAC : 240 SQ. MM. CONDUCTOR (37/2.87)"
+}, {
+  "itemCode": "FA0200068",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "16 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1500029",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 35 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1500011",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1500067",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 25 SQ MM + 1 CORE X 54.6 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0500006",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 16 SQ. MM. AL/UNARD ( PVC )"
+}, {
+  "itemCode": "FA1300257",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 300 SQ. MM. CU/ARM - WIRE (XLPE) - 6 KV"
+}, {
+  "itemCode": "FA1300015",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/ARM - STRIP (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1200067",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3 CORE X 185 SQ. MM. AL/UNARD (PVC)"
+}, {
+  "itemCode": "FA1300214",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARM (WOS) (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1000069",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 50 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0200078",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "4 CORE X 1.5 SQ. MM CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1600014",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "1 CORE X 1.5 SQ. MM. AL/UNARD.(PVC) - SERVICE CABLE"
+}, {
+  "itemCode": "FA0900049",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 4 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1700017",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "6 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA1200078",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3 CORE X 70 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1600068",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "2 CORE X 10 SQ. MM. AL/UNARD (PVC) (STR/F) - SERVICE CABLE"
+}, {
+  "itemCode": "FA1100002",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 120 SQ. MM. AL/ARD - STRIP (XLPE )"
+}, {
+  "itemCode": "FC3700008",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "ACSR : LYNX CONDUCTOR - 175 SQ. MM. (30/7/2.79)"
+}, {
+  "itemCode": "FA0900038",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 25 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1300212",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL/ARM (WOS) (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1300299",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 70 SQ. MM. AL/ARM - STRIP/TYPE - B (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0100092",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 150 SQ MM + 1 CORE X 35 SQ MM + 1 CORE X 95 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1500064",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1500002",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 16 SQ. MM. + 1 CORE X 25 SQ. MM. AB CABLE ( INSULATED)"
+}, {
+  "itemCode": "FA1500063",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 54.6 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900113",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 35 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0700024",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 120 SQ. MM. CU/ARD (PVC)"
+}, {
+  "itemCode": "FA0300037",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "37 CORE X 1.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1100035",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 150 SQ. MM. AL/ARD - STRIP (XLPE )"
+}, {
+  "itemCode": "FA1700011",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "24 CORE X 1.5 SQ. MM. CU/ARD (PVC) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA1500074",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 25 SQ MM + 1 CORE X 54.6 SQ MM + 2 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0400005",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FC3700031",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "ACSR : 94/22 SQ. MM. CONDUCTOR (30/7/2.00)"
+}, {
+  "itemCode": "FA2900059",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - 1 CORE X 99 SQ. MM. (AAAC) AL-59 - 33 KV"
+}, {
+  "itemCode": "FA0200008",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "2 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300266",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM AL/ARM - STRIP/TYPE - B (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0200025",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "1 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1000106",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "3.5 CORE X 25 SQ. MM. CC/AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1500049",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 54.6 SQ MM + 2 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1600002",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "1 CORE X 2.5 SQ. MM. CU/UNARD.(PVC) - SERVICE CABLE"
+}, {
+  "itemCode": "FA1600001",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "2 CORE X 2.5 SQ. MM. AL/UNARD (PVC) (STR/F) - SERVICE CABLE"
+}, {
+  "itemCode": "FA1500081",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 25 SQ. MM. + 1 CORE X 25 SQ. MM. AB CABLE (INSULATED)"
+}, {
+  "itemCode": "FA0900020",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 6 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FC1900037",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAC : 95 SQ. MM. CONDUCTOR (19/2.50 MM)"
+}, {
+  "itemCode": "FA0300024",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "16 CORE X 2.5 SQ. MM. CU/UNARD.(XLPE)"
+}, {
+  "itemCode": "FA0200029",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "7 CORE X 4 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300017",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 400 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0300005",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "4 CORE X 1.5 SQ. MM. CU/UNARD. (PVC)"
+}, {
+  "itemCode": "FA0100035",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "4 CORE X 95 SQ. MM (LT AB CABLE XLPE INSULATED)"
+}, {
+  "itemCode": "FA0200014",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "4 CORE X 6 SQ. MM. CU/ARD - WIRE (PVC )"
+}, {
+  "itemCode": "FA1300263",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/ARM (XLPE) (SCREENED) - 1.9/3.3 KV"
+}, {
+  "itemCode": "FA0500001",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 1.5 AL/UNARD ( PVC )"
+}, {
+  "itemCode": "FA1200089",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "4 CORE X 120 SQ. MM. CC/AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0700003",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 70 SQ. MM AL/ARD ( XLPE )"
+}, {
+  "itemCode": "FA2900060",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - 1 CORE x 150 SQ. MM. (AAAC) AL-59 - 33 KV"
+}, {
+  "itemCode": "FA1300249",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 50 SQ. MM. CU/ARM - WIRE (XLPE) - 30 KV"
+}, {
+  "itemCode": "FA0900047",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 50 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1500091",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 56 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0900182",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 16 SQ. MM. CC/AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1500094",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 16 SQ MM (AB CABLES) (XLPE INSULATED)"
+}, {
+  "itemCode": "FA0900233",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. CC/AL/ARD - DST (XLPE)"
+}, {
+  "itemCode": "FA0900009",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 50 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1200051",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3 CORE X 240 SQ. MM. AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1100001",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 120 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0900227",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 16 SQ. MM. CC/CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1700005",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "8 CORE X 1.5 SQ. MM. CU/ARD ( PVC ) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA1300195",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 120 SQ. MM. AL/ARM - STRIP (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA1300277",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL/ARM (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA1100193",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 185 SQ. MM. CC/AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC1900014",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : 185 SQ. MM. CONDUCTOR (19/3.52)"
+}, {
+  "itemCode": "FA1700019",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "24 CORE X 1.5 SQ. MM. CU/ARD (XLPE) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA1500012",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1200016",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3.5 CORE X 185 SQ. MM. AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0200002",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "10 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0900138",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 25 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1100231",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 300 SQ. MM. CC/AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1500019",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 25 SQ. MM. + 1 CORE X 25 SQ. MM. AB CABLE (BARE)"
+}, {
+  "itemCode": "FA0300051",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "12 CORE X 0.75 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0700043",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC3700002",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "ACSR : WOLF CONDUCTOR - 150 SQ. MM. (30/7/2.59)"
+}, {
+  "itemCode": "FA0700001",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 120 SQ. MM. AL/ARD (XLPE)"
+}, {
+  "itemCode": "FA0200114",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "5 CORE X 4 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0100001",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 95 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1100258",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 70 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC1900018",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "ACSR : MERLIN CONDUCTOR - 170.2 SQ. MM. (18/1/3.47)"
+}, {
+  "itemCode": "FA1100255",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 70 SQ. MM. CC/CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0100042",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "4 CORE X 150 SQ MM + 1 CORE X 95 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1100249",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 240 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0500014",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 35 SQ. MM. AL/UNARD. (XLPE)"
+}, {
+  "itemCode": "FA2900054",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - AL-59 ACS RACCOON (6/1/4.09) - 11KV"
+}, {
+  "itemCode": "FA1100115",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 120 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1300024",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 185 SQ. MM. AL./ARM (XLPE)  - 33 KV"
+}, {
+  "itemCode": "FA0900201",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 35 SQ. MM. CC/AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0400086",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (INSULATED GSW MESSENGER) - 20 KV"
+}, {
+  "itemCode": "FA0300006",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "4 CORE X 2.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1300147",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 150 SQ. MM. AL/ARM - WIRE (XLPE) - 36 KV"
+}, {
+  "itemCode": "FC6200002",
+  "itemScheduleName": "13 STRAND",
+  "itemName": "ACSR : DOG CONDUCTOR - 100 SQ. MM. (6/4.72/7/1.57)"
+}, {
+  "itemCode": "FA0600038",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 185 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1100300",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 240 SQ. MM. CC/AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0900117",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 35 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1100108",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 50 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900024",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 4 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0100081",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "4 CORE X 70 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 70 SQ. MM. (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FC3700017",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "AAAC : 479 SQ. MM. CONDUCTOR (37/4.06)"
+}, {
+  "itemCode": "FA1300245",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 95 SQ. MM. AL/ARM - STRIP (XLPE) - 33 KV (UE)"
+}, {
+  "itemCode": "FA0200101",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "9 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1000003",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 16 SQ. MM. ALU/UNARD ( PVC )"
+}, {
+  "itemCode": "FA1100183",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 185 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900063",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 2.5 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900056",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 50 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0400007",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FA0400012",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 120 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FA1100107",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 95 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0500025",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 6 SQ. MM. ALU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1100285",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 150 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0900224",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 16 SQ. MM. CC/AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0300049",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "40 CORE X 1.0 SQ. MM. CU/UNARD.(XLPE)"
+}, {
+  "itemCode": "FC4900002",
+  "itemScheduleName": "49 STRAND",
+  "itemName": "ACSR : SNOWBIRD CONDUCTOR - 522.2 SQ. MM. (42/3.98/7/2.21)"
+}, {
+  "itemCode": "FA0900083",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 4 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FC1000016",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "STEEL EARTH WIRE 10 SWG (3.15 MM)"
+}, {
+  "itemCode": "FA1500132",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 50 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0400030",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 180 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FA0400068",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (INSULATED) (PVC) - 11 KV"
+}, {
+  "itemCode": "FA1700008",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "12 CORE X 2.5 SQ. MM. CU/ARD (PVC) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA1100263",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 150 SQ. MM. CC/AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1800006",
+  "itemScheduleName": "RAILWAY-POWER CABLE -ARD",
+  "itemName": "2 CORE X 70 SQ. MM. AL/ARD - STRIP (PVC) - RAILWAY POWER CABLE"
+}, {
+  "itemCode": "FA0900087",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 6 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FC0700011",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "ACSR : MINK CONDUCTOR - 60 SQ. MM. (6/1/3.66)"
+}, {
+  "itemCode": "FA1600046",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "1 CORE X 10 SQ. MM. AL/UNARD (PVC) - SERVICE CABLE"
+}, {
+  "itemCode": "FA0200133",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "12 CORE X 4 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200034",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "4 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1100010",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 95 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100162",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 300 SQ. MM. AL/ARD - STRIP/B (XLPE)"
+}, {
+  "itemCode": "FA0200031",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "2 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA2900047",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - AL-59 ACS DOG (6/1/4.72) - 11 KV"
+}, {
+  "itemCode": "FA0200093",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "19 CORE X 1.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1500054",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "4 CORE X 25 SQ. MM (LT AB CABLE XLPE INSULATED)"
+}, {
+  "itemCode": "FA1500016",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900115",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 50 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300155",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 150 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1300279",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 400 SQ. MM AL/ARM - STRIP (XLPE) - 3.3KV"
+}, {
+  "itemCode": "FA0200062",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "9 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0200108",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "12 CORE X 2.5 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1300269",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 95 SQ. MM. AL/ARM - STRIP/TYPE - B (XLPE) - 11 KV"
+}, {
+  "itemCode": "FU1000007",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "BARE COPPER EARTH WIRE - 25 SQ. MM. (7/2.2)"
+}, {
+  "itemCode": "FA0300036",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "27 CORE X 1.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1500120",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "4 CORE X 50 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1200041",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "2 CORE X 70 SQ. MM. AL/UNARD (PVC)"
+}, {
+  "itemCode": "FA0200092",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "14 CORE X 1.5 SQ. MM CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FC1900003",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : DOG CONDUCTOR - 125 SQ. MM. (19/2.89)"
+}, {
+  "itemCode": "FA1500086",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 35 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900031",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 10 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200027",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "6 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200082",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "14 CORE X 2.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FC1900010",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : 70 SQ. MM. CONDUCTOR (19/2.15)"
+}, {
+  "itemCode": "FA1500076",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 54.6 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0400091",
+  "itemScheduleName": "HT ABC",
+  "itemName": "1 CORE X 150 SQ MM + 1 CORE X 155 SQ MM (AB CABLES) (BARE) (AWS) - 11 KV"
+}, {
+  "itemCode": "FA1000027",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 25 SQ. MM. AL/UNARD.(XLPE)"
+}, {
+  "itemCode": "FA1500014",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 25 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900069",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 35 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1500062",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 16 SQ MM (AB CABLES) (XLPE INSULATED)"
+}, {
+  "itemCode": "FA1500085",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 50 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0200053",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "24 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200028",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "4 CORE X 16 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0300021",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "7 CORE X 2.5 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0200057",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "19 CORE X 1.5 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100071",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 400 SQ. MM. AL/ARD. - STRIP (PVC)"
+}, {
+  "itemCode": "FA0100043",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X  54.6 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0100002",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1300267",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 50 SQ. MM. CU/ARD - WIRE (XLPE) - 15 KV"
+}, {
+  "itemCode": "FA0200178",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "32 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1400004",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "3 CORE X 185 SQ. MM AL./UNARM (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1500038",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 25 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0200155",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "18 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900071",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 10 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1500043",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 54.6 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1300273",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 95 SQ. MM. AL/ARM (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1000107",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 16 SQ. MM. CC/AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FC3700001",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "AAAC : PANTHER CONDUCTOR - 232 SQ. MM. (19/3.94)"
+}, {
+  "itemCode": "FA1000023",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 10 SQ. MM. CU/UNARD(PVC)"
+}, {
+  "itemCode": "FA1300256",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 150 SQ. MM. AL/ARM - STRIP (XLPE) - 33 KV (UE)"
+}, {
+  "itemCode": "FA1100221",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 300 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0300031",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "8 CORE X 2.5 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FC1000007",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "STEEL EARTH WIRE (7/3.66 MM)"
+}, {
+  "itemCode": "FA1700002",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "2 CORE X 2.5 SQ. MM. CU/ARD (PVC) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA0900007",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 35 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300333",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 150 SQ. MM. AL/ARM - STRIP (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1100142",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 120 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900060",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 16 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0300038",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "24 CORE X 2.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA0300055",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "3 CORE X 1.5 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1300098",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 95 SQ. MM. AL/ARM - WIRE (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0900070",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 25 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1500009",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0200096",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "10 CORE X 2.5 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1400012",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "3 CORE X 35 SQ. MM. AL/UNARD.(XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0100037",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "4 CORE X 70 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0100085",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 150 SQ MM + 1 CORE X 70 SQ MM  (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FC3700006",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "AAAC : PANTHER CONDUCTOR - 288 SQ. MM. (37/3.15)"
+}, {
+  "itemCode": "FA0300003",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "12 CORE X 2.5 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0900108",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0500019",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 10 SQ. MM. CU/UNARD ( PVC)"
+}, {
+  "itemCode": "FA1500050",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 54.6 SQ MM + 2 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0400059",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (INSULATED) - 11 KV"
+}, {
+  "itemCode": "FC3300004",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : 70/12 SQ. MM. CONDUCTOR (26/1.85/7/1.44)"
+}, {
+  "itemCode": "FA1400047",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "3 CORE X 150 SQ. MM AL./UNARM (XLPE) - 3.3 KV (UE)"
+}, {
+  "itemCode": "FA0300035",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "14 CORE X 1.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA0900109",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 16 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0300054",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "30 CORE X 1.5 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0200158",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "6 CORE X 1.0 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300080",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 400 SQ. MM AL/ARM - WIRE (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1500053",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 25 SQ. MM (LT AB CABLE XLPE INSULATED)"
+}, {
+  "itemCode": "FA0300010",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "19 CORE X 2.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1100078",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 300 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0200032",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "27 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1500046",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900154",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 35 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300183",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 185 SQ. MM. AL/ARM (XLPE) - 3.3 KV (UE)"
+}, {
+  "itemCode": "FA1000055",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 35 SQ. MM. AL/UNARD.(PVC)"
+}, {
+  "itemCode": "FC1900038",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "ACSR : DINGO CONDUCTOR - 150 SQ. MM. (18/3.35/1/3.35)"
+}, {
+  "itemCode": "FA0200069",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "20 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0600021",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 185 SQ. MM. AL/UNARD. (XLPE)"
+}, {
+  "itemCode": "FA0400088",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 80 SQ MM (AB CABLES) (BARE) - 33 KV"
+}, {
+  "itemCode": "FC0700077",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "ACSR : 47/8 SQ. MM. CONDUCTOR (6/1/3.15)"
+}, {
+  "itemCode": "FA0200009",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "3 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FC6100028",
+  "itemScheduleName": "61 STRAND",
+  "itemName": "AACSR : MOOSE CONDUCTOR - 520 SQ. MM. (54/7/3.53)"
+}, {
+  "itemCode": "FA0900146",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 10 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FU1000010",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "BARE COPPER EARTH WIRE - 120 SQ. MM."
+}, {
+  "itemCode": "FA1300283",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. CU/ARM - STRIP (XLPE) - 24 KV"
+}, {
+  "itemCode": "FA1300046",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 240 SQ. MM. AL/ARM - WIRE (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA1500034",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1300179",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL./ARM (XLPE)  - 11 KV (UE)"
+}, {
+  "itemCode": "FA0200141",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "16 CORE X 2.5 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0200145",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "24 CORE X 2.5 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0900058",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 6 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300347",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL/ARM - STRIP (UNSCREENED) (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA1200091",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "4 CORE X 300 SQ. MM. AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0900212",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 50 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1000059",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 50 SQ. MM. AL/UNARD.(XLPE)"
+}, {
+  "itemCode": "FC1900023",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : 157.6 SQ. MM. CONDUCTOR (19/3.25)"
+}, {
+  "itemCode": "FA1300275",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARM (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA1000117",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 16 SQ. MM. CC/AL/UNARD (PVC)"
+}, {
+  "itemCode": "FA0600013",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 95 SQ. MM. AL/UNARD(XLPE )"
+}, {
+  "itemCode": "FC3700012",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "AACSR : 116.2 SQ. MM. CONDUCTOR (18/19/2.00)"
+}, {
+  "itemCode": "FA1300233",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/ARM - WIRE (XLPE) (WOS) - 33 KV"
+}, {
+  "itemCode": "FA0500012",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 35  SQ. MM. ALU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1100019",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 300 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0200030",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "2 CORE X 4 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200086",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "27 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FC3300002",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : DRAKE CONDUCTOR - 402.6 SQ. MM. (26/4.44/7/3.45)"
+}, {
+  "itemCode": "FC1000008",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "STEEL EARTH WIRE 50 SQ. MM (7/3.05 MM)"
+}, {
+  "itemCode": "FA1500015",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 25 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1500044",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 25 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1500021",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 16 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1300025",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 150 SQ. MM. AL/ARM (XLPE)  - 11 KV"
+}, {
+  "itemCode": "FC6100005",
+  "itemScheduleName": "61 STRAND",
+  "itemName": "ACSR : BISON CONDUCTOR (54/7/3.00)"
+}, {
+  "itemCode": "FA1300152",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 120 SQ. MM. AL/ARM - DOUBLE WIRE ARMOUR (XLPE) A2XWWY - 6.6 KV (UE)"
+}, {
+  "itemCode": "FA1300128",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 240 SQ. MM. AL/ARM - WIRE (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA0200019",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "8 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1100252",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 185 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0100008",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 70 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900217",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 50 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200139",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "5 CORE X 4 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1100253",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 120 SQ. MM. CC/AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0100025",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FC1900006",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : ELM CONDUCTOR - 175 SQ. MM. (19/3.76)"
+}, {
+  "itemCode": "FA1400018",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL/UNARM (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA0300025",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "19 CORE X 2.5 SQ. MM. CU/UNARD.(XLPE)"
+}, {
+  "itemCode": "FC3300001",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : COYOTE CONDUCTOR - 125 SQ. MM. (26/2.54/7/1.90)"
+}, {
+  "itemCode": "FA1400045",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "3 CORE X 150 SQ. MM AL./UNARM (XLPE) - 6.6 KV (UE)"
+}, {
+  "itemCode": "FC3700007",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "AAC : TARANTULLA CONDUCTOR - 750 SQ. MM. (37/5.23)"
+}, {
+  "itemCode": "FA0900111",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. ALU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300129",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM AL/ARM - WIRE (XLPE) - 3.3 KV (UE)"
+}, {
+  "itemCode": "FA1500006",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1000079",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "3 CORE X 16 SQ. MM. AL/UNARD (PVC)"
+}, {
+  "itemCode": "FA1100248",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 400 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1100223",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 95 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1100003",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 185 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FC6400001",
+  "itemScheduleName": "52 STRANDS",
+  "itemName": "ACSR : CONDUCTOR (2X500 SQ MM)( 45/3.76+7/2.51)"
+}, {
+  "itemCode": "FA1700014",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "14 CORE X 1.5 SQ. MM. CU/ARD (PVC) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA1300282",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 120 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FC3700037",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "AAC : 160 SQ. MM. CONDUCTOR (37/2.36)"
+}, {
+  "itemCode": "FA0400036",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (INSULATED) - 11 KV"
+}, {
+  "itemCode": "FA1300022",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 50 SQ. MM. AL/ARD - WIRE (XLPE) - 33 KV (E)"
+}, {
+  "itemCode": "FA0300022",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "10 CORE X 2.5 SQ. MM. CU/UNARD. (XLPE)"
+}, {
+  "itemCode": "FA0500029",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 25 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0600002",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 120 SQ. MM. AL/UNARD. (PVC)"
+}, {
+  "itemCode": "FA1500096",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "4 CORE X 50 SQ MM + 1 CORE X 54.6 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0900028",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 6 SQ. MM. ALU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FC3300005",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : 240 SQ. MM. CONDUCTOR (26/3.45/7/2.68)"
+}, {
+  "itemCode": "FA1300218",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/ARM - STRIP/TYPE - B (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0900046",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 25 SQ. MM. ALU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0900097",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 35 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100125",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 95 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300111",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 240 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1100011",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 120 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0300048",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "3 CORE X 2.5 SQ. MM. CU/UNARD.(XLPE)"
+}, {
+  "itemCode": "FA0300017",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "16 CORE X 2.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA0200046",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "8 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0200149",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "37 CORE X 4 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300006",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 70 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1500099",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 25 SQ. MM. + 1 CORE X 16 SQ. MM. AB CABLE (BARE)"
+}, {
+  "itemCode": "FA0200094",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "24 CORE X 1.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1100037",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 120 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC3700013",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "AAAC : ZEBRA CONDUCTOR - 465 SQ. MM. (37/4)"
+}, {
+  "itemCode": "FC3300019",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : 136/22 SQ. MM. CONDUCTOR (26/2.58/7/2.00)"
+}, {
+  "itemCode": "FA1700006",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "9 CORE X 1.5 SQ. MM. CU/ARD ( PVC ) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA0100032",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "1 CORE X 70 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0200042",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "10 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0400087",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 80 SQ MM (AB CABLES) (BARE) - 22 KV"
+}, {
+  "itemCode": "FA1000032",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 4 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0200005",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "16 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1700012",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "30 CORE X 1.5 SQ. MM. CU/ARD ( PVC ) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA0100095",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 185 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 150 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1300254",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 70 SQ. MM. AL/ARM - STRIP/TYPE - B (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA0600031",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 240 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1300176",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 150 SQ. MM. AL/ARM - WIRE (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0700005",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/ARD. (XLPE)"
+}, {
+  "itemCode": "FA1200066",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3 CORE X 150 SQ. MM. AL/UNARD (PVC)"
+}, {
+  "itemCode": "FA1100025",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 300 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1000018",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 10 SQ. MM. AL/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1600031",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "1 CORE X 120 SQ. MM. CU/UNARD (PVC) - SERVICE CABLE"
+}, {
+  "itemCode": "FA1100057",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 240 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0900001",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 10 SQ. MM. ALU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1600084",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "2 CORE X 6 SQ. MM. AL/UNARD (PVC) (STR/F) - SERVICE CABLE"
+}, {
+  "itemCode": "FA1300288",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 120 SQ. MM. AL/ARM - DWA (XLPE) A2XWWY - 33 KV"
+}, {
+  "itemCode": "FA0200081",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "37 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1700010",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "19 CORE X 1.5 SQ. MM. CU/ARD ( PVC ) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA2900035",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - 1 CORE X 148 SQ. MM. (AAAC) 11 KV"
+}, {
+  "itemCode": "FC1900007",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : 117 SQ. MM  CONDUCTOR (19/2.80)"
+}, {
+  "itemCode": "FA0700030",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 95 SQ. MM. ALU/ARD (XLPE)"
+}, {
+  "itemCode": "FA1500024",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1300192",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 240 SQ. MM. AL/ARM (XLPE) - 3.3 KV (UE)"
+}, {
+  "itemCode": "FA1400037",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/UNARM (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA0200152",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "10 CORE X 6 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0200131",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "2 CORE X 2.5 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200066",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "12 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0300053",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "2 CORE X 0.75 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0900008",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 35 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0200172",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "8 CORE X 4 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300081",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/ARM - WIRE (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA0700027",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 185 SQ. MM. AL/ARD (XLPE)"
+}, {
+  "itemCode": "FA0300020",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "5 CORE X 2.5 SQ. MM. CU/UNARD.(XPLE)"
+}, {
+  "itemCode": "FA1500078",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 35 SQ MM + 1 CORE X 54.6 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0600051",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 300 SQ. MM. CU/UNSH (PVC)"
+}, {
+  "itemCode": "FA0100102",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 240 SQ MM + 1 CORE X 185 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0200022",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "27 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900183",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. CC/AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC0700048",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAAC : 99.30 SQ. MM. CONDUCTOR (7/4.25)"
+}, {
+  "itemCode": "FA0100003",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0200016",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "5 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0700006",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 500 SQ. MM. AL/ARD (PVC)"
+}, {
+  "itemCode": "FA1300276",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 500 SQ. MM. AL/ARM (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA0900018",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 35 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100141",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 70 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900114",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 25 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0900061",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 35 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0500020",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 25 SQ. MM. ALU/UNARD (XLPE )"
+}, {
+  "itemCode": "FA1100075",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 120 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC0700010",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAC : ANT CONDUCTOR - 50 SQ. MM. (7/3.10)"
+}, {
+  "itemCode": "FA0300045",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "1 CORE X 1.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA0200049",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "9 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1800011",
+  "itemScheduleName": "RAILWAY-POWER CABLE -ARD",
+  "itemName": "3 CORE X 10 SQ. MM. AL/ARD - STRIP (PVC) - RAILWAY POWER CABLE"
+}, {
+  "itemCode": "FA1200062",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "2 CORE X 185 SQ. MM. AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0300033",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "14 CORE X 2.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1300066",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 1000 SQ. MM. AL/ARM (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1300301",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 150 SQ. MM. AL/ARM - STRIP (XLPE) - 33 KV (UE)"
+}, {
+  "itemCode": "FA1300008",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 95 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1700009",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "18 CORE X 1.5 SQ. MM. CU/ARD ( PVC ) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA0800022",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - ARD",
+  "itemName": "1 CORE X 25 SQ. MM. CU/ARD (XLPE)"
+}, {
+  "itemCode": "FA1300120",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 70 SQ. MM. AL/ARM - WIRE (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA0900128",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 35 SQ. MM. AL/ARM - STRIP (XLPE)"
+}, {
+  "itemCode": "FC4900003",
+  "itemScheduleName": "49 STRAND",
+  "itemName": "ACSR : MALLARD CONDUCTOR - 403.8 SQ. MM. (30/4.14/19/2.48)"
+}, {
+  "itemCode": "FA0200148",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "19 CORE X 4 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0900223",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 25 SQ. MM. CC/AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1500007",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 25 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900036",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 50 SQ. MM. ALU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100236",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 240 SQ. MM. AL/ARD - STRIP/B (PVC)"
+}, {
+  "itemCode": "FA0900149",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1000029",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "3.5 CORE X 50 SQ. MM. AL/UNARD.(XLPE)"
+}, {
+  "itemCode": "FA1300270",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 150 SQ. MM. AL/ARM (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1500039",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 35 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1000008",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "3.5 CORE X 35 SQ. MM. AL/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1800004",
+  "itemScheduleName": "RAILWAY-POWER CABLE -ARD",
+  "itemName": "2 CORE X 35 SQ. MM. AL/ARD ( PVC ) - POWER CABLE"
+}, {
+  "itemCode": "FA1100233",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 300 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1500003",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 35 SQ. MM. + 1 CORE X 25 SQ. MM. AB CABLE ( BARE)"
+}, {
+  "itemCode": "FA0100103",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 185 SQ MM + 1 CORE X 70 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0600003",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 120 SQ. MM. ALU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1600088",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "1 CORE X 2.5 SQ. MM. CU/UNSH (PVC) - SERVICE CABLE"
+}, {
+  "itemCode": "FA1500017",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 16 SQ MM + 1 CORE X 35 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1500071",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 56.6 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1400048",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "1 CORE X 500 SQ. MM. AL/UNARD (XLPE)  - 11 KV (UE)"
+}, {
+  "itemCode": "FA1500082",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "4 CORE X 35 SQ. MM (AB CABLE) (INSULATED)"
+}, {
+  "itemCode": "FA0700048",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0200128",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "12 CORE X 4 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300293",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0100080",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X 54.6 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0300041",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "7 CORE X 1.5 SQ. MM. CU/UNARD ( PVC )"
+}, {
+  "itemCode": "FA0600007",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/UNARD. (XLPE)"
+}, {
+  "itemCode": "FA0900084",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 35 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0700012",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/ARD. (PVC)"
+}, {
+  "itemCode": "FA1300178",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 500 SQ. MM. AL/ARM (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1300194",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 240 SQ. MM. AL/ARM - STRIP (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA0900042",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 10 SQ. MM. ALU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300211",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 240 SQ. MM. AL/ARM - WOS (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1500032",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 25 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900012",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 16 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0100109",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 150 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 95 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900077",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 4 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300200",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 95 SQ. MM. AL/ARM  WIRE (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1300337",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 150 SQ. MM. AL/ARM (WOS) (XLPE)  - 11 KV"
+}, {
+  "itemCode": "FA0700020",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 95 SQ. MM. CU/ARD (PVC)"
+}, {
+  "itemCode": "FA0200176",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "15 CORE X 2.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300272",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 70 SQ. MM. AL/ARM (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA0600009",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 70 SQ. MM AL/UNARD ( XLPE )"
+}, {
+  "itemCode": "FA1300307",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 240 SQ. MM. CU/ARD - WIRE (XLPE) - 15 KV"
+}, {
+  "itemCode": "FA0200151",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "8 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1000012",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 16 SQ. MM. AL/UNARD (PVC)"
+}, {
+  "itemCode": "FA1000051",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 4 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0700009",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 150 SQ. MM. ALU/ARD (XLPE)"
+}, {
+  "itemCode": "FA0100100",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 185 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0500002",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 10 SQ. MM. AL/UNARD (XLPE )"
+}, {
+  "itemCode": "FC3700016",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "ACSR : GOAT CONDUCTOR - 300 SQ. MM. (30/"
+}, {
+  "itemCode": "FA0600012",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 70 SQ. MM. ALU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1600009",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "2 CORE X 1.5 SQ. MM. AL/UNARD (PVC) (STR/F) - SERVICE CABLE"
+}, {
+  "itemCode": "FC1900024",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "ACSR : PELICAN CONDUCTOR - 242.3 SQ. MM. (18/1/4.14)"
+}, {
+  "itemCode": "FA0300047",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "5 CORE X 1.5 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0200018",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "7 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0800004",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - ARD",
+  "itemName": "1 CORE X 35 SQ. MM. AL/ARD. (XLPE)"
+}, {
+  "itemCode": "FA0400019",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FA1300305",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 35 SQ. MM. CU/ARD - WIRE (XLPE) - 15 KV"
+}, {
+  "itemCode": "FA1300338",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 240 SQ. MM. AL/ARM (WOS) (XLPE)  - 11 KV (UE)"
+}, {
+  "itemCode": "FA1000125",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 50 SQ. MM. CC/AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FC1900021",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : 228 SQ. MM. CONDUCTOR (19/3.91)"
+}, {
+  "itemCode": "FA0900002",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 16 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FC0700013",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "ACSR : SQUIRREL CONDUCTOR - 20 SQ. MM. (6/1/2.11)"
+}, {
+  "itemCode": "FA0700055",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/ARD/DAT (XLPE)"
+}, {
+  "itemCode": "FA0200036",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "5 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0600014",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 95 SQ. MM. AL/UNARD. (PVC)"
+}, {
+  "itemCode": "FA0200061",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "14 CORE X 1.5 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0900185",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. CC/CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0300032",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "2 CORE X 1.5 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0200091",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "12 CORE X 1.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1500093",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 16 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1100152",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 95 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1000002",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 6 SQ. MM. AL/UNARD (PVC)"
+}, {
+  "itemCode": "FA0100098",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 150 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 120 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FC1000014",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "STEEL EARTH WIRE 6 SWG (5.00 MM)"
+}, {
+  "itemCode": "FA1400069",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/UNARD (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA1300268",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM CU/ARM - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0200075",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "18 CORE X 2.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FC6400002",
+  "itemScheduleName": "52 STRANDS",
+  "itemName": "ACSR : LAPWING CONDUCTOR - 804.1 SQ. MM. (45/4.77//7/3.18)"
+}, {
+  "itemCode": "FA0900010",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 10 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0200164",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "6 CORE X 4 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200099",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "30 CORE X 2.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0300079",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "26 CORE X 2.5 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1500047",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1300084",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 240 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1100194",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 300 SQ. MM. CC/AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0900181",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. CC/CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0600025",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 50 SQ. MM. CU/UNARD. (PVC)"
+}, {
+  "itemCode": "FA0400083",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 95 SQ MM (AB CABLES) (XLPE INSULATED) - 11 KV"
+}, {
+  "itemCode": "FA1500042",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "4 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0200033",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "8 CORE X 4 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FC1000001",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "STEEL EARTH WIRE (7/3.15 MM)"
+}, {
+  "itemCode": "FA1000074",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 25 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1300346",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/ARM - STRIP (UNSCREENED) (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA1100095",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 95 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100239",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 240 SQ. MM. CU/ARD - STRIP/B (XLPE)"
+}, {
+  "itemCode": "FA1300090",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM AL/ARM - WIRE (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0200067",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "4 CORE X 1.5 SQ. MM CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1200068",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3.5 CORE X 120 SQ. MM. CC/AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0700018",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 150 SQ. MM. ALU/ARD (PVC)"
+}, {
+  "itemCode": "FA1300052",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 150 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1300091",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/ARM - WIRE (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1000119",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 4 SQ. MM. AL/UNARD (PVC)"
+}, {
+  "itemCode": "FA0700054",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 400 SQ. MM. CU/ARD (XLPE)"
+}, {
+  "itemCode": "FA0200097",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "12 CORE X 1.5 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100097",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1300002",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM AL/ARM - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0100110",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "4 CORE X 95 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FC3300012",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : 120/20 SQ. MM. CONDUCTOR (26/2.44/7/1.90)"
+}, {
+  "itemCode": "FA1500031",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 25 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0400010",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 100 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FA0600054",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 70 SQ. MM CU/UNSH (PVC )"
+}, {
+  "itemCode": "FA0200079",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "16 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0600050",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 630 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1300013",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 35 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0700057",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300114",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 35 SQ. MM. AL/ARM - WIRE (XLPE) - 11 KV"
+}, {
+  "itemCode": "FC3700009",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "ACSR : BEAR CONDUCTOR - 250 SQ. MM. (30/7/3.35)"
+}, {
+  "itemCode": "FA0200020",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "19 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200175",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "19 CORE X 4 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300274",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 70 SQ. MM. AL/ARM (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1300255",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 120 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1500133",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 35 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0700002",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARD (XLPE)"
+}, {
+  "itemCode": "FA0600004",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 185 SQ. MM. AL/UNARD. (PVC)"
+}, {
+  "itemCode": "FA1500037",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 25 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0200150",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "5 CORE X 10 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1100176",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 300 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300083",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 400 SQ. MM. AL/ARM - WIRE (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1400046",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "3 CORE X 185 SQ. MM AL./UNARM (XLPE) - 3.3 KV (UE)"
+}, {
+  "itemCode": "FA0900213",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 35 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0900013",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 16 SQ. MM. ALU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1600043",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "2 CORE X 4 SQ. MM. AL/UNARD - (PVC) (SOL/F) - SERVICE CABLE"
+}, {
+  "itemCode": "FA1500013",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1100008",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 70 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0300044",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "9 CORE X 1.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FC0700037",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAAC : 50 SQ. MM. CONDUCTOR (7/3.02)"
+}, {
+  "itemCode": "FA1400028",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/UNARM (XLPE) - 11 KV - FOR 11 KV DP STRUCTURE"
+}, {
+  "itemCode": "FA0200060",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "14 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1600055",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "2 CORE X 4 SQ. MM. CU/UNARD (PVC) (STR/R) - SERVICE CABLE"
+}, {
+  "itemCode": "FA0100096",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1500066",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 50 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0500024",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 16 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0900022",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 10 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0300004",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "2 CORE X 2.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA0400093",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 185 SQ MM + 1 CORE X 232 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FC6100004",
+  "itemScheduleName": "61 STRAND",
+  "itemName": "AAC : BULL CONDUCTOR (61/4.25)"
+}, {
+  "itemCode": "FA1100195",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 120 SQ. MM. CC/AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC0700074",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAC : GNAT CONDUCTOR - 35 SQ. MM. (7/2.50)"
+}, {
+  "itemCode": "FC0700024",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAC : GRASSHOPPER CONDUCTOR - 83.13 SQ. MM. (7/3.91)"
+}, {
+  "itemCode": "FC1900022",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : 331 SQ. MM. CONDUCTOR (19/4.71)"
+}, {
+  "itemCode": "FC1900025",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : MULBERRY CONDUCTOR - 150.8 SQ. MM. (19/3.18)"
+}, {
+  "itemCode": "FA0200064",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "3 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1600013",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "1 CORE X 6 SQ. MM. CU/UNARD.(PVC) - SERVICE CABLE"
+}, {
+  "itemCode": "FA1500010",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1000068",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 25 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0300030",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "6 CORE X 2.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1000060",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 95 SQ. MM. AL/UNARD.(XLPE)"
+}, {
+  "itemCode": "FA1300294",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARM - STRIP (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1100067",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 150 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100155",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 70 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0900021",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 6 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0400095",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE) - 22 KV"
+}, {
+  "itemCode": "FA0200116",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "14 CORE X 4 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0300040",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "12 CORE X 1.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1100024",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 70 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA2900052",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - 1 CORE X 99 SQ. MM. (AL-7) - 11 KV"
+}, {
+  "itemCode": "FA1100073",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 185 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1500057",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 35 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0100021",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1600085",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "1 CORE X 4 SQ. MM. CU/UNSH (PVC) - SERVICE CABLE"
+}, {
+  "itemCode": "FA0800003",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - ARD",
+  "itemName": "1 CORE X 35 SQ. MM. AL/ARD (PVC)"
+}, {
+  "itemCode": "FA1500004",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 35 SQ. MM. + 1 CORE X 25 SQ. MM. AB CABLE ( INSULATED)"
+}, {
+  "itemCode": "FC0700019",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAAC : 54.6 SQ. MM CONDUCTOR (7/3.15)"
+}, {
+  "itemCode": "FA1000004",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 25 SQ. MM. AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1000026",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 6 SQ. MM. AL/UNARD.(XLPE)"
+}, {
+  "itemCode": "FA0700037",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 70 SQ. MM CU/ARD (PVC)"
+}, {
+  "itemCode": "FA1100279",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 185 SQ. MM. CC/CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200089",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "20 CORE X 2.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1100013",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 185 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0900016",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 50 SQ. MM. ALU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0400085",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (INSULATED GSW MESSENGER) - 20 KV"
+}, {
+  "itemCode": "FA0100013",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1300264",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 35 SQ. MM. AL/ARM - STRIP (XLPE) (SCREENED) - 1.9/3.3 KV"
+}, {
+  "itemCode": "FA0900059",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 10 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1200004",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3.5 CORE X 95 SQ. MM. ALU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0100017",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FC0700004",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAAC : SQUIRREL CONDUCTOR - 22 SQ. MM. (7/2.00)"
+}, {
+  "itemCode": "FC0700047",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAAC : 62.44 SQ. MM. CONDUCTOR (7/3.37)"
+}, {
+  "itemCode": "FA1000112",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "3 CORE X 16 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0900219",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 16 SQ. MM. CC/AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0300018",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "2 CORE X 2.5 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1100026",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 70 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100106",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 150 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FC1000017",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "STEEL EARTH WIRE (3/3.15 MM)"
+}, {
+  "itemCode": "FA0200040",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "19 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FU1000008",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "BARE COPPER EARTH WIRE - 29 SQ. MM."
+}, {
+  "itemCode": "FC0700002",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAAC : DOG CONDUCTOR - 100 SQ. MM. (7/4.26)"
+}, {
+  "itemCode": "FC3300007",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : 477 MCM CONDUCTOR (26/3.50/7/2.70)"
+}, {
+  "itemCode": "FA0300029",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "6 CORE X 2.5 SQ. MM. CU/UNARD.(XLPE)"
+}, {
+  "itemCode": "FA1100052",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 400 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0700056",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FC3700032",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "AAAC : ASTER 366 SQ. MM. CONDUCTOR (37/3.55)"
+}, {
+  "itemCode": "FA1500065",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0200054",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "24 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200157",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "3 CORE X 4 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0900178",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. CC/AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1100240",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 300 SQ. MM. CU/ARD - STRIP/B (XLPE)"
+}, {
+  "itemCode": "FA0100114",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 150 SQ MM + 1 CORE X 120 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900093",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 50 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1500055",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 50 SQ. MM (LT AB CABLE XLPE INSULATED)"
+}, {
+  "itemCode": "FA0200159",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "24 CORE X 1.0 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0100047",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X 54.6 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0900004",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 4 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1700003",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "4 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FC1900015",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : 240 SQ. MM. CONDUCTOR (19/3.99)"
+}, {
+  "itemCode": "FA0300019",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "5 CORE X 2.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA0200073",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "19 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300045",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/ARM - STRIP (XLPE) - 22 KV"
+}, {
+  "itemCode": "FA1500068",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 25 SQ MM + 1 CORE X 54.6 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FC6100011",
+  "itemScheduleName": "61 STRAND",
+  "itemName": "AAAC : ZEBRA CONDUCTOR (61/3.19)"
+}, {
+  "itemCode": "FA1300105",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM. AL/ARM - STRIP (XLPE)  - 11 KV (UE)"
+}, {
+  "itemCode": "FA1500048",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 25 SQ MM + 1 CORE X 25 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1300047",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/ARM (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1500090",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ. MM. + 1 CORE X 50 SQ. MM. + 1 CORE X 16 SQ. MM. (AB CABLE) (INSULATED)"
+}, {
+  "itemCode": "FA1300248",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM AL/ARM - STRIP/TYPE - B (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA0200065",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "12 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0200161",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "12 CORE X 0.75 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0300013",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "7 CORE X 4 SQ. MM. CU/UNARD ( PVC )"
+}, {
+  "itemCode": "FA0500018",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 10 SQ. MM. ALU/UNARD ( PVC)"
+}, {
+  "itemCode": "FA0200004",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "14 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA2900039",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - AL-59-ACS-DOG (6/1/4.72) - 33 KV"
+}, {
+  "itemCode": "FA1200064",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3 CORE X 70 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0200080",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "2 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1400042",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "3 CORE X 150 SQ. MM AL./UNARM (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1000010",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 25 SQ. MM. AL/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1500008",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0200104",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "16 CORE X 1.5 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100022",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 120 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC0800012",
+  "itemScheduleName": "STAY WIRE",
+  "itemName": "GALVANISED STEEL STAY WIRE (7/4.30 MM)"
+}, {
+  "itemCode": "FA1500077",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 54.6 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0800021",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - ARD",
+  "itemName": "1 CORE X 6 SQ. MM. CU/ARD (XLPE)"
+}, {
+  "itemCode": "FA1000108",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 16 SQ. MM. CC/AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FC3700003",
+  "itemScheduleName": "37 STRAND",
+  "itemName": "ACSR : PANTHER CONDUCTOR - 200 SQ. MM. (30/7/3.00)"
+}, {
+  "itemCode": "FA0900040",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 35 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1000039",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "5 CORE X 6 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0900045",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 35 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1100055",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 240 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0900006",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 25 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0200103",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "37 CORE X 2.5 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0500017",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 50 SQ. MM. AL/UNARD. (XLPE)"
+}, {
+  "itemCode": "FA0400097",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 120 SQ MM (AB CABLES) (BARE) - 33 KV"
+}, {
+  "itemCode": "FC1900002",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : WOLF CONDUCTOR - 173 SQ. MM. (19/3.40)"
+}, {
+  "itemCode": "FA1500126",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "4 CORE X 50 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0200160",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "6 CORE X 0.75 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300310",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 240 SQ. MM. AL/ARM - STRIP (XLPE) - 22 KV"
+}, {
+  "itemCode": "FA1500040",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 35 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0200074",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "10 CORE X 2.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1500059",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 50 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900090",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 50 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1500128",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 50 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1500115",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 25 SQ. MM. + 1 CORE X 16 SQ. MM. AB CABLE (INSULATED)"
+}, {
+  "itemCode": "FA1100148",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 95 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1200069",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3.5 CORE X 95 SQ. MM. CC/AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0300002",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "10 CORE X 1.5 SQ. MM. CU/UNARD. (PVC)"
+}, {
+  "itemCode": "FA1100160",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 300 SQ. MM. AL/ARD - STRIP/B (PVC)"
+}, {
+  "itemCode": "FC0700017",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "ACSR : HARE CONDUCTOR - 100 SQ. MM. (6/1/4.72)"
+}, {
+  "itemCode": "FC0700001",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAC : GNAT CONDUCTOR - 25 SQ. MM. (7/2.21)"
+}, {
+  "itemCode": "FA1300010",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 400 SQ. MM. AL/ARM - STRIP (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1300253",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/ARM - STRIP/TYPE - B (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA0900081",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 10 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1400005",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/UNARM (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1700001",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "2 CORE X 1.5 SQ. MM. CU/ARD ( PVC ) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FC6100031",
+  "itemScheduleName": "61 STRAND",
+  "itemName": "AAAC : SORBUS CONDUCTOR - 659.40 SQ MM (61/3.71)"
+}, {
+  "itemCode": "FA0900003",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 16 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1200013",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3.5 CORE X 300 SQ. MM. AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0900048",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 25 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1000001",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 4 SQ. MM. AL/UNARD.(PVC)"
+}, {
+  "itemCode": "FC3300006",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : 120 SQ. MM. CONDUCTOR (26/2.44/7/1.90)"
+}, {
+  "itemCode": "FA1300280",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/ARM - STRIP (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA1500084",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 56.6 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0900110",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0400100",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 150 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (INSULATED GSW MESSENGER) - 20 KV"
+}, {
+  "itemCode": "FA0300034",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "27 CORE X 2.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA0900019",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 6 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1500028",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1300004",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0200070",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "4 CORE X 6 SQ. MM CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0400107",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 150 SQ MM + 1 CORE X 148 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FA0200100",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "24 CORE X 1.5 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100274",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 500 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0200083",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "24 CORE X 2.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1100042",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 400 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1300244",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 50 SQ. MM. AL/ARD - STRIP/TYPE - B (XLPE) - 11 KV"
+}, {
+  "itemCode": "FC0700005",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAAC : WEASEL CONDUCTOR - 34 SQ. MM. (7/2.50)"
+}, {
+  "itemCode": "FA0700040",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100237",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 185 SQ. MM. AL/ARD - STRIP/B (PVC)"
+}, {
+  "itemCode": "FA0900122",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 10 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FC0700036",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAC : CONDUCTOR - 29 SQ. MM. (7/2.30)"
+}, {
+  "itemCode": "FA0200098",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "30 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0600023",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 240 SQ. MM. AL/UNARD. (PVC)"
+}, {
+  "itemCode": "FA0200113",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "19 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FC0700008",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "ACSR : WEASEL CONDUCTOR - 30 SQ. MM. (6/1/2.59)"
+}, {
+  "itemCode": "FU1000005",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "BARE COPPER EARTH WIRE - 35 SQ. MM. (KGS)"
+}, {
+  "itemCode": "FA1300313",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 50 SQ. MM. AL/ARD - WIRE (XLPE) - 11 KV"
+}, {
+  "itemCode": "FC0700014",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAC : LADYBIRD CONDUCTOR - 42.33 (7/2.79)"
+}, {
+  "itemCode": "FA1300181",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 240 SQ. MM. AL/ARM - STRIP (XLPE) - 6.6 KV (UE)"
+}, {
+  "itemCode": "FC1900017",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAC : 120 SQ. MM. CONDUCTOR"
+}, {
+  "itemCode": "FA1000115",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 25 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1700013",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "12 CORE X 1.5 SQ. MM. CU/ARD (XLPE) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA1500122",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "4 CORE X 35 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0100006",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1200063",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "2 CORE X 70 SQ. MM. AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0600006",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL/UNARD. (PVC)"
+}, {
+  "itemCode": "FA1300019",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL/ARM (XLPE)  - 33 KV"
+}, {
+  "itemCode": "FA0900216",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 35 SQ. MM. CC/AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300154",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 150 SQ. MM. AL/ARM (XLPE)  - 11 KV (UE)"
+}, {
+  "itemCode": "FA1100192",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 400 SQ. MM. CC/CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FC0700035",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "ACSR : RABBIT CONDUCTOR - 50 SQ. MM. (6/1/3.35) (XLPE INSULATED)"
+}, {
+  "itemCode": "FA0900099",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 25 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC6100001",
+  "itemScheduleName": "61 STRAND",
+  "itemName": "ACSR : ZEBRA CONDUCTOR - 420 SQ. MM. (54/7/3.18)"
+}, {
+  "itemCode": "FA1500079",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 25 SQ MM + 1 CORE X 54.6 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1300329",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/ARM - WIRE (XLPE) - HDPE - 11 KV"
+}, {
+  "itemCode": "FA1500101",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 25 SQ. MM. + 1 CORE X 16 SQ. MM. AB CABLE ( BARE)"
+}, {
+  "itemCode": "FA0500037",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 25 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0700049",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 185 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1300306",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM CU/ARD - WIRE (XLPE) - 15 KV"
+}, {
+  "itemCode": "FA1100161",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 400 SQ. MM. AL/ARD - STRIP/B (PVC)"
+}, {
+  "itemCode": "FA0900041",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 4 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300021",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM AL/ARM - STRIP (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1100254",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 300 SQ. MM. CC/AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0400096",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 185 SQ MM + 1 CORE X 150 SQ MM (AB CABLES) (BARE) - 22 KV"
+}, {
+  "itemCode": "FA0900207",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "6 CORE X 4 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FC4900004",
+  "itemScheduleName": "49 STRAND",
+  "itemName": "ACSR : TEAL CONDUCTOR (30/3.61/19/2.16)"
+}, {
+  "itemCode": "FA1200032",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3 CORE X 70 SQ. MM. AL/UNARD ( PVC )"
+}, {
+  "itemCode": "FA0100055",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "1 CORE X 70 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FC0700065",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "ACSR : RABBIT CONDUCTOR - 50 SQ. MM. (6/1/3.35) (PVC INSULATED)"
+}, {
+  "itemCode": "FC3300008",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : 795 MCM CONDUCTOR (26/4.5/7/3.50)"
+}, {
+  "itemCode": "FA1100261",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 70 SQ. MM. CC/AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FC0700009",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "ACSR : RACCOON CONDUCTOR - 80 SQ. MM. (6/1/4.09)"
+}, {
+  "itemCode": "FA1700007",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "12 CORE X 1.5 SQ. MM. CU/ARD ( PVC ) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA0700052",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 800 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1500056",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "4 CORE X 50 SQ. MM (LT AB CABLE XLPE INSULATED)"
+}, {
+  "itemCode": "FA0200077",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "20 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0900150",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 35 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100039",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 150 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300309",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 120 SQ. MM. AL/ARD - STRIP (XLPE) - 6.6 KV"
+}, {
+  "itemCode": "FA1100260",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 400 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FC6600002",
+  "itemScheduleName": "HTLS",
+  "itemName": "ECO PANTHER AL 59 TW 353 SQ MM"
+}, {
+  "itemCode": "FA1300335",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 240 SQ. MM. AL/ARM - WOS (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA0600020",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL/UNARD. (XLPE)"
+}, {
+  "itemCode": "FC6100035",
+  "itemScheduleName": "61 STRAND",
+  "itemName": "AAAC : AL-59 MOOSE CONDUCTOR - 594 SQ. MM. (61/3.52)"
+}, {
+  "itemCode": "FA1500109",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 25 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0900072",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 16 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0100078",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X 54.6 SQ MM + 2 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0500045",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 50 SQ. MM. AL/UNSH (PVC)"
+}, {
+  "itemCode": "FA1400035",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "3 CORE X 50 SQ. MM AL/UNARM (XLPE) - 12/20 KV (E)"
+}, {
+  "itemCode": "FA1100077",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 240 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1200079",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "4 CORE X 95 SQ. MM. CC/CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0200017",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "6 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0900119",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 10 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0400092",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X 95 SQ MM (AB CABLES) (BARE) - 22 KV"
+}, {
+  "itemCode": "FA1100027",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 240 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100091",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 240 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1000009",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 35 SQ. MM. AL/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1100182",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 95 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0800005",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - ARD",
+  "itemName": "1 CORE X 50 SQ. MM. AL/ARD. (XLPE)"
+}, {
+  "itemCode": "FA1300252",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 150 SQ. MM. AL/ARM - STRIP/TYPE - B (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1300075",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 95 SQ. MM. AL.ARM (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0400001",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 95 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FC7300002",
+  "itemScheduleName": "ALLOY DRAWN WIRE",
+  "itemName": "ALLOY DRAWN WIRE 10 SWG (3.15 MM)"
+}, {
+  "itemCode": "FA1300016",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARM (XLPE)  - 11 KV"
+}, {
+  "itemCode": "FC1900020",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "ACSR : KINGBIRD CONDUCTOR - 323 SQ. MM. (18/1/4.78)"
+}, {
+  "itemCode": "FA1500080",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 50 SQ MM + 1 CORE X 25 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1100273",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 500 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300020",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 185 SQ. MM. AL./ARM (XLPE)  - 11 KV"
+}, {
+  "itemCode": "FA0900198",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. CC/AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300193",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 120 SQ. MM. AL/ARM (XLPE) - 3.3 KV (UE)"
+}, {
+  "itemCode": "FA1500127",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 35 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1600028",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "1 CORE X 1.5 SQ. MM. CU/UNARD (PVC) - SERVICE CABLE"
+}, {
+  "itemCode": "FA1500041",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 54.6 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0900177",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 16 SQ. MM. CC/AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1100287",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 300 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1100085",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 300 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0200047",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "3 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0400094",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 95 SQ MM (AB CABLES) (BARE) - 22 KV"
+}, {
+  "itemCode": "FA0400016",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 150 SQ MM + 1 CORE X 120 SQ MM - 11 KV (INSULATED)"
+}, {
+  "itemCode": "FA0100012",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FC6100009",
+  "itemScheduleName": "61 STRAND",
+  "itemName": "AAAC : ASTER 570 SQ. MM.  CONDUCTOR (61/3.45)"
+}, {
+  "itemCode": "FA1300067",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 240 SQ. MM. AL/ARD (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1100172",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 150 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC6900001",
+  "itemScheduleName": "73 STRAND",
+  "itemName": "ACSR : MARTIN CONDUCTOR - 685.4 SQ. MM. (54/4.02/19/2.41)"
+}, {
+  "itemCode": "FC3300010",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : GROSBEAK CONDUCTOR - 321.8 SQ. MM. (26/3.97/7/3.09)"
+}, {
+  "itemCode": "FA1500060",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 50 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0300039",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "24 CORE X 1.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1300290",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA0200003",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "12 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0400106",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 125 SQ MM (AB CABLES) (INSULATED) - 11 KV"
+}, {
+  "itemCode": "FA0500007",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 16 SQ. MM. AL/UNARD ( XLPE )"
+}, {
+  "itemCode": "FA1300287",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM. AL/ARM - WIRE (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA0100004",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1100197",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 95 SQ. MM. CC/CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FC1000015",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "STEEL EARTH WIRE 8 SWG (4.00 MM)"
+}, {
+  "itemCode": "FA1000065",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 35 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1500069",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 25 SQ. MM. + 22 SQ. MM. AB CABLE (BARE)"
+}, {
+  "itemCode": "FA1100156",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 150 SQ. MM AL/ARD (XLPE) (DST)"
+}, {
+  "itemCode": "FC0700003",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAAC : RABBIT CONDUCTOR - 55 SQ. MM. (7/3.15)"
+}, {
+  "itemCode": "FA1500072",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X 56.6 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0900187",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 50 SQ. MM. CC/CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1000105",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 35 SQ. MM. AL/UNSH (PVC)"
+}, {
+  "itemCode": "FA0300007",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "4 CORE X 2.5 SQ. MM. CU/UNARD.(XLPE)"
+}, {
+  "itemCode": "FA0900067",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300095",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA0900107",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 35 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FC6100010",
+  "itemScheduleName": "61 STRAND",
+  "itemName": "AAAC : MOOSE CONDUCTOR - 570 SQ. MM. (61/3.45)"
+}, {
+  "itemCode": "FA1600040",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "1 CORE X 70 SQ. MM. CU/UNARD (PVC) (FLEX/R) - SERVICE CABLE"
+}, {
+  "itemCode": "FA1300180",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 500 SQ. MM. AL/ARM (XLPE) - 6.6 KV (UE)"
+}, {
+  "itemCode": "FA0200084",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "30 CORE X 1.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1500106",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "4 CORE X 50 SQ. MM. + 1 CORE X 25 SQ. MM. AB CABLE (INSULATED)"
+}, {
+  "itemCode": "FA0900171",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 16 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300007",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 95 SQ. MM. AL.ARM (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA0200051",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "27 CORE X 1.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1200046",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "4 CORE X 95 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FC0700018",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAC : WASP CONDUCTOR - 100 SQ. MM. (7/4.39)"
+}, {
+  "itemCode": "FA1400025",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/UNARD (XLPE) - 33 KV"
+}, {
+  "itemCode": "FC1900004",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : COYOTE CONDUCTOR - 148 SQ.MM. (19/3.15)"
+}, {
+  "itemCode": "FA1100061",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 95 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0200169",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "32 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0900027",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 25 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0200102",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "30 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300265",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 185 SQ. MM. AL/ARM (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1100012",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 95 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1000118",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 16 SQ. MM. CC/CU/UNARD (PVC)"
+}, {
+  "itemCode": "FC6100006",
+  "itemScheduleName": "61 STRAND",
+  "itemName": "AAAC : MOOSE (UP) CONDUCTOR - 642 SQ. MM. (61/3.66)"
+}, {
+  "itemCode": "FA0200023",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "8 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300184",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM AL/ARM - STRIP (XLPE) - 3.3 KV (UE)"
+}, {
+  "itemCode": "FA1300341",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM AL/ARM - STRIP/TYPE - B (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA0300023",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "12 CORE X 2.5 SQ. MM. CU/UNARD. (XLPE)"
+}, {
+  "itemCode": "FA0400033",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FA0300011",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "10 CORE X 2.5 SQ. MM. CU/UNARD. (PVC)"
+}, {
+  "itemCode": "FA1100040",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 150 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1300278",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 150 SQ. MM. AL/ARM (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA1300251",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 150 SQ. MM. AL/ARM - STRIP/TYPE - B (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1300003",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 240 SQ. MM. AL/ARM - WIRE (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1400036",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "3 CORE X 150 SQ. MM AL/UNARM (XLPE) - 12/20 KV (E)"
+}, {
+  "itemCode": "FA1500061",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 54.6 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900015",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. ALU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC0700076",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "ACSR : FERRET CONDUCTOR - 40 SQ. MM. (6/1/3.00)"
+}, {
+  "itemCode": "FA0400008",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 80 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FA1500001",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 16 SQ. MM. + 1 CORE X 25 SQ. MM. AB CABLE ( BARE)"
+}, {
+  "itemCode": "FA0900211",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 35 SQ. MM. CC/CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1100250",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 300 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1000025",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 10 SQ. MM. AL/UNARD (PVC)"
+}, {
+  "itemCode": "FA0200153",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "32 CORE X 2.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0100104",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "1 CORE X 70 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1400040",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "1 CORE X 150 SQ. MM. AL/UNARD (XLPE) - 3.3 KV (UE)"
+}, {
+  "itemCode": "FA0300075",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "26 CORE X 1.5 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1200070",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3 CORE X 185 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1200065",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3 CORE X 185 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1600087",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "1 CORE X 10 SQ. MM. CU/UNSH (PVC) - SERVICE CABLE"
+}, {
+  "itemCode": "FA1400027",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/UNARM (XLPE) - 11 KV - FOR 11 KV LINE"
+}, {
+  "itemCode": "FA1200003",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3.5 CORE X 70 SQ. MM. ALU/UNARD ( PVC )"
+}, {
+  "itemCode": "FC6100002",
+  "itemScheduleName": "61 STRAND",
+  "itemName": "ACSR : MOOSE CONDUCTOR - 520 SQ. MM. (54/7/3.53)"
+}, {
+  "itemCode": "FA1500052",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X 54.6 SQ MM + 2 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0100097",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 185 SQ MM + 1 CORE X 95 SQ MM + 1 CORE X 95 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FC6100020",
+  "itemScheduleName": "61 STRAND",
+  "itemName": "AAAC : 800 SQ. MM. CONDUCTOR (61/4.38)"
+}, {
+  "itemCode": "FA0100019",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 95 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FC0700021",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "ACSR : 36/6 SQ. MM. CONDUCTOR (6/1/2.70)"
+}, {
+  "itemCode": "FA0200015",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "5 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1500026",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 25 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0200076",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "16 CORE X 2.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1400039",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/UNARD (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1100015",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 150 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0100086",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "4 CORE X 150 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 150 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1000049",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "3 CORE X 4 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1100230",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 120 SQ. MM. CC/AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0200024",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "10 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900130",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 16 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100117",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 70 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0900017",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 6 SQ. MM. ALU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1400043",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/UNARM (XLPE) - 6.6 KV (UE)"
+}, {
+  "itemCode": "FA0900180",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 50 SQ. MM. CC/AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300023",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 120 SQ. MM. AL/ARM - STRIP (XLPE)  - 33 KV"
+}, {
+  "itemCode": "FA1300125",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 500 SQ. MM. AL/ARM (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1500107",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 10 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1100036",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 400 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0900209",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 35 SQ. MM. CC/AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA2900056",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - 1 CORE X 55 SQ. MM. (AAAC) AL-59 - 11 KV"
+}, {
+  "itemCode": "FC1900001",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAC : SPIDER CONDUCTOR - 240 SQ. MM. (19/3.99)"
+}, {
+  "itemCode": "FA1300348",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 240 SQ. MM. AL/ARM - STRIP (UNSCREENED) (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA1000116",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 16 SQ. MM. CC/AL/UNARD (PVC)"
+}, {
+  "itemCode": "FA1300217",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 95 SQ. MM. AL/ARM - STRIP/TYPE - B (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA2900061",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - 1 CORE X 232 SQ. MM. (AAAC) - AL-59 - 33 KV"
+}, {
+  "itemCode": "FC0700007",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "ACSR : RABBIT CONDUCTOR - 50 SQ. MM. (6/1/3.35)"
+}, {
+  "itemCode": "FA1100238",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 240 SQ. MM. AL/ARD - STRIP/B (PVC)"
+}, {
+  "itemCode": "FA1300197",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 120 SQ. MM. AL/ARM - WIRE (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1100050",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 185 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1100086",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 150 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1300044",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 50 SQ. MM. AL/ARM (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1100069",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 185 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1300213",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARM (WOS) (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA0200056",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "7 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900030",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 6 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300317",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 35 SQ. MM. AL/ARM (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1300230",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 185 SQ. MM. AL/ARM - STRIP (XLPE) (WOS) - 33 KV (UE)"
+}, {
+  "itemCode": "FA0200050",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "14 CORE X 1.5 SQ. MM CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200059",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "3 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300079",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM AL/ARM - WIRE (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1400041",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "3 CORE X 185 SQ. MM AL./UNARM (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1100251",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 400 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0200136",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "27 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900112",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 10 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1100009",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 95 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0300042",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "7 CORE X 1.5 SQ. MM. CU/UNARD ( XLPE )"
+}, {
+  "itemCode": "FA0900132",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 16 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1100018",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 150 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300076",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 1000 SQ. MM. AL.ARM (XLPE)  - 33 KV"
+}, {
+  "itemCode": "FA1100177",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 150 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300187",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 240 SQ. MM. AL/ARM (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1100257",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 150 SQ. MM. CU/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1600007",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "2 CORE X 4 SQ. MM. AL/UNARD - (PVC) (STR/R) - SERVICE CABLE"
+}, {
+  "itemCode": "FC0800013",
+  "itemScheduleName": "STAY WIRE",
+  "itemName": "GALVANISED STEEL STAY WIRE (7/3.05 MM)"
+}, {
+  "itemCode": "FA1300005",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 50 SQ. MM. AL/ARD - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0300008",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "8 CORE X 2.5 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1000104",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 6 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0200088",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "28 CORE X 2.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1200009",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3.5 CORE X 70 SQ. MM. ALU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1300110",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARM (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FC1900009",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAAC : 120 SQ. MM. CONDUCTOR"
+}, {
+  "itemCode": "FA1500070",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 25 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0800019",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - ARD",
+  "itemName": "1 CORE X 16 SQ. MM. CU/ARD (XLPE)"
+}, {
+  "itemCode": "FA0900014",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 25 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0500021",
+  "itemScheduleName": "1 CORE SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 25 SQ. MM. ALU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1500058",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 35 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1500095",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 50 SQ MM + 1 CORE X 54.6 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FC1900005",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "ACSR : 93.3 SQ. MM. CONDUCTOR (12/2.50/7/2.50)"
+}, {
+  "itemCode": "FA0400044",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X 180 SQ MM (AB CABLES) (BARE AACSR MESSENGER) - 11 KV"
+}, {
+  "itemCode": "FA0200137",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "32 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0700051",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 95 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0200085",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "30 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0300009",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "7 CORE X 2.5 SQ. MM. CU/UNARD ( PVC )"
+}, {
+  "itemCode": "FA0200038",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "12 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1500108",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 16 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1100181",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 70 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1500131",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 35 SQ MM (LT AB CABLE XLPE INSULATED)"
+}, {
+  "itemCode": "FA1600086",
+  "itemScheduleName": "SERVICE CABLES",
+  "itemName": "1 CORE X 1.5 SQ. MM. CU/UNSH (PVC) - SERVICE CABLE"
+}, {
+  "itemCode": "FA0300016",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "3 CORE X 2.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1300140",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 70 SQ. MM. CU/ARM - WIRE (XLPE) - 36 KV"
+}, {
+  "itemCode": "FA0200087",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "27 CORE X 2.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0100024",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0400006",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 95 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FA1300246",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 95 SQ. MM. AL/ARM - STRIP (XLPE) - 33 KV (UE)"
+}, {
+  "itemCode": "FA1800003",
+  "itemScheduleName": "RAILWAY-POWER CABLE -ARD",
+  "itemName": "2 CORE X 25 SQ. MM. AL/ARD - STRIP (PVC) - RAILWAY POWER CABLE"
+}, {
+  "itemCode": "FA0100101",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 185 SQ MM + 1 CORE X 150 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1000015",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 25 SQ. MM. AL/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1000024",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 35 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1400044",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "3 CORE X 185 SQ. MM AL./UNARM (XLPE) - 6.6 KV (UE)"
+}, {
+  "itemCode": "FA1300028",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 95 SQ. MM. AL/ARM - STRIP (XLPE) - 33 KV (E)"
+}, {
+  "itemCode": "FA1300316",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/ARM (XLPE) (WOS) - 11 KV"
+}, {
+  "itemCode": "FA0100018",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 70 SQ MM + 1 CORE X 50 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1100265",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 400 SQ. MM. CC/AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100051",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "2 CORE X 70 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0300046",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "3 CORE X 1.5 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FC0700032",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "ACSR : 35/6 SQ. MM. CONDUCTOR (6/1/2.70)"
+}, {
+  "itemCode": "FA0200072",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "12 CORE X 2.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0200041",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "10 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300126",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 400 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1500129",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 16 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0300043",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "19 CORE X 1.5 SQ. MM. CU/UNARD.(XLPE)"
+}, {
+  "itemCode": "FA0900179",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 35 SQ. MM. CC/AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0100091",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "4 CORE X 70 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0300077",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "24 CORE X 1.5 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1500005",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0100093",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "4 CORE X 150 SQ MM + 1 CORE X 125 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1100247",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 185 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0700008",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL/ARD. (XLPE)"
+}, {
+  "itemCode": "FA1000011",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "2 CORE X 6 SQ. MM. AL/UNARD(XLPE)"
+}, {
+  "itemCode": "FA0700019",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARD (PVC)"
+}, {
+  "itemCode": "FA1000113",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "3 CORE X 50 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0300026",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "10 CORE X 1.5 SQ. MM. CU/UNARD. (XLPE)"
+}, {
+  "itemCode": "FA1300018",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/ARM (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1500018",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 50 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA2900053",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - AL-59 ACS RACCOON (6/1/4.09) - 33KV"
+}, {
+  "itemCode": "FA1100006",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 300 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA1100272",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 300 SQ. MM. AL/ARD - STRIP/TYPE - B (XLPE)"
+}, {
+  "itemCode": "FA0900131",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 35 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1500083",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 50 SQ. MM. + 1 CORE X 54.6 SQ. MM. (AB CABLE) (INSULATED)"
+}, {
+  "itemCode": "FA0600055",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 630 SQ. MM. ALU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1100094",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 95 SQ. MM. ALU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0300083",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "32 CORE X 2.5 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1100245",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 240 SQ. MM. AL/ARD - STRIP/B (XLPE)"
+}, {
+  "itemCode": "FA1300097",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 70 SQ. MM. AL/ARM - WIRE (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA1300311",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM. AL/ARM - STRIP (XLPE) - 22 KV"
+}, {
+  "itemCode": "FA1300027",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 630 SQ. MM. AL/ARM (XLPE)  - 33 KV"
+}, {
+  "itemCode": "FA0900073",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 4 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0200095",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "18 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300303",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 150 SQ. MM. AL/ARM - STRIP (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA0300001",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "1 CORE X 2.5 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1100103",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 300 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0600019",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 150 SQ. MM. AL/UNARD. (XLPE)"
+}, {
+  "itemCode": "FA1300284",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 50 SQ. MM. CU/ARM - WIRE (XLPE) - 15 KV"
+}, {
+  "itemCode": "FA1500035",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 50 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1500045",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 25 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA1500027",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1800001",
+  "itemScheduleName": "RAILWAY-POWER CABLE -ARD",
+  "itemName": "2 CORE X 10 SQ. MM. CU/ARD (PVC) - RAILWAY POWER CABLE"
+}, {
+  "itemCode": "FA0700014",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 240 SQ. MM. AL/ARD (XLPE)"
+}, {
+  "itemCode": "FA1200083",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3.5 CORE X 300 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA2900046",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - 1 CORE X 200 SQ. MM. XLPE (AAAC) - 15 KV"
+}, {
+  "itemCode": "FA0400003",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FA0900230",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 25 SQ. MM. CC/AL/ARD - DST (XLPE)"
+}, {
+  "itemCode": "FA0900165",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 50 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0900186",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 35 SQ. MM. CC/CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0400062",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 240 SQ. MM. (XLPE INSULATED AB CABLES) - 24 KV"
+}, {
+  "itemCode": "FU1000015",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "BARE COPPER EARTH WIRE - 125 SQ. MM."
+}, {
+  "itemCode": "FA1500033",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 35 SQ MM + 1 CORE X 70 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0100005",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 95 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900025",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 2.5 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FC0700020",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAAC : 25 SQ. MM CONDUCTOR (7/2.12)"
+}, {
+  "itemCode": "FA1300298",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 70 SQ. MM. AL/ARM (XLPE) - 11 KV"
+}, {
+  "itemCode": "FC3300009",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : 95/15 SQ. MM.  CONDUCTOR (26/2.15/7/1.67)"
+}, {
+  "itemCode": "FA1000016",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 35 SQ. MM. AL/UNARD.(XLPE)"
+}, {
+  "itemCode": "FA1300281",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 500 SQ. MM. AL/ARM (WOS) (XLPE) - 33 KV"
+}, {
+  "itemCode": "FA1200080",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "2 CORE X 300 SQ. MM. AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FA1700021",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "20 CORE X 1.5 SQ. MM. CU/ARD (PVC) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA1100105",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 240 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1500030",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "2 CORE X 35 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0900011",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 10 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0200055",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "7 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0400090",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 120 SQ MM + 1 CORE X 100 SQ MM (AB CABLES) (BARE) - 33 KV"
+}, {
+  "itemCode": "FA1300092",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. CU/ARD - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0600032",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 630 SQ. MM. ALU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0900133",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 16 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300297",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 35 SQ. MM. AL/ARM - WIRE (XLPE) - 33 KV (E)"
+}, {
+  "itemCode": "FA0600005",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 240 SQ. MM. AL/UNARD. (XLPE)"
+}, {
+  "itemCode": "FA1100020",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 300 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900062",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 6 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1100235",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM. AL/ARD - STRIP/B (PVC)"
+}, {
+  "itemCode": "FA0200052",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "37 CORE X 1.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA0100079",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "3 CORE X 150 SQ MM + 1 CORE X 125 SQ MM + 1 CORE X 16 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0600028",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - UNARD",
+  "itemName": "1 CORE X 16 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FC0700039",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAC : WASP CONDUCTOR 100 SQ. MM. (7/4.39) (PVC INSULATED)"
+}, {
+  "itemCode": "FA1300185",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 150 SQ. MM. AL/ARM - STRIP (XLPE) - 3.3 KV (UE)"
+}, {
+  "itemCode": "FC0700012",
+  "itemScheduleName": "7 STRAND",
+  "itemName": "AAAC : RACOON CONDUCTOR - 80 SQ. MM. (7/3.81)"
+}, {
+  "itemCode": "FA0200011",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "4 CORE X 2.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0300084",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "10 CORE X 4 SQ. MM. CU/UNARD (XLPE)"
+}, {
+  "itemCode": "FA0200058",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "9 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0900218",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 16 SQ. MM. CC/AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300009",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL./ARM (XLPE)  - 11 KV"
+}, {
+  "itemCode": "FA1100264",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 185 SQ. MM. CC/AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1100096",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3 CORE X 185 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0400002",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE X 185 SQ MM + 1 CORE X 150 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FA0900126",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 25 SQ. MM. AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA1300285",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 70 SQ. MM. CU/ARM - WIRE (XLPE) - 15 KV"
+}, {
+  "itemCode": "FA1100178",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 240 SQ. MM. AL/ARD - STRIP/B (XLPE)"
+}, {
+  "itemCode": "FA1000061",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "4 CORE X 50 SQ. MM. CU/UNARD.(PVC)"
+}, {
+  "itemCode": "FA1700004",
+  "itemScheduleName": "RAILWAY-SIGNALING CABLE -ARD",
+  "itemName": "6 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC) - SIGNALLING CABLE"
+}, {
+  "itemCode": "FA1100099",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 185 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FC6400003",
+  "itemScheduleName": "52 STRANDS",
+  "itemName": "ACSR : 954 MCM CONDUCTOR (45/3.70/7/2.50)"
+}, {
+  "itemCode": "FA1100215",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 185 SQ. MM. CC/AL/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0200035",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "2 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1100191",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 70 SQ. MM. AL/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1300271",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 95 SQ. MM. AL/ARM (XLPE) - 3.3 KV"
+}, {
+  "itemCode": "FA0400032",
+  "itemScheduleName": "HT ABC",
+  "itemName": "3 CORE x 185 SQ. MM + 1 CORE x 120 SQ MM (AB CABLES) (BARE) - 11 KV"
+}, {
+  "itemCode": "FA0900118",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 50 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC3300020",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : LINNET CONDUCTOR - 170.5 SQ.MM (26/2.89/7/2.25)"
+}, {
+  "itemCode": "FA1500087",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 35 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0900184",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 50 SQ. MM. CC/AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FA0200090",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "10 CORE X 1.5 SQ. MM. CU/ARD - STRIP (PVC)"
+}, {
+  "itemCode": "FA1400002",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL/UNARD (XLPE)  - 11 KV"
+}, {
+  "itemCode": "FA1500022",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 16 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (BARE)"
+}, {
+  "itemCode": "FA0200142",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "14 CORE X 1.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900202",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 16 SQ. MM. CC/AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1000109",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "3 CORE X 25 SQ. MM. CC/CU/UNARD (PVC)"
+}, {
+  "itemCode": "FU1000012",
+  "itemScheduleName": "EARTH WIRE",
+  "itemName": "BARE COPPER EARTH WIRE - 70 SQ. MM."
+}, {
+  "itemCode": "FA1100092",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 120 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0100099",
+  "itemScheduleName": "BIG ABC",
+  "itemName": "4 CORE X 120 SQ MM (LT AB CABLE XLPE INSULATED)"
+}, {
+  "itemCode": "FA1300001",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 120 SQ. MM. AL/ARM - STRIP (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA2900057",
+  "itemScheduleName": "COVERED CONDUCTOR",
+  "itemName": "COVERED CONDUCTOR - 1 CORE X 80 SQ. MM. (AAAC) AL-59 - 11 KV"
+}, {
+  "itemCode": "FA0200037",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "7 CORE X 2.5 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA0900172",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 50 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1500092",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 50 SQ MM + 1 CORE X 50 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA0200154",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "17 CORE X 1.5 SQ. MM. CU/ARD - WIRE (PVC)"
+}, {
+  "itemCode": "FA0700050",
+  "itemScheduleName": "1 CORE BIG POWER CABLE - ARD",
+  "itemName": "1 CORE X 120 SQ. MM. AL/ARD - STRIP (XLPE)"
+}, {
+  "itemCode": "FC1900008",
+  "itemScheduleName": "19 STRAND",
+  "itemName": "AAC : 70 SQ. MM. CONDUCTOR (19/2.12)"
+}, {
+  "itemCode": "FA1200084",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "3.5 CORE X 400 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA1300240",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 300 SQ. MM. AL/ARM - STRIP (XLPE)  - 33 KV"
+}, {
+  "itemCode": "FA1500025",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 35 SQ. MM. + 35 SQ. MM. AB CABLE (INSULATED)"
+}, {
+  "itemCode": "FA1200026",
+  "itemScheduleName": "BIG POWER CABLE - UNARD",
+  "itemName": "4 CORE X 150 SQ. MM. AL/UNARD (XLPE)"
+}, {
+  "itemCode": "FC3300011",
+  "itemScheduleName": "33 STRAND",
+  "itemName": "ACSR : DOVE CONDUCTOR - 282.6 SQ. MM. (26/3.72/7/2.89)"
+}, {
+  "itemCode": "FA1300314",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "3 CORE X 150 SQ. MM. CU/ARM - WIRE (XLPE) - 11 KV"
+}, {
+  "itemCode": "FA0900134",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "3 CORE X 16 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1000053",
+  "itemScheduleName": "SMALL POWER CABLE - UNARD",
+  "itemName": "1 CORE X 70 SQ. MM. CU/UNARD (PVC)"
+}, {
+  "itemCode": "FA0900116",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "4 CORE X 50 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1100038",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "4 CORE X 70 SQ. MM. AL/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1500075",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "3 CORE X 35 SQ MM + 1 CORE X 54.6 SQ MM + 2 CORE X 16 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1400049",
+  "itemScheduleName": "HT POWER CABLE -UNARD",
+  "itemName": "1 CORE X 240 SQ. MM. AL/UNARD (XLPE) - 11 KV (UE)"
+}, {
+  "itemCode": "FA1300319",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 300 SQ. MM. CU/ARM (XLPE) - 22 KV"
+}, {
+  "itemCode": "FA1500036",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 50 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FC4900001",
+  "itemScheduleName": "49 STRAND",
+  "itemName": "ACSR : BERSIMIS CONDUCTOR - 690 SQ. MM. (42/4.57/7/2.54)"
+}, {
+  "itemCode": "FA1500023",
+  "itemScheduleName": "SMALL ABC",
+  "itemName": "1 CORE X 16 SQ MM + 1 CORE X 16 SQ MM + 1 CORE X 25 SQ MM (AB CABLES) (INSULATED)"
+}, {
+  "itemCode": "FA1100004",
+  "itemScheduleName": "BIG POWER CABLE - ARD",
+  "itemName": "3.5 CORE X 185 SQ. MM. AL/ARD - STRIP (XLPE )"
+}, {
+  "itemCode": "FA0300050",
+  "itemScheduleName": "CONTROL CABLE -UNARD",
+  "itemName": "60 CORE X 1.0 SQ. MM. CU/UNARD.(XLPE)"
+}, {
+  "itemCode": "FA0200006",
+  "itemScheduleName": "CONTROL CABLE -ARD",
+  "itemName": "19 CORE X 2.5 SQ. MM. CU/ARD-STRIP (PVC)"
+}, {
+  "itemCode": "FA0900170",
+  "itemScheduleName": "SMALL POWER CABLE - ARD",
+  "itemName": "2 CORE X 10 SQ. MM. CU/ARD - WIRE (XLPE)"
+}, {
+  "itemCode": "FA1300186",
+  "itemScheduleName": "HT POWER CABLE - ARD",
+  "itemName": "1 CORE X 400 SQ. MM. AL/ARM (XLPE) - 11 KV (UE)"
+}]
