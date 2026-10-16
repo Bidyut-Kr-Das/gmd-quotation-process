@@ -23,7 +23,7 @@ services:
       - infra
 
   gmd-tender-dashboard:
-    image: ghcr.io/laser-power-infra/gmd-tender-dashboard:${APP_VERSION:-latest}
+    image: ghcr.io/laser-power-infra/gmd-quotation-process-tender-dashboard:${APP_VERSION:-latest}
     container_name: gmd-tender-dashboard
     ports:
       - "4126:4126"
