@@ -189,7 +189,7 @@ export function PhysicalStockPage({ flags, actions }: PhysicalStockPageProps) {
         <GMDUpdateHeader
           totalRows={items.length}
           syncedAt={syncedAt}
-          onSync={handleSync}
+          onSync={flags.sync ? handleSync : undefined}
           syncing={syncing}
           title="Physical Stock"
           actions={

@@ -63,5 +63,14 @@ export const physicalStockDuplicateErpHighlight = flag<boolean>({
   description: "Highlight Physical Stock rows sharing an ERP code",
   defaultValue: false,
   options: [{ value: true, label: "On" }, { value: false, label: "Off" }],
+  decide: () => true,
+});
+
+export const physicalStockSync = flag<boolean>({
+  key: "physical-stock-sync",
+  description: "Enable Physical Stock synchronization functionality",
+  defaultValue: true,
+  options: [{ value: true, label: "On" }, { value: false, label: "Off" }],
   decide: () => false,
 });
+  
