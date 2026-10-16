@@ -32,7 +32,7 @@ jobs:
       matrix:
         app: [gmd-quotation-process, gmd-tender-dashboard]
     # Only the org repo deploys; forks skip both jobs (deploy needs this one).
-    if: github.repository_owner == 'Laser-Power-Infra'
+    if: github.repository_owner == 'laser-power-infra'
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.vars.outputs.short_sha }}
