@@ -34,6 +34,24 @@ export const SPAM_OR_BOT_PATTERNS = [
   /postmaster/i,
 ];
 
+// Counterparty-removed addresses: never taken as a sender or cc, on any party.
+export const BLOCKED_PARTY_EMAILS = new Set([
+  "gaurav.verma1@kalpataruprojects.com",
+  "honey.chawla@kalpataruprojects.com",
+  "nitin.khandelwal@kalpataruprojects.com",
+  "prabhat.srivastava@kalpataruprojects.com",
+]);
+
+// Addresses that must always be Cc'd for a party, keyed by partyKey().
+export const MANDATORY_CC_BY_PARTY: Record<string, string[]> = {
+  KALPATARUPROJECTSINTERNATIONALLIMITED: [
+    "sumeet.bisht@kalpataruprojects.com",
+    "rahul.raj1@kalpataruprojects.com",
+    "shailendra.singh3@kalpataruprojects.com",
+    "suhail.arora@kalpataruprojects.com",
+  ],
+};
+
 const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 
 /**
@@ -74,7 +92,28 @@ export function isSpamOrBotEmail(email: string): boolean {
 }
 
 export function isExternalEmail(email: string): boolean {
-  return !isInternalEmail(email) && !isSpamOrBotEmail(email);
+  // Blocked counterparty addresses are treated like internal ones: never stored,
+  // never emailed — so every derivation path that filters on isExternalEmail
+  // drops them automatically.
+  return !isInternalEmail(email) && !isSpamOrBotEmail(email) && !isBlockedPartyEmail(email);
+}
+
+export function isBlockedPartyEmail(email: string): boolean {
+  return BLOCKED_PARTY_EMAILS.has(String(email).trim().toLowerCase());
+}
+
+/** The addresses that must always be in Cc for this party (empty when none). */
+export function mandatoryCcForParty(partyName: string | null | undefined): string[] {
+  return MANDATORY_CC_BY_PARTY[partyKey(partyName)] ?? [];
+}
+
+/** Drops blocked addresses, then ensures the party's mandatory Cc is present. */
+export function mergeMandatoryCc(partyName: string | null | undefined, cc: string[]): string[] {
+  const out = uniqLower(cc).filter((e) => !isBlockedPartyEmail(e));
+  for (const m of mandatoryCcForParty(partyName)) {
+    if (!out.includes(m)) out.push(m);
+  }
+  return out;
 }
 
 /**

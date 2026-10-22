@@ -13,12 +13,11 @@ export default function LoginForm() {
   const [state, formAction, pending] = useActionState(authenticate, undefined)
 
   useEffect(() => {
-    if (state && !state.startsWith("Invalid") && !state.startsWith("Something")) {
-      window.location.href = state
+    if (state?.ok) {
+      window.location.href = state.url
     }
   }, [state])
 
-  const isError = state && (state.startsWith("Invalid") || state.startsWith("Something"))
   const signupSuccess = searchParams.get("signup") === "success"
 
   return (
@@ -64,9 +63,9 @@ export default function LoginForm() {
           />
         </div>
 
-        {isError && (
+        {state && !state.ok && (
           <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-            {state}
+            {state.message}
           </div>
         )}
 

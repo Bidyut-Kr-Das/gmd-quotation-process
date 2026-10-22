@@ -6,6 +6,9 @@ import {
   partyKey,
   buildPartyEmailIndex,
   resolveEmailsForParty,
+  threadEmailLists,
+  mergeMandatoryCc,
+  mandatoryCcForParty,
 } from '../lib/enquiryEmailParty.js'
 
 test('extractEmailsFromValue handles the column shapes', () => {
@@ -60,4 +63,39 @@ test('resolveEmailsForParty returns empty for unknown or blank parties', () => {
   assert.deepEqual(resolveEmailsForParty(idx, 'Nobody Ltd'), [])
   assert.deepEqual(resolveEmailsForParty(idx, null), [])
   assert.deepEqual(resolveEmailsForParty(idx, ''), [])
+})
+
+test('isExternalEmail drops the blocked counterparty addresses', () => {
+  assert.equal(isExternalEmail('gaurav.verma1@kalpataruprojects.com'), false)
+  assert.equal(isExternalEmail('Honey.Chawla@KalpataruProjects.com'), false)
+  assert.equal(isExternalEmail('nitin.khandelwal@kalpataruprojects.com'), false)
+  assert.equal(isExternalEmail('prabhat.srivastava@kalpataruprojects.com'), false)
+  assert.equal(isExternalEmail('sumeet.bisht@kalpataruprojects.com'), true)
+})
+
+test('threadEmailLists never takes a blocked sender or cc', () => {
+  const lists = threadEmailLists({
+    sender: 'Gaurav Verma <gaurav.verma1@kalpataruprojects.com>',
+    toDetails: { value: 'sumeet.bisht@kalpataruprojects.com' },
+    ccDetails: { value: 'honey.chawla@kalpataruprojects.com' },
+  })
+  assert.deepEqual(lists.external, ['sumeet.bisht@kalpataruprojects.com'])
+})
+
+test('mergeMandatoryCc drops blocked addresses and adds the mandatory Cc', () => {
+  const merged = mergeMandatoryCc('Kalpataru Projects International Limited', [
+    'buyer@acme.com',
+    'Gaurav.Verma1@kalpataruprojects.com',
+  ])
+  assert.deepEqual(merged, [
+    'buyer@acme.com',
+    'sumeet.bisht@kalpataruprojects.com',
+    'rahul.raj1@kalpataruprojects.com',
+    'shailendra.singh3@kalpataruprojects.com',
+    'suhail.arora@kalpataruprojects.com',
+  ])
+
+  // Other parties have no mandatory list: only the block filter applies.
+  assert.deepEqual(mergeMandatoryCc('Acme Valves Pvt Ltd', ['a@x.com']), ['a@x.com'])
+  assert.deepEqual(mandatoryCcForParty(null), [])
 })
