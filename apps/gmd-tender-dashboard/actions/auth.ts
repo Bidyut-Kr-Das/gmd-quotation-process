@@ -5,10 +5,25 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { withLog } from "@/lib/activity-logger"
 
-export async function authenticate(_prev: string | undefined, formData: FormData) {
+export type AuthState = { ok: true; url: string } | { ok: false; message: string }
+
+export async function authenticate(
+  _prev: AuthState | undefined,
+  formData: FormData
+): Promise<AuthState> {
   const email = formData.get("email") as string
   const password = formData.get("password") as string
   const redirectTo = formData.get("redirectTo") as string
+
+  if (!email || !password) {
+    return { ok: false, message: "Email and password are required" }
+  }
+
+  // Fail fast with a clear cause instead of a cryptic pg connection error.
+  if (!process.env.TENDER_DATABASE_URL) {
+    console.error("[authenticate] TENDER_DATABASE_URL is not set")
+    return { ok: false, message: "Sign-in unavailable: server is not configured." }
+  }
 
   try {
     const url = await signIn("credentials", {
@@ -18,13 +33,24 @@ export async function authenticate(_prev: string | undefined, formData: FormData
       redirect: false,
     })
 
-    if (typeof url === "string" && url.includes("error")) {
-      return "Invalid email or password"
+    if (typeof url !== "string") {
+      return { ok: false, message: "Something went wrong" }
     }
 
-    return url
+    return { ok: true, url }
   } catch (error) {
-    return "Something went wrong"
+    // With redirect:false, Auth.js throws instead of returning an error URL:
+    // CredentialsSignin = null from authorize (bad email/password).
+    // CallbackRouteError = authorize threw (e.g. DB down); its cause holds the real reason.
+    const { type, cause } = error as { type?: string; cause?: unknown }
+    if (type === "CredentialsSignin") {
+      return { ok: false, message: "Invalid email or password" }
+    }
+    console.error("[authenticate] sign-in failed:", error, cause)
+    return {
+      ok: false,
+      message: "Sign-in failed due to a server error. Try again or contact admin.",
+    }
   }
 }
 
