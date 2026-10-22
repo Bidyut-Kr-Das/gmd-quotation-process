@@ -11,6 +11,8 @@
     "typecheck": "tsc --noemit",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "seed:lookups": "tsx scripts/seed-lookup-options.ts",
+    "party:d-lookup": "tsx scripts/sync-d-party-lookup.ts",
+    "party:d-lookup:apply": "tsx scripts/sync-d-party-lookup.ts --apply",
     "bom:cost": "tsx scripts/update-product-cost-from-bom.ts",
     "round:qr": "tsx scripts/round-qr.ts",
     "round:qr:apply": "tsx scripts/round-qr.ts --apply",
