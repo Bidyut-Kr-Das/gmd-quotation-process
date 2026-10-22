@@ -1,0 +1,24 @@
+import "dotenv/config";
+import { prisma as tenderPrisma } from "@gmd/db-tender";
+import { PrismaClient } from "@gmd/db-quotation";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+const adapter = new PrismaPg({ connectionString: process.env.QUOTATION_DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
+
+async function main() {
+  const rows = await tenderPrisma.contractReview.findMany({
+    select: { item: true },
+  });
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    const val = r.item ?? "<null>";
+    map.set(val, (map.get(val) ?? 0) + 1);
+  }
+  console.log("Distinct ContractReview.item values:");
+  for (const [k, v] of map) {
+    console.log(`- "${k}": ${v} rows`);
+  }
+}
+
+main().catch(console.error).finally(() => prisma.$disconnect());

@@ -1,0 +1,8 @@
+{
+    "workspaceId": "0646189e-afaa-4877-a1a8-0713cc6cfb6a",
+    "defaultEnvironment": "",
+    "gitBranchToEnvironmentMapping": {
+        "container": "docker",
+        "main":"prod"
+    }
+}

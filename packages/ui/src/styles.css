@@ -1,0 +1,4 @@
+/* Registers this package's source with the consuming app's Tailwind build.
+   @source is resolved relative to this file, so it works from any app.
+   Usage (app globals.css, after @import "tailwindcss"): @import "@gmd/ui/styles.css"; */
+@source "./";
