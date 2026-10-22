@@ -27,6 +27,7 @@ import { resolveImportedInhouse } from "@/lib/importInhouseMapping";
 import { makeImageKey } from "@/lib/imageKey";
 import { withHardcodedL7Options } from "@/lib/gmd_lib/sheet-columns";
 import { syncEnquiryEmailAddresses } from "@/lib/enquiryEmailSync";
+import { mergeMandatoryCc, isBlockedPartyEmail } from "@/lib/enquiryEmailParty";
 import {
   buildDensityMap,
   computeBoltVolumeMm3,
@@ -1033,7 +1034,7 @@ export async function sendDocketEmailAction(
       return { success: false, error: "This docket email has already been sent." };
     }
     const to = (enquiry.senderEmail || "").trim();
-    if (!to) {
+    if (!to || isBlockedPartyEmail(to)) {
       return { success: false, error: "No recipient (sender email) on this docket." };
     }
 
@@ -1053,11 +1054,15 @@ export async function sendDocketEmailAction(
     }
 
     // Always Cc the fixed address, merged with the docket's other emails and
-    // de-duplicated case-insensitively.
-    const ccEmails = (enquiry.emailAddress || "")
-      .split(",")
-      .map((e) => e.trim())
-      .filter(Boolean);
+    // de-duplicated case-insensitively. Blocked addresses are dropped and the
+    // party's mandatory Cc is (re)added.
+    const ccEmails = mergeMandatoryCc(
+      enquiry.partyName,
+      (enquiry.emailAddress || "")
+        .split(",")
+        .map((e) => e.trim())
+        .filter(Boolean),
+    );
     if (!ccEmails.some((e) => e.toLowerCase() === DOCKET_EMAIL_ALWAYS_CC)) {
       ccEmails.push(DOCKET_EMAIL_ALWAYS_CC);
     }

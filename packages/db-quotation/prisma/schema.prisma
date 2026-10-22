@@ -573,6 +573,7 @@ model VerifyBom {
 
 // Kept only so migrations do not drop the table before its data moves to the tender DB.
 // App code reads and writes ContractReview through @gmd/db-tender.
+// This contract review is deprecated, use the contract review in /db-tender
 model ContractReview {
   id                               String   @id @default(cuid())
   contractNo                       String

@@ -6,6 +6,7 @@ import {
   pickSenderAndCc,
   extractEmailsFromValue,
   isInternalEmail,
+  mergeMandatoryCc,
   type EmailListEntry,
 } from "./enquiryEmailParty";
 
@@ -263,7 +264,7 @@ export async function syncEnquiryEmailAddresses(options?: {
     }
 
     const senderEmail = split.senderEmail ?? "";
-    const emailAddress = split.ccEmails.join(", ");
+    const emailAddress = mergeMandatoryCc(e.partyName, split.ccEmails).join(", ");
     if (e.senderEmail === senderEmail && e.emailAddress === emailAddress) {
       skipped++;
       continue;

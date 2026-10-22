@@ -40,7 +40,7 @@ import {
 import { buildPartyEmailMap } from "@/lib/enquiryEmailSync";
 import { parseThreadAttachments } from "@/lib/docketSnapshot";
 import { buildSnapshotAttachment } from "@/lib/docketSnapshotPdf";
-import { extractEmailsFromValue } from "@/lib/enquiryEmailParty";
+import { extractEmailsFromValue, mergeMandatoryCc } from "@/lib/enquiryEmailParty";
 import { istDayWindow } from "@/lib/docketPending";
 import { extractDocketItems } from "./docket-item-extraction";
 import type { ParsedDocketItem } from "./docket-item-parser";
@@ -208,7 +208,7 @@ export async function runPendingDocketCreation(
       partyName: resolved.partyName,
       source: resolved.source,
       senderEmail: split.senderEmail,
-      emailAddress: split.ccEmails.join(", ") || null,
+      emailAddress: mergeMandatoryCc(resolved.partyName, split.ccEmails).join(", ") || null,
       // Mail file attachments (linked as-is) + data for the snapshot PDF.
       attachments: parseThreadAttachments(thread.attachNames, thread.attachLinks),
       subject: thread.subject,
