@@ -39,3 +39,14 @@ test('the window is the same instant whatever time of day it is asked', () => {
   assert.equal(morning.start.toISOString(), night.start.toISOString())
   assert.equal(morning.end.toISOString(), night.end.toISOString())
 })
+
+test('backlogDays reaches back whole IST days for late-ingested mail', () => {
+  // The creator works today plus the previous 5 IST days.
+  const win = istDayWindow(at('2026-10-15T10:00:00+05:30'), 5)
+  assert.equal(win.start.toISOString(), '2026-10-09T18:30:00.000Z') // 10 Oct 00:00 IST
+  assert.equal(win.end.toISOString(), '2026-10-15T18:30:00.000Z')
+  assert.equal(inside(win, '2026-10-10T00:00:00+05:30'), true)
+  assert.equal(inside(win, '2026-10-14T20:30:00+05:30'), true) // 02:00 IST on the 15th, still inside
+  assert.equal(inside(win, '2026-10-09T23:59:59+05:30'), false)
+  assert.equal(inside(win, '2026-10-15T23:59:59+05:30'), true)
+})

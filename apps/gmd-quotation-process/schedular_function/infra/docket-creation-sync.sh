@@ -1,7 +1,8 @@
 #!/bin/sh
 # Usage: docket-creation-sync.sh  -- POSTs to $GMD_APP_SERVER/api/scheduler/docket-creation
-# Materializes dockets for every DocketQuotationThread flagged pendingDocket = true:
-# creates a header-only Enquiry, links mail attachments, generates the snapshot
+# Materializes dockets for every recent DocketQuotationThread flagged
+# pendingDocket = true (today plus the previous 5 IST days): creates a
+# header-only Enquiry, links mail attachments, generates the snapshot
 # PDF, and stamps the thread with the new docket number.
 #
 # Idempotent: a stamped thread leaves the pending set, so re-running is a no-op.

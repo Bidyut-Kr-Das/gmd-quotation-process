@@ -10,8 +10,11 @@ export interface DocketEmailData {
   docketNumber: string;
   /** Project / reference shown in the opening sentence (optional). */
   projectName?: string;
-  /** Short description of the requested items (optional). */
-  itemDescription?: string;
+  /**
+   * Final clause of the offer sentence, built by `buildItemsClause` so a long
+   * docket points at the attached BOQ instead of listing every item (optional).
+   */
+  itemsClause?: string;
   paymentTerms?: string;
   freight?: string;
   deliverySchedule?: string;
@@ -34,6 +37,22 @@ export function buildDocketEmailSubject(data: Pick<DocketEmailData, "docketNumbe
   return `Offer - ${data.docketNumber}`;
 }
 
+/**
+ * Clause after the quotation reference in the offer sentence.
+ *
+ * One item is named; several would make the sentence a long list, so it points
+ * at the attached BOQ instead. Duplicates collapse, so two sizes of the same
+ * item still count as one.
+ */
+export function buildItemsClause(itemNames: string[]): string {
+  const names = [...new Set(itemNames.map((name) => name.trim()).filter(Boolean))];
+  if (names.length === 1) return `for the requested ${names[0]}`;
+  if (names.length > 1) {
+    return "for the items required for the said project as per the attached BOQ";
+  }
+  return "";
+}
+
 function termRow(label: string, value: string | undefined): string {
   const v = (value ?? "").trim();
   if (!v) return "";
@@ -46,15 +65,13 @@ function termRow(label: string, value: string | undefined): string {
 export function buildDocketEmailHtml(data: DocketEmailData): string {
   const docket = data.docketNumber;
   const project = (data.projectName ?? "").trim();
-  const itemDescription = (data.itemDescription ?? "").trim();
+  const itemsClause = (data.itemsClause ?? "").trim();
 
   const projectSentence = project
     ? `<p style="margin:0 0 16px 0;">Thank you for sending the RFQ for the ${esc(project)} project.</p>`
     : "";
 
-  const itemClause = itemDescription
-    ? ` for the requested ${esc(itemDescription)}`
-    : "";
+  const itemClause = itemsClause ? ` ${esc(itemsClause)}` : "";
 
   // The mail subject is the thread's when we reply into a thread, so repeat the
   // offer subject in the body.

@@ -16,7 +16,7 @@ import { fetchBomRows, buildRmCostMap, DIRECT_M2M, getBomEntry, getCachedBomRows
 import { update2to1CostForItems, buildRawMaterialsCostMap, clear2to1BomCache } from "@/lib/gmd2to1CostLookup";
 import { getDistinctBomIds, getBomRmAvailBatch, resolveContractReviewBomIdsFromActuator, computeContractReviewRmAvail, getNoUseBomIdSet, normalizeActuatorPart, clearVerifyBomCache, findBomForItem, getBomCandidates } from "@/lib/verifyBomLookup";
 import { splitCsvLinks } from "@/lib/gmd_lib/contract-order-links";
-import { buildDocketEmailHtml, buildDocketEmailSubject } from "@/lib/docketEmailTemplate";
+import { buildDocketEmailHtml, buildDocketEmailSubject, buildItemsClause } from "@/lib/docketEmailTemplate";
 import { sendDocketEmailViaN8n, DOCKET_EMAIL_ALWAYS_CC } from "@/lib/services/n8nEmail";
 import type { OfferLetterTemplateData } from "@/types/offer-lettter";
 import { buildDerivedItemName } from "@/lib/gmd_lib/derived-item-name";
@@ -1086,14 +1086,11 @@ export async function sendDocketEmailAction(
       (enquiry.utility || "").trim() ||
       (enquiry.state || "").trim();
 
-    // Item description: distinct merged item names (fallback raw item name).
-    const itemDescription = [
-      ...new Set(
-        enquiry.items
-          .map((item) => (item.itemNameMerge || item.itemName || "").trim())
-          .filter(Boolean),
-      ),
-    ].join(", ");
+    // One item is named in the mail; several point at the attached BOQ rather
+    // than re-listing every line the Offer PDF already carries.
+    const itemsClause = buildItemsClause(
+      enquiry.items.map((item) => item.itemNameMerge || item.itemName || ""),
+    );
 
     const deliverySchedule =
       (enquiry.items.find((i) => (i.deliverySchedule || "").trim())?.deliverySchedule || "").trim() ||
@@ -1104,7 +1101,7 @@ export async function sendDocketEmailAction(
     const html = buildDocketEmailHtml({
       docketNumber: enquiry.docketNumber,
       projectName,
-      itemDescription,
+      itemsClause,
       paymentTerms: enquiry.paymentTerms || "",
       freight: `F.O.R. Site${state ? ` (${state})` : ""}`,
       deliverySchedule,
@@ -6150,7 +6147,8 @@ export async function clearQuotedRatesAction(itemIds: string[]) {
     if (existing.length !== uniqueIds.length) {
       return { success: false, error: "Some items not found. Please refresh and try again." };
     }
-    // Block when any parent enquiry is frozen (quotedRate / totals are frozen fields)
+    // Skip items whose parent enquiry is frozen (quotedRate / totals are frozen fields)
+    let clearIds = uniqueIds;
     {
       const { isEnquiryFrozen } = await import("@/lib/oneClickAccess");
       const enquiryIds = [...new Set(existing.map((e) => e.enquiryId))];
@@ -6159,18 +6157,19 @@ export async function clearQuotedRatesAction(itemIds: string[]) {
         select: { id: true, apm: true, offerPdfGeneratedAt: true },
       });
       const frozenParents = new Set(parents.filter((p) => isEnquiryFrozen(p.apm, p.offerPdfGeneratedAt)).map((p) => p.id));
-      if (frozenParents.size > 0) {
-        const frozenItemIds = existing.filter((e) => frozenParents.has(e.enquiryId)).map((e) => e.id);
-        if (frozenItemIds.length > 0) {
-          return { success: false, error: `Cannot clear rates: ${frozenItemIds.length} item(s) are frozen after one-time PDF generation â€” revert APM to edit.` };
+      const frozenItemIds = new Set(existing.filter((e) => frozenParents.has(e.enquiryId)).map((e) => e.id));
+      if (frozenItemIds.size > 0) {
+        clearIds = uniqueIds.filter((id) => !frozenItemIds.has(id));
+        if (clearIds.length === 0) {
+          return { success: false, error: `Cannot clear rates: all ${frozenItemIds.size} matching item(s) are frozen after one-time PDF generation.` };
         }
       }
     }
 
-    console.log(`[Server] clearQuotedRates ids=${uniqueIds.length}`);
+    console.log(`[Server] clearQuotedRates ids=${clearIds.length}`);
 
     await prisma.enquiryItem.updateMany({
-      where: { id: { in: uniqueIds } },
+      where: { id: { in: clearIds } },
       data: {
         quotedRate: null,
         quotedRateGst: null,
@@ -6180,10 +6179,10 @@ export async function clearQuotedRatesAction(itemIds: string[]) {
     });
 
     const updatedItems = await prisma.enquiryItem.findMany({
-      where: { id: { in: uniqueIds } },
+      where: { id: { in: clearIds } },
     });
 
-    return { success: true, data: { items: updatedItems.map(serializeItem), cleared: updatedItems.length } };
+    return { success: true, data: { items: updatedItems.map(serializeItem), cleared: updatedItems.length, skippedFrozen: uniqueIds.length - clearIds.length } };
   } catch (error: any) {
     console.error("Error clearing quoted rates:", error);
     return { success: false, error: error.message || "Failed to clear quoted rates." };

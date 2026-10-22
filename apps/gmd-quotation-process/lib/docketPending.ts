@@ -151,11 +151,19 @@ export function buildPartyMatcher(partyNames: string[]): (text: string) => strin
  * compose file), so a plain local-midnight boundary would roll over at 05:30
  * IST and silently drop every mail received between 00:00 and 05:29 IST.
  * Mails are IST, so the window is computed in IST and returned as UTC instants.
+ *
+ * `backlogDays` extends the window backwards by that many IST days, so a job
+ * that must also drain late-ingested mail asks for today plus the backlog.
  */
-export function istDayWindow(now: Date): { start: Date; end: Date } {
+export function istDayWindow(now: Date, backlogDays = 0): { start: Date; end: Date } {
   const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
   const ist = new Date(now.getTime() + IST_OFFSET_MS);
   const startMs =
-    Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()) - IST_OFFSET_MS;
-  return { start: new Date(startMs), end: new Date(startMs + 24 * 60 * 60 * 1000) };
+    Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()) -
+    IST_OFFSET_MS -
+    backlogDays * 24 * 60 * 60 * 1000;
+  return {
+    start: new Date(startMs),
+    end: new Date(startMs + (backlogDays + 1) * 24 * 60 * 60 * 1000),
+  };
 }

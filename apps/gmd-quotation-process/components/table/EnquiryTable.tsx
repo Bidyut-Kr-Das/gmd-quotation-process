@@ -2,18 +2,21 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FileText, ChevronDown, ChevronRight, Search, Download, Upload, Edit2, Sparkles, Percent, Plus, RefreshCw, DollarSign, Trash2, X, PackageCheck, ExternalLink, ImageIcon, Check, Mail, Loader2 } from "lucide-react";
+import { shallowEqual } from "react-redux";
 import { toast } from "sonner";
 import ActionsDropdown from "./ActionsDropdown";
 import DocketAttachmentsCell from "@/components/attachment/DocketAttachmentsCell";
 import Pagination from "./Pagination";
-import MultiSelectFilter, { BLANK, AVAILABLE } from "./MultiSelectFilter";
+import MultiSelectFilter, { BLANK } from "./MultiSelectFilter";
 import CellSelect from "./CellSelect";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import DebouncedSearchInput from "./DebouncedSearchInput";
-import { selectAllEnquiries, selectAllItems, updateEnquiryField, updateItemField, addAttachments, fetchItemCodes, updateProductCost, update2to1Cost, updateAllBomCosts, fetchContractReviewRates, populatePdCostValidation, deleteEnquiry, bulkUpdateValidation, bulkUpdateApm, clearQuotedRates, selectBomId, syncAvailableStock, sendDocketEmail } from "@/lib/enquiriesSlice";
+import { selectAllEnquiries, selectAllItems, updateEnquiryField, updateItemField, addAttachments, fetchItemCodes, updateProductCost, update2to1Cost, updateAllBomCosts, fetchContractReviewRates, populatePdCostValidation, deleteEnquiry, bulkUpdateValidation, bulkUpdateApm, clearQuotedRates, selectBomId, syncAvailableStock, sendDocketEmail, loadFilteredEnquiryIds, loadEnquiryFacet, selectEnquiryQuery, setEnquirySort, setEnquiryProjectReference, setEnquiryPendingOnly, setEnquiryClosedBomOnly } from "@/lib/enquiriesSlice";
+import { enquiryFilterKey } from "@/lib/enquiryQuery";
+import { fetchFilteredEnquiryExport } from "@/app/actions/enquiryQuery";
 import { setFilter, resetFilters } from "@/lib/filtersSlice";
-import { matchesGlobalSearch, itemDeletedStatus, DELETED_STATUS_OPTIONS } from "@/lib/filterUtils";
-import { setPage, setPageSize, resetPage } from "@/lib/paginationSlice";
+import { itemDeletedStatus, DELETED_STATUS_OPTIONS } from "@/lib/filterUtils";
+import { setPage, setPageSize } from "@/lib/paginationSlice";
 import { toggleRow, setRowExpanded, setColumnWidth, setExpandedRows, DEFAULT_COLUMN_WIDTHS, setGeneratedImages, toggleEnquirySelection, setSelectedEnquiries, clearEnquirySelection } from "@/lib/uiSlice";
 import type { DropdownOptions, EnquiryData, EnquiryItemData, FiltersState } from "@/lib/types";
 import { generateOfferPdfAction } from "@/lib/generate-offer-pdf";
@@ -116,59 +119,12 @@ function isBlankOthers(value: unknown): boolean {
   return isBlankValue(value);
 }
 
-// Case-insensitive variant — used for fields like closureStatus where casing is inconsistent
-function matchesMultiCI(values: string[], actual: unknown, blankCheck: (v: unknown) => boolean = isBlankValue): boolean {
-  if (!values || values.length === 0) return true;
-  if (values.includes(BLANK) && blankCheck(actual)) return true;
-  const actualLower = typeof actual === "string" ? actual.toLowerCase() : null;
-  return values.some((v) => v.toLowerCase() === actualLower);
-}
-
-// contractNo filter states: blank = no candidate contracts (contractNo empty);
-// available = candidates exist but none selected (selectedContractNo empty);
-// specific values match user-selected contracts.
-function contractNoMatches(filterValue: string[], enquiry: EnquiryData): boolean {
-  if (!filterValue || filterValue.length === 0) return true;
-  const candidates = enquiry.contractNo ?? [];
-  const selected = (enquiry as any).selectedContractNo ?? [];
-  const specific = filterValue.filter((v) => v !== BLANK && v !== AVAILABLE);
-  if (filterValue.includes(BLANK) && candidates.length === 0) return true;
-  if (filterValue.includes(AVAILABLE) && candidates.length > 0 && selected.length === 0) return true;
-  if (specific.length === 0) return false;
-  return matchesMulti(specific, selected);
-}
-
-// Helper for cascading filter evaluation
-function itemFieldMatches(item: EnquiryItemData, field: string, filterValue: string[]): boolean {
-  const blankCheck = field === "size" ? isBlankSize : field === "others" ? isBlankOthers : isBlankValue;
-  const val = field === "pdcostValidation" ? getPdCostValidation(item) : (item as any)[field as keyof EnquiryItemData];
-  if (Array.isArray(val)) {
-    return matchesMulti(filterValue, val, blankCheck);
-  }
-  const actual = val != null ? String(val) : null;
-  return matchesMulti(filterValue, actual, blankCheck);
-}
-
-function enquiryFieldMatches(enquiry: EnquiryData, field: string, filterValue: string[]): boolean {
-  if (field === "closureStatus") return matchesMultiCI(filterValue, enquiry[field as keyof EnquiryData]);
-  if (field === "contractNo") return contractNoMatches(filterValue, enquiry);
-  return matchesMulti(filterValue, enquiry[field as keyof EnquiryData]);
-}
-
-function matchesText(filterVal: string, actual: unknown): boolean {
-  if (!filterVal) return true;
-  if (actual == null) return false;
-  return String(actual).toLowerCase().includes(filterVal.toLowerCase());
-}
-
 const ALL_DROPDOWN_FIELDS = [
   "enquiryType", "state", "paymentTerms", "inspection", "pbg", "utility", "orderStatus", "closureStatus", "duplicate", "apm",
   "itemType", "moc", "size", "pnRating", "operationType", "extension", "bypass", "others",
   "validation", "vaPercent", "erpItemCode", "bomId", "productCost", "costRefCode", "cost", "contractReviewRate", "pdcostValidation", "availableStock", "rmType", "deliverySchedule",
   "contractNo", "itemNameMerge",
 ] as const;
-
-const ENQUIRY_DROPDOWN_SET = new Set(["enquiryType", "state", "paymentTerms", "inspection", "pbg", "utility", "orderStatus", "closureStatus", "duplicate", "apm", "contractNo"]);
 
 // One header filter box. Owning its own Redux read and its own debounce keeps every
 // keystroke inside this leaf instead of re-rendering the whole table body.
@@ -393,14 +349,22 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   const allItems = useAppSelector(selectAllItems);
   const filters = useAppSelector((s) => s.filters);
   const { currentPage, pageSize } = useAppSelector((s) => s.pagination);
+  const pageState = useAppSelector((s) => s.enquiries.page);
+  const pageTotal = pageState.total;
+  const isPageLoading = pageState.status === "loading";
+  const totalPages = Math.max(1, Math.ceil(pageTotal / pageSize));
+  const pageStart = pageTotal === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const pageEnd = Math.min(currentPage * pageSize, pageTotal);
+  const itemCount = useAppSelector(
+    (s) => s.enquiries.page.summary?.analyticsItems ?? 0,
+  );
+  const sortField = pageState.sort?.field ?? null;
+  const sortDirection = pageState.sort?.direction ?? "desc";
   const expandedRows = useAppSelector((s) => s.ui.expandedRows);
   const columnWidths = useAppSelector((s) => s.ui.columnWidths);
   const selectedEnquiryIds = useAppSelector((s) => s.ui.selectedEnquiryIds);
   const closedBomIds = useAppSelector((s) => s.ui.closedBomIds);
-  const globalSearch = filters.globalSearch.trim();
 
-  const [sortField, setSortField] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [editingPartyEnquiryId, setEditingPartyEnquiryId] = useState<string | null>(null);
 
   const attachInputRefs = useRef<Record<string, HTMLInputElement>>({});
@@ -436,7 +400,15 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   };
 
   // Debounced filter inputs
-  const [filterProjectReference, setFilterProjectReference] = useState("");
+  const [projectReferenceInput, setProjectReferenceInput] = useState("");
+  const filterProjectReference = pageState.projectReference;
+  useEffect(() => {
+    const timer = setTimeout(
+      () => dispatch(setEnquiryProjectReference(projectReferenceInput)),
+      300,
+    );
+    return () => clearTimeout(timer);
+  }, [projectReferenceInput, dispatch]);
   const [editingItemNameId, setEditingItemNameId] = useState<string | null>(null);
   const [autoFillStatus, setAutoFillStatus] = useState<"idle" | "running">("idle");
   const [vaStatus, setVaStatus] = useState<"idle" | "running">("idle");
@@ -446,9 +418,17 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   const [pdCostValStatus, setPdCostValStatus] = useState<"idle" | "running">("idle");
   const [syncStockStatus, setSyncStockStatus] = useState<"idle" | "running">("idle");
   // Docket No header filter: show only pending dockets (auto-created, no items yet).
-  const [pendingOnly, setPendingOnly] = useState(false);
+  const pendingOnly = pageState.pendingOnly;
+  const setPendingOnly = (value: boolean | ((prev: boolean) => boolean)) => {
+    dispatch(
+      setEnquiryPendingOnly(
+        typeof value === "function" ? value(pendingOnly) : value,
+      ),
+    );
+  };
   // BOM ID header filter: show only items whose selected BOM is closed (VerifyBom.cBatch = "C").
-  const [closedBomOnly, setClosedBomOnly] = useState(false);
+  const closedBomOnly = pageState.closedBomOnly;
+  const setClosedBomOnly = (value: boolean) => dispatch(setEnquiryClosedBomOnly(value));
   const [addingContractFor, setAddingContractFor] = useState<string | null>(null);
 
   // Image lookup: GeneratedImage rows keyed by imageKey (itemType__operationType__rmType).
@@ -484,10 +464,8 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     [imageMap]
   );
 
-  // Reset pagination to first page when filters change
-  useEffect(() => {
-    dispatch(resetPage());
-  }, [filters, dispatch]);
+  // Filter changes reset paging inside DashboardContainer (before it builds the query),
+  // so no extra request is fired from here.
 
   // Docket-level selection (persisted in Redux so the metrics card and the
   // analytics sidebar can scope themselves to the same dockets). Ids that no
@@ -510,46 +488,40 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     dispatch(clearEnquirySelection());
   };
 
-  // Select every docket that passes the current (cascading) filters across all
-  // pages, or clear the selection when they are already all selected.
-  const selectAllFiltered = () => {
-    const ids = filteredEnquiries.map((e) => e.id);
-    if (ids.length === 0) return;
-    const allSelected = ids.every((id) => selectedEnquiryIdSet.has(id));
-    dispatch(setSelectedEnquiries(allSelected ? [] : ids));
+  // Select every docket the server matches across all pages; a second click clears.
+  const selectAllFiltered = async () => {
+    try {
+      const result = await dispatch(
+        loadFilteredEnquiryIds({ query: query }),
+      ).unwrap();
+      const ids = result.enquiryIds;
+      if (ids.length === 0) return;
+      const allSelected =
+        ids.length === selectedEnquiryIds.length &&
+        ids.every((id) => selectedEnquiryIdSet.has(id));
+      dispatch(setSelectedEnquiries(allSelected ? [] : ids));
+    } catch {
+      toast.error("Failed to load filtered dockets.");
+    }
   };
 
   const [clearQrRunning, setClearQrRunning] = useState(false);
   const [clearQrConfirmOpen, setClearQrConfirmOpen] = useState(false);
-  const [clearQrPending, setClearQrPending] = useState<{ total: number; withQr: number; ids: string[] } | null>(null);
-  const handleClearQr = () => {
-    const allFiltered = filteredEnquiries.flatMap((e) => getFilteredItems(e));
-    if (allFiltered.length === 0) {
-      toast.info("No items match current filters.");
-      return;
-    }
-    // Exclude frozen enquiries — rate & cost are frozen after one-time PDF
-    const frozenEnquiryIds = new Set(
-      filteredEnquiries
-        .filter((e) => isEnquiryFrozen((e as any).apm, (e as any).offerPdfGeneratedAt))
-        .map((e) => e.id)
-    );
-    const nonFrozenFiltered = allFiltered.filter((i) => !frozenEnquiryIds.has(i.enquiryId));
-    if (frozenEnquiryIds.size > 0) {
-      const frozenCount = allFiltered.length - nonFrozenFiltered.length;
-      if (nonFrozenFiltered.length === 0) {
-        toast.info(`Cannot clear rates: ${frozenCount} item(s) are frozen after one-time PDF generation — revert APM to edit.`);
+  const [clearQrPending, setClearQrPending] = useState<{ total: number; ids: string[] } | null>(null);
+  const handleClearQr = async () => {
+    try {
+      const { itemIds } = await dispatch(
+        loadFilteredEnquiryIds({ query: query }),
+      ).unwrap();
+      if (itemIds.length === 0) {
+        toast.info("No items match current filters.");
         return;
       }
-      toast(`Skipping ${frozenCount} frozen item(s) (APM Yes + PDF generated).`, { duration: 3000 });
+      setClearQrPending({ total: itemIds.length, ids: itemIds });
+      setClearQrConfirmOpen(true);
+    } catch {
+      toast.error("Failed to load filtered items.");
     }
-    const withQr = nonFrozenFiltered.filter((i) => i.quotedRate != null && String(i.quotedRate).trim() !== "");
-    if (withQr.length === 0) {
-      toast.info("No Quoted Rates to clear for current filters.");
-      return;
-    }
-    setClearQrPending({ total: nonFrozenFiltered.length, withQr: withQr.length, ids: withQr.map((i) => i.id) });
-    setClearQrConfirmOpen(true);
   };
   const handleClearQrConfirm = async () => {
     if (!clearQrPending) return;
@@ -557,7 +529,11 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     const toastId = toast.loading("Clearing quoted rates...");
     try {
       const result: any = await dispatch(clearQuotedRates(clearQrPending.ids)).unwrap();
-      toast.success(`Cleared ${result.cleared} Quoted Rate(s). VA% preserved.`, { id: toastId });
+      const skipped = Number(result.skippedFrozen ?? 0);
+      toast.success(
+        `Cleared ${result.cleared} Quoted Rate(s).${skipped > 0 ? ` Skipped ${skipped} frozen item(s).` : ""} VA% preserved.`,
+        { id: toastId },
+      );
       setClearQrConfirmOpen(false);
       setClearQrPending(null);
     } catch (err: any) {
@@ -570,19 +546,26 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
 
   const [bulkValidationRunning, setBulkValidationRunning] = useState<"Yes" | "No" | "Clear" | null>(null);
   const handleBulkValidation = async (val: "Yes" | "No" | "") => {
-    const allFiltered = filteredEnquiries.flatMap((e) => getFilteredItems(e));
-    if (allFiltered.length === 0) {
+    let itemIds: string[];
+    try {
+      itemIds = (
+        await dispatch(loadFilteredEnquiryIds({ query: query })).unwrap()
+      ).itemIds;
+    } catch {
+      toast.error("Failed to load filtered items.");
+      return;
+    }
+    if (itemIds.length === 0) {
       toast.info("No items match current filters.");
       return;
     }
     const label = val === "" ? "Blank" : val;
-    const differing = allFiltered.filter((i) => (i.validation || "") !== (val || "")).length;
-    if (!confirm(`Set validation to "${label}" for ${allFiltered.length} filtered item(s) across all pages?${differing > 0 ? ` This will overwrite ${differing} differing value(s).` : ""}`)) return;
+    if (!confirm(`Set validation to "${label}" for ${itemIds.length} filtered item(s) across all pages?`)) return;
     const runKey = val === "" ? "Clear" : val;
     setBulkValidationRunning(runKey as any);
     const toastId = toast.loading(`Setting validation to "${label}"...`);
     try {
-      const result: any = await dispatch(bulkUpdateValidation({ itemIds: allFiltered.map((i) => i.id), validation: val === "" ? null : val })).unwrap();
+      const result: any = await dispatch(bulkUpdateValidation({ itemIds, validation: val === "" ? null : val })).unwrap();
       toast.success(`Validation set to "${label}" for ${result.updated} item(s).`, { id: toastId });
     } catch (err: any) {
       const msg = typeof err === "string" ? err : err?.message || "Failed to update validation.";
@@ -595,18 +578,26 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   const [bulkApmRunning, setBulkApmRunning] = useState<"Yes" | "No" | "Clear" | null>(null);
   const handleBulkApm = async (val: "Yes" | "No" | "") => {
     if (!canEditApm) { toast.error("Admin or developer only can set APM — please login"); return; }
-    if (filteredEnquiries.length === 0) {
+    let enquiryIds: string[];
+    try {
+      enquiryIds = (
+        await dispatch(loadFilteredEnquiryIds({ query: query })).unwrap()
+      ).enquiryIds;
+    } catch {
+      toast.error("Failed to load filtered enquiries.");
+      return;
+    }
+    if (enquiryIds.length === 0) {
       toast.info("No enquiries match current filters.");
       return;
     }
     const label = val === "" ? "Blank" : val;
-    const differing = filteredEnquiries.filter((e) => ((e as any).apm || "") !== (val || "")).length;
-    if (!confirm(`Set APM to "${label}" for ${filteredEnquiries.length} filtered enquir${filteredEnquiries.length === 1 ? "y" : "ies"} across all pages?${differing > 0 ? ` This will overwrite ${differing} differing value(s).` : ""}`)) return;
+    if (!confirm(`Set APM to "${label}" for ${enquiryIds.length} filtered enquir${enquiryIds.length === 1 ? "y" : "ies"} across all pages?`)) return;
     const runKey = val === "" ? "Clear" : val;
     setBulkApmRunning(runKey as any);
     const toastId = toast.loading(`Setting APM to "${label}"...`);
     try {
-      const result: any = await dispatch(bulkUpdateApm({ enquiryIds: filteredEnquiries.map((e) => e.id), apm: val === "" ? null : val })).unwrap();
+      const result: any = await dispatch(bulkUpdateApm({ enquiryIds, apm: val === "" ? null : val })).unwrap();
       toast.success(`APM set to "${label}" for ${result.updated} enquir${result.updated === 1 ? "y" : "ies"}.`, { id: toastId });
     } catch (err: any) {
       const msg = typeof err === "string" ? err : err?.message || "Failed to update APM.";
@@ -616,139 +607,25 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     }
   };
 
-  // Selection scope for the header cascading filters: when dockets are selected,
-  // option lists are drawn from that selection so the filters cascade on it.
-  const scopedEnquiries = useMemo(
-    () => (selectedEnquiryIds.length > 0 ? enquiries.filter((e) => selectedEnquiryIdSet.has(e.id)) : enquiries),
-    [enquiries, selectedEnquiryIds, selectedEnquiryIdSet]
-  );
-  const scopedItems = useMemo(
-    () => (selectedEnquiryIds.length > 0 ? allItems.filter((i) => selectedEnquiryIdSet.has(i.enquiryId)) : allItems),
-    [allItems, selectedEnquiryIds, selectedEnquiryIdSet]
-  );
+  // Cascading dropdown options come from the server: one DISTINCT query per
+  // column, requested when its dropdown opens. Options from the previous filter
+  // combination stay visible until the new ones arrive.
+  const facets = pageState.facets;
+  const query = useAppSelector(selectEnquiryQuery, shallowEqual);
+  const filterKey = enquiryFilterKey(query);
 
-  const cascadedOptions = useMemo(() => {
-    const result: Record<string, string[]> = {};
+  const requestFacet = (field: string) => {
+    const entry = facets[field];
+    if (entry && entry.filterKey === filterKey && entry.status !== "error") return;
+    dispatch(loadEnquiryFacet({ query, field, filterKey }));
+  };
 
-    const enquiryPasses = (enquiry: EnquiryData, excludeField: string | null): boolean => {
-      if (excludeField !== "partyNames" && filters.partyNames.length > 0) {
-        if (!filters.partyNames.includes(enquiry.partyName)) return false;
-      }
-      for (const other of ALL_DROPDOWN_FIELDS) {
-        if (other === excludeField) continue;
-        if (ENQUIRY_DROPDOWN_SET.has(other)) {
-          const val = filters[other as keyof FiltersState] as unknown as string[];
-          if (val.length > 0 && !enquiryFieldMatches(enquiry, other, val)) return false;
-        }
-      }
-      if (!matchesGlobalSearch(enquiry, globalSearch)) return false;
-      // --- text filters at enquiry level ---
-      if (excludeField !== "docketNumber" && filters.docketNumber && !matchesText(filters.docketNumber, enquiry.docketNumber)) return false;
-      if (excludeField !== "enquiryDateFrom" && filters.enquiryDateFrom) {
-        const from = new Date(filters.enquiryDateFrom);
-        if (new Date(enquiry.enquiryDate) < from) return false;
-      }
-      if (excludeField !== "enquiryDateTo" && filters.enquiryDateTo) {
-        const to = new Date(filters.enquiryDateTo);
-        const limit = new Date(to); limit.setDate(limit.getDate()+1);
-        if (new Date(enquiry.enquiryDate) > limit) return false;
-      }
-      if (excludeField !== "projectReference" && filterProjectReference && !matchesText(filterProjectReference, enquiry.projectReference || "")) return false;
-      if (excludeField !== "emailAddress" && filters.emailAddress && !matchesText(filters.emailAddress, enquiry.senderEmail || "")) return false;
-      if (excludeField !== "contactNo" && filters.contactNo && !matchesText(filters.contactNo, enquiry.contactNo || "")) return false;
-      return true;
-    };
-
-    const itemPasses = (item: EnquiryItemData, excludeField: string | null): boolean => {
-      for (const other of ALL_DROPDOWN_FIELDS) {
-        if (other === excludeField) continue;
-        if (!ENQUIRY_DROPDOWN_SET.has(other)) {
-          const val = filters[other as keyof FiltersState] as unknown as string[];
-          if (val.length > 0 && !itemFieldMatches(item, other, val)) return false;
-        }
-      }
-      // --- item text filters ---
-      if (excludeField !== "itemName" && filters.itemName && !matchesText(filters.itemName, item.itemName)) return false;
-      if (excludeField !== "quantity" && filters.quantity && !matchesText(filters.quantity, String(item.quantity))) return false;
-      if (excludeField !== "itemTypeSearch" && filters.itemTypeSearch && !matchesText(filters.itemTypeSearch, item.itemType || "")) return false;
-      if (excludeField !== "mocSearch" && filters.mocSearch && !matchesText(filters.mocSearch, item.moc || "")) return false;
-      if (excludeField !== "erpItemCodeSearch" && filters.erpItemCodeSearch && !matchesText(filters.erpItemCodeSearch, item.erpItemCode || "")) return false;
-      if (excludeField !== "bomIdSearch" && (filters.bomIdSearch as string) && !matchesText(filters.bomIdSearch, (item as unknown as Record<string,unknown>).bomId as string || "")) return false;
-      if (excludeField !== "contractReviewRateSearch" && (filters.contractReviewRateSearch as string) && !matchesText(filters.contractReviewRateSearch, item.contractReviewRate || "")) return false;
-      if (excludeField !== "pdcostValidationSearch" && (filters.pdcostValidationSearch as string) && !matchesText(filters.pdcostValidationSearch, getPdCostValidation(item) || "")) return false;
-      if (excludeField !== "costRefCodeSearch" && filters.costRefCodeSearch && !matchesText(filters.costRefCodeSearch, item.costRefCode || "")) return false;
-      if (excludeField !== "othersSearch" && (filters as any).othersSearch && !matchesText((filters as any).othersSearch, (item as any).others || "")) return false;
-      if (excludeField !== "stockStatus" && filters.stockStatus && !matchesText(filters.stockStatus, item.stockStatus || "")) return false;
-      if (excludeField !== "stockQuantity" && filters.stockQuantity && !matchesText(filters.stockQuantity, item.stockQuantity || "")) return false;
-      if (excludeField !== "stockAgainstContract" && filters.stockAgainstContract && !matchesText(filters.stockAgainstContract, item.stockAgainstContract || "")) return false;
-      if (excludeField !== "discount" && filters.discount && !matchesText(filters.discount, item.discount != null ? String(item.discount) : "")) return false;
-      if (excludeField !== "quotedRate" && filters.quotedRate && !matchesText(filters.quotedRate, item.quotedRate || "")) return false;
-      if (excludeField !== "quotedRateGst" && (filters.quotedRateGst as string) && !matchesText(filters.quotedRateGst, item.quotedRateGst || "")) return false;
-      if (excludeField !== "itemNameMergeSearch" && filters.itemNameMergeSearch && !matchesText(filters.itemNameMergeSearch, item.itemNameMerge || "")) return false;
-      if (excludeField !== "totalValue" && filters.totalValue && !matchesText(filters.totalValue, item.totalValue || "")) return false;
-      if (excludeField !== "itemWiseTotalValue" && filters.itemWiseTotalValue && !matchesText(filters.itemWiseTotalValue, item.itemWiseTotalValue || "")) return false;
-      // note: productCost/cost are dropdowns already handled
-      return true;
-    };
-
-    for (const field of ALL_DROPDOWN_FIELDS) {
-      if (ENQUIRY_DROPDOWN_SET.has(field)) {
-        const available = scopedEnquiries
-          .filter((enquiry) => {
-            if (!enquiryPasses(enquiry, field)) return false;
-            return enquiry.items.some((item) => itemPasses(item, field));
-          })
-          .flatMap((enquiry) => {
-            const val = field === "contractNo"
-              ? ((enquiry as any).selectedContractNo ?? [])
-              : (enquiry as unknown as Record<string, unknown>)[field];
-            if (Array.isArray(val)) return val.map(String).map((s) => s.trim()).filter((v) => v !== "" && v !== "undefined" && v !== "null");
-            return val != null ? [String(val)] : [];
-          })
-          .filter((v) => v !== "" && v !== "undefined" && v !== "null")
-          .filter((v, i, arr) => arr.indexOf(v) === i)
-          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-        result[field] = available;
-      } else {
-        const matchingEnquiryIds = new Set(
-          scopedEnquiries
-            .filter((enquiry) => enquiryPasses(enquiry, field))
-            .map((e) => e.id)
-        );
-        const available = scopedItems
-          .filter((item) => matchingEnquiryIds.has(item.enquiryId))
-          .filter((item) => itemPasses(item, field))
-          .flatMap((item) => {
-            const val = (item as unknown as Record<string, unknown>)[field];
-            if (Array.isArray(val)) return val.map(String).filter((v) => v !== "" && v !== "undefined" && v !== "null");
-            return val != null ? [String(val)] : [];
-          })
-          .filter((v) => v !== "" && v !== "undefined" && v !== "null")
-          .filter((v, i, arr) => arr.indexOf(v) === i)
-          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-        result[field] = available;
-      }
-    }
-
-    const availableParties = scopedEnquiries
-      .filter((enquiry) => {
-        for (const other of ALL_DROPDOWN_FIELDS) {
-          if (ENQUIRY_DROPDOWN_SET.has(other)) {
-            const val = filters[other as keyof FiltersState] as unknown as string[];
-            if (!enquiryFieldMatches(enquiry, other, val)) return false;
-          }
-        }
-        // also respect text/global for parties
-        if (!enquiryPasses(enquiry, "partyNames")) return false;
-        return enquiry.items.some((item) => itemPasses(item, null));
-      })
-      .map((enquiry) => enquiry.partyName)
-      .filter((v, i, arr) => arr.indexOf(v) === i)
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    result.partyNames = availableParties;
-
-    return result;
-  }, [scopedEnquiries, scopedItems, filters, filterProjectReference, globalSearch]);
+  const cascadedOptions: Record<string, string[]> = {};
+  for (const field of ALL_DROPDOWN_FIELDS) {
+    cascadedOptions[field] = facets[field]?.options ?? [];
+  }
+  // Party names are an enquiry-level dropdown but sit outside the shared list.
+  cascadedOptions.partyNames = facets.partyNames?.options ?? [];
 
   // Master unique list of all contract numbers selected across all enquiries
   const allSelectedContractOptions = useMemo(() => {
@@ -807,6 +684,8 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     dispatch(resetFilters());
     setPendingOnly(false);
     setClosedBomOnly(false);
+    setProjectReferenceInput("");
+    dispatch(setEnquiryProjectReference(""));
     toast.success("All filters reset successfully.");
   };
 
@@ -1071,12 +950,9 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
   };
 
   const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(field);
-      setSortDirection("desc");
-    }
+    const direction =
+      sortField === field ? (sortDirection === "asc" ? "desc" : "asc") : "desc";
+    dispatch(setEnquirySort({ field, direction }));
     dispatch(setPage(1));
   };
 
@@ -1396,416 +1272,14 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     }
   };
 
-  // Filter logic matching dropdown selections exactly
-  // This manual memo is intentionally kept for a large predicate; React Compiler cannot
-  // preserve it (and compiler is not enabled), so the diagnostic is suppressed locally.
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const filteredEnquiries = useMemo(() => enquiries.filter((enquiry) => {
-    // 0. Global search — same predicate the dashboard's Prisma `where` clause used to run
-    if (!matchesGlobalSearch(enquiry, globalSearch)) return false;
-
-    // 1. Enquiry Date range
-    if (filters.enquiryDateFrom) {
-      const fromDate = new Date(filters.enquiryDateFrom);
-      if (new Date(enquiry.enquiryDate) < fromDate) return false;
-    }
-    if (filters.enquiryDateTo) {
-      const toDate = new Date(filters.enquiryDateTo);
-      const toDateLimit = new Date(toDate);
-      toDateLimit.setDate(toDateLimit.getDate() + 1);
-      if (new Date(enquiry.enquiryDate) > toDateLimit) return false;
-    }
-
-    // 2. Docket Number (Text Search)
-    if (
-      filters.docketNumber &&
-      !enquiry.docketNumber
-        .toLowerCase()
-        .includes(filters.docketNumber.toLowerCase())
-    ) {
-      return false;
-    }
-
-    // 3. Party Name (Multi-select Checklist Search)
-    if (
-      filters.partyNames.length > 0 &&
-      !filters.partyNames.includes(enquiry.partyName)
-    ) {
-      return false;
-    }
-
-    // 4-10. Enquiry-level Metadata Dropdown Filters
-    if (!matchesMulti(filters.enquiryType, enquiry.enquiryType)) {
-      return false;
-    }
-    if (!matchesMulti(filters.state, enquiry.state)) {
-      return false;
-    }
-    if (!matchesMulti(filters.paymentTerms, enquiry.paymentTerms)) {
-      return false;
-    }
-    if (!matchesMulti(filters.inspection, enquiry.inspection)) {
-      return false;
-    }
-    if (!matchesMulti(filters.pbg, enquiry.pbg)) {
-      return false;
-    }
-    if (!matchesMulti(filters.utility, enquiry.utility)) {
-      return false;
-    }
-    if (!matchesMulti(filters.orderStatus, enquiry.orderStatus)) {
-      return false;
-    }
-    if (!matchesMultiCI(filters.closureStatus, enquiry.closureStatus)) {
-      return false;
-    }
-    if (!matchesMulti(filters.duplicate, enquiry.duplicate)) {
-      return false;
-    }
-    if (!matchesMulti(filters.apm, (enquiry as any).apm)) {
-      return false;
-    }
-    if (!contractNoMatches(filters.contractNo as unknown as string[], enquiry)) {
-      return false;
-    }
-
-    // 11. Project Reference (Text Search)
-    if (
-      filterProjectReference &&
-      !(enquiry.projectReference || "").toLowerCase().includes(filterProjectReference.toLowerCase())
-    ) {
-      return false;
-    }
-
-    // Email Address (Text Search) — matches the sender only
-    if (
-      filters.emailAddress &&
-      !(enquiry.senderEmail || "").toLowerCase().includes(filters.emailAddress.toLowerCase())
-    ) {
-      return false;
-    }
-
-    // Contact No (Text Search)
-    if (
-      filters.contactNo &&
-      !(enquiry.contactNo || "").toLowerCase().includes(filters.contactNo.toLowerCase())
-    ) {
-      return false;
-    }
-
-    // 11-24. Item details (mix of text search and exact dropdown selections)
-    const matchesItems = enquiry.items.some((item) => {
-      if (
-        filters.itemName &&
-        !item.itemName.toLowerCase().includes(filters.itemName.toLowerCase())
-      ) {
-        return false;
-      }
-      if (
-        filters.quantity &&
-        !item.quantity.toString().includes(filters.quantity)
-      ) {
-        return false;
-      }
-      if (!matchesMulti(filters.itemType, item.itemType)) {
-        return false;
-      }
-      if (
-        filters.itemTypeSearch &&
-        !(item.itemType || "").toLowerCase().includes(filters.itemTypeSearch.toLowerCase())
-      ) {
-        return false;
-      }
-      if (!matchesMulti(filters.moc, item.moc)) {
-        return false;
-      }
-      if (
-        filters.mocSearch &&
-        !(item.moc || "").toLowerCase().includes(filters.mocSearch.toLowerCase())
-      ) {
-        return false;
-      }
-      if (!matchesMulti(filters.size, item.size, isBlankSize)) {
-        return false;
-      }
-      if (!matchesMulti(filters.pnRating, item.pnRating)) {
-        return false;
-      }
-      if (!matchesMulti(filters.operationType, item.operationType)) {
-        return false;
-      }
-      if (!matchesMulti(filters.extension, item.extension)) {
-        return false;
-      }
-      if (!matchesMulti(filters.bypass, item.bypass)) {
-        return false;
-      }
-      if (!matchesMulti((filters as any).others, (item as any).others, isBlankOthers)) {
-        return false;
-      }
-      if (
-        (filters as any).othersSearch &&
-        !((item as any).others || "").toLowerCase().includes((filters as any).othersSearch.toLowerCase())
-      ) {
-        return false;
-      }
-      if (!matchesMulti(filters.erpItemCode, item.erpItemCode)) {
-        return false;
-      }
-      if (
-        filters.erpItemCodeSearch &&
-        !(item.erpItemCode || "").toLowerCase().includes(filters.erpItemCodeSearch.toLowerCase())
-      ) {
-        return false;
-      }
-      if (!matchesMulti(filters.bomId as any, (item as any).bomId)) {
-        return false;
-      }
-      if (
-        filters.bomIdSearch &&
-        !((item as any).bomId || "").toLowerCase().includes(filters.bomIdSearch.toLowerCase())
-      ) {
-        return false;
-      }
-      if (!matchesMulti(filters.contractReviewRate, item.contractReviewRate)) {
-        return false;
-      }
-      if (
-        filters.contractReviewRateSearch &&
-        !(item.contractReviewRate || "").toLowerCase().includes(filters.contractReviewRateSearch.toLowerCase())
-      ) {
-        return false;
-      }
-      if (!matchesMulti(filters.pdcostValidation, getPdCostValidation(item))) {
-        return false;
-      }
-      if (
-        filters.pdcostValidationSearch &&
-        !(getPdCostValidation(item) || "").toLowerCase().includes(filters.pdcostValidationSearch.toLowerCase())
-      ) {
-        return false;
-      }
-      if (
-        filters.productCost.length > 0 &&
-        !matchesMulti(filters.productCost, item.productCost != null ? String(item.productCost) : null)
-      ) {
-        return false;
-      }
-      if (!matchesMulti(filters.costRefCode, item.costRefCode)) {
-        return false;
-      }
-      if (
-        filters.costRefCodeSearch &&
-        !(item.costRefCode || "").toLowerCase().includes(filters.costRefCodeSearch.toLowerCase())
-      ) {
-        return false;
-      }
-      if (
-        filters.cost.length > 0 &&
-        !matchesMulti(filters.cost, item.cost != null ? String(item.cost) : null)
-      ) {
-        return false;
-      }
-      if (
-        filters.stockStatus &&
-        !(item.stockStatus || "").toLowerCase().includes(filters.stockStatus.toLowerCase())
-      ) {
-        return false;
-      }
-      if (
-        filters.stockQuantity &&
-        !(item.stockQuantity || "").toLowerCase().includes(filters.stockQuantity.toLowerCase())
-      ) {
-        return false;
-      }
-      if (
-        filters.availableStock.length > 0 &&
-        !matchesMulti(filters.availableStock, item.availableStock ?? null)
-      ) {
-        return false;
-      }
-      if (
-        filters.rmType.length > 0 &&
-        !matchesMulti(filters.rmType, item.rmType ?? null)
-      ) {
-        return false;
-      }
-      if (
-        filters.deliverySchedule.length > 0 &&
-        !matchesMulti(filters.deliverySchedule, item.deliverySchedule ?? null)
-      ) {
-        return false;
-      }
-      if (
-        filters.stockAgainstContract &&
-        !(item.stockAgainstContract || "").toLowerCase().includes(filters.stockAgainstContract.toLowerCase())
-      ) {
-        return false;
-      }
-      if (
-        filters.discount &&
-        !(item.discount?.toString() || "").includes(filters.discount)
-      ) {
-        return false;
-      }
-      if (
-        filters.vaPercent.length > 0 &&
-        !matchesMulti(filters.vaPercent, item.vaPercent?.toString() ?? null)
-      ) {
-        return false;
-      }
-      if (
-        filters.quotedRate &&
-        !(item.quotedRate || "").toLowerCase().includes(filters.quotedRate.toLowerCase())
-      ) {
-        return false;
-      }
-      if (
-        filters.quotedRateGst &&
-        !(item.quotedRateGst || "").toLowerCase().includes(filters.quotedRateGst.toLowerCase())
-      ) {
-        return false;
-      }
-      if (!matchesMulti(filters.itemNameMerge, item.itemNameMerge)) {
-        return false;
-      }
-      if (
-        filters.itemNameMergeSearch &&
-        !(item.itemNameMerge || "").toLowerCase().includes(filters.itemNameMergeSearch.toLowerCase())
-      ) {
-        return false;
-      }
-      if (
-        filters.totalValue &&
-        !(item.totalValue || "").toLowerCase().includes(filters.totalValue.toLowerCase())
-      ) {
-        return false;
-      }
-      if (
-        filters.itemWiseTotalValue &&
-        !(item.itemWiseTotalValue || "").toLowerCase().includes(filters.itemWiseTotalValue.toLowerCase())
-      ) {
-        return false;
-      }
-      if (filters.validation.length > 0) {
-        if (!matchesMulti(filters.validation, item.validation)) {
-          return false;
-        }
-      }
-      if ((filters as any).image && (filters as any).image.length > 0) {
-        const hasImg = !!getItemImage(item);
-        const wantPresent = (filters as any).image.includes("Present");
-        const wantBlank = (filters as any).image.includes(BLANK);
-        if (wantPresent && !wantBlank && !hasImg) return false;
-        if (wantBlank && !wantPresent && hasImg) return false;
-      }
-      if (!itemDeletedStatus(item, filters.deletedStatus)) return false;
-      if (closedBomOnly) {
-        const bomId = (item as unknown as Record<string, unknown>).bomId as string | null | undefined;
-        if (!bomId || !closedBomIdSet.has(bomId)) return false;
-      }
-      return true;
-    });
-
-    // Header-only "pending" dockets (no items) have nothing to match item
-    // filters against. Keep them visible in the default view, but hide them once
-    // a filter is narrowing the list. When the "Pending only" filter is on, empty
-    // dockets always pass and dockets with items are excluded below.
-    if (!enquiry.items || enquiry.items.length === 0) {
-      if (closedBomOnly) return false;
-      if (hasActiveFilters && !pendingOnly) return false;
-    } else if (!matchesItems) {
-      return false;
-    }
-    if (pendingOnly && (enquiry.items?.length ?? 0) > 0) return false;
-
-    return true;
-  }), [enquiries, filters, filterProjectReference, globalSearch, getItemImage, hasActiveFilters, pendingOnly, closedBomOnly, closedBomIdSet]);
-
-  // Selection scope for the header checkbox: every docket passing the current
-  // (cascading) filters across all pages.
-  const filteredEnquiryIds = useMemo(() => filteredEnquiries.map((e) => e.id), [filteredEnquiries]);
-  const selectedFilteredCount = useMemo(
-    () => filteredEnquiryIds.reduce((n, id) => n + (selectedEnquiryIdSet.has(id) ? 1 : 0), 0),
-    [filteredEnquiryIds, selectedEnquiryIdSet]
-  );
-  const allFilteredSelected = filteredEnquiryIds.length > 0 && selectedFilteredCount === filteredEnquiryIds.length;
+  // Rows arrive already filtered, sorted and paginated by the server.
+  // Selection scope: the header checkbox asks the server for every matching
+  // docket id (all pages) instead of relying on the loaded rows.
+  const selectedFilteredCount = selectedEnquiryIds.length;
+  const allFilteredSelected = pageTotal > 0 && selectedFilteredCount >= pageTotal;
   const someFilteredSelected = selectedFilteredCount > 0 && !allFilteredSelected;
 
-  const getSortValue = useCallback((enquiry: EnquiryData, field: string): string | number | Date | null | undefined => {
-    if (field === "contractNo") {
-      return ((enquiry as any).selectedContractNo || []).join(", ");
-    }
-    const enquiryFields = [
-      "enquiryDate", "docketNumber", "partyName", "enquiryType", "state", 
-      "paymentTerms", "inspection", "pbg", "utility", "orderStatus", "apm", "closureStatus", "projectReference"
-    ];
-    
-    if (enquiryFields.includes(field)) {
-      return (enquiry as unknown as Record<string, unknown>)[field] as string | number | Date | null | undefined;
-    }
-    
-    if (field === "image") {
-      const items = getFilteredItems(enquiry);
-      if (items.length === 0) return 0;
-      const imageCount = items.filter((it) => !!getItemImage(it)).length;
-      return imageCount / items.length;
-    }
-    
-    const firstItem = enquiry.items && enquiry.items[0];
-    if (!firstItem) return null;
-    
-    if (field === "pdcostValidation") {
-      const val = getPdCostValidation(firstItem);
-      return val ? parseFloat(val.replace("%", "")) : null;
-    }
-
-    return (firstItem as unknown as Record<string, unknown>)[field] as string | number | Date | null | undefined;
-  }, [getItemImage, getFilteredItems]);
-
-  const sortedEnquiries = useMemo(() => [...filteredEnquiries].sort((a, b) => {
-    if (!sortField) return 0;
-    
-    const valA = getSortValue(a, sortField);
-    const valB = getSortValue(b, sortField);
-    
-    if (valA === null || valA === undefined || valA === "") return 1;
-    if (valB === null || valB === undefined || valB === "") return -1;
-    
-    if (typeof valA === "number" && typeof valB === "number") {
-      return sortDirection === "asc" ? valA - valB : valB - valA;
-    }
-    
-    if (valA instanceof Date && valB instanceof Date) {
-      return sortDirection === "asc" 
-        ? valA.getTime() - valB.getTime() 
-        : valB.getTime() - valA.getTime();
-    }
-    
-    if (sortField === "enquiryDate") {
-      const timeA = new Date(valA).getTime();
-      const timeB = new Date(valB).getTime();
-      return sortDirection === "asc" ? timeA - timeB : timeB - timeA;
-    }
-    
-    const strA = String(valA).toLowerCase();
-    const strB = String(valB).toLowerCase();
-
-    const numA = parseFloat(strA);
-    const numB = parseFloat(strB);
-    if (/^-?\d+(\.\d+)?$/.test(strA) && /^-?\d+(\.\d+)?$/.test(strB)) {
-      return sortDirection === "asc" ? numA - numB : numB - numA;
-    }
-
-    return sortDirection === "asc"
-      ? strA.localeCompare(strB, undefined, { numeric: true })
-      : strB.localeCompare(strA, undefined, { numeric: true });
-  }), [filteredEnquiries, sortField, sortDirection, getSortValue]);
-
-  const paginatedEnquiries = useMemo(
-    () => sortedEnquiries.slice((currentPage - 1) * pageSize, currentPage * pageSize),
-    [sortedEnquiries, currentPage, pageSize]
-  );
+  const paginatedEnquiries = enquiries;
 
 
   const handleImportFromExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1886,8 +1360,10 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
     const toastId = toast.loading("Preparing Excel file...");
     try {
       const rows: Record<string, string | number>[] = [];
+      // Export covers every matching docket, not just the loaded page.
+      const allEnquiries = await fetchFilteredEnquiryExport(query);
 
-      sortedEnquiries.forEach((enquiry) => {
+      allEnquiries.forEach((enquiry) => {
         if (!enquiry.items || enquiry.items.length === 0) {
           rows.push({
             "Enquiry Date": new Date(enquiry.enquiryDate).toLocaleDateString("en-GB"),
@@ -2347,7 +1823,29 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
       {/* Table Toolbar */}
       <div className="flex justify-between items-center px-4 py-2.5 bg-muted/50 border-b border-border">
         <span className="text-[11px] font-semibold text-muted-foreground">
-          Showing {filteredEnquiries.length} of {enquiries.length} enquiries
+          {isPageLoading ? (
+            <span className="inline-flex items-center gap-1.5 text-[#0f62fe] dark:text-blue-300">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Loading page {currentPage}…
+            </span>
+          ) : (
+            <>
+              Showing {pageStart}–{pageEnd} of {pageTotal.toLocaleString()} enquiries
+              {itemCount > 0 && (
+                <span className="ml-1.5 font-normal text-muted-foreground/80">
+                  · {itemCount.toLocaleString()} items
+                </span>
+              )}
+              <span className="ml-1.5 font-normal text-muted-foreground/80">
+                · page {currentPage} of {totalPages}
+              </span>
+              {pageState.refreshing && (
+                <span className="ml-1.5 inline-flex items-center gap-1 font-normal text-muted-foreground/80">
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" /> refreshing…
+                </span>
+              )}
+            </>
+          )}
           {validSelectedEnquiryIds.length > 0 && (
             <span className="ml-1.5 text-[#0f62fe] dark:text-blue-300">
               · {validSelectedEnquiryIds.length} selected
@@ -2374,6 +1872,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
             allLabel="Validation: All"
             options={["Yes", "No"]}
             cascadedOptions={cascadedOptions.validation}
+            onOpen={() => requestFacet('validation')}
             selected={filters.validation}
             onChange={(v) => dispatch(setFilter({ field: "validation", value: v }))}
             includeBlank
@@ -2461,7 +1960,12 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto w-full min-w-0 border-b border-border">
+      <div
+        aria-busy={isPageLoading}
+        className={`flex-1 min-h-0 overflow-x-auto overflow-y-auto w-full min-w-0 border-b border-border transition-opacity duration-200 ${
+          isPageLoading ? "opacity-60" : ""
+        }`}
+      >
         <table
         ref={tableRef}
         className="border-collapse text-left border border-border"
@@ -2484,9 +1988,9 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   checked={allFilteredSelected}
                   ref={(el) => { if (el) el.indeterminate = someFilteredSelected; }}
                   onChange={selectAllFiltered}
-                  disabled={filteredEnquiries.length === 0}
+                  disabled={pageTotal === 0}
                   className="h-3.5 w-3.5 rounded border-border cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
-                  title={allFilteredSelected ? "Clear selection" : `Select all ${filteredEnquiries.length} filtered docket(s)`}
+                  title={allFilteredSelected ? "Clear selection" : `Select all ${pageTotal} filtered docket(s)`}
                 />
                 {selectedFilteredCount > 0 && (
                   <button
@@ -2576,6 +2080,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All Parties"
                   options={dropdownOptions.partyNames}
                   cascadedOptions={cascadedOptions.partyNames}
+                  onOpen={() => requestFacet('partyNames')}
                   selected={filters.partyNames}
                   onChange={(v) => dispatch(setFilter({ field: "partyNames", value: v }))}
                 />
@@ -2602,6 +2107,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All Contracts"
                   options={allSelectedContractOptions}
                   cascadedOptions={cascadedOptions.contractNo || []}
+                  onOpen={() => requestFacet('contractNo')}
                   selected={(filters as any).contractNo || []}
                   onChange={(v) => dispatch(setFilter({ field: "contractNo" as any, value: v }))}
                   includeBlank
@@ -2630,6 +2136,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All Types"
                   options={dropdownOptions.enquiryTypes}
                   cascadedOptions={cascadedOptions.enquiryType}
+                  onOpen={() => requestFacet('enquiryType')}
                   selected={filters.enquiryType}
                   onChange={(v) => dispatch(setFilter({ field: "enquiryType", value: v }))}
                   includeBlank
@@ -2677,6 +2184,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "State" : `State (${sel.length})`)}
                   options={dropdownOptions.states}
                   cascadedOptions={cascadedOptions.state}
+                  onOpen={() => requestFacet('state')}
                   selected={filters.state}
                   onChange={(v) => dispatch(setFilter({ field: "state", value: v }))}
                   includeBlank
@@ -2695,6 +2203,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "Utility" : `Util (${sel.length})`)}
                   options={dropdownOptions.utilities}
                   cascadedOptions={cascadedOptions.utility}
+                  onOpen={() => requestFacet('utility')}
                   selected={filters.utility}
                   onChange={(v) => dispatch(setFilter({ field: "utility", value: v }))}
                   includeBlank
@@ -2750,6 +2259,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "Payment" : `Pay (${sel.length})`)}
                   options={dropdownOptions.paymentTerms}
                   cascadedOptions={cascadedOptions.paymentTerms}
+                  onOpen={() => requestFacet('paymentTerms')}
                   selected={filters.paymentTerms}
                   onChange={(v) => dispatch(setFilter({ field: "paymentTerms", value: v }))}
                   includeBlank
@@ -2768,6 +2278,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "PBG" : `PBG (${sel.length})`)}
                   options={dropdownOptions.pbgs}
                   cascadedOptions={cascadedOptions.pbg}
+                  onOpen={() => requestFacet('pbg')}
                   selected={filters.pbg}
                   onChange={(v) => dispatch(setFilter({ field: "pbg", value: v }))}
                   includeBlank
@@ -2786,6 +2297,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "Inspect" : `Insp (${sel.length})`)}
                   options={dropdownOptions.inspections}
                   cascadedOptions={cascadedOptions.inspection}
+                  onOpen={() => requestFacet('inspection')}
                   selected={filters.inspection}
                   onChange={(v) => dispatch(setFilter({ field: "inspection", value: v }))}
                   includeBlank
@@ -2869,6 +2381,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All Statuses"
                   options={dropdownOptions.orderStatuses}
                   cascadedOptions={cascadedOptions.orderStatus}
+                  onOpen={() => requestFacet('orderStatus')}
                   selected={filters.orderStatus}
                   onChange={(v) => dispatch(setFilter({ field: "orderStatus", value: v }))}
                   includeBlank
@@ -2897,6 +2410,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "Closure" : `Closure (${sel.length})`)}
                   options={dropdownOptions.closureStatuses}
                   cascadedOptions={cascadedOptions.closureStatus}
+                  onOpen={() => requestFacet('closureStatus')}
                   selected={filters.closureStatus}
                   onChange={(v) => dispatch(setFilter({ field: "closureStatus", value: v }))}
                   includeBlank
@@ -2910,6 +2424,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "Duplicate" : `Dup (${sel.length})`)}
                   options={["Yes", "No"]}
                   cascadedOptions={cascadedOptions.duplicate ?? []}
+                  onOpen={() => requestFacet('duplicate')}
                   selected={filters.duplicate}
                   onChange={(v) => dispatch(setFilter({ field: "duplicate", value: v }))}
                   includeBlank
@@ -2938,7 +2453,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                 type="text"
                 placeholder="Search..."
                 value={filterProjectReference}
-                onChange={(e) => setFilterProjectReference(e.target.value)}
+                onChange={(e) => setProjectReferenceInput(e.target.value)}
                 className={inputClass}
               />
               <div
@@ -3004,6 +2519,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "Type" : `Type (${sel.length})`)}
                   options={dropdownOptions.itemTypes}
                   cascadedOptions={cascadedOptions.itemType}
+                  onOpen={() => requestFacet('itemType')}
                   selected={filters.itemType}
                   onChange={(v) => dispatch(setFilter({ field: "itemType", value: v }))}
                   includeBlank
@@ -3022,6 +2538,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "MOC" : `MOC (${sel.length})`)}
                   options={dropdownOptions.mocs}
                   cascadedOptions={cascadedOptions.moc}
+                  onOpen={() => requestFacet('moc')}
                   selected={filters.moc}
                   onChange={(v) => dispatch(setFilter({ field: "moc", value: v }))}
                   includeBlank
@@ -3040,6 +2557,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "Size" : `Size (${sel.length})`)}
                   options={dropdownOptions.sizes}
                   cascadedOptions={cascadedOptions.size}
+                  onOpen={() => requestFacet('size')}
                   selected={filters.size}
                   onChange={(v) => dispatch(setFilter({ field: "size", value: v }))}
                   includeBlank
@@ -3058,6 +2576,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "PN" : `PN (${sel.length})`)}
                   options={dropdownOptions.pnRatings}
                   cascadedOptions={cascadedOptions.pnRating}
+                  onOpen={() => requestFacet('pnRating')}
                   selected={filters.pnRating}
                   onChange={(v) => dispatch(setFilter({ field: "pnRating", value: v }))}
                   includeBlank
@@ -3076,6 +2595,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "Op Type" : `Op (${sel.length})`)}
                   options={dropdownOptions.operationTypes}
                   cascadedOptions={cascadedOptions.operationType}
+                  onOpen={() => requestFacet('operationType')}
                   selected={filters.operationType}
                   onChange={(v) => dispatch(setFilter({ field: "operationType", value: v }))}
                   includeBlank
@@ -3094,6 +2614,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "Ext" : `Ext (${sel.length})`)}
                   options={dropdownOptions.extensions}
                   cascadedOptions={cascadedOptions.extension}
+                  onOpen={() => requestFacet('extension')}
                   selected={filters.extension}
                   onChange={(v) => dispatch(setFilter({ field: "extension", value: v }))}
                   includeBlank
@@ -3112,6 +2633,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "Bypass" : `Byp (${sel.length})`)}
                   options={dropdownOptions.bypasses}
                   cascadedOptions={cascadedOptions.bypass}
+                  onOpen={() => requestFacet('bypass')}
                   selected={filters.bypass}
                   onChange={(v) => dispatch(setFilter({ field: "bypass", value: v }))}
                   includeBlank
@@ -3130,6 +2652,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "Other" : `Other (${sel.length})`)}
                   options={dropdownOptions.others || ["flange", "gasket", "nut and bolt"]}
                   cascadedOptions={cascadedOptions.others || []}
+                  onOpen={() => requestFacet('others')}
                   selected={filters.others || []}
                   onChange={(v) => dispatch(setFilter({ field: "others", value: v }))}
                   includeBlank
@@ -3148,6 +2671,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   renderButtonLabel={(sel) => (sel.length === 0 ? "RM Type" : `RM (${sel.length})`)}
                   options={Array.from(new Set([...RM_TYPE_OPTIONS, ...(cascadedOptions.rmType ?? [])]))}
                   cascadedOptions={cascadedOptions.rmType ?? []}
+                  onOpen={() => requestFacet('rmType')}
                   selected={filters.rmType}
                   onChange={(v) => dispatch(setFilter({ field: "rmType", value: v }))}
                   includeBlank
@@ -3204,6 +2728,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All Codes"
                   options={cascadedOptions.erpItemCode}
                   cascadedOptions={cascadedOptions.erpItemCode}
+                  onOpen={() => requestFacet('erpItemCode')}
                   selected={filters.erpItemCode}
                   onChange={(v) => dispatch(setFilter({ field: "erpItemCode", value: v }))}
                   includeBlank
@@ -3248,6 +2773,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All BOM IDs"
                   options={cascadedOptions.bomId || []}
                   cascadedOptions={cascadedOptions.bomId || []}
+                  onOpen={() => requestFacet('bomId')}
                   selected={filters.bomId as any || []}
                   onChange={(v) => dispatch(setFilter({ field: "bomId" as any, value: v }))}
                   includeBlank
@@ -3293,6 +2819,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All Costs"
                   options={cascadedOptions.productCost}
                   cascadedOptions={cascadedOptions.productCost}
+                  onOpen={() => requestFacet('productCost')}
                   selected={filters.productCost}
                   onChange={(v) => dispatch(setFilter({ field: "productCost", value: v }))}
                   includeBlank
@@ -3320,6 +2847,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All Codes"
                   options={cascadedOptions.costRefCode || []}
                   cascadedOptions={cascadedOptions.costRefCode || []}
+                  onOpen={() => requestFacet('costRefCode')}
                   selected={filters.costRefCode}
                   onChange={(v) => dispatch(setFilter({ field: "costRefCode", value: v }))}
                   includeBlank
@@ -3352,6 +2880,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                 allLabel="Cost: All"
                 options={cascadedOptions.cost}
                 cascadedOptions={cascadedOptions.cost}
+                onOpen={() => requestFacet('cost')}
                 selected={filters.cost}
                 onChange={(v) => dispatch(setFilter({ field: "cost", value: v }))}
                 includeBlank
@@ -3422,6 +2951,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All Stock"
                   options={cascadedOptions.availableStock ?? []}
                   cascadedOptions={cascadedOptions.availableStock ?? []}
+                  onOpen={() => requestFacet('availableStock')}
                   selected={filters.availableStock}
                   onChange={(v) => dispatch(setFilter({ field: "availableStock", value: v }))}
                   includeBlank
@@ -3518,6 +3048,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All VA%"
                   options={cascadedOptions.vaPercent}
                   cascadedOptions={cascadedOptions.vaPercent}
+                  onOpen={() => requestFacet('vaPercent')}
                   selected={filters.vaPercent}
                   onChange={(v) => dispatch(setFilter({ field: "vaPercent", value: v }))}
                   includeBlank
@@ -3577,6 +3108,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All CR Rates"
                   options={cascadedOptions.contractReviewRate || []}
                   cascadedOptions={cascadedOptions.contractReviewRate || []}
+                  onOpen={() => requestFacet('contractReviewRate')}
                   selected={filters.contractReviewRate || []}
                   onChange={(v) => dispatch(setFilter({ field: "contractReviewRate", value: v }))}
                   includeBlank
@@ -3610,6 +3142,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All PD Cost Val"
                   options={cascadedOptions.pdcostValidation || []}
                   cascadedOptions={cascadedOptions.pdcostValidation || []}
+                  onOpen={() => requestFacet('pdcostValidation')}
                   selected={filters.pdcostValidation || []}
                   onChange={(v) => dispatch(setFilter({ field: "pdcostValidation", value: v }))}
                   includeBlank
@@ -3664,6 +3197,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All Names"
                   options={cascadedOptions.itemNameMerge ?? []}
                   cascadedOptions={cascadedOptions.itemNameMerge ?? []}
+                  onOpen={() => requestFacet('itemNameMerge')}
                   selected={filters.itemNameMerge}
                   onChange={(v) => dispatch(setFilter({ field: "itemNameMerge", value: v }))}
                   includeBlank
@@ -3739,6 +3273,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All"
                   options={["Yes", "No"]}
                   cascadedOptions={cascadedOptions.validation}
+                  onOpen={() => requestFacet('validation')}
                   selected={filters.validation}
                   onChange={(v) => dispatch(setFilter({ field: "validation", value: v }))}
                   includeBlank
@@ -3795,6 +3330,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All"
                   options={cascadedOptions.deliverySchedule ?? []}
                   cascadedOptions={cascadedOptions.deliverySchedule ?? []}
+                  onOpen={() => requestFacet('deliverySchedule')}
                   selected={filters.deliverySchedule}
                   onChange={(v) => dispatch(setFilter({ field: "deliverySchedule", value: v }))}
                   includeBlank
@@ -3822,6 +3358,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
                   allLabel="All"
                   options={["Yes", "No"]}
                   cascadedOptions={cascadedOptions.apm}
+                  onOpen={() => requestFacet('apm')}
                   selected={filters.apm}
                   onChange={(v) => dispatch(setFilter({ field: "apm", value: v }))}
                   includeBlank
@@ -3914,7 +3451,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
           </tr>
         </thead>
         <tbody className="bg-background">
-          {filteredEnquiries.length === 0 ? (
+          {pageTotal === 0 ? (
             <tr>
               <td colSpan={TOTAL_COLUMNS + 1} className="py-20 px-4 text-center border-b border-border">
                 <div className="flex flex-col items-center justify-center">
@@ -5396,11 +4933,11 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
       </table>
     </div>
 
-    {filteredEnquiries.length > 0 && (
+    {pageTotal > 0 && (
       <div className="shrink-0 border-t border-border bg-card">
         <Pagination
           currentPage={currentPage}
-          totalCount={filteredEnquiries.length}
+          totalCount={pageTotal}
           pageSize={pageSize}
           onPageChange={(page) => dispatch(setPage(page))}
           onPageSizeChange={(size) => {
@@ -5421,29 +4958,11 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
         </DialogHeader>
         <div className="py-3 space-y-3">
           <p className="text-sm text-muted-foreground">
-            Clear <span className="font-bold text-foreground">{clearQrPending?.withQr ?? 0}</span> Quoted Rate(s) from <span className="font-bold text-foreground">{clearQrPending?.total ?? 0}</span> filtered item(s) across all pages?
+            Clear quoted rates from <span className="font-bold text-foreground">{clearQrPending?.total ?? 0}</span> filtered item(s) across all pages?
           </p>
           <p className="text-xs text-amber-700 dark:text-amber-300 font-medium bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 rounded p-2">
-            This will delete <span className="font-semibold">Quotation Rate, QR incl. GST, Total Value</span> and <span className="font-semibold">Itemwise Total</span> from the database for filtered items only. <span className="font-semibold">VA% will be kept</span>. This cannot be undone without re-entering rates.
+            This will delete <span className="font-semibold">Quotation Rate, QR incl. GST, Total Value</span> and <span className="font-semibold">Itemwise Total</span> from the database for filtered items only. <span className="font-semibold">VA% will be kept</span>. Items frozen after one-time PDF generation are skipped. This cannot be undone without re-entering rates.
           </p>
-          {(() => {
-            const allFiltered = filteredEnquiries.flatMap((e) => getFilteredItems(e));
-            const withQrItems = allFiltered.filter((i) => i.quotedRate != null && String(i.quotedRate).trim() !== "").slice(0, 8);
-            if (withQrItems.length === 0) return null;
-            return (
-              <div className="max-h-32 overflow-y-auto rounded border border-border bg-muted/30 p-2 space-y-1">
-                {withQrItems.map((it) => (
-                  <div key={it.id} className="text-xs text-foreground truncate flex items-start gap-1.5">
-                    <span className="text-muted-foreground shrink-0">•</span>
-                    <span className="truncate">{it.itemName} — QR: {it.quotedRate}</span>
-                  </div>
-                ))}
-                {clearQrPending && clearQrPending.withQr > 8 && (
-                  <div className="text-[11px] text-muted-foreground font-medium pt-1">+{clearQrPending.withQr - 8} more...</div>
-                )}
-              </div>
-            );
-          })()}
         </div>
         <DialogFooter className="pt-2 border-t border-border flex justify-end gap-2">
           <DialogClose render={<Button type="button" variant="outline" size="sm" disabled={clearQrRunning} />}>
@@ -5456,7 +4975,7 @@ export default function EnquiryTable({ dropdownOptions, autoSentDockets, autoPen
             disabled={clearQrRunning || !clearQrPending}
             onClick={handleClearQrConfirm}
           >
-            {clearQrRunning ? "Clearing..." : `Clear ${clearQrPending?.withQr ?? 0} Rate(s)`}
+            {clearQrRunning ? "Clearing..." : "Clear quoted rates"}
           </Button>
         </DialogFooter>
       </DialogContent>

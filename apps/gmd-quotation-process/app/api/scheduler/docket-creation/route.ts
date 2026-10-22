@@ -1,8 +1,9 @@
 /**
  * Ofelia entry point for the hourly pending-docket creation.
  *
- * Materializes dockets for today's `DocketQuotationThread` rows flagged
- * `pendingDocket = true`: creates a header-only `Enquiry`, links mail
+ * Materializes dockets for recent `DocketQuotationThread` rows flagged
+ * `pendingDocket = true` (today plus a few days of backlog, because the mail
+ * ingestion can lag): creates a header-only `Enquiry`, links mail
  * attachments, generates the snapshot PDF, and stamps the thread with the new
  * docket number.
  *

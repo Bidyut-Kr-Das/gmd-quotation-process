@@ -4,6 +4,7 @@ import {
   createEntityAdapter,
   createSelector,
 } from "@reduxjs/toolkit";
+import type { PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
 import type { EnquiryData, EnquiryItemData } from "./types";
 import {
@@ -32,6 +33,20 @@ import {
   syncEnquiryEmailAddressesAction,
   sendDocketEmailAction,
 } from "@/app/actions";
+import {
+  fetchEnquiryFacet,
+  fetchEnquiryPage,
+  fetchFilteredEnquiryIds,
+} from "@/app/actions/enquiryQuery";
+import type {
+  EnquiryFacetResult,
+  EnquiryPageResult,
+  EnquiryQuery,
+  EnquirySort,
+  EnquirySummary,
+  FilteredIds,
+} from "./enquiryQuery";
+import { enquiryQueryKey } from "./enquiryQuery";
 
 export const populatePdCostValidation = createAsyncThunk(
   "enquiries/populatePdCostValidation",
@@ -368,17 +383,45 @@ export const syncEnquiryEmailAddresses = createAsyncThunk(
   }
 );
 
-const enquiriesAdapter = createEntityAdapter<EnquiryData>({
-  sortComparer: (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-});
+// No sortComparer: `selectAll` must follow the order the server returned, which
+// is the user's chosen sort (createdAt DESC is the default from SQL).
+const enquiriesAdapter = createEntityAdapter<EnquiryData>();
 
 const itemsAdapter = createEntityAdapter<EnquiryItemData>({
   sortComparer: (a, b) => a.position - b.position,
 });
 
+interface FacetEntry {
+  options: string[];
+  status: "loading" | "ready" | "error";
+  /** Filter combination the options were computed for. */
+  filterKey: string;
+}
+
+interface EnquiryPageState {
+  total: number;
+  status: "idle" | "loading" | "ready" | "error";
+  error: string | null;
+  /** requestId of the newest page request; older responses are dropped. */
+  requestId: string | null;
+  /** Query key of the page currently in the adapters. */
+  loadedKey: string | null;
+  summary: EnquirySummary | null;
+  facets: Record<string, FacetEntry>;
+  sort: EnquirySort;
+  projectReference: string;
+  pendingOnly: boolean;
+  closedBomOnly: boolean;
+  /** Set by any enquiry/item mutation so the page refetches instead of guessing. */
+  stale: boolean;
+  /** Background revalidation (e.g. after a cell edit) - rows stay visible. */
+  refreshing: boolean;
+}
+
 interface EnquiriesState {
   enquiries: ReturnType<typeof enquiriesAdapter.getInitialState>;
   items: ReturnType<typeof itemsAdapter.getInitialState>;
+  page: EnquiryPageState;
   loading: "idle" | "loading" | "succeeded" | "failed";
   error: string | null;
   updateStatus: "idle" | "loading" | "succeeded" | "failed";
@@ -404,6 +447,21 @@ interface EnquiriesState {
 const initialState: EnquiriesState = {
   enquiries: enquiriesAdapter.getInitialState(),
   items: itemsAdapter.getInitialState(),
+  page: {
+    total: 0,
+    status: "idle",
+    error: null,
+    requestId: null,
+    loadedKey: null,
+    summary: null,
+    facets: {},
+    sort: null,
+    projectReference: "",
+    pendingOnly: false,
+    closedBomOnly: false,
+    stale: false,
+    refreshing: false,
+  },
   loading: "idle",
   error: null,
   updateStatus: "idle",
@@ -426,6 +484,52 @@ const initialState: EnquiriesState = {
   contractReviewError: null,
 };
 
+function applyEnquiryPage(
+  state: EnquiriesState,
+  result: EnquiryPageResult,
+  key: string,
+) {
+  enquiriesAdapter.setAll(state.enquiries, result.enquiries);
+  itemsAdapter.setAll(
+    state.items,
+    result.enquiries.flatMap((enquiry) => enquiry.items),
+  );
+  state.page.total = result.total;
+  if (result.summary) state.page.summary = result.summary;
+  state.page.status = "ready";
+  state.page.error = null;
+  state.page.loadedKey = key;
+  state.page.stale = false;
+  state.page.refreshing = false;
+  state.page.requestId = null;
+}
+
+/** One page of the dashboard, filtered and sorted in Postgres. */
+export const loadEnquiryPage = createAsyncThunk<
+  EnquiryPageResult,
+  { query: EnquiryQuery; includeSummary?: boolean; background?: boolean }
+>("enquiries/loadPage", async ({ query, includeSummary }) =>
+  fetchEnquiryPage(query, includeSummary ?? true),
+);
+
+/** Cascading dropdown options - one distinct query per column, on open. */
+export const loadEnquiryFacet = createAsyncThunk<
+  EnquiryFacetResult,
+  { query: EnquiryQuery; field: string; filterKey: string }
+>("enquiries/loadFacet", async ({ query, field }) => fetchEnquiryFacet(query, field));
+
+/** Ids for select-all / bulk actions across every page. */
+export const loadFilteredEnquiryIds = createAsyncThunk<
+  FilteredIds,
+  { query: EnquiryQuery }
+>("enquiries/loadFilteredIds", async ({ query }) => fetchFilteredEnquiryIds(query));
+
+const READ_ONLY_THUNKS = new Set([
+  "enquiries/loadPage",
+  "enquiries/loadFacet",
+  "enquiries/loadFilteredIds",
+]);
+
 const enquiriesSlice = createSlice({
   name: "enquiries",
   initialState,
@@ -439,12 +543,81 @@ const enquiriesSlice = createSlice({
       itemsAdapter.setAll(state.items, items);
       state.loading = "succeeded";
     },
+    /** Seed the adapters + totals from the page the server component already fetched. */
+    hydrateEnquiryPage(state, action: PayloadAction<EnquiryPageResult & { key: string }>) {
+      applyEnquiryPage(state, action.payload, action.payload.key);
+    },
+    markEnquiryPageStale(state) {
+      state.page.stale = true;
+    },
+    clearEnquiryPageStale(state) {
+      state.page.stale = false;
+    },
+    setEnquirySort(state, action: PayloadAction<EnquirySort>) {
+      state.page.sort = action.payload;
+    },
+    setEnquiryProjectReference(state, action: PayloadAction<string>) {
+      state.page.projectReference = action.payload;
+    },
+    setEnquiryPendingOnly(state, action: PayloadAction<boolean>) {
+      state.page.pendingOnly = action.payload;
+    },
+    setEnquiryClosedBomOnly(state, action: PayloadAction<boolean>) {
+      state.page.closedBomOnly = action.payload;
+    },
     setLoading(state, action) {
       state.loading = action.payload;
     },
   },
   extraReducers: (builder) => {
     builder
+      .addCase(loadEnquiryPage.pending, (state, action) => {
+        if (action.meta.arg.background) state.page.refreshing = true;
+        else state.page.status = "loading";
+        state.page.error = null;
+        state.page.requestId = action.meta.requestId;
+      })
+      .addCase(loadEnquiryPage.fulfilled, (state, action) => {
+        // Late responses from a superseded filter combination are dropped.
+        if (action.meta.requestId !== state.page.requestId) return;
+        applyEnquiryPage(
+          state,
+          action.payload,
+          enquiryQueryKey(action.meta.arg.query),
+        );
+      })
+      .addCase(loadEnquiryPage.rejected, (state, action) => {
+        if (action.meta.requestId !== state.page.requestId) return;
+        state.page.requestId = null;
+        if (action.meta.arg.background) {
+          // Keep the rows and totals that are already on screen.
+          state.page.refreshing = false;
+          return;
+        }
+        state.page.status = "error";
+        state.page.error = action.error.message ?? "Failed to load enquiries";
+      })
+      .addCase(loadEnquiryFacet.pending, (state, action) => {
+        state.page.facets[action.meta.arg.field] = {
+          options: state.page.facets[action.meta.arg.field]?.options ?? [],
+          status: "loading",
+          filterKey: action.meta.arg.filterKey,
+        };
+      })
+      .addCase(loadEnquiryFacet.fulfilled, (state, action) => {
+        state.page.facets[action.payload.field] = {
+          options: action.payload.options,
+          status: "ready",
+          filterKey: action.meta.arg.filterKey,
+        };
+      })
+      .addCase(loadEnquiryFacet.rejected, (state, action) => {
+        state.page.facets[action.meta.arg.field] = {
+          options: state.page.facets[action.meta.arg.field]?.options ?? [],
+          status: "error",
+          filterKey: action.meta.arg.filterKey,
+        };
+      })
       .addCase(createEnquiry.pending, (state) => {
         state.createStatus = "loading";
         state.createError = null;
@@ -993,12 +1166,32 @@ const enquiriesSlice = createSlice({
       .addCase(selectBomId.rejected, (state, action) => {
         state.updateStatus = "failed";
         state.updateError = (action.payload as string) || "Select BOM failed";
-      });
+      })
+      // Any mutation can change whether the page's rows still match the filters,
+      // so let the page layer refetch instead of guessing.
+      .addMatcher(
+        (action): action is { type: string } => {
+          const type = (action as { type?: unknown }).type;
+          if (typeof type !== "string") return false;
+          if (!type.startsWith("enquiries/") || !type.endsWith("/fulfilled")) return false;
+          return !READ_ONLY_THUNKS.has(type.slice(0, type.lastIndexOf("/")));
+        },
+        (state) => {
+          state.page.stale = true;
+        },
+      );
   },
 });
 
 export const {
   hydrateFromServer,
+  hydrateEnquiryPage,
+  markEnquiryPageStale,
+  clearEnquiryPageStale,
+  setEnquirySort,
+  setEnquiryProjectReference,
+  setEnquiryPendingOnly,
+  setEnquiryClosedBomOnly,
   setLoading,
 } = enquiriesSlice.actions;
 
@@ -1026,6 +1219,25 @@ export const selectItemsByEnquiryId = createSelector(
 
 export const selectEnquiriesLoading = (state: RootState) => state.enquiries.loading;
 export const selectEnquiriesError = (state: RootState) => state.enquiries.error;
+export const selectEnquiryPage = (state: RootState) => state.enquiries.page;
+export const selectEnquirySummary = (state: RootState) => state.enquiries.page.summary;
+
+/**
+ * Assembles the server query from the state the UI already keeps. Table-local
+ * filters (project reference, pending/closed-BOM toggles) live in the page slice
+ * so they travel with the request.
+ */
+export const selectEnquiryQuery = (state: RootState): EnquiryQuery => ({
+  filters: state.filters,
+  globalSearch: state.filters.globalSearch,
+  projectReference: state.enquiries.page.projectReference,
+  pendingOnly: state.enquiries.page.pendingOnly,
+  closedBomOnly: state.enquiries.page.closedBomOnly,
+  selectedEnquiryIds: state.ui.selectedEnquiryIds,
+  sort: state.enquiries.page.sort,
+  page: state.pagination.currentPage,
+  pageSize: state.pagination.pageSize,
+});
 export const selectUpdateStatus = (state: RootState) => state.enquiries.updateStatus;
 export const selectUpdateError = (state: RootState) => state.enquiries.updateError;
 export const selectFetchStatus = (state: RootState) => state.enquiries.fetchStatus;

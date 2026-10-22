@@ -1,20 +1,31 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { shallowEqual } from "react-redux";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
-import { hydrateFromServer, selectAllEnquiries, selectAllItems } from "@/lib/enquiriesSlice";
+import {
+  clearEnquiryPageStale,
+  hydrateEnquiryPage,
+  loadEnquiryPage,
+  selectAllEnquiries,
+  selectEnquiryQuery,
+  selectEnquirySummary,
+} from "@/lib/enquiriesSlice";
 import { setFilter } from "@/lib/filtersSlice";
+import { setPage } from "@/lib/paginationSlice";
 import { setClosedBomIds } from "@/lib/uiSlice";
-import type { EnquiryData, EnquiryItemData, DropdownOptions } from "@/lib/types";
+import type { DropdownOptions } from "@/lib/types";
+import type { EnquiryPageResult } from "@/lib/enquiryQuery";
+import { EMPTY_ENQUIRY_SUMMARY, enquiryFilterKey, enquiryQueryKey } from "@/lib/enquiryQuery";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import EnquiryTable from "@/components/table/EnquiryTable";
 import QuotationAnalyticsSidebar from "@/components/dashboard/QuotationAnalyticsSidebar";
 import QuotationTotalValueCard from "@/components/dashboard/QuotationTotalValueCard";
-import { enquiryPassesFilters, itemPassesFilters } from "@/lib/filterUtils";
 import { formatIndianNumber } from "@/lib/formatCurrency";
 
 interface DashboardContainerProps {
-  enquiries: EnquiryData[];
+  initialPage: EnquiryPageResult;
+  initialQueryKey: string;
   dropdownOptions: DropdownOptions;
   nextDocketNumber: string;
   enquiriesList: { id: string; docketNumber: string; partyName: string }[];
@@ -22,21 +33,9 @@ interface DashboardContainerProps {
   autoPendingDockets?: string[];
 }
 
-function extractUniqueStringValues(arr: any[], key: string): string[] {
-  const vals = arr
-    .map((item: any) => item[key])
-    .filter((v: any) => v != null && v !== "");
-  return [...new Set(vals.map(String))];
-}
-
-function mergeArrays(base: string[], additional: string[]): string[] {
-  return [...new Set([...base, ...additional])].sort((a, b) =>
-    a.localeCompare(b, undefined, { numeric: true })
-  );
-}
-
 export default function DashboardContainer({
-  enquiries,
+  initialPage,
+  initialQueryKey,
   dropdownOptions,
   nextDocketNumber,
   enquiriesList,
@@ -44,12 +43,13 @@ export default function DashboardContainer({
   autoPendingDockets,
 }: DashboardContainerProps) {
   const dispatch = useAppDispatch();
-  const storeEnquiries = useAppSelector(selectAllEnquiries);
-  const storeItems = useAppSelector(selectAllItems);
+
   const filters = useAppSelector((s) => s.filters);
-  const generatedImages = useAppSelector((s) => s.ui.generatedImages);
-  const selectedEnquiryIds = useAppSelector((s) => s.ui.selectedEnquiryIds);
-  const globalSearch = filters.globalSearch.trim();
+  const pageEnquiries = useAppSelector(selectAllEnquiries);
+  const pageState = useAppSelector((s) => s.enquiries.page);
+  const summary = useAppSelector(selectEnquirySummary) ?? initialPage.summary ?? EMPTY_ENQUIRY_SUMMARY;
+  const query = useAppSelector(selectEnquiryQuery, shallowEqual);
+  const queryKey = enquiryQueryKey(query);
 
   // Sidebar filter values synced with Redux filtersSlice
   const selectedPartyNames = filters.partyNames;
@@ -83,176 +83,79 @@ export default function DashboardContainer({
     setSelectedSizes([]);
   };
 
-  // Use store data when hydrated, fallback to server prop for initial render
-  const effectiveEnquiries = storeEnquiries.length > 0 ? storeEnquiries : enquiries;
-
-  // Scope: when dockets are selected in the table, the cards and analytics
-  // filters narrow to that selection; otherwise they span all enquiries.
-  const selectedEnquiryIdSet = useMemo(() => new Set(selectedEnquiryIds), [selectedEnquiryIds]);
-  const scopedEnquiries = useMemo(
-    () =>
-      selectedEnquiryIds.length > 0
-        ? effectiveEnquiries.filter((e) => selectedEnquiryIdSet.has(e.id))
-        : effectiveEnquiries,
-    [effectiveEnquiries, selectedEnquiryIds, selectedEnquiryIdSet]
-  );
-
-  // Fully filtered enquiries matching both sidebar and table header filters,
-  // further narrowed to the selected dockets (if any).
-  const filteredEnquiries = useMemo(() => {
-    return scopedEnquiries.filter((enquiry) => {
-      if (!enquiryPassesFilters(enquiry, filters, globalSearch, generatedImages)) return false;
-      if (!enquiry.items || enquiry.items.length === 0) return true;
-      return enquiry.items.some((item) => itemPassesFilters(item, filters, generatedImages));
-    });
-  }, [scopedEnquiries, filters, globalSearch, generatedImages]);
-
-  // Items of filtered enquiries that pass active item filters
-  const analyticsItems = useMemo(() => {
-    const items: EnquiryItemData[] = [];
-    for (const e of filteredEnquiries) {
-      if (!e.items) continue;
-      for (const item of e.items) {
-        if (itemPassesFilters(item, filters, generatedImages)) {
-          items.push(item);
-        }
-      }
-    }
-    return items;
-  }, [filteredEnquiries, filters, generatedImages]);
-
-  const totalValueGstSum = useMemo(() => {
-    let sum = 0;
-    for (const item of analyticsItems as any[]) {
-      const raw = (item as any).totalValue;
-      if (raw == null || raw === "" || raw === "0") continue;
-      const cleaned = String(raw).replace(/,/g, "").trim();
-      const n = parseFloat(cleaned);
-      if (!isNaN(n)) sum += n;
-    }
-    return sum;
-  }, [analyticsItems]);
-
-  const formattedSum = useMemo(() => {
-    return formatIndianNumber(totalValueGstSum, 2);
-  }, [totalValueGstSum]);
-
-  const totalValueExclGstSum = useMemo(() => {
-    let sum = 0;
-    for (const item of analyticsItems) {
-      const raw = item.itemWiseTotalValue;
-      if (raw == null || raw === "" || raw === "0") continue;
-      const cleaned = raw.replace(/,/g, "").trim();
-      const n = parseFloat(cleaned);
-      if (!isNaN(n)) sum += n;
-    }
-    return sum;
-  }, [analyticsItems]);
-
-  const formattedExclSum = useMemo(() => {
-    return formatIndianNumber(totalValueExclGstSum, 2);
-  }, [totalValueExclGstSum]);
-
-  const totalCostSum = useMemo(() => {
-    let sum = 0;
-    for (const item of analyticsItems) {
-      const rawCost = item.cost;
-      if (rawCost == null || rawCost === 0) continue;
-      const cleaned =
-        typeof rawCost === "number"
-          ? rawCost
-          : parseFloat(String(rawCost).replace(/,/g, "").trim());
-      if (isNaN(cleaned) || cleaned <= 0) continue;
-
-      const rawQty = item.quantity;
-      const qty =
-        typeof rawQty === "number"
-          ? rawQty
-          : parseFloat(String(rawQty).replace(/,/g, "").trim());
-      const validQty = !isNaN(qty) && qty > 0 ? qty : 1;
-
-      sum += cleaned * validQty;
-    }
-    return sum;
-  }, [analyticsItems]);
-
-  const formattedTotalCost = useMemo(() => {
-    return formatIndianNumber(totalCostSum, 2);
-  }, [totalCostSum]);
-
-  const totalVaPercent = useMemo(() => {
-    if (totalCostSum <= 0) return 0;
-    return ((totalValueExclGstSum - totalCostSum) / totalCostSum) * 100;
-  }, [totalValueExclGstSum, totalCostSum]);
-
-  const formattedTotalVa = useMemo(() => {
-    if (totalCostSum <= 0) return "0.00%";
-    return `${totalVaPercent.toFixed(2)}%`;
-  }, [totalCostSum, totalVaPercent]);
-
-  const totalQuantity = useMemo(() => {
-    let sum = 0;
-    for (const item of analyticsItems) {
-      const rawQty = (item as any).quantity;
-      const qty =
-        typeof rawQty === "number"
-          ? rawQty
-          : parseFloat(String(rawQty).replace(/,/g, "").trim());
-      if (!isNaN(qty) && qty > 0) sum += qty;
-    }
-    return sum;
-  }, [analyticsItems]);
-
-  const formattedTotalQuantity = useMemo(() => {
-    return formatIndianNumber(totalQuantity);
-  }, [totalQuantity]);
-
+  // Seed the page from the server render once. Later loads go through the action.
+  const hydratedRef = useRef(false);
   useEffect(() => {
-    const allItems = enquiries.flatMap((e) => e.items as EnquiryItemData[]);
-    dispatch(hydrateFromServer({ enquiries, items: allItems }));
-  }, [enquiries, dispatch]);
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    dispatch(hydrateEnquiryPage({ ...initialPage, key: initialQueryKey }));
+  }, [initialPage, initialQueryKey, dispatch]);
 
-  // Seed the closed-BOM set once from the server-computed `closedBomIds`
-  // (VerifyBom.cBatch = "C"). Held in ui state so it survives the item
-  // replacements that inline edits and BOM selection trigger.
+  // A new filter/sort/page combination loads exactly one page. Totals are only
+  // recomputed when the filters change, not when paging or sorting.
+  const loadedKeyRef = useRef<string | null>(initialQueryKey);
+  const filterSigRef = useRef<string>("");
+  const summarySigRef = useRef<string>("");
+  useEffect(() => {
+    // Selection scopes the cards/facets only, so it must not reset paging.
+    const filterSig = enquiryFilterKey({ ...query, selectedEnquiryIds: [] });
+    const summarySig = enquiryFilterKey(query);
+    const filtersChanged = filterSigRef.current !== filterSig;
+    const summaryChanged = summarySigRef.current !== summarySig;
+    filterSigRef.current = filterSig;
+    summarySigRef.current = summarySig;
+    if (loadedKeyRef.current === queryKey) return;
+
+    let effective = query;
+    if (filtersChanged && query.page !== 1) {
+      effective = { ...query, page: 1 };
+      dispatch(setPage(1));
+      // Claim the key we are about to load so the page reset does not fire a second request.
+      loadedKeyRef.current = enquiryQueryKey(effective);
+    } else {
+      loadedKeyRef.current = queryKey;
+    }
+    dispatch(
+      loadEnquiryPage({
+        query: effective,
+        includeSummary: filtersChanged || summaryChanged,
+      }),
+    );
+  }, [queryKey, query, dispatch]);
+
+  // Any mutation marks the page stale; refetch it so totals, filters and sort stay right.
+  useEffect(() => {
+    if (!pageState.stale) return;
+    dispatch(clearEnquiryPageStale());
+    dispatch(loadEnquiryPage({ query, includeSummary: true, background: true }));
+  }, [pageState.stale, query, dispatch]);
+
+  // Seed the closed-BOM set from the page's items (VerifyBom.cBatch = "C").
   const derivedClosedBomIds = useMemo(() => {
     const set = new Set<string>();
-    for (const e of enquiries) {
-      for (const item of e.items ?? []) {
+    for (const enquiry of pageEnquiries) {
+      for (const item of enquiry.items ?? []) {
         for (const id of item.closedBomIds ?? []) {
           if (id) set.add(id);
         }
       }
     }
     return Array.from(set);
-  }, [enquiries]);
+  }, [pageEnquiries]);
 
   useEffect(() => {
     dispatch(setClosedBomIds(derivedClosedBomIds));
   }, [derivedClosedBomIds, dispatch]);
 
-  const mergedDropdownOptions = useMemo(() => {
-    const allItems = enquiries.flatMap((e) => e.items);
-
-    return {
-      ...dropdownOptions,
-      enquiryTypes: mergeArrays(dropdownOptions.enquiryTypes, extractUniqueStringValues(enquiries, "enquiryType")),
-      states: mergeArrays(dropdownOptions.states, extractUniqueStringValues(enquiries, "state")),
-      paymentTerms: mergeArrays(dropdownOptions.paymentTerms, extractUniqueStringValues(enquiries, "paymentTerms")),
-      inspections: mergeArrays(dropdownOptions.inspections, extractUniqueStringValues(enquiries, "inspection")),
-      pbgs: mergeArrays(dropdownOptions.pbgs, extractUniqueStringValues(enquiries, "pbg")),
-      orderStatuses: mergeArrays(dropdownOptions.orderStatuses, extractUniqueStringValues(enquiries, "orderStatus")),
-      closureStatuses: mergeArrays(dropdownOptions.closureStatuses, extractUniqueStringValues(enquiries, "closureStatus")),
-      pnRatings: mergeArrays(dropdownOptions.pnRatings, extractUniqueStringValues(allItems, "pnRating")),
-      operationTypes: mergeArrays(dropdownOptions.operationTypes, extractUniqueStringValues(allItems, "operationType")),
-      extensions: mergeArrays(dropdownOptions.extensions, extractUniqueStringValues(allItems, "extension")),
-      bypasses: mergeArrays(dropdownOptions.bypasses, extractUniqueStringValues(allItems, "bypass")),
-      others: mergeArrays((dropdownOptions as any).others ?? [], allItems.flatMap((i:any)=>Array.isArray(i.others)?i.others:[])),
-      vaPercents: mergeArrays(dropdownOptions.vaPercents, extractUniqueStringValues(allItems, "vaPercent")),
-      // Delivery Schedules are sourced solely from LookupOption type=DELIVERY
-      // (single source of truth), so no merge with item values here.
-    };
-  }, [enquiries, dropdownOptions]);
+  const formattedSum = formatIndianNumber(summary.totalValueGst, 2);
+  const formattedExclSum = formatIndianNumber(summary.totalValueExclGst, 2);
+  const formattedTotalCost = formatIndianNumber(summary.totalCost, 2);
+  const totalVaPercent =
+    summary.totalCost > 0
+      ? ((summary.totalValueExclGst - summary.totalCost) / summary.totalCost) * 100
+      : 0;
+  const formattedTotalVa = summary.totalCost > 0 ? `${totalVaPercent.toFixed(2)}%` : "0.00%";
+  const formattedTotalQuantity = formatIndianNumber(summary.totalQuantity);
 
   return (
     <div className="flex flex-col lg:flex-row gap-3 flex-1 min-h-0 w-full overflow-hidden transition-all duration-300">
@@ -280,8 +183,8 @@ export default function DashboardContainer({
             formattedTotalCost={formattedTotalCost}
             formattedTotalVa={formattedTotalVa}
             formattedTotalQuantity={formattedTotalQuantity}
-            filteredEnquiriesCount={filteredEnquiries.length}
-            analyticsItemsCount={analyticsItems.length}
+            filteredEnquiriesCount={summary.filteredEnquiries}
+            analyticsItemsCount={summary.analyticsItems}
             hasActiveAnalyticsFilters={hasActiveAnalyticsFilters}
             activeFilterCount={
               selectedPartyNames.length +
@@ -297,12 +200,13 @@ export default function DashboardContainer({
           <DashboardHeader
             enquiries={enquiriesList}
             nextDocketNumber={nextDocketNumber}
-            dropdownOptions={mergedDropdownOptions}
+            dropdownOptions={dropdownOptions}
+            initialSummary={initialPage.summary}
           />
         </div>
         <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden">
           <EnquiryTable
-            dropdownOptions={mergedDropdownOptions}
+            dropdownOptions={dropdownOptions}
             autoSentDockets={autoSentDockets}
             autoPendingDockets={autoPendingDockets}
           />
