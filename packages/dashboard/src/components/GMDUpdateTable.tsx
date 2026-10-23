@@ -977,6 +977,14 @@ interface GMDUpdateTableProps {
   /** Save handler for the "USD cost" column. */
   onUsdCostUpdate?: (id: string, usdCost: string) => Promise<unknown>;
   onFilteredRowsChange?: (rows: unknown[][]) => void;
+  /**
+   * Extra row predicate for what the table renders (pagination, record count,
+   * export). Unlike the built-in column/global filters, rows rejected here are
+   * still reported through `onFilteredRowsChange`, so a caller that derives
+   * summary totals from that callback keeps stable totals when this drill-down
+   * filter is toggled.
+   */
+  displayOnlyRowFilter?: (row: unknown[], id: string) => boolean;
   usdInrRate?: number | null;
   onRefreshRate?: () => void;
   /** Show the Export Excel button. Default true. */
@@ -1214,6 +1222,7 @@ export default function GMDUpdateTable({
   onFieldUpdate,
   onUsdCostUpdate,
   onFilteredRowsChange,
+  displayOnlyRowFilter,
   usdInrRate,
   onRefreshRate,
   allowExport = true,
@@ -1579,7 +1588,7 @@ castingRateInputs,
   const handleExportToExcel = async () => {
     const toastId = toast.loading("Preparing Excel file...");
     try {
-      const rows = filteredWithIds.map(({ row }) => {
+      const rows = displayedWithIds.map(({ row }) => {
         const obj: Record<string, unknown> = {};
         visibleCols.forEach(({ header, idx }) => {
           const v = row[idx];
@@ -1850,14 +1859,29 @@ castingRateInputs,
     [sortedWithIds, rowPassesFilters],
   );
 
+  const displayedWithIds = useMemo(
+    () =>
+      displayOnlyRowFilter
+        ? filteredWithIds.filter(({ row, id }) => displayOnlyRowFilter(row, id))
+        : filteredWithIds,
+    [filteredWithIds, displayOnlyRowFilter],
+  );
+
   const filteredRows = useMemo(
+    () => displayedWithIds.map((v) => v.row),
+    [displayedWithIds],
+  );
+
+  // Summary consumers get the table-filtered set without the display-only
+  // drill-down, so toggling that drill-down never moves their totals.
+  const statsRows = useMemo(
     () => filteredWithIds.map((v) => v.row),
     [filteredWithIds],
   );
 
   useEffect(() => {
-    onFilteredRowsChange?.(filteredRows);
-  }, [filteredRows, onFilteredRowsChange]);
+    onFilteredRowsChange?.(statsRows);
+  }, [statsRows, onFilteredRowsChange]);
 
   const pbgAmountSum = useMemo(() => {
     const colIdx = headers.indexOf("PBG AMOUNT");
@@ -1919,8 +1943,8 @@ castingRateInputs,
 
   const paginatedWithIds = useMemo(() => {
     const start = (activePage - 1) * pageSize;
-    return filteredWithIds.slice(start, start + pageSize);
-  }, [filteredWithIds, activePage, pageSize]);
+    return displayedWithIds.slice(start, start + pageSize);
+  }, [displayedWithIds, activePage, pageSize]);
 
   const { mergedSpans, mergedSkipped } = useMemo(() => {
     const spans = new Map<string, number>();

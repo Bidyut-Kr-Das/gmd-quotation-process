@@ -37,7 +37,7 @@ export function PhysicalStockPage({ flags, actions }: PhysicalStockPageProps) {
   const [syncing, setSyncing] = useState(false);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
-  const [filteredRows, setFilteredRows] = useState<unknown[][]>([]);
+  const [statsRows, setStatsRows] = useState<unknown[][]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [cardFilter, setCardFilter] = useState<StockCardKind | null>(null);
   const [majorMinorFilter, setMajorMinorFilter] = useState<Set<MajorMinorKind>>(new Set());
@@ -72,40 +72,47 @@ export function PhysicalStockPage({ flags, actions }: PhysicalStockPageProps) {
   const rows = useMemo(() => items.map(rowToArray), [items]);
   const ids = useMemo(() => items.map((i) => i.id), [items]);
 
-  // Stat-card filter: keep rows with a positive available qty / value.
-  const baseRows = useMemo(() => {
-    if (!cardFilter) return { rows, ids };
+  // Stat-card filter narrows the table only; the sidebar totals ignore it so
+  // toggling a card never changes the qty/value figures.
+  const cardFilteredRows = useMemo(() => {
+    if (!cardFilter) return rows;
+    const rowsOut: unknown[][] = [];
+    for (const row of rows) {
+      const qty = toNum(row[AVAILABLE_IDX]);
+      if (cardFilter === "qty" && qty <= 0) continue;
+      if (cardFilter === "value" && toNum(row[RATE_IDX]) * qty <= 0) continue;
+      rowsOut.push(row);
+    }
+    return rowsOut;
+  }, [rows, cardFilter]);
+
+  const cardDisplayFilter = useCallback(
+    (row: unknown[]) => {
+      if (!cardFilter) return true;
+      const qty = toNum(row[AVAILABLE_IDX]);
+      return cardFilter === "qty" ? qty > 0 : toNum(row[RATE_IDX]) * qty > 0;
+    },
+    [cardFilter],
+  );
+
+  const majorMinorCounts = useMemo(() => {
+    const counts: Record<MajorMinorKind, number> = { yes: 0, no: 0, blank: 0 };
+    for (const row of cardFilteredRows) counts[majorMinorKind(row[MAJOR_IDX])]++;
+    return counts;
+  }, [cardFilteredRows]);
+
+  // Major/Minor filter narrows the table without touching other filters.
+  const tableRows = useMemo(() => {
+    if (majorMinorFilter.size === 0) return { rows, ids };
     const rowsOut: unknown[][] = [];
     const idsOut: string[] = [];
     for (let i = 0; i < rows.length; i++) {
-      const qty = toNum(rows[i][AVAILABLE_IDX]);
-      const rate = toNum(rows[i][RATE_IDX]);
-      if (cardFilter === "qty" && qty <= 0) continue;
-      if (cardFilter === "value" && rate * qty <= 0) continue;
+      if (!majorMinorFilter.has(majorMinorKind(rows[i][MAJOR_IDX]))) continue;
       rowsOut.push(rows[i]);
       idsOut.push(ids[i]);
     }
     return { rows: rowsOut, ids: idsOut };
-  }, [rows, ids, cardFilter]);
-
-  const majorMinorCounts = useMemo(() => {
-    const counts: Record<MajorMinorKind, number> = { yes: 0, no: 0, blank: 0 };
-    for (const row of baseRows.rows) counts[majorMinorKind(row[MAJOR_IDX])]++;
-    return counts;
-  }, [baseRows]);
-
-  // Major/Minor filter narrows the table without touching other filters.
-  const { displayRows, displayIds } = useMemo(() => {
-    if (majorMinorFilter.size === 0) return { displayRows: baseRows.rows, displayIds: baseRows.ids };
-    const rowsOut: unknown[][] = [];
-    const idsOut: string[] = [];
-    for (let i = 0; i < baseRows.rows.length; i++) {
-      if (!majorMinorFilter.has(majorMinorKind(baseRows.rows[i][MAJOR_IDX]))) continue;
-      rowsOut.push(baseRows.rows[i]);
-      idsOut.push(baseRows.ids[i]);
-    }
-    return { displayRows: rowsOut, displayIds: idsOut };
-  }, [baseRows, majorMinorFilter]);
+  }, [rows, ids, majorMinorFilter]);
 
   const toggleMajorMinor = useCallback((kind: MajorMinorKind) => {
     setMajorMinorFilter((prev) => {
@@ -116,17 +123,18 @@ export function PhysicalStockPage({ flags, actions }: PhysicalStockPageProps) {
     });
   }, []);
 
-  // Sums follow the table's own column/global filters (onFilteredRowsChange).
+  // Sums follow the table's own column/global filters, but not the stat-card
+  // drill-down (the table reports rows before applying displayOnlyRowFilter).
   const { availableQty, availableValue } = useMemo(() => {
     let qty = 0;
     let value = 0;
-    for (const row of filteredRows) {
+    for (const row of statsRows) {
       const available = toNum(row[AVAILABLE_IDX]);
       qty += available;
       value += toNum(row[RATE_IDX]) * available;
     }
     return { availableQty: qty, availableValue: value };
-  }, [filteredRows]);
+  }, [statsRows]);
 
   const mergeRow = useCallback((id: string, changes: Partial<PhysicalStockRow>) => {
     setItems((prev) => prev.map((row) => (row.id === id ? { ...row, ...changes } : row)));
@@ -236,8 +244,8 @@ export function PhysicalStockPage({ flags, actions }: PhysicalStockPageProps) {
             <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
               <GMDUpdateTable
                 headers={HEADERS}
-                rows={displayRows}
-                ids={displayIds}
+                rows={tableRows.rows}
+                ids={tableRows.ids}
                 selectedIndex={selectedIndex}
                 onSelect={setSelectedIndex}
                 title="Physical Stock"
@@ -249,7 +257,8 @@ export function PhysicalStockPage({ flags, actions }: PhysicalStockPageProps) {
                 bomIdOptionsById={updateBomId ? bomIdOptions : undefined}
                 onSelectBomId={updateBomId ? handleSelectBomId : undefined}
                 onCellUpdate={handleCellUpdate}
-                onFilteredRowsChange={setFilteredRows}
+                displayOnlyRowFilter={cardDisplayFilter}
+                onFilteredRowsChange={setStatsRows}
                 duplicateErpHighlight={flags.duplicateErpHighlight}
                 fullHeight
               />
