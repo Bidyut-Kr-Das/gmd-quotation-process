@@ -6,6 +6,7 @@ import {
   FIELDS,
   computeAvailableQty,
   computeItemWiseValue,
+  computeMajorMinorMarking,
   fieldOf,
 } from "../columns";
 import { NEW_ITEM_FIELDS } from "../types";
@@ -88,8 +89,12 @@ async function generateUniqueErpCode(): Promise<string> {
 export async function createPhysicalStock(input: NewItemInput): Promise<ActionResult<{ erp_code: string }>> {
   return run(async () => {
     const erp_code = await generateUniqueErpCode();
-    const data: Record<string, string | null> = { erp_code };
+    const data: Record<string, string | boolean | null> = { erp_code };
     for (const f of NEW_ITEM_FIELDS) data[f] = input[f]?.trim().toUpperCase() || null;
+    const available = computeAvailableQty(data.received_qty, data.dispatch_qty);
+    if (available !== null) data.available_qty = available;
+    const marking = computeMajorMinorMarking(data.l8_item_category as string | null);
+    if (marking !== null) data.majorminor_marking = marking;
     await stockPrisma.physicalStock.create({ data });
     return { erp_code };
   });

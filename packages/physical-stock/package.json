@@ -4,6 +4,7 @@
   "private": true,
   "exports": {
     "./ui": "./src/ui/PhysicalStockPage.tsx",
+    "./new-item-dialog": "./src/ui/NewItemDialog.tsx",
     "./server": "./src/server/index.ts",
     "./columns": "./src/columns.ts",
     "./flags": "./src/flags.ts",

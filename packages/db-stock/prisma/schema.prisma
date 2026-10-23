@@ -1,4 +1,5 @@
-// Stock database. Holds ONLY the PhysicalStock table.
+// Stock database. Holds the PhysicalStock table and this app's login `User`
+// accounts (isolated from @gmd/db-quotation users).
 //
 // The physical stock page reads/writes through `src/index.ts`; the local
 // Postgres `PhysicalStock` table is left in place but goes stale. Keep this
@@ -62,4 +63,15 @@ model PhysicalStock {
   updated_at                     DateTime @updatedAt
 
   @@index([erp_code])
+}
+
+model User {
+  id            String        @id @default(cuid())
+  name          String?
+  email         String        @unique
+  password      String // bcrypt hash
+  role          String        @default("user") // "user" | "admin" | "developer"
+  emailVerified DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }

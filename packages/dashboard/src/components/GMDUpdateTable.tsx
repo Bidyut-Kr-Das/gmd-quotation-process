@@ -601,6 +601,18 @@ const EMPTY_DATE_RANGES: Record<
 
 const EMPTY_BATCH_FILTERS: Record<string, boolean> = {};
 
+const DATE_SORT_HEADERS = new Set(["Date", "expiryDate", "PBG VALID TILL", "PBG CLAIM TILL"]);
+
+// Filter option labels for the boolean marking column (raw values stay
+// "true"/"false" so filtering keeps working).
+const MAJOR_MINOR_FILTER_LABELS: Record<string, string> = { true: "MAJOR", false: "MINOR" };
+
+function isDateHeader(header: string): boolean {
+  if (DATE_SORT_HEADERS.has(header)) return true;
+  const l = header.toLowerCase();
+  return l.includes("date") || l.includes("warranty");
+}
+
 /**
  * Columns that identify "the same physical item" for the ERP-duplicate detector.
  * Two rows agreeing on all of these but holding different ERP codes are the same
@@ -756,6 +768,7 @@ function MultiSelect({
   selected,
   onChange,
   optionMeta,
+  optionLabels,
   hideBlank,
   extraOptions,
   onOpen,
@@ -767,6 +780,7 @@ function MultiSelect({
     string,
     { count: number; sumLabel: string; partyName?: string }
   >;
+  optionLabels?: Record<string, string>;
   hideBlank?: boolean;
   extraOptions?: ExtraFilterOption[];
   onOpen?: () => void;
@@ -883,7 +897,7 @@ function MultiSelect({
                     className="accent-blue-600 dark:accent-primary"
                   />
                   <span className="flex-1 min-w-0 leading-tight">
-                    <span className="block truncate font-medium">{opt}</span>
+                    <span className="block truncate font-medium">{optionLabels?.[opt] ?? opt}</span>
                     {meta && (
                       <>
                         <span className="block text-[9px] text-foreground/60 truncate">
@@ -975,6 +989,14 @@ interface GMDUpdateTableProps {
   /** Save handler for the "USD cost" column. */
   onUsdCostUpdate?: (id: string, usdCost: string) => Promise<unknown>;
   onFilteredRowsChange?: (rows: unknown[][]) => void;
+  /**
+   * Extra row predicate for what the table renders (pagination, record count,
+   * export). Unlike the built-in column/global filters, rows rejected here are
+   * still reported through `onFilteredRowsChange`, so a caller that derives
+   * summary totals from that callback keeps stable totals when this drill-down
+   * filter is toggled.
+   */
+  displayOnlyRowFilter?: (row: unknown[], id: string) => boolean;
   usdInrRate?: number | null;
   onRefreshRate?: () => void;
   /** Show the Export Excel button. Default true. */
@@ -1238,6 +1260,7 @@ export default function GMDUpdateTable({
   onFieldUpdate,
   onUsdCostUpdate,
   onFilteredRowsChange,
+  displayOnlyRowFilter,
   usdInrRate,
   onRefreshRate,
   allowExport = true,
@@ -1623,7 +1646,7 @@ castingRateInputs,
       // Server mode only holds one page; ask for every matching row.
       const sourceRows = isServer
         ? await serverMode!.getAllRows()
-        : filteredWithIds.map(({ row }) => row);
+        : displayedWithIds.map(({ row }) => row);
       const rows = sourceRows.map((row) => {
         const obj: Record<string, unknown> = {};
         visibleCols.forEach(({ header, idx }) => {
@@ -1920,14 +1943,37 @@ castingRateInputs,
     [isServer, sortedWithIds, rowPassesFilters],
   );
 
+  const displayedWithIds = useMemo(
+    () =>
+      displayOnlyRowFilter
+        ? filteredWithIds.filter(({ row, id }) => displayOnlyRowFilter(row, id))
+        : filteredWithIds,
+    [filteredWithIds, displayOnlyRowFilter],
+  );
+
+  const displayedWithIds = useMemo(
+    () =>
+      displayOnlyRowFilter
+        ? filteredWithIds.filter(({ row, id }) => displayOnlyRowFilter(row, id))
+        : filteredWithIds,
+    [filteredWithIds, displayOnlyRowFilter],
+  );
+
   const filteredRows = useMemo(
+    () => displayedWithIds.map((v) => v.row),
+    [displayedWithIds],
+  );
+
+  // Summary consumers get the table-filtered set without the display-only
+  // drill-down, so toggling that drill-down never moves their totals.
+  const statsRows = useMemo(
     () => filteredWithIds.map((v) => v.row),
     [filteredWithIds],
   );
 
   useEffect(() => {
-    onFilteredRowsChange?.(filteredRows);
-  }, [filteredRows, onFilteredRowsChange]);
+    onFilteredRowsChange?.(statsRows);
+  }, [statsRows, onFilteredRowsChange]);
 
   const pbgAmountSum = useMemo(() => {
     const colIdx = headers.indexOf("PBG AMOUNT");
@@ -2009,8 +2055,8 @@ castingRateInputs,
     // Server mode hands us exactly one page.
     if (isServer) return filteredWithIds;
     const start = (activePage - 1) * pageSize;
-    return filteredWithIds.slice(start, start + pageSize);
-  }, [isServer, filteredWithIds, activePage, pageSize]);
+    return displayedWithIds.slice(start, start + pageSize);
+  }, [isServer, displayedWithIds, activePage, pageSize]);
 
   const { mergedSpans, mergedSkipped } = useMemo(() => {
     const spans = new Map<string, number>();
@@ -2514,11 +2560,11 @@ castingRateInputs,
       const isNo = display === "false";
       cellContent = isYes ? (
         <span className="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-          Yes
+          MAJOR
         </span>
       ) : isNo ? (
         <span className="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">
-          No
+          MINOR
         </span>
       ) : (
         <span className="block text-gray-400">—</span>
@@ -3092,6 +3138,9 @@ castingRateInputs,
                                   selected={multiFilters[ch] ?? []}
                                   onChange={(vals) => handleMultiFilter(ch, vals)}
                                   optionMeta={columnOptionMeta?.[ch]}
+                                  optionLabels={
+                                    ch === "MAJOR/MINOR MARKING" ? MAJOR_MINOR_FILTER_LABELS : undefined
+                                  }
                                   extraOptions={extraFilterOptions?.[ch]}
                                   onOpen={
                                     isServer
@@ -3347,6 +3396,9 @@ castingRateInputs,
                             selected={multiFilters[header] ?? []}
                             onChange={(vals) => handleMultiFilter(header, vals)}
                             optionMeta={columnOptionMeta?.[header]}
+                            optionLabels={
+                              header === "MAJOR/MINOR MARKING" ? MAJOR_MINOR_FILTER_LABELS : undefined
+                            }
                             extraOptions={extraFilterOptions?.[header]}
                             hideBlank={
                               !!filterAttachmentColumn &&

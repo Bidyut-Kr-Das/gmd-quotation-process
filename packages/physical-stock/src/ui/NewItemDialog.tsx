@@ -21,8 +21,8 @@ import type { NewItemInput, PhysicalStockActions, PhysicalStockRow } from "../ty
 // every level picked above it. Changing a level clears the levels below.
 const CASCADE = [
   ["l2_valve_type", "L2 - Valve Type"],
-  ["dimension", "Dimension"],
-  ["l7_dimension", "L7 - Dimension"],
+  ["dimension", "Dia"],
+  ["l7_dimension", "L7 - PN"],
   ["l4_component", "L4 - Component"],
   ["l5_material", "L5 - Material"],
   ["l6_std", "L6 - STD"],
@@ -30,6 +30,13 @@ const CASCADE = [
 ] as const;
 
 type CascadeField = (typeof CASCADE)[number][0];
+
+const QTY_TYPES = [
+  ["received_qty", "Received"],
+  ["dispatch_qty", "Dispatch"],
+] as const;
+
+type QtyField = (typeof QTY_TYPES)[number][0];
 
 const norm = (v: string | null | undefined) => (v ?? "").trim().toUpperCase();
 
@@ -43,6 +50,7 @@ interface NewItemDialogProps {
 
 function NewItemForm({ rows, create, onCreated }: Omit<NewItemDialogProps, "open" | "onOpenChange">) {
   const [values, setValues] = useState<NewItemInput>({});
+  const [qtyType, setQtyType] = useState<QtyField>("received_qty");
   const [saving, setSaving] = useState(false);
 
   const options = useMemo(() => {
@@ -92,6 +100,33 @@ function NewItemForm({ rows, create, onCreated }: Omit<NewItemDialogProps, "open
           placeholder="KGP"
           value={values.location ?? ""}
           onChange={(e) => setValues((prev) => ({ ...prev, location: e.target.value.toUpperCase() }))}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label>Quantity</Label>
+        <div className="flex items-center gap-4">
+          {QTY_TYPES.map(([field, label]) => (
+            <Label key={field} className="font-normal">
+              <input
+                type="radio"
+                name="ps-qty-type"
+                className="accent-primary size-4"
+                checked={qtyType === field}
+                onChange={() => {
+                  setQtyType(field);
+                  setValues((prev) => ({ ...prev, received_qty: undefined, dispatch_qty: undefined }));
+                }}
+              />
+              {label}
+            </Label>
+          ))}
+        </div>
+        <Input
+          id="ps-qty"
+          inputMode="decimal"
+          placeholder="0"
+          value={values[qtyType] ?? ""}
+          onChange={(e) => setValues((prev) => ({ ...prev, [qtyType]: e.target.value }))}
         />
       </div>
       {CASCADE.map(([field, label]) => (
