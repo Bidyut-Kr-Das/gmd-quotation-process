@@ -126,6 +126,8 @@ model EnquiryItem {
   itemNameMerge        String?
   totalValue           String?
   deliverySchedule     String?
+  // True once a user picks the value by hand: the sync stops re-deriving it.
+  deliveryScheduleOverride Boolean @default(false)
   itemWiseTotalValue   String?
   itemStatus           String?
   availableBomIds      String[] @default([])

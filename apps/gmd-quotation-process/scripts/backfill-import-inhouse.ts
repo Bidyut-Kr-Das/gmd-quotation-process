@@ -28,6 +28,7 @@ async function main() {
       availableStock: true,
       importedInhouse: true,
       deliverySchedule: true,
+      deliveryScheduleOverride: true,
     },
   });
   console.log(`EnquiryItem rows: ${items.length}\n`);
@@ -54,7 +55,10 @@ async function main() {
       importTo
     );
     const importChanged = importTo !== item.importedInhouse;
-    const scheduleChanged = scheduleTo !== null && scheduleTo !== item.deliverySchedule;
+    const scheduleChanged =
+      !item.deliveryScheduleOverride &&
+      scheduleTo !== null &&
+      scheduleTo !== item.deliverySchedule;
 
     if (importChanged || scheduleChanged) {
       rows.push({

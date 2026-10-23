@@ -22,7 +22,7 @@ import type { OfferLetterTemplateData } from "@/types/offer-lettter";
 import { buildDerivedItemName } from "@/lib/gmd_lib/derived-item-name";
 import { getUsdInrRate } from "@/lib/gmd_lib/exchangeRate";
 import { getRmStockMap, getRmTypeMap, syncDirectM2MAvailableStock } from "@/lib/directM2MStockLookup";
-import { computeDeliverySchedule, syncDeliveryScheduleForItem } from "@/lib/deliverySchedule";
+import { computeDeliverySchedule, syncDeliveryScheduleForItem, DEFAULT_DELIVERY_SCHEDULE } from "@/lib/deliverySchedule";
 import { resolveImportedInhouse } from "@/lib/importInhouseMapping";
 import { makeImageKey } from "@/lib/imageKey";
 import { withHardcodedL7Options } from "@/lib/gmd_lib/sheet-columns";
@@ -197,7 +197,7 @@ export async function createNewEnquiryAction(formData: {
               availableStock: (item as any).availableStock || null,
               stockAgainstContract: (item as any).stockAgainstContract || null,
               importedInhouse,
-              deliverySchedule: computeDeliverySchedule(item.quantity, item.availableStock, item.resolved.size, importedInhouse),
+              deliverySchedule: computeDeliverySchedule(item.quantity, item.availableStock, item.resolved.size, importedInhouse) ?? DEFAULT_DELIVERY_SCHEDULE,
               discount: item.discount || null,
               vaPercent: itemVa !== null ? String(itemVa) : null,
               quotedRate: itemQR,
@@ -335,7 +335,7 @@ export async function addItemsAction(formData: {
           availableStock: (item as any).availableStock || null,
           stockAgainstContract: (item as any).stockAgainstContract || null,
           importedInhouse,
-          deliverySchedule: computeDeliverySchedule(item.quantity, item.availableStock, item.resolved.size, importedInhouse),
+          deliverySchedule: computeDeliverySchedule(item.quantity, item.availableStock, item.resolved.size, importedInhouse) ?? DEFAULT_DELIVERY_SCHEDULE,
           discount: item.discount || null,
           vaPercent: itemVa !== null ? String(itemVa) : null,
           quotedRate: itemQR,
@@ -585,7 +585,9 @@ export async function updateEnquiryItemAction(formData: {
         availableStock: (formData as any).availableStock || null,
         stockAgainstContract: (formData as any).stockAgainstContract || null,
         importedInhouse: itemImportedInhouse,
-        deliverySchedule: computeDeliverySchedule(updatedQty, formData.availableStock !== undefined ? formData.availableStock : item.availableStock, resolved.size, itemImportedInhouse),
+        deliverySchedule: item.deliveryScheduleOverride
+          ? item.deliverySchedule
+          : computeDeliverySchedule(updatedQty, formData.availableStock !== undefined ? formData.availableStock : item.availableStock, resolved.size, itemImportedInhouse) ?? DEFAULT_DELIVERY_SCHEDULE,
         discount: formData.discount || null,
         vaPercent: finalVa !== null ? String(finalVa) : null,
         quotedRate: finalQuotedRate,
@@ -1528,6 +1530,11 @@ export async function updateItemFieldAction(
       updatedItem = await recalculateItem(itemId, updates);
     } else {
       const updateData: any = { [field]: parsedVal };
+      if (field === "deliverySchedule") {
+        // A hand-picked value is the source of truth; clearing it hands the row
+        // back to the sync.
+        updateData.deliveryScheduleOverride = !!(parsedVal && String(parsedVal).trim());
+      }
       if (field === "itemName") {
         const currentItem = await prisma.enquiryItem.findUnique({
           where: { id: itemId },
@@ -1786,8 +1793,10 @@ export async function updateItemFieldAction(
     }
 
     // Auto-set delivery schedule when any input to the schedule logic changes
-    // (quantity, availableStock, size, itemType, itemName or import/in-house class).
-    if (["quantity", "availableStock", "size", "itemType", "itemName", "importedInhouse"].includes(field)) {
+    // (quantity, availableStock, size, itemType, itemName, import/in-house class,
+    // or an item code / BOM change that rewrites availableStock). A blank manual
+    // value also lands here so the row goes back to being derived.
+    if (["quantity", "availableStock", "size", "itemType", "itemName", "importedInhouse", "erpItemCode", "bomId", "deliverySchedule"].includes(field)) {
       await syncDeliveryScheduleForItem(itemId);
     }
 
@@ -2042,6 +2051,8 @@ export async function selectBomIdAction(itemId: string, bomId: string | null) {
       where: { id: itemId },
       data: dataToUpdate,
     });
+    // The stock just written may change the promised schedule; recompute before returning the row.
+    await syncDeliveryScheduleForItem(itemId);
     // Auto-fill productCost if blank
     // PRIORITY: Raw Materials wins; SupplyHistory fallback
     if (item.productCost === null && vbRow.rmItemCode) {
