@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useMemo, useRef, useCallback, useEffect, type ReactNode } from "react";
-import { ChevronUp, ChevronDown, ArrowUpDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check, Highlighter, AlertTriangle } from "lucide-react";
+import { ChevronUp, ChevronDown, ArrowUpDown, Search, RotateCcw, X, Download, Files, FileText, ExternalLink, Copy, Upload, Eye, Paperclip, Trash2, ImageIcon, Check, Highlighter, AlertTriangle, Loader2 } from "lucide-react";
 import GMDUpdateStatusBadge from "./GMDUpdateStatusBadge";
 import type { ContractReviewImage } from "../lib/types";
 import {
   STATUS_COLUMNS,
   NUMERIC_COLUMNS,
   COL_INDEX_TO_DB_FIELD,
+  isDateHeader,
 } from "../lib/sheet-columns";
 import {
   FLOW_HAS_VALUE,
@@ -600,13 +601,6 @@ const EMPTY_DATE_RANGES: Record<
 
 const EMPTY_BATCH_FILTERS: Record<string, boolean> = {};
 
-const DATE_SORT_HEADERS = new Set(["Date", "expiryDate", "PBG VALID TILL", "PBG CLAIM TILL"]);
-function isDateHeader(header: string): boolean {
-  if (DATE_SORT_HEADERS.has(header)) return true;
-  const l = header.toLowerCase();
-  return l.includes("date") || l.includes("warranty");
-}
-
 /**
  * Columns that identify "the same physical item" for the ERP-duplicate detector.
  * Two rows agreeing on all of these but holding different ERP codes are the same
@@ -764,6 +758,7 @@ function MultiSelect({
   optionMeta,
   hideBlank,
   extraOptions,
+  onOpen,
 }: {
   options: string[];
   selected: string[];
@@ -774,6 +769,7 @@ function MultiSelect({
   >;
   hideBlank?: boolean;
   extraOptions?: ExtraFilterOption[];
+  onOpen?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -797,7 +793,9 @@ function MultiSelect({
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          setOpen(!open);
+          const next = !open;
+          setOpen(next);
+          if (next) onOpen?.();
         }}
         className="w-full text-[10px] border border-border rounded bg-card text-foreground px-1 py-0.5 text-left outline-none cursor-pointer truncate"
       >
@@ -1154,6 +1152,32 @@ interface GMDUpdateTableProps {
    * CODE cell), with a "Duplicates only" toggle in the ERP CODE filter.
    */
   duplicateErpHighlight?: boolean;
+  /**
+   * Opt-in server mode: `rows` is already one filtered, sorted page. The table
+   * stops filtering/sorting/slicing locally and reports paging and sort changes
+   * through the callbacks. Requires `filterState` + `filterActions`.
+   */
+  serverMode?: ServerTableMode;
+}
+
+export interface ServerTableMode {
+  total: number;
+  page: number;
+  pageSize: number;
+  loading?: boolean;
+  refreshing?: boolean;
+  sort: { column: number; direction: "asc" | "desc" } | null;
+  onSortChange: (
+    sort: { column: number; direction: "asc" | "desc" } | null,
+  ) => void;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+  /** Cascaded option list for a column; null until the facet request resolves. */
+  getFacetOptions: (header: string) => string[] | null;
+  /** Fired when a column's multi-select opens. */
+  requestFacet: (header: string) => void;
+  /** Every row matching the current filters, for the Excel export. */
+  getAllRows: () => Promise<unknown[][]>;
 }
 
 type CellBadge = NonNullable<GMDUpdateTableProps["cellBadges"]>[number];
@@ -1268,11 +1292,19 @@ castingRateInputs,
   warningColumn,
   warningTitle,
   duplicateErpHighlight,
+  serverMode,
 }: GMDUpdateTableProps) {
   const isControlled = !!filterState;
+  const isServer = !!serverMode;
 
   const [sortColumn, setSortColumn] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const activeSortColumn = isServer
+    ? (serverMode!.sort?.column ?? null)
+    : sortColumn;
+  const activeSortDirection = isServer
+    ? (serverMode!.sort?.direction ?? "desc")
+    : sortDirection;
   const [localCurrentPage, setLocalCurrentPage] = useState(1);
   const [localPageSize, setLocalPageSize] = useState(25);
   const [localGlobalSearch, setLocalGlobalSearch] = useState("");
@@ -1548,13 +1580,22 @@ castingRateInputs,
   }, [confirmDeleteId, ids, rows]);
 
   const handleSort = (colIndex: number) => {
-    if (sortColumn === colIndex) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    const sameColumn = activeSortColumn === colIndex;
+    const h = headers[colIndex] ?? "";
+    const nextDirection = sameColumn
+      ? activeSortDirection === "asc"
+        ? "desc"
+        : "asc"
+      : sortByType && !isDateHeader(h)
+        ? "asc"
+        : "desc";
+    if (isServer) {
+      serverMode!.onSortChange({ column: colIndex, direction: nextDirection });
+    } else if (sameColumn) {
+      setSortDirection(nextDirection);
     } else {
       setSortColumn(colIndex);
-      const h = headers[colIndex] ?? "";
-      // Typed sort: dates start latest→oldest, text A→Z, numbers lowest→highest.
-      setSortDirection(sortByType && !isDateHeader(h) ? "asc" : "desc");
+      setSortDirection(nextDirection);
     }
     setCurrentPage(1);
   };
@@ -1579,7 +1620,11 @@ castingRateInputs,
   const handleExportToExcel = async () => {
     const toastId = toast.loading("Preparing Excel file...");
     try {
-      const rows = filteredWithIds.map(({ row }) => {
+      // Server mode only holds one page; ask for every matching row.
+      const sourceRows = isServer
+        ? await serverMode!.getAllRows()
+        : filteredWithIds.map(({ row }) => row);
+      const rows = sourceRows.map((row) => {
         const obj: Record<string, unknown> = {};
         visibleCols.forEach(({ header, idx }) => {
           const v = row[idx];
@@ -1636,25 +1681,47 @@ castingRateInputs,
 
   const sortedWithIds = useMemo(() => {
     const decorated = rows.map((row, i) => ({ row, id: ids[i], i }));
-    if (sortColumn === null && !isGrouped) return decorated;
-    const dir = sortDirection === "asc" ? 1 : -1;
-    const sortHeader = sortColumn !== null ? (headers[sortColumn] ?? "") : "";
-    const isDateSort = sortColumn !== null && isDateHeader(sortHeader);
+    // Server mode: the page already arrives filtered and sorted.
+    if (isServer) return decorated;
+    if (activeSortColumn === null && !isGrouped) return decorated;
+    const dir = activeSortDirection === "asc" ? 1 : -1;
+    const sortHeader =
+      activeSortColumn !== null ? (headers[activeSortColumn] ?? "") : "";
+    const isDateSort = activeSortColumn !== null && isDateHeader(sortHeader);
     decorated.sort((a, b) => {
       if (isGrouped) {
         const g = cellCompare(a.row[groupByIdx], b.row[groupByIdx], 1);
         if (g !== 0) return g;
       }
-      if (sortColumn !== null) {
+      if (activeSortColumn !== null) {
         const c = isDateSort
-          ? compareDates(a.row[sortColumn], b.row[sortColumn], dir)
-          : cellCompare(a.row[sortColumn], b.row[sortColumn], dir, sortByType);
+          ? compareDates(
+              a.row[activeSortColumn],
+              b.row[activeSortColumn],
+              dir,
+            )
+          : cellCompare(
+              a.row[activeSortColumn],
+              b.row[activeSortColumn],
+              dir,
+              sortByType,
+            );
         if (c !== 0) return c;
       }
       return a.i - b.i;
     });
     return decorated;
-  }, [rows, ids, sortColumn, sortDirection, isGrouped, groupByIdx, headers, sortByType]);
+  }, [
+    rows,
+    ids,
+    isServer,
+    activeSortColumn,
+    activeSortDirection,
+    isGrouped,
+    groupByIdx,
+    headers,
+    sortByType,
+  ]);
 
   const rowSearchCache = useMemo(() => {
     const cache = new Map<unknown[], string>();
@@ -1846,8 +1913,11 @@ castingRateInputs,
   );
 
   const filteredWithIds = useMemo(
-    () => sortedWithIds.filter(({ row, id }) => rowPassesFilters(row, { id })),
-    [sortedWithIds, rowPassesFilters],
+    () =>
+      isServer
+        ? sortedWithIds
+        : sortedWithIds.filter(({ row, id }) => rowPassesFilters(row, { id })),
+    [isServer, sortedWithIds, rowPassesFilters],
   );
 
   const filteredRows = useMemo(
@@ -1869,23 +1939,41 @@ castingRateInputs,
     }, 0);
   }, [filteredRows, headers]);
 
-  const totalRecords = filteredRows.length;
+  const totalRecords = isServer ? serverMode!.total : filteredRows.length;
   const totalPages = Math.ceil(totalRecords / pageSize) || 1;
-  const activePage = Math.min(currentPage, totalPages);
+  const activePage = isServer
+    ? serverMode!.page
+    : Math.min(currentPage, totalPages);
 
   const columnUniqueVals = useMemo(() => {
     const result: Record<string, string[]> = {};
     for (const h of headers) {
       const idx = headers.indexOf(h);
-      result[h] =
+      const values =
+        (isServer ? serverMode!.getFacetOptions(h) : null) ||
         filterOptionsOverride?.[h] ||
         fixedDropdownOptions?.[h] ||
         getUniqueColumnValues(idx);
+      // Server facets already cascade; still honour an explicit allow-list.
+      const allowed = isServer ? categoryOptions?.[h] : undefined;
+      result[h] = allowed?.length
+        ? values.filter((value) => allowed.includes(value))
+        : values;
     }
     return result;
-  }, [headers, categoryOptions, fixedDropdownOptions, rows, filterOptionsOverride]);
+  }, [
+    headers,
+    categoryOptions,
+    fixedDropdownOptions,
+    rows,
+    filterOptionsOverride,
+    isServer,
+    serverMode,
+  ]);
 
   const cascadedFilterOptions = useMemo(() => {
+    // Server facets already exclude the column's own filter.
+    if (isServer) return columnUniqueVals;
     const result: Record<string, string[]> = {};
     if (!hasActiveFilters) {
       return columnUniqueVals;
@@ -1918,9 +2006,11 @@ castingRateInputs,
   }, [rows, ids, headers, categoryOptions, multiFilters, hasActiveFilters, rowPassesFilters, columnUniqueVals, filterOptionsOverride]);
 
   const paginatedWithIds = useMemo(() => {
+    // Server mode hands us exactly one page.
+    if (isServer) return filteredWithIds;
     const start = (activePage - 1) * pageSize;
     return filteredWithIds.slice(start, start + pageSize);
-  }, [filteredWithIds, activePage, pageSize]);
+  }, [isServer, filteredWithIds, activePage, pageSize]);
 
   const { mergedSpans, mergedSkipped } = useMemo(() => {
     const spans = new Map<string, number>();
@@ -2626,7 +2716,34 @@ castingRateInputs,
             </span>
           )}
           <span className="text-xs font-semibold text-foreground/60 mr-10">
-            Showing {filteredRows.length} of {rows.length} records
+            {isServer ? (
+              serverMode!.loading ? (
+                <span className="inline-flex items-center gap-1.5 text-[#0f62fe] dark:text-blue-300">
+                  <Loader2 size={12} className="animate-spin" />
+                  Loading page {serverMode!.page}…
+                </span>
+              ) : (
+                <>
+                  Showing{" "}
+                  {serverMode!.total === 0
+                    ? 0
+                    : (serverMode!.page - 1) * pageSize + 1}
+                  –{Math.min(serverMode!.page * pageSize, serverMode!.total)} of{" "}
+                  {serverMode!.total.toLocaleString()} records
+                  <span className="ml-1.5 font-normal text-muted-foreground">
+                    · page {serverMode!.page} of{" "}
+                    {Math.max(1, Math.ceil(serverMode!.total / pageSize))}
+                  </span>
+                  {serverMode!.refreshing && (
+                    <span className="ml-1.5 inline-flex items-center gap-1 font-normal text-muted-foreground">
+                      <Loader2 size={10} className="animate-spin" /> refreshing…
+                    </span>
+                  )}
+                </>
+              )
+            ) : (
+              <>Showing {filteredRows.length} of {rows.length} records</>
+            )}
           </span>
           {toolbarExtra}
           {usdInrRate != null && (
@@ -2864,7 +2981,7 @@ castingRateInputs,
             <tr className="bg-muted">
               {visibleCols.map((col, visIdx) => {
                 const { header, idx, group } = col;
-                const isSorted = sortColumn === idx;
+                const isSorted = activeSortColumn === idx;
                 const uniqueVals = cascadedFilterOptions[header] ?? [];
                 const frozenLeft = frozenOffsets[visIdx];
 
@@ -2939,7 +3056,7 @@ castingRateInputs,
                             !!dateRanges[ch]?.to ||
                             !!dateRanges[ch]?.blank;
                           const chIdx = headers.indexOf(ch);
-                          const childSorted = chIdx !== -1 && sortColumn === chIdx;
+                          const childSorted = chIdx !== -1 && activeSortColumn === chIdx;
                           return (
                             <div key={ch} className="min-w-0 flex flex-col gap-1">
                               {isDateFilterHeader(ch) ? (
@@ -2976,6 +3093,11 @@ castingRateInputs,
                                   onChange={(vals) => handleMultiFilter(ch, vals)}
                                   optionMeta={columnOptionMeta?.[ch]}
                                   extraOptions={extraFilterOptions?.[ch]}
+                                  onOpen={
+                                    isServer
+                                      ? () => serverMode!.requestFacet(ch)
+                                      : undefined
+                                  }
                                 />
                               )}
                               <div className="flex items-center gap-1">
@@ -3014,7 +3136,7 @@ castingRateInputs,
                                   title={`Sort by ${ch}`}
                                 >
                                   {childSorted ? (
-                                    sortDirection === "asc" ? (
+                                    activeSortDirection === "asc" ? (
                                       <ChevronUp size={10} />
                                     ) : (
                                       <ChevronDown size={10} />
@@ -3075,7 +3197,7 @@ castingRateInputs,
                       </span>
                       {isSorted && (
                         <span className="shrink-0 text-[10px] text-foreground">
-                          {sortDirection === "asc" ? (
+                          {activeSortDirection === "asc" ? (
                             <ChevronUp size={10} />
                           ) : (
                             <ChevronDown size={10} />
@@ -3230,6 +3352,11 @@ castingRateInputs,
                               !!filterAttachmentColumn &&
                               !!attachmentColumn &&
                               header === attachmentColumn
+                            }
+                            onOpen={
+                              isServer
+                                ? () => serverMode!.requestFacet(header)
+                                : undefined
                             }
                           />
                           <div className="flex items-center gap-1">

@@ -33,9 +33,8 @@ export type SupplyHistoryBomSyncResult = {
 };
 
 /** Natural descending order for human BOM IDs: `BOM-11` ranks above `BOM-9`. */
-export function compareBomIdsDescending(a: string, b: string): number {
-  return b.localeCompare(a, undefined, { numeric: true, sensitivity: "base" });
-}
+import { compareBomIdsDescending } from "./bomOrder";
+export { compareBomIdsDescending };
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];

@@ -31,6 +31,23 @@ export const CANONICAL_COLUMNS = [
 export const STATUS_COLUMNS = new Set(["NEW ITEM STATUS", "CURRENT STATUS", "RM TYPE","INDIAN/IMPORTED" ]);
 export const NUMERIC_COLUMNS = new Set(["Available Stock", "cost", "1 pcs wgt", "USD cost"]);
 
+/**
+ * Headers the table sorts and filters as dates. Shared with the server-side
+ * query builders so both sides agree on which columns hold dates.
+ */
+export const DATE_SORT_HEADERS = new Set([
+  "Date",
+  "expiryDate",
+  "PBG VALID TILL",
+  "PBG CLAIM TILL",
+]);
+
+export function isDateHeader(header: string): boolean {
+  if (DATE_SORT_HEADERS.has(header)) return true;
+  const lower = header.toLowerCase();
+  return lower.includes("date") || lower.includes("warranty");
+}
+
 export const RM_TYPE_OPTIONS: string[] = [
   "1538",
   "9523",
