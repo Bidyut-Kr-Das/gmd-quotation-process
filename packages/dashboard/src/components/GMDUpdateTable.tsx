@@ -601,17 +601,9 @@ const EMPTY_DATE_RANGES: Record<
 
 const EMPTY_BATCH_FILTERS: Record<string, boolean> = {};
 
-const DATE_SORT_HEADERS = new Set(["Date", "expiryDate", "PBG VALID TILL", "PBG CLAIM TILL"]);
-
 // Filter option labels for the boolean marking column (raw values stay
 // "true"/"false" so filtering keeps working).
 const MAJOR_MINOR_FILTER_LABELS: Record<string, string> = { true: "MAJOR", false: "MINOR" };
-
-function isDateHeader(header: string): boolean {
-  if (DATE_SORT_HEADERS.has(header)) return true;
-  const l = header.toLowerCase();
-  return l.includes("date") || l.includes("warranty");
-}
 
 /**
  * Columns that identify "the same physical item" for the ERP-duplicate detector.
@@ -1941,14 +1933,6 @@ castingRateInputs,
         ? sortedWithIds
         : sortedWithIds.filter(({ row, id }) => rowPassesFilters(row, { id })),
     [isServer, sortedWithIds, rowPassesFilters],
-  );
-
-  const displayedWithIds = useMemo(
-    () =>
-      displayOnlyRowFilter
-        ? filteredWithIds.filter(({ row, id }) => displayOnlyRowFilter(row, id))
-        : filteredWithIds,
-    [filteredWithIds, displayOnlyRowFilter],
   );
 
   const displayedWithIds = useMemo(

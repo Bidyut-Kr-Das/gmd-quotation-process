@@ -68,6 +68,8 @@ model Enquiry {
   sourceThreadId String? @unique
   emailApproved    Boolean   @default(false)
   emailSentBy      String?
+  technicalEvaluation String?
+  reverseAuctionStatus String?
 
   attachments Attachment[]
   items       EnquiryItem[]
