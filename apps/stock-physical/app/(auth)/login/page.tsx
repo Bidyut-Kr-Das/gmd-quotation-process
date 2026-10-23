@@ -1,7 +1,6 @@
 "use client"
 import { useState } from "react"
 import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { Button } from "@gmd/ui/components/button"
 import { Input } from "@gmd/ui/components/input"
 import { Label } from "@gmd/ui/components/label"
@@ -10,7 +9,6 @@ import Link from "next/link"
 import { toast } from "sonner"
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -25,9 +23,10 @@ export default function LoginPage() {
       return
     }
     toast.success("Logged in successfully")
+    // Full navigation: the session cookie is already set, this also re-runs
+    // proxy.ts so the protected page renders with the new session.
     const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl") || "/"
-    router.push(callbackUrl)
-    router.refresh()
+    window.location.assign(callbackUrl)
   }
 
   return (

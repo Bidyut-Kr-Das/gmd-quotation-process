@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "crypto";
 import { stockPrisma } from "@gmd/db-stock";
 import {
+  BLANK_ONLY_HEADERS,
   EDITABLE_CANDIDATES,
   FIELDS,
   computeAvailableQty,
@@ -17,6 +18,8 @@ import { fetchPhysicalStockSheet, type SheetsAuth } from "./sheet";
 // lookup: the host app's Server Actions own those and pass the allow-list in.
 
 export { fetchPhysicalStockSheet, type SheetsAuth };
+
+const BLANK_ONLY_FIELDS = new Set<string>(BLANK_ONLY_HEADERS.map((h) => fieldOf(h)!));
 
 async function run<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
   try {
@@ -54,7 +57,11 @@ export async function updatePhysicalStockField(
   return run(async () => {
     const row = await stockPrisma.physicalStock.findUnique({ where: { id } });
     if (!row) throw new Error("Physical stock row not found.");
-    if (field === "erp_code" && row.erp_code?.trim()) throw new Error("ERP code is already set.");
+    // Blank-only columns (ERP CODE + the L/Dia dropdowns) may be filled but
+    // never overwritten.
+    if (BLANK_ONLY_FIELDS.has(field) && String((row as Record<string, unknown>)[field] ?? "").trim()) {
+      throw new Error(`"${field}" is already filled.`);
+    }
 
     const next = { ...row, [field]: value ?? null };
     const changes: Record<string, string | null> = { [field]: value ?? null };

@@ -5,13 +5,21 @@ import { Loader2, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import GMDUpdateTable from "@gmd/dashboard/components/GMDUpdateTable";
 import GMDUpdateHeader from "@gmd/dashboard/components/GMDUpdateHeader";
-import { COLUMNS, FIELDS, NUMERIC_COLUMNS, rowToArray } from "../columns";
+import {
+  BLANK_ONLY_HEADERS,
+  COLUMNS,
+  DROPDOWN_OPTIONS,
+  FIELDS,
+  NUMERIC_COLUMNS,
+  rowToArray,
+} from "../columns";
 import type { PhysicalStockFlags, SidebarSection } from "../flags";
 import type { PhysicalStockActions, PhysicalStockRow } from "../types";
 import StockAnalyticsSidebar, { type MajorMinorKind, type StockCardKind } from "./StockAnalyticsSidebar";
 import NewItemDialog from "./NewItemDialog";
 
 const HEADERS = [...COLUMNS] as string[];
+const BLANK_ONLY = new Set<string>(BLANK_ONLY_HEADERS);
 const AVAILABLE_IDX = COLUMNS.indexOf("AVAILABLE QTY.");
 const RATE_IDX = COLUMNS.indexOf("rate/unit");
 const MAJOR_IDX = COLUMNS.indexOf("MAJOR/MINOR MARKING");
@@ -46,12 +54,22 @@ export function PhysicalStockPage({ flags, actions, showHeader = true }: Physica
 
   const { load, sync, updateField, create, updateBomId } = actions;
 
-  const { editableColumns, blankOnlyColumns, showSection } = useMemo(() => {
+  const { editableColumns, blankOnlyColumns, dropdownOptions, showSection } = useMemo(() => {
     const hiddenSidebar = new Set<string>(flags.hiddenSidebar);
+    // ERP CODE and the L/Dia dropdowns may only fill a blank cell, and only
+    // when the app put them in editableColumns (the admin/developer gate).
+    const blankOnly = flags.editableColumns.filter((h) => BLANK_ONLY.has(h));
+    const dropdowns: Record<string, string[]> = {};
+    for (const h of blankOnly) {
+      const options = DROPDOWN_OPTIONS[h];
+      if (options) dropdowns[h] = [...options];
+    }
     return {
-      // ERP CODE is only ever fillable while blank.
-      editableColumns: flags.editableColumns.filter((h) => h !== "ERP CODE" && (h !== "BOM ID" || updateBomId)),
-      blankOnlyColumns: flags.editableColumns.filter((h) => h === "ERP CODE"),
+      editableColumns: flags.editableColumns.filter(
+        (h) => !BLANK_ONLY.has(h) && (h !== "BOM ID" || updateBomId),
+      ),
+      blankOnlyColumns: blankOnly,
+      dropdownOptions: dropdowns,
       showSection: (s: SidebarSection) => !hiddenSidebar.has(s),
     };
   }, [flags, updateBomId]);
@@ -264,6 +282,7 @@ export function PhysicalStockPage({ flags, actions, showHeader = true }: Physica
                 editable
                 editableColumns={editableColumns}
                 blankOnlyEditableColumns={blankOnlyColumns}
+                fixedDropdownOptions={dropdownOptions}
                 hiddenColumns={flags.hiddenColumns}
                 numericColumns={NUMERIC_COLUMNS}
                 bomIdOptionsById={updateBomId ? bomIdOptions : undefined}

@@ -1,6 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { COLUMNS, FIELDS, computeAvailableQty, computeItemWiseValue } from "../src/columns";
+import {
+  BLANK_ONLY_HEADERS,
+  COLUMNS,
+  DROPDOWN_OPTIONS,
+  EDITABLE_CANDIDATES,
+  FIELDS,
+  computeAvailableQty,
+  computeItemWiseValue,
+  fieldOf,
+} from "../src/columns";
 import { editableFieldsFor, resolvePhysicalStockFlags } from "../src/flags";
 import { contentKey, updatePhysicalStockField } from "../src/server/index";
 
@@ -19,6 +28,18 @@ test("editableFieldsFor maps headers and keeps BOM ID out", () => {
   const flags = resolvePhysicalStockFlags({ editableColumns: ["REMARKS", "DISPATCH QTY.", "ERP CODE", "BOM ID"] });
   assert.deepEqual([...editableFieldsFor(flags)].sort(), ["dispatch_qty", "erp_code", "remarks"]);
   assert.equal(editableFieldsFor(resolvePhysicalStockFlags({})).size, 0);
+});
+
+test("blank-only dropdown columns map to editable DB fields", () => {
+  assert.ok(EDITABLE_CANDIDATES.includes("ERP CODE"));
+  assert.deepEqual([...BLANK_ONLY_HEADERS].slice(1).sort(), Object.keys(DROPDOWN_OPTIONS).sort());
+  for (const header of BLANK_ONLY_HEADERS) {
+    assert.ok(EDITABLE_CANDIDATES.includes(header), `${header} missing from EDITABLE_CANDIDATES`);
+  }
+  const fields = editableFieldsFor(
+    resolvePhysicalStockFlags({ editableColumns: [...BLANK_ONLY_HEADERS] }),
+  );
+  assert.deepEqual([...fields].sort(), BLANK_ONLY_HEADERS.map((h) => fieldOf(h)!).sort());
 });
 
 test("sync key ignores edited and derived fields", () => {
