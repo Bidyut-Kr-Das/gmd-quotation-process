@@ -16,13 +16,13 @@ import { fetchBomRows, buildRmCostMap, DIRECT_M2M, getBomEntry, getCachedBomRows
 import { update2to1CostForItems, buildRawMaterialsCostMap, clear2to1BomCache } from "@/lib/gmd2to1CostLookup";
 import { getDistinctBomIds, getBomRmAvailBatch, resolveContractReviewBomIdsFromActuator, computeContractReviewRmAvail, getNoUseBomIdSet, normalizeActuatorPart, clearVerifyBomCache, findBomForItem, getBomCandidates } from "@/lib/verifyBomLookup";
 import { splitCsvLinks } from "@/lib/gmd_lib/contract-order-links";
-import { buildDocketEmailHtml, buildDocketEmailSubject } from "@/lib/docketEmailTemplate";
+import { buildDocketEmailHtml, buildDocketEmailSubject, buildItemsClause } from "@/lib/docketEmailTemplate";
 import { sendDocketEmailViaN8n, DOCKET_EMAIL_ALWAYS_CC } from "@/lib/services/n8nEmail";
 import type { OfferLetterTemplateData } from "@/types/offer-lettter";
 import { buildDerivedItemName } from "@/lib/gmd_lib/derived-item-name";
 import { getUsdInrRate } from "@/lib/gmd_lib/exchangeRate";
 import { getRmStockMap, getRmTypeMap, syncDirectM2MAvailableStock } from "@/lib/directM2MStockLookup";
-import { computeDeliverySchedule, syncDeliveryScheduleForItem } from "@/lib/deliverySchedule";
+import { computeDeliverySchedule, syncDeliveryScheduleForItem, DEFAULT_DELIVERY_SCHEDULE } from "@/lib/deliverySchedule";
 import { resolveImportedInhouse } from "@/lib/importInhouseMapping";
 import { makeImageKey } from "@/lib/imageKey";
 import { withHardcodedL7Options } from "@/lib/gmd_lib/sheet-columns";
@@ -197,7 +197,7 @@ export async function createNewEnquiryAction(formData: {
               availableStock: (item as any).availableStock || null,
               stockAgainstContract: (item as any).stockAgainstContract || null,
               importedInhouse,
-              deliverySchedule: computeDeliverySchedule(item.quantity, item.availableStock, item.resolved.size, importedInhouse),
+              deliverySchedule: computeDeliverySchedule(item.quantity, item.availableStock, item.resolved.size, importedInhouse) ?? DEFAULT_DELIVERY_SCHEDULE,
               discount: item.discount || null,
               vaPercent: itemVa !== null ? String(itemVa) : null,
               quotedRate: itemQR,
@@ -335,7 +335,7 @@ export async function addItemsAction(formData: {
           availableStock: (item as any).availableStock || null,
           stockAgainstContract: (item as any).stockAgainstContract || null,
           importedInhouse,
-          deliverySchedule: computeDeliverySchedule(item.quantity, item.availableStock, item.resolved.size, importedInhouse),
+          deliverySchedule: computeDeliverySchedule(item.quantity, item.availableStock, item.resolved.size, importedInhouse) ?? DEFAULT_DELIVERY_SCHEDULE,
           discount: item.discount || null,
           vaPercent: itemVa !== null ? String(itemVa) : null,
           quotedRate: itemQR,
@@ -585,7 +585,9 @@ export async function updateEnquiryItemAction(formData: {
         availableStock: (formData as any).availableStock || null,
         stockAgainstContract: (formData as any).stockAgainstContract || null,
         importedInhouse: itemImportedInhouse,
-        deliverySchedule: computeDeliverySchedule(updatedQty, formData.availableStock !== undefined ? formData.availableStock : item.availableStock, resolved.size, itemImportedInhouse),
+        deliverySchedule: item.deliveryScheduleOverride
+          ? item.deliverySchedule
+          : computeDeliverySchedule(updatedQty, formData.availableStock !== undefined ? formData.availableStock : item.availableStock, resolved.size, itemImportedInhouse) ?? DEFAULT_DELIVERY_SCHEDULE,
         discount: formData.discount || null,
         vaPercent: finalVa !== null ? String(finalVa) : null,
         quotedRate: finalQuotedRate,
@@ -1086,14 +1088,11 @@ export async function sendDocketEmailAction(
       (enquiry.utility || "").trim() ||
       (enquiry.state || "").trim();
 
-    // Item description: distinct merged item names (fallback raw item name).
-    const itemDescription = [
-      ...new Set(
-        enquiry.items
-          .map((item) => (item.itemNameMerge || item.itemName || "").trim())
-          .filter(Boolean),
-      ),
-    ].join(", ");
+    // One item is named in the mail; several point at the attached BOQ rather
+    // than re-listing every line the Offer PDF already carries.
+    const itemsClause = buildItemsClause(
+      enquiry.items.map((item) => item.itemNameMerge || item.itemName || ""),
+    );
 
     const deliverySchedule =
       (enquiry.items.find((i) => (i.deliverySchedule || "").trim())?.deliverySchedule || "").trim() ||
@@ -1104,7 +1103,7 @@ export async function sendDocketEmailAction(
     const html = buildDocketEmailHtml({
       docketNumber: enquiry.docketNumber,
       projectName,
-      itemDescription,
+      itemsClause,
       paymentTerms: enquiry.paymentTerms || "",
       freight: `F.O.R. Site${state ? ` (${state})` : ""}`,
       deliverySchedule,
@@ -1531,6 +1530,11 @@ export async function updateItemFieldAction(
       updatedItem = await recalculateItem(itemId, updates);
     } else {
       const updateData: any = { [field]: parsedVal };
+      if (field === "deliverySchedule") {
+        // A hand-picked value is the source of truth; clearing it hands the row
+        // back to the sync.
+        updateData.deliveryScheduleOverride = !!(parsedVal && String(parsedVal).trim());
+      }
       if (field === "itemName") {
         const currentItem = await prisma.enquiryItem.findUnique({
           where: { id: itemId },
@@ -1789,8 +1793,10 @@ export async function updateItemFieldAction(
     }
 
     // Auto-set delivery schedule when any input to the schedule logic changes
-    // (quantity, availableStock, size, itemType, itemName or import/in-house class).
-    if (["quantity", "availableStock", "size", "itemType", "itemName", "importedInhouse"].includes(field)) {
+    // (quantity, availableStock, size, itemType, itemName, import/in-house class,
+    // or an item code / BOM change that rewrites availableStock). A blank manual
+    // value also lands here so the row goes back to being derived.
+    if (["quantity", "availableStock", "size", "itemType", "itemName", "importedInhouse", "erpItemCode", "bomId", "deliverySchedule"].includes(field)) {
       await syncDeliveryScheduleForItem(itemId);
     }
 
@@ -2045,6 +2051,8 @@ export async function selectBomIdAction(itemId: string, bomId: string | null) {
       where: { id: itemId },
       data: dataToUpdate,
     });
+    // The stock just written may change the promised schedule; recompute before returning the row.
+    await syncDeliveryScheduleForItem(itemId);
     // Auto-fill productCost if blank
     // PRIORITY: Raw Materials wins; SupplyHistory fallback
     if (item.productCost === null && vbRow.rmItemCode) {
@@ -6150,7 +6158,8 @@ export async function clearQuotedRatesAction(itemIds: string[]) {
     if (existing.length !== uniqueIds.length) {
       return { success: false, error: "Some items not found. Please refresh and try again." };
     }
-    // Block when any parent enquiry is frozen (quotedRate / totals are frozen fields)
+    // Skip items whose parent enquiry is frozen (quotedRate / totals are frozen fields)
+    let clearIds = uniqueIds;
     {
       const { isEnquiryFrozen } = await import("@/lib/oneClickAccess");
       const enquiryIds = [...new Set(existing.map((e) => e.enquiryId))];
@@ -6159,18 +6168,19 @@ export async function clearQuotedRatesAction(itemIds: string[]) {
         select: { id: true, apm: true, offerPdfGeneratedAt: true },
       });
       const frozenParents = new Set(parents.filter((p) => isEnquiryFrozen(p.apm, p.offerPdfGeneratedAt)).map((p) => p.id));
-      if (frozenParents.size > 0) {
-        const frozenItemIds = existing.filter((e) => frozenParents.has(e.enquiryId)).map((e) => e.id);
-        if (frozenItemIds.length > 0) {
-          return { success: false, error: `Cannot clear rates: ${frozenItemIds.length} item(s) are frozen after one-time PDF generation â€” revert APM to edit.` };
+      const frozenItemIds = new Set(existing.filter((e) => frozenParents.has(e.enquiryId)).map((e) => e.id));
+      if (frozenItemIds.size > 0) {
+        clearIds = uniqueIds.filter((id) => !frozenItemIds.has(id));
+        if (clearIds.length === 0) {
+          return { success: false, error: `Cannot clear rates: all ${frozenItemIds.size} matching item(s) are frozen after one-time PDF generation.` };
         }
       }
     }
 
-    console.log(`[Server] clearQuotedRates ids=${uniqueIds.length}`);
+    console.log(`[Server] clearQuotedRates ids=${clearIds.length}`);
 
     await prisma.enquiryItem.updateMany({
-      where: { id: { in: uniqueIds } },
+      where: { id: { in: clearIds } },
       data: {
         quotedRate: null,
         quotedRateGst: null,
@@ -6180,10 +6190,10 @@ export async function clearQuotedRatesAction(itemIds: string[]) {
     });
 
     const updatedItems = await prisma.enquiryItem.findMany({
-      where: { id: { in: uniqueIds } },
+      where: { id: { in: clearIds } },
     });
 
-    return { success: true, data: { items: updatedItems.map(serializeItem), cleared: updatedItems.length } };
+    return { success: true, data: { items: updatedItems.map(serializeItem), cleared: updatedItems.length, skippedFrozen: uniqueIds.length - clearIds.length } };
   } catch (error: any) {
     console.error("Error clearing quoted rates:", error);
     return { success: false, error: error.message || "Failed to clear quoted rates." };

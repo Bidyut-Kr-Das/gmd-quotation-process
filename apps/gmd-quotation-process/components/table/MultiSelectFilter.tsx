@@ -29,6 +29,8 @@ interface MultiSelectFilterProps {
   panelClassName?: string;
   align?: "start" | "center" | "end";
   renderButtonLabel?: (selected: string[], allLabel: string) => string;
+  /** Fired when the panel opens, so the caller can fetch that column's options. */
+  onOpen?: () => void;
 }
 
 export default function MultiSelectFilter({
@@ -47,16 +49,21 @@ export default function MultiSelectFilter({
   panelClassName,
   align = "start",
   renderButtonLabel,
+  onOpen,
 }: MultiSelectFilterProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
   const visibleOptions = useMemo(() => {
-    const cascadedSet = new Set(cascadedOptions);
-    const selectedSet = new Set(selected);
+    // Cascaded values are the source of truth once loaded: they include live
+    // data values that the static lookup list does not. Selected values stay
+    // visible so they can still be unchecked.
+    const source =
+      cascadedOptions.length > 0
+        ? Array.from(new Set([...cascadedOptions, ...selected]))
+        : options;
     const q = search.toLowerCase();
-    return options.filter((opt) => {
-      if (!cascadedSet.has(opt) && !selectedSet.has(opt)) return false;
+    return source.filter((opt) => {
       if (!q) return true;
       return (
         opt.toLowerCase().includes(q) ||
@@ -88,6 +95,7 @@ export default function MultiSelectFilter({
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
         if (!nextOpen) setSearch("");
+        else onOpen?.();
       }}
     >
       <PopoverTrigger
@@ -124,7 +132,7 @@ export default function MultiSelectFilter({
         <div className="flex justify-between items-center px-1 text-[9px]">
           <button
             type="button"
-            onClick={() => onChange(options)}
+            onClick={() => onChange(visibleOptions)}
             className="text-blue-600 font-bold hover:underline cursor-pointer"
           >
             Select All

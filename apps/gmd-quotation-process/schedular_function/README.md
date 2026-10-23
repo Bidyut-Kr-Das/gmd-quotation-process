@@ -485,11 +485,12 @@ Verify: `GET $GMD_APP_SERVER/api/scheduler/pbg` with `x-api-key` returns
 
 ## `docket-creation`
 
-Single step: `runPendingDocketCreation()` in `docket-creation.ts`. For **today's**
-`DocketQuotationThread` rows (IST calendar day, via `istDayWindow` in
-`lib/docketPending`, because the container runs UTC) with `pendingDocket = true`,
-`docketNo = null` and no docket already linked to the mail, it creates an
-`Enquiry`, extracting line items from the mail content:
+Single step: `runPendingDocketCreation()` in `docket-creation.ts`. For **recent**
+`DocketQuotationThread` rows (today's IST calendar day plus the previous
+`BACKLOG_DAYS` = 5, via `istDayWindow` in `lib/docketPending`, because the
+container runs UTC) with `pendingDocket = true`, `docketNo = null` and no docket
+already linked to the mail, it creates an `Enquiry`, extracting line items from
+the mail content:
 
 1. Allocates the next fiscal docket number(s) via `nextDocketSerials`
    (`lib/docketNumber`) from the current fiscal year's existing dockets.
@@ -511,21 +512,27 @@ Single step: `runPendingDocketCreation()` in `docket-creation.ts`. For **today's
 6. In one `$transaction`, creates the `Enquiry` **with its `EnquiryItem` rows**
    and stamps the thread with the new `docketNo` + clears `pendingDocket`.
 
-### One docket per mail, and only today's mail
+### One docket per mail, and a rolling backlog window
 
 Two limits, both deliberate:
 
-- **Today only.** Threads whose `date` is not in the current IST day are left
-  alone. The job never works through a backlog, and a thread with a null `date`
-  is never picked up.
+- **Recent mail only.** Threads dated today plus the previous `BACKLOG_DAYS`
+  (5) IST days are eligible; anything older is left alone. The window reaches
+  back because the mail ingestion can lag — on 2026-10-21 a whole day's mail
+  arrived the next morning — and a today-only window loses every late mail
+  permanently. A thread with a null `date` is never picked up.
 - **One docket per mail.** Candidates are skipped when `Enquiry.sourceThreadId`
   already names their thread. This is the limit that actually holds: the stamp
   written on the thread in step 6 is **not** durable, because the external mail
   ingestion re-syncs the row and clears `docketNo` back to NULL with
   `pendingDocket = true` within the hour. Before `sourceThreadId` existed, each
   hourly run docketed the same NCC mail again — one thread reached 11 dockets.
-  The link lives on the `Enquiry`, which the ingestion never touches. Skipped
-  threads are counted in `skippedAlreadyDocketed`.
+  The link lives on the `Enquiry`, which the ingestion never touches. It is also
+  re-checked immediately before each write (extraction can take minutes) and
+  `Enquiry.sourceThreadId` is `@unique`, so an overlapping run cannot double-create
+  even by accident; `POST /api/docket/automatic_create` sets the same link when
+  a docket is created by hand. Skipped threads are counted in
+  `skippedAlreadyDocketed`.
 
 ### Cleaning up dockets that were created more than once
 

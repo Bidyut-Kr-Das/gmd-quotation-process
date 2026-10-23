@@ -34,7 +34,7 @@ export const NAV: NavEntry[] = [
       { label: "Upload Image", href: "/upload-image" },
       { label: "Data Sources", href: "/data-sources" },
       { label: "GEM Bid & RA", href: "http://192.168.1.190:6012/", external: true },
-      { label: "Tenders", href: "https://gmd-tender-dashboard.vercel.app/tenders", external: true },
+      { label: "Tenders", href: "https://gmd-tender-dashboard-v2.vercel.app/tenders", external: true },
     ],
   },
 ];

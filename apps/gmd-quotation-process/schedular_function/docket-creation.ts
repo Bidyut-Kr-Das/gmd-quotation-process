@@ -49,6 +49,18 @@ import pLimit from "p-limit";
 /** Bounded extraction concurrency: attachment downloads + optional AI calls. */
 const EXTRACTION_CONCURRENCY = 3;
 
+/**
+ * IST days of backlog the job also works through, on top of today.
+ *
+ * The mail ingestion lags — on 2026-10-21 a whole day arrived the next morning —
+ * and the stamp the job writes on the thread is cleared by the next ingestion
+ * re-sync. A today-only window therefore loses every mail that lands late, so
+ * the window is widened to catch up. Duplicates are impossible either way: the
+ * durable guard is `Enquiry.sourceThreadId` (unique, and never touched by the
+ * ingestion), re-checked per thread right before the write.
+ */
+const BACKLOG_DAYS = 5;
+
 export interface PendingDocketCreated {
   docketNumber: string;
   partyName: string;
@@ -91,17 +103,19 @@ export interface PendingDocketCreationOptions {
 }
 
 /**
- * Materializes dockets for today's `DocketQuotationThread` rows flagged
- * `pendingDocket = true`. For each thread it creates a header-only `Enquiry`
- * (no items) with an auto-generated docket number, resolving the party name by
- * matching the thread's external emails against previous dockets (falling back
- * to the thread's `partyName` / `sub_category`, then "Unknown"), then stamps the
- * thread with the new docket number and clears `pendingDocket`.
+ * Materializes dockets for recent `DocketQuotationThread` rows flagged
+ * `pendingDocket = true` (today plus `BACKLOG_DAYS` of IST days). For each thread
+ * it creates a header-only `Enquiry` (no items) with an auto-generated docket
+ * number, resolving the party name by matching the thread's external emails
+ * against previous dockets (falling back to the thread's `partyName` /
+ * `sub_category`, then "Unknown"), then stamps the thread with the new docket
+ * number and clears `pendingDocket`.
  *
  * Two limits, both deliberate:
  *
- * - **Today's mail only (IST).** Older flagged threads are left alone; this job
- *   never backfills a backlog.
+ * - **Recent mail only (IST).** Today's mail plus the previous `BACKLOG_DAYS`
+ *   IST days, because the ingestion can lag by a day. Anything older is left
+ *   alone; this job never works through an unbounded backlog.
  * - **One docket per mail.** A candidate whose mail already has a docket is
  *   skipped, matched on `Enquiry.sourceThreadId`. This is the limit that matters:
  *   the stamp written on the thread below is *not* durable, because the external
@@ -115,7 +129,7 @@ export async function runPendingDocketCreation(
 ): Promise<PendingDocketCreationResult> {
   const dryRun = options.dryRun ?? false;
 
-  const { start, end } = istDayWindow(new Date());
+  const { start, end } = istDayWindow(new Date(), BACKLOG_DAYS);
   const candidates = await prisma.docketQuotationThread.findMany({
     where: {
       pendingDocket: true,
@@ -149,12 +163,12 @@ export async function runPendingDocketCreation(
     : [];
   const docketed = new Set(alreadyLinked.map((e) => e.sourceThreadId));
   const pending = candidates.filter((t) => !docketed.has(t.threadId));
-  const skippedAlreadyDocketed = candidates.length - pending.length;
+  let skippedAlreadyDocketed = candidates.length - pending.length;
 
   if (pending.length === 0) {
     console.log(
       `[docket-creation] no pendingDocket threads to convert ` +
-        `(today=${candidates.length} alreadyDocketed=${skippedAlreadyDocketed}).`,
+        `(window=${candidates.length} alreadyDocketed=${skippedAlreadyDocketed}).`,
     );
     return {
       pending: 0,
@@ -285,6 +299,17 @@ export async function runPendingDocketCreation(
 
   for (const p of enriched) {
     try {
+      // Re-check right before the write: extraction above can take minutes, and
+      // a docket may have been created by hand in that gap.
+      const linkedNow = await prisma.enquiry.findUnique({
+        where: { sourceThreadId: p.threadId },
+        select: { id: true },
+      });
+      if (linkedNow) {
+        skippedAlreadyDocketed++;
+        continue;
+      }
+
       // Mail file attachments (linked as-is) + a generated snapshot PDF.
       const attachmentRows: { name: string; url: string; type: string | null; size: number | null }[] =
         p.attachments.map((a) => ({ name: a.name, url: a.url, type: a.type, size: null }));
@@ -333,6 +358,13 @@ export async function runPendingDocketCreation(
         itemCount: p.items.length,
       });
     } catch (e) {
+      // Two runs overlapping (or a manual docket landing mid-run) cannot both
+      // link the same thread: the unique index rejects the second insert.
+      if (isDuplicateThreadLink(e)) {
+        skippedAlreadyDocketed++;
+        console.warn(`[docket-creation] thread ${p.threadId} already docketed, skipped`);
+        continue;
+      }
       failed++;
       console.error(`[docket-creation] failed for thread ${p.threadId}:`, e);
     }
@@ -371,4 +403,11 @@ function itemCreates(items: ParsedDocketItem[]) {
     quantity: item.quantity,
     erpItemCode: null,
   }));
+}
+
+/** True when the write lost the race for `Enquiry.sourceThreadId`. */
+function isDuplicateThreadLink(e: unknown): boolean {
+  const err = e as { code?: string; meta?: { target?: unknown } };
+  if (err?.code !== "P2002") return false;
+  return String(err.meta?.target ?? "").includes("sourceThreadId");
 }

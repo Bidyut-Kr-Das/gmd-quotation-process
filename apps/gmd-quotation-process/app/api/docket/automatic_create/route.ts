@@ -100,6 +100,22 @@ export async function POST(req: Request) {
       ? requestedDocketNo || thread.docketNo || null
       : thread.docketNo;
 
+    // Durable "this mail is already docketed" link. The mail ingestion clears
+    // the thread's docketNo on its next re-sync, so the hourly creator relies on
+    // `Enquiry.sourceThreadId` (unique) to never docket the same mail twice.
+    if (created && nextDocketNo) {
+      const alreadyLinked = await prisma.enquiry.findUnique({
+        where: { sourceThreadId: threadId },
+        select: { id: true },
+      });
+      if (!alreadyLinked) {
+        await prisma.enquiry.updateMany({
+          where: { docketNumber: nextDocketNo, sourceThreadId: null },
+          data: { sourceThreadId: threadId },
+        });
+      }
+    }
+
     const updated = await prisma.docketQuotationThread.update({
       where: { threadId },
       data: {

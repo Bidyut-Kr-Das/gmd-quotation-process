@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { computeDeliverySchedule } from "@/lib/deliverySchedule";
+import {
+  computeDeliverySchedule,
+  DEFAULT_DELIVERY_SCHEDULE,
+} from "@/lib/deliverySchedule";
 import { resolveImportedInhouse } from "@/lib/importInhouseMapping";
 
 /**
@@ -73,7 +76,7 @@ export async function syncDirectM2MAvailableStock(itemIds?: string[]): Promise<{
 
   const items = await prisma.enquiryItem.findMany({
     where: whereClause,
-    select: { id: true, rmItemCode: true, availableStock: true, rmType: true, quantity: true, deliverySchedule: true, itemType: true, size: true, importedInhouse: true },
+    select: { id: true, rmItemCode: true, availableStock: true, rmType: true, quantity: true, deliverySchedule: true, deliveryScheduleOverride: true, itemType: true, size: true, importedInhouse: true },
   });
 
   if (!items.length) {
@@ -93,10 +96,15 @@ export async function syncDirectM2MAvailableStock(itemIds?: string[]): Promise<{
     const data: { availableStock?: string; rmType?: string; deliverySchedule?: string } = {};
     if (stock !== undefined && stock !== item.availableStock) {
       data.availableStock = stock;
-      const importedInhouse = item.importedInhouse ?? resolveImportedInhouse(item.itemType, item.size);
-      const nextSchedule = computeDeliverySchedule(item.quantity, stock, item.size, importedInhouse);
-      if (nextSchedule !== null && nextSchedule !== item.deliverySchedule) {
-        data.deliverySchedule = nextSchedule;
+      // A manual pick is the source of truth; only derived rows follow the stock.
+      if (!item.deliveryScheduleOverride) {
+        const importedInhouse = item.importedInhouse ?? resolveImportedInhouse(item.itemType, item.size);
+        const nextSchedule =
+          computeDeliverySchedule(item.quantity, stock, item.size, importedInhouse) ??
+          DEFAULT_DELIVERY_SCHEDULE;
+        if (nextSchedule !== item.deliverySchedule) {
+          data.deliverySchedule = nextSchedule;
+        }
       }
     }
     if (rmType !== undefined && rmType !== item.rmType) {

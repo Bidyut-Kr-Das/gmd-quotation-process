@@ -34,8 +34,9 @@ export type RunDocketCreationOptions = {
 };
 
 /**
- * Materializes dockets for today's `DocketQuotationThread` rows flagged
- * `pendingDocket = true` (IST day; one docket per mail, skipped on
+ * Materializes dockets for recent `DocketQuotationThread` rows flagged
+ * `pendingDocket = true` (today plus `BACKLOG_DAYS` of IST days, because the
+ * mail ingestion can lag; one docket per mail, skipped on
  * `Enquiry.sourceThreadId` — see `docket-creation.ts`).
  *
  * A per-docket failure is counted in `steps.creation.failed` and the job still

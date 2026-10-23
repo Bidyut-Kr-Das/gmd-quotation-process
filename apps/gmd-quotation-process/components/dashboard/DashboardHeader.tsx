@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Search, PanelLeftOpen, PanelLeftClose, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@gmd/ui/components/button";
@@ -8,8 +8,8 @@ import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { openAddItemsDialog, openNewEnquiryDialog } from "@/lib/dialogsSlice";
 import { setFilter } from "@/lib/filtersSlice";
 import { toggleAnalyticsSidebar } from "@/lib/uiSlice";
-import { selectAllEnquiries, syncEnquiryEmailAddresses } from "@/lib/enquiriesSlice";
-import { BLANK, filterEnquiries } from "@/lib/filterUtils";
+import { selectEnquirySummary, syncEnquiryEmailAddresses } from "@/lib/enquiriesSlice";
+import { BLANK } from "@/lib/filterUtils";
 import DebouncedSearchInput from "@/components/table/DebouncedSearchInput";
 import AddItemsDialog from "./AddItemsDialog";
 import NewEnquiryDialog from "./NewEnquiryDialog";
@@ -18,12 +18,15 @@ interface DashboardHeaderProps {
   enquiries: { id: string; docketNumber: string; partyName: string }[];
   nextDocketNumber: string;
   dropdownOptions: any;
+  /** Server-rendered summary, so the counts are correct before hydration. */
+  initialSummary?: import("@/lib/enquiryQuery").EnquirySummary | null;
 }
 
 export default function DashboardHeader({
   enquiries,
   nextDocketNumber,
   dropdownOptions,
+  initialSummary,
 }: DashboardHeaderProps) {
   const dispatch = useAppDispatch();
   const isCollapsed = useAppSelector((s) => s.ui.isAnalyticsSidebarCollapsed);
@@ -59,37 +62,19 @@ export default function DashboardHeader({
     [dispatch]
   );
 
-  const allEnquiries = useAppSelector(selectAllEnquiries);
   const closureFilter = useAppSelector((s) => s.filters.closureStatus);
-  const filters = useAppSelector((s) => s.filters);
-  const generatedImages = useAppSelector((s) => s.ui.generatedImages);
-
-  const filteredEnquiries = useMemo(
-    () =>
-      filterEnquiries(
-        allEnquiries,
-        filters,
-        filters.globalSearch.trim(),
-        generatedImages
-      ),
-    [allEnquiries, filters, generatedImages]
-  );
+  const summary = useAppSelector(selectEnquirySummary) ?? initialSummary;
 
   const closureOptions: string[] = (dropdownOptions?.closureStatuses as string[]) ?? [];
 
   const countForStatus = (status: string) =>
-    filteredEnquiries.filter(
-      (e) => String(e.closureStatus || "").trim().toLowerCase() === status.toLowerCase()
-    ).length;
+    Object.entries(summary?.closureCounts ?? {}).reduce(
+      (n, [key, count]) =>
+        key.toLowerCase() === status.toLowerCase() ? n + count : n,
+      0,
+    );
 
-  const notSentCount = useMemo(
-    () =>
-      filteredEnquiries.filter((e) => {
-        const v = String(e.closureStatus || "").trim();
-        return v === "" || v === "-";
-      }).length,
-    [filteredEnquiries]
-  );
+  const notSentCount = summary?.notSentCount ?? 0;
 
   const isStatusActive = (status: string) =>
     closureFilter.some((v) => v.toLowerCase() === status.toLowerCase());

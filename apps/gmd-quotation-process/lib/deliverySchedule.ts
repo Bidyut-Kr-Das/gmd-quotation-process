@@ -66,7 +66,11 @@ export function computeDeliverySchedule(
 /**
  * Reads the item, computes its delivery schedule from quantity, availableStock,
  * size and importedInhouse classification, and persists it only when the
- * computed value differs from the stored one. Never clears an existing value.
+ * computed value differs from the stored one.
+ *
+ * A value the user picked by hand (`deliveryScheduleOverride`) is the source of
+ * truth and is returned untouched. When stock/quantity are unknown the stored
+ * value falls back to the default rather than being left blank.
  */
 export async function syncDeliveryScheduleForItem(itemId: string): Promise<string | null> {
   const item = await prisma.enquiryItem.findUnique({
@@ -78,17 +82,20 @@ export async function syncDeliveryScheduleForItem(itemId: string): Promise<strin
       size: true,
       importedInhouse: true,
       deliverySchedule: true,
+      deliveryScheduleOverride: true,
     },
   });
   if (!item) return null;
+  if (item.deliveryScheduleOverride) return item.deliverySchedule;
 
-  const next = computeDeliverySchedule(
-    item.quantity,
-    item.availableStock,
-    item.size,
-    item.importedInhouse
-  );
-  if (next === null || next === item.deliverySchedule) {
+  const next =
+    computeDeliverySchedule(
+      item.quantity,
+      item.availableStock,
+      item.size,
+      item.importedInhouse
+    ) ?? DEFAULT_DELIVERY_SCHEDULE;
+  if (next === item.deliverySchedule) {
     return item.deliverySchedule;
   }
 
