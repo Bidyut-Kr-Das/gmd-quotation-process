@@ -64,6 +64,8 @@ export const NEW_ITEM_FIELDS = [
   "l5_material",
   "l6_std",
   "l8_item_category",
+  "received_qty",
+  "dispatch_qty",
 ] as const;
 
 export type NewItemInput = Partial<Record<(typeof NEW_ITEM_FIELDS)[number], string>>;

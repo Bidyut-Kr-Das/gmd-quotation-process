@@ -6,12 +6,12 @@ export const COLUMNS = [
   "DATE",
   "ERP CODE",
   "location",
-  "DIMENSION",
   "L2-VALVE TYPE",
+  "Dia",
   "L4-COMPONENT",
   "L5- MATERIAL",
   "L6-STD",
-  "L7-DIMENSION",
+  "L7-PN",
   "L8 -ITEM CATEGORY",
   "RECEIVED QTY.",
   "DISPATCH QTY.",
@@ -48,8 +48,8 @@ export const FIELDS = [
   "form_date",
   "erp_code",
   "location",
-  "dimension",
   "l2_valve_type",
+  "dimension",
   "l4_component",
   "l5_material",
   "l6_std",
@@ -147,4 +147,38 @@ export function computeAvailableQty(received: unknown, dispatch: unknown): strin
   const r = parseNum(received);
   const d = parseNum(dispatch);
   return r === null || d === null ? null : String(r - d);
+}
+
+// l8_item_category (as stored in the stock DB, upper-cased) -> major/minor.
+// Rules confirmed with product: finished valves, capital, gear box, trading
+// valves, actuators, casting and pattern are major; everything else listed is
+// minor. An unknown category returns null so callers leave the field alone.
+const MAJOR_CATEGORIES = new Set([
+  "FINISHED VALVES",
+  "CAPITAL",
+  "GEAR BOX",
+  "TRADING VALVES",
+  "ACTUATORS",
+  "CASTING",
+  "PATTERN",
+]);
+
+const MINOR_CATEGORIES = new Set([
+  "BOLTS & NUTS",
+  "MISCELLANEOUS",
+  "BRONZE ITEMS",
+  "PACKING MATERIALS",
+  "RUBBER ITEMS",
+  "SPARES",
+  "SS SPARES",
+  "TOOLS",
+  "SCRAP",
+]);
+
+/** Major (true) / minor (false) marking for an item category; null when unknown. */
+export function computeMajorMinorMarking(category: string | null | undefined): boolean | null {
+  const c = (category ?? "").trim().replace(/\s+/g, " ").toUpperCase();
+  if (MAJOR_CATEGORIES.has(c)) return true;
+  if (MINOR_CATEGORIES.has(c)) return false;
+  return null;
 }

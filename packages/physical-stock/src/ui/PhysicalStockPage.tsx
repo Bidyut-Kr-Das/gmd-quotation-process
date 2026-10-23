@@ -27,9 +27,11 @@ const majorMinorKind = (value: unknown): MajorMinorKind =>
 export interface PhysicalStockPageProps {
   flags: PhysicalStockFlags;
   actions: PhysicalStockActions;
+  /** Set false when the host app renders the header (and New button) elsewhere. */
+  showHeader?: boolean;
 }
 
-export function PhysicalStockPage({ flags, actions }: PhysicalStockPageProps) {
+export function PhysicalStockPage({ flags, actions, showHeader = true }: PhysicalStockPageProps) {
   const [items, setItems] = useState<PhysicalStockRow[]>([]);
   const [bomIdOptions, setBomIdOptions] = useState<Record<string, string[]>>({});
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -67,6 +69,14 @@ export function PhysicalStockPage({ flags, actions }: PhysicalStockPageProps) {
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  // A "New" button rendered outside this component (e.g. the app navbar) asks
+  // the table to reload through this event.
+  useEffect(() => {
+    const onCreated = () => loadData();
+    window.addEventListener("physical-stock:created", onCreated);
+    return () => window.removeEventListener("physical-stock:created", onCreated);
   }, [loadData]);
 
   const rows = useMemo(() => items.map(rowToArray), [items]);
@@ -181,30 +191,32 @@ export function PhysicalStockPage({ flags, actions }: PhysicalStockPageProps) {
     }
   }, [sync, loadData]);
 
-  const showNew = flags.newItem && create;
+  const showNew = showHeader && flags.newItem && create;
 
   return (
     <main className="flex flex-col bg-background h-[calc(100vh-64px)] overflow-hidden">
       <div className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
-        <GMDUpdateHeader
-          totalRows={items.length}
-          syncedAt={syncedAt}
-          onSync={flags.sync ? handleSync : undefined}
-          syncing={syncing}
-          title="Physical Stock"
-          actions={
-            showNew && (
-              <button
-                type="button"
-                onClick={() => setShowNewDialog(true)}
-                className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 rounded px-3 py-1.5 text-[11px] font-semibold text-emerald-400 dark:text-emerald-300 transition-all"
-              >
-                <Plus size={12} />
-                New
-              </button>
-            )
-          }
-        />
+        {showHeader && (
+          <GMDUpdateHeader
+            totalRows={items.length}
+            syncedAt={syncedAt}
+            onSync={flags.sync ? handleSync : undefined}
+            syncing={syncing}
+            title="Physical Stock"
+            actions={
+              showNew && (
+                <button
+                  type="button"
+                  onClick={() => setShowNewDialog(true)}
+                  className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 rounded px-3 py-1.5 text-[11px] font-semibold text-emerald-400 dark:text-emerald-300 transition-all"
+                >
+                  <Plus size={12} />
+                  New
+                </button>
+              )
+            }
+          />
+        )}
         {showNew && (
           <NewItemDialog
             open={showNewDialog}
